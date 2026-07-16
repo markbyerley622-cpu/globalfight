@@ -139,6 +139,14 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
         let written = 0;
         if (isSourceEnabled("adcc-events")) written = await persistAggregated("BJJ", "events", h.events);
         log.info({ harvested: h.report.extracted, written }, "adcc:runner:done");
+        // syncADCC swallows a failed fetch into report.warnings and returns zero
+        // events, so reporting `written` alone made a CLOSED ENABLE_SCRAPER gate
+        // — and equally a broken extractor — indistinguishable from "ADCC has no
+        // upcoming events". BKFC/ONE surface the gate because their errors
+        // propagate; ADCC hid it and cost a wrong diagnosis. Say why it was zero.
+        if (written === 0 && h.report.warnings.length) {
+          return `written=0 discovered=${h.report.discovered} — ${h.report.warnings.join("; ")}`;
+        }
         return written;
       });
       break;
