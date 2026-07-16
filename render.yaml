@@ -97,7 +97,10 @@ services:
       # Must be a FULL origin (scheme included) — it's the base for password-reset
       # links and site metadata. `fromService property: host` yields a bare
       # hostname with no scheme, which produces broken links, so set it by hand
-      # after the first deploy: https://<your-app>.onrender.com
+      # after the first deploy, to the real origin Render assigns the service
+      # (Dashboard → globalfight → the URL under the service name). It looks like
+      # https://globalfight.onrender.com — paste THAT, not this sentence. A
+      # literal placeholder here is not a URL and config.ts will discard it.
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
 

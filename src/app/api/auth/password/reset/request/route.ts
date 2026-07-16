@@ -4,6 +4,7 @@ import { issueResetToken, RESET_TTL_MINUTES } from "@/lib/auth-password-reset";
 import { sendEmail, isEmailConfigured, EmailNotConfiguredError } from "@/lib/email/send";
 import { hit, clientIp, POLICY } from "@/lib/rate-limit";
 import { log } from "@/lib/scraper/logger";
+import { resolveSiteUrl } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,9 @@ export const dynamic = "force-dynamic";
 const GENERIC = { ok: true, message: "If that email is registered, we've sent a reset link." };
 
 function resetUrl(rawToken: string): string {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  // Validated, so a malformed NEXT_PUBLIC_SITE_URL yields a working localhost
+  // link rather than an unclickable one mailed to a real user.
+  const base = resolveSiteUrl("http://localhost:3000");
   return `${base}/account/reset?token=${encodeURIComponent(rawToken)}`;
 }
 

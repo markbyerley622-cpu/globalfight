@@ -1,10 +1,56 @@
+const DEFAULT_SITE_URL = "https://combat-register.vercel.app";
+
+function parseOrigin(raw: string | undefined): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  try {
+    const u = new URL(trimmed);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The site's public origin, in order of preference:
+ *
+ *   1. NEXT_PUBLIC_SITE_URL — the explicit override, and the only one of the
+ *      three that reaches client bundles (Next inlines NEXT_PUBLIC_* only).
+ *      Every SITE.url consumer is server-side today, but a client component
+ *      reading it would see ONLY this one — keep it set in production.
+ *   2. RENDER_EXTERNAL_URL — injected by Render with the service's real origin.
+ *      Removes the hand-pasted step that this fallback chain exists to survive.
+ *   3. DEFAULT_SITE_URL.
+ *
+ * Values are validated rather than trusted: SITE.url is fed straight to
+ * `new URL()` for metadataBase in layout.tsx, so an unparseable value throws
+ * during `next build`'s page-data collection and surfaces only as "Failed to
+ * collect page data for /account" — naming neither the variable nor the value.
+ * A copy-pasted placeholder ("https://<your-app>.onrender.com") lands here and
+ * once cost a deploy. Bad input degrades to the next source with a named
+ * warning: wrong canonical links on one deploy beat a dead build.
+ */
+export function resolveSiteUrl(fallback: string = DEFAULT_SITE_URL): string {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const explicit = parseOrigin(raw);
+  if (explicit) return explicit;
+
+  if (raw) {
+    console.warn(
+      `[config] NEXT_PUBLIC_SITE_URL is not a valid http(s) origin: ${JSON.stringify(raw)}. ` +
+        `Ignoring it. Set it to your real origin, scheme included.`,
+    );
+  }
+  return parseOrigin(process.env.RENDER_EXTERNAL_URL) ?? fallback;
+}
+
 export const SITE = {
   name: "Combat Register",
   tagline: "The Registry of Combat Sports",
   pitch: "Every fighter, gym, promoter and official — one source-backed network.",
   description:
     "The combat-sports ecosystem registry — fighters, gyms, coaches, promoters, federations, commissions, officials, venues and events across boxing, MMA, Muay Thai and more. Source-backed rankings, records, schedules, results and community.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://combat-register.vercel.app",
+  url: resolveSiteUrl(),
 } as const;
 
 // ── Sponsors / partners — EMPTY BY DESIGN ────────────────────────────────
