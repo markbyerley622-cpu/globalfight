@@ -192,9 +192,12 @@ services:
   # Split out of gf-cron-weekly. refresh-enrich drains a bounded ENRICH_BATCH
   # (30) per run and is designed — per its own route comment — to run hourly so
   # the backlog clears and every fighter is rechecked within ENRICH_STALE_DAYS.
-  # Running it weekly meant ~30 fighters/week against a roster in the thousands:
-  # over a year to give everyone a photo, which reads as "fighter images are
-  # broken" because in practice they never arrive. Hourly drains it in days.
+  # Weekly contradicted that: 30/week against 230 fighters is ~8 weeks before a
+  # new roster has photos, and a fighter added today waits a week for a face.
+  # That reads as "fighter images are broken" during exactly the window when
+  # anyone is looking. Once drained an hourly run scans 0 rows (the query only
+  # takes lastProfileScrapedAt null-or-stale), so this is cheap — and it stays
+  # correct if ENABLE_SCRAPER is ever turned on and the roster jumps.
   - type: cron
     name: gf-cron-enrich
     runtime: node
