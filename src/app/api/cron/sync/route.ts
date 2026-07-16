@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { cronAuthorized } from "@/lib/scraper/cron-handler";
 import { syncSports, type SyncEntity } from "@/services/sync/run";
 import { enrichBoxingFighters } from "@/services/sync/enrich-boxing-fighters";
 import type { Sport } from "@/lib/types";
@@ -18,9 +19,50 @@ const GROUPS: Record<string, Sport[]> = {
 };
 
 const VALID_ENTITY = new Set<SyncEntity>(["events", "fighters", "results"]);
+const ALL_ENTITIES: SyncEntity[] = ["events", "fighters", "results"];
 
-// APIs-first sync with automatic scraper fallback. Trigger via cron with the
-// shared secret, or as an admin. Example:
+/**
+ * Scheduled entry point — every group x every entity.
+ *
+ * This route answered POST only, behind an `x-cron-secret` header, while
+ * vercel.json and render.yaml both call it with GET + `Authorization: Bearer`.
+ * It returned 405 on every tick and had never once run; render.yaml's `|| true`
+ * swallowed the failure, and because refresh-events/refresh-odds do work, events
+ * still appeared and hid it.
+ *
+ * GET deliberately takes no parameters. The POST defaults are group=mma &
+ * entity=events, so a bare parameterless call would have synced MMA events and
+ * nothing else — boxing, kickboxing and BJJ would stay dark, which is a subtler
+ * version of the same silent gap. The cron wants everything; a caller who wants
+ * one slice uses POST with explicit params.
+ *
+ * Runs sequentially (syncSports already serialises per sport) to stay inside
+ * upstream rate limits, and isolates failures per group/entity so one dead
+ * provider can't abort the rest of the sweep.
+ */
+export async function GET(req: Request) {
+  if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const started = Date.now();
+  const results: Record<string, unknown> = {};
+
+  for (const [group, sports] of Object.entries(GROUPS)) {
+    for (const entity of ALL_ENTITIES) {
+      const key = `${group}:${entity}`;
+      try {
+        results[key] = await syncSports(sports, entity);
+      } catch (e) {
+        results[key] = { error: (e as Error).message };
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, kind: "sync", durationMs: Date.now() - started, results });
+}
+
+// APIs-first sync with automatic scraper fallback, for ONE explicit slice.
+// This is the manual/admin entry point — the scheduled sweep is GET above.
+// Example:
 //   POST /api/cron/sync?group=mma&entity=events   (x-cron-secret header)
 export async function POST(req: Request) {
   const user = await getCurrentUser();

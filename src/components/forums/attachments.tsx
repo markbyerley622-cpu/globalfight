@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ExternalLink, Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import type { ForumAttachment } from "@/lib/forum/embeds";
 
 // ─── External embed script loader ─────────────────────────────────────────
@@ -78,11 +79,11 @@ function SocialEmbed({ a }: { a: Extract<ForumAttachment, { type: "instagram" | 
 // ─── Image lightbox ───────────────────────────────────────────────────────
 
 function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useScrollLock();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-950/90 p-4" onClick={onClose}>

@@ -5,6 +5,7 @@ import {
   Heart, MessageCircle, Share2, Volume2, VolumeX, MoreVertical, X, ChevronDown, EyeOff, Bookmark,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import { TOPIC_LABEL, contentPill } from "@/lib/feed/tags";
 import {
   getClientId, loadYT, fmtViews, timeAgo, cleanTitle, posterUrl, preloadPosters,
@@ -343,6 +344,8 @@ export function ReelsOverlay({
   };
 
   // ---- lifecycle ----
+  useScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     cid.current = getClientId();
@@ -351,7 +354,6 @@ export function ReelsOverlay({
     // playIndex/toggleMute honour it on their next in-gesture play.
     try { muted.current = localStorage.getItem("cr_reels_muted") !== "0"; } catch { /* noop */ }
     fetchLibrary().then((d) => setSavedIds(new Set(d.savedIds)));
-    document.body.style.overflow = "hidden";
     io.current = new IntersectionObserver((entries) => {
       for (const en of entries) {
         if (en.isIntersecting && en.intersectionRatio >= 0.6) {
@@ -401,7 +403,6 @@ export function ReelsOverlay({
     window.addEventListener("touchend", onTouchEnd, { passive: true });
 
     return () => {
-      document.body.style.overflow = "";
       io.current?.disconnect();
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);

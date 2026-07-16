@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import { ClipReels, type Clip } from "./clip-reels";
 import { getClientId, fmtViews, fmtDuration, timeAgo, cleanTitle, type FeedVideo } from "@/components/feed/client";
 
@@ -89,11 +90,11 @@ export function ClipsExperience({ initialClips, initialCursor }: { initialClips:
 }
 
 function VideoModal({ v, onClose }: { v: FeedVideo; onClose: () => void }) {
+  useScrollLock();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/85 p-4" onClick={onClose}>

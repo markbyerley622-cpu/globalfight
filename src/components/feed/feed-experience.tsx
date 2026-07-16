@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import { TOPICS_META, TOPIC_LABEL, contentPill } from "@/lib/feed/tags";
 import { ReelsOverlay } from "./reels-overlay";
 import { SaveSheet } from "./save-sheet";
@@ -337,11 +338,11 @@ function FeedCard({ v, onPlay, saved, onSave }: { v: FeedVideo; onPlay: () => vo
 }
 
 function PlayerModal({ v, onClose }: { v: FeedVideo; onClose: () => void }) {
+  useScrollLock();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/85 p-4" onClick={onClose}>

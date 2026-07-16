@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Play, ChevronRight, X, Newspaper, Users, Flame, Target, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import { Flag } from "@/components/flag";
 import { getClientId, fmtViews, timeAgo, cleanTitle, type FeedVideo } from "./client";
 import { HomeFilterDropdown } from "./home-filter-dropdown";
@@ -274,11 +275,11 @@ function HeroCorner({ f, tone }: { f: FighterLite; tone: "red" | "volt" }) {
 }
 
 function ClipModal({ v, onClose }: { v: FeedVideo; onClose: () => void }) {
+  useScrollLock();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/85 p-4" onClick={onClose}>

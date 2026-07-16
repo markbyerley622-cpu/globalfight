@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { refresh, type RefreshKind } from "./runner";
 import { log } from "./logger";
 
-function authorized(req: Request): boolean {
+/**
+ * The one auth check every cron route shares. Exported because /api/cron/sync
+ * needs it too: it used to roll its own (`x-cron-secret` header, POST only)
+ * while every caller sent `Authorization: Bearer` over GET, so it answered 405
+ * and never ran once. A second scheme is what let that drift go unnoticed —
+ * there should only be this one.
+ */
+export function cronAuthorized(req: Request): boolean {
   // Accept either our own secret or Vercel Cron's CRON_SECRET (Vercel auto-adds
   // `Authorization: Bearer ${CRON_SECRET}` to scheduled requests), so the
   // vercel.json crons authenticate without extra wiring.
@@ -15,7 +22,7 @@ function authorized(req: Request): boolean {
 /** Builds a GET handler for a cron route that refreshes one entity kind. */
 export function makeCronHandler(kind: RefreshKind) {
   return async function GET(req: Request) {
-    if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const started = Date.now();
     try {
