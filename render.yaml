@@ -15,7 +15,10 @@
 databases:
   - name: globalfight-db
     databaseName: globalfight
-    plan: starter
+    # Legacy plans ('starter') are rejected for new databases. Current tiers:
+    # free (expires after 30 days), basic-256mb, basic-1gb, basic-4gb, pro-*.
+    # The whole dataset (fighters/events/fights/articles) is well under 256MB.
+    plan: basic-256mb
 
 envVarGroups:
   - name: globalfight
@@ -88,11 +91,12 @@ services:
         fromDatabase:
           name: globalfight-db
           property: connectionString
+      # Must be a FULL origin (scheme included) — it's the base for password-reset
+      # links and site metadata. `fromService property: host` yields a bare
+      # hostname with no scheme, which produces broken links, so set it by hand
+      # after the first deploy: https://<your-app>.onrender.com
       - key: NEXT_PUBLIC_SITE_URL
-        fromService:
-          type: web
-          name: globalfight
-          property: host
+        sync: false
 
   # ── Cron: news + coverage (every 6h) ─────────────────────────────────────
   - type: cron
@@ -102,14 +106,14 @@ services:
     schedule: "0 */6 * * *"
     buildCommand: "true"
     startCommand: >-
-      curl -fsS -m 600 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/refresh-news"
+      curl -fsS -m 600 -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-news"
     envVars:
       - fromGroup: globalfight
-      - key: APP_URL
+      - key: APP_HOST
         fromService:
           type: web
           name: globalfight
-          property: hostport
+          property: host
 
   # ── Cron: events, results, odds, predictions (daily) ─────────────────────
   - type: cron
@@ -120,15 +124,15 @@ services:
     buildCommand: "true"
     startCommand: >-
       for p in refresh-events sync refresh-results refresh-odds; do
-        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$p" || true;
+        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
     envVars:
       - fromGroup: globalfight
-      - key: APP_URL
+      - key: APP_HOST
         fromService:
           type: web
           name: globalfight
-          property: hostport
+          property: host
 
   # ── Cron: promotion scrapers + Wikipedia cards (Mon & Thu) ───────────────
   - type: cron
@@ -139,15 +143,15 @@ services:
     buildCommand: "true"
     startCommand: >-
       for p in refresh-bkfc refresh-one refresh-wikicards; do
-        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$p" || true;
+        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
     envVars:
       - fromGroup: globalfight
-      - key: APP_URL
+      - key: APP_HOST
         fromService:
           type: web
           name: globalfight
-          property: hostport
+          property: host
 
   # ── Cron: BJJ + fighter photo enrichment (weekly) ────────────────────────
   - type: cron
@@ -158,12 +162,12 @@ services:
     buildCommand: "true"
     startCommand: >-
       for p in refresh-adcc refresh-enrich; do
-        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$p" || true;
+        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
     envVars:
       - fromGroup: globalfight
-      - key: APP_URL
+      - key: APP_HOST
         fromService:
           type: web
           name: globalfight
-          property: hostport
+          property: host
