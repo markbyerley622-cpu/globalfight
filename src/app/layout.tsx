@@ -1,60 +1,77 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Oswald } from "next/font/google";
-import Link from "next/link";
+import { Oswald } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
+import { Footer } from "@/components/layout/footer";
+import { Ticker } from "@/components/layout/ticker";
+import { AppShell } from "@/components/layout/app-shell";
+import { I18nProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/lib/auth-client";
+import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
+import { SITE } from "@/lib/config";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const oswald = Oswald({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-oswald",
+// Mona Sans (owner-supplied variable font) is the primary UI/body typeface.
+// Mapped onto the existing --font-inter variable so every surface picks it up
+// without touching the Tailwind theme. Oswald stays for condensed display headings.
+const inter = localFont({
+  src: "../../public/fonts/MonaSans-Variable.woff2",
+  variable: "--font-inter",
   display: "swap",
+  weight: "200 900",
 });
-
-export const metadata: Metadata = {
-  title: {
-    default: "GlobalFight — every fight, one home",
-    template: "%s · GlobalFight",
-  },
-  description:
-    "Follow global combat sports the way fans actually watch them — one event at a time. Cards, coverage, predictions and discussion in a single destination.",
-};
+const oswald = Oswald({
+  subsets: ["latin"], weight: ["400", "500", "600", "700"],
+  variable: "--font-oswald", display: "swap",
+});
 
 export const viewport: Viewport = {
   themeColor: "#05070a",
   width: "device-width",
   initialScale: 1,
-  viewportFit: "cover",
+};
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE.url),
+  title: { default: `${SITE.name} — ${SITE.tagline}`, template: `%s · ${SITE.name}` },
+  description: SITE.description,
+  applicationName: SITE.name,
+  keywords: [
+    "boxing", "rankings", "pound for pound", "fight predictions",
+    "champions", "combat sports", "fight schedule", "boxing news", "P4P",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: SITE.name,
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
+    url: SITE.url,
+    images: [{ url: "/cr-logo.png", width: 512, height: 341, alt: SITE.name }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
+    images: ["/cr-logo.png"],
+  },
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
-      <body className="min-h-dvh">
-        <div className="mx-auto flex min-h-dvh w-full max-w-screen-md flex-col border-x border-ink-800/60">
-          <header className="sticky top-0 z-40 border-b border-ink-700/70 bg-ink-950/85 backdrop-blur">
-            <div className="flex h-14 items-center justify-between px-4">
-              <Link href="/" className="flex items-center gap-2">
-                <span className="grid h-7 w-7 place-items-center rounded-md bg-blood-500 font-display text-sm font-bold text-white shadow-[0_8px_30px_-12px_rgba(225,29,42,0.8)]">
-                  GF
-                </span>
-                <span className="font-display text-[17px] font-semibold uppercase tracking-wide">
-                  Global<span className="text-blood-500">Fight</span>
-                </span>
-              </Link>
-              <span className="font-display text-[10px] uppercase tracking-[0.2em] text-fog">
-                Skeleton
-              </span>
-            </div>
-          </header>
-
-          <main className="flex-1 pb-16">{children}</main>
-
-          <footer className="border-t border-ink-700/70 px-4 py-6 text-xs text-fog">
-            <span className="font-display uppercase tracking-wider text-mist">GlobalFight</span> ·
-            event-centric combat-sports platform · demo data only
-          </footer>
-        </div>
+    <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
+      <body className="min-h-dvh bg-ink-950 antialiased">
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded focus:bg-blood-500 focus:px-4 focus:py-2 focus:text-white">
+          Skip to content
+        </a>
+        <ChunkReloadGuard />
+        <I18nProvider>
+          <AuthProvider>
+            <AppShell ticker={<Ticker />} footer={<Footer />}>
+              {children}
+            </AppShell>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

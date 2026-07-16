@@ -1,10 +1,8 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════
-   GlobalFight — Design System
-   Premium dark sports-media theme, ported from the Combat Register
-   language (ESPN × DAZN × UFC): deep layered ink, boxing-red accent,
-   championship gold, electric volt, Oswald display + Inter body.
+   Combat Register 2.0 — Design System
+   Premium dark sports-media theme (ESPN × DAZN × UFC × the data source)
    ════════════════════════════════════════════════════════════════════ */
 
 @theme {
@@ -44,24 +42,6 @@
   --color-down: #ef4444;
   --color-live: #ef4444;
 
-  /* ── Semantic aliases used by GlobalFight components ──
-     Mapped onto the palette above so the whole app adopts the theme. */
-  --color-bg: var(--color-ink-950);
-  --color-surface: var(--color-ink-850);
-  --color-surface-2: var(--color-ink-800);
-  --color-border: var(--color-ink-700);
-  --color-fg: var(--color-chalk);
-  --color-muted: var(--color-mist);
-  --color-faint: var(--color-fog);
-  --color-brand: var(--color-blood-500);
-  --color-brand-fg: #ffffff;
-  --color-success: var(--color-up);
-  --color-warning: var(--color-gold-400);
-
-  /* ── Corner colours ── */
-  --color-red-corner: var(--color-blood-500);
-  --color-blue-corner: var(--color-volt-500);
-
   /* ── Typography ── */
   --font-display: var(--font-oswald), "Arial Narrow", sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -69,13 +49,38 @@
   /* ── Radii ── */
   --radius-card: 0.875rem;
 
+  /* ── Breakpoint for ultra-wide ── */
+  --breakpoint-3xl: 1920px;
+
   /* ── Shadows ── */
   --shadow-glow-red: 0 0 40px -8px rgba(225, 29, 42, 0.55);
   --shadow-glow-gold: 0 0 40px -8px rgba(224, 169, 27, 0.5);
-}
 
-:root {
-  color-scheme: dark;
+  /* ── Easing library (Penner curves as tokens; also emit `ease-*` utilities) ──
+     Replaces the cubic-beziers that were copy-pasted inline across the file. */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);      /* material default */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);   /* confident settle */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);     /* long decel — hero reveals */
+  --ease-out-circ: cubic-bezier(0, 0.55, 0.45, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1); /* slight overshoot — pops */
+  --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
+
+  /* ── Fluid space scale (Utopia-style; 320px → 1440px viewport) ──
+     One rhythm for section padding / stacks that scales with the viewport. */
+  --space-2xs: clamp(0.5rem, 0.46rem + 0.20vw, 0.625rem);
+  --space-xs:  clamp(0.75rem, 0.69rem + 0.30vw, 0.9375rem);
+  --space-s:   clamp(1rem, 0.91rem + 0.45vw, 1.25rem);
+  --space-m:   clamp(1.5rem, 1.36rem + 0.68vw, 1.875rem);
+  --space-l:   clamp(2rem, 1.73rem + 1.36vw, 2.75rem);
+  --space-xl:  clamp(3rem, 2.55rem + 2.27vw, 4.25rem);
+  --space-2xl: clamp(4rem, 3.27rem + 3.64vw, 6rem);
+  --space-3xl: clamp(6rem, 4.91rem + 5.45vw, 9rem);
+
+  /* ── Fluid type ramp (prefixed to avoid clashing with `text-*` utilities) ── */
+  --fluid-eyebrow: clamp(0.7rem, 0.66rem + 0.20vw, 0.8rem);
+  --fluid-body:    clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --fluid-h2:      clamp(1.75rem, 1.20rem + 2.75vw, 3rem);
+  --fluid-display: clamp(3.5rem, 1.50rem + 9.00vw, 8.25rem);
 }
 
 @layer base {
@@ -83,12 +88,19 @@
     border-color: var(--color-ink-700);
   }
 
+  /* Hide the blinking text caret everywhere except real text fields, so
+     clicking buttons/cards/links never shows an I-beam insertion cursor. */
+  *:not(input):not(textarea):not([contenteditable="true"]) {
+    caret-color: transparent;
+  }
+
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     overflow-x: hidden;
+    /* Guard against any child that overflows the viewport width from creating
+       a horizontal scroll the fixed mobile drawer would ride along with. */
     max-width: 100%;
-    scrollbar-width: none;
   }
 
   body {
@@ -101,7 +113,6 @@
     overflow-x: hidden;
   }
 
-  /* Oswald condensed display face for all headings — the sports-media look. */
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
@@ -121,16 +132,21 @@
     border: 2px solid var(--color-ink-900);
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-blood-600); }
-
-  :focus-visible {
-    outline: 2px solid var(--color-blood-500);
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
 }
 
 @layer components {
-  /* Uppercase eyebrow with a red tick — section headings flourish. */
+  /* Page width container with ultra-wide support */
+  .container-cr {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 1rem;
+    max-width: 1440px;
+  }
+  @media (min-width: 1920px) {
+    .container-cr { max-width: 1680px; }
+  }
+
+  /* Section heading flourish */
   .eyebrow {
     display: inline-flex;
     align-items: center;
@@ -139,24 +155,22 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: var(--color-blood-400);
   }
   .eyebrow::before {
     content: "";
-    width: 1.5rem;
+    width: 1.75rem;
     height: 2px;
     background: var(--color-blood-500);
   }
 
-  /* Premium gradient card surface. */
   .card-surface {
     background: linear-gradient(160deg, var(--color-ink-850), var(--color-ink-900));
     border: 1px solid var(--color-ink-700);
     border-radius: var(--radius-card);
   }
 
-  /* Pulsing live indicator (ring). */
   .live-dot {
     display: inline-block;
     width: 0.5rem;
@@ -166,24 +180,24 @@
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
     animation: pulse-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
+  /* Grain / vignette overlay for hero imagery */
+  .vignette {
+    background:
+      radial-gradient(120% 100% at 50% 0%, transparent 40%, var(--color-ink-950) 100%),
+      linear-gradient(180deg, transparent 30%, var(--color-ink-950) 95%);
+  }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
 
-  /* Hide scrollbar chrome while keeping scroll (mobile-app feel / swipe rails). */
-  .no-scrollbar,
-  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-  .no-scrollbar::-webkit-scrollbar,
-  .hide-scrollbar::-webkit-scrollbar { display: none; }
-
-  .swipe-x {
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
+  .clip-slant {
+    clip-path: polygon(0 0, 100% 0, 100% 88%, 0 100%);
   }
 
-  /* Fine diagonal pinstripe texture. */
   .bg-grid {
+    /* Fine diagonal pinstripe texture (Combat Reviews brand background). */
     background-image: repeating-linear-gradient(
       135deg,
       rgba(255, 255, 255, 0.03) 0px,
@@ -197,6 +211,17 @@
     -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent);
     mask-image: linear-gradient(90deg, #000 70%, transparent);
   }
+
+  /* App-shell scroll region: hide the scrollbar chrome (mobile-app feel) while
+     keeping scroll. Used by <main> inside AppShell. */
+  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* App-shell bottom-sheet slide-up (see components/ui/sheet.tsx). */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 @keyframes pulse-ring {
@@ -215,3 +240,180 @@
   to { transform: translateX(-50%); }
 }
 .animate-marquee { animation: marquee 40s linear infinite; }
+
+/* Double-tap "salute" burst on forum cards (Combat Register's like emblem). */
+@keyframes salute {
+  0%   { transform: scale(0.3); opacity: 0; }
+  30%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Combat Feed — reels gestures & motion (GPU transforms/opacity only)
+   ════════════════════════════════════════════════════════════════════ */
+.cr-reels { scrollbar-width: none; }
+.cr-reels::-webkit-scrollbar { display: none; }
+.cr-reel-cover { overflow: hidden; }
+.cr-reel-cover iframe,
+.cr-reel-cover > div {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  /* Size the iframe to the true cover dimensions (crop, don't upscale) so the
+     YouTube player renders at full resolution — fixes the blur that scaling a
+     viewport-sized iframe by 1.78× caused. Clipped by the cover/reel overflow. */
+  width: max(100vw, calc(100dvh * 16 / 9));
+  height: max(100dvh, calc(100vw * 9 / 16));
+  border: 0; pointer-events: none;
+}
+.cr-react-burst { position: fixed; z-index: 120; pointer-events: none; width: 0; height: 0; }
+.cr-react-burst .rb-icon { position: absolute; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; will-change: transform, opacity; }
+.cr-react-burst.respect .rb-icon { color: var(--color-blood-500); filter: drop-shadow(0 8px 30px rgba(225,29,42,.55)); animation: crRespectPop .62s var(--ease-out-quint) forwards; }
+.cr-react-burst.disrespect .rb-icon { color: #fff; filter: drop-shadow(0 8px 22px rgba(0,0,0,.75)); animation: crDisrespectUp .64s var(--ease-out-back) forwards; }
+.cr-rb-p { position: absolute; left: 0; top: 0; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 999px; background: var(--color-blood-500); will-change: transform, opacity; animation: crParticle .62s ease-out forwards; }
+@keyframes crRespectPop {
+  0% { transform: scale(0) rotate(-22deg); opacity: 0; }
+  22% { transform: scale(1.45) rotate(11deg); opacity: 1; }
+  40% { transform: scale(0.94) rotate(-3deg); opacity: 1; }
+  56% { transform: scale(1.1) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-34px) scale(1.12); opacity: 0; }
+}
+@keyframes crDisrespectUp {
+  0% { transform: translateY(6px) scale(.45) rotate(0); opacity: 0; }
+  15% { transform: translateY(-28px) scale(1.3) rotate(-14deg); opacity: 1; }
+  30% { transform: translateY(-46px) scale(1.06) rotate(11deg); }
+  44% { transform: translateY(-62px) scale(1.14) rotate(-8deg); }
+  58% { transform: translateY(-82px) scale(1.04) rotate(6deg); }
+  100% { transform: translateY(-172px) scale(.86) rotate(0); opacity: 0; }
+}
+@keyframes crParticle {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
+@keyframes crBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.cr-bob { animation: crBob 1.5s ease-in-out infinite; }
+.is-paused .cr-pause { opacity: 1; }
+
+/* Instant poster: a crisp thumbnail sits over the player until it reaches PLAYING,
+   so the reel is never a black/buffering rectangle on entry. */
+.cr-reel-poster {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 1; pointer-events: none;
+  transition: opacity .45s ease; will-change: opacity;
+}
+.cr-reel-poster.is-hidden { opacity: 0; }
+
+/* "+1 Respect" micro-reward that flies toward the Respect button. */
+.cr-plus-one {
+  position: fixed; z-index: 130; pointer-events: none;
+  transform: translate(-50%, -50%);
+  font: 700 0.8rem/1 var(--font-display), sans-serif;
+  letter-spacing: .02em; text-transform: uppercase; white-space: nowrap;
+  color: var(--color-blood-300);
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.7));
+  animation: crPlusOne .62s var(--ease-standard) forwards;
+  will-change: transform, opacity;
+}
+@keyframes crPlusOne {
+  0%   { transform: translate(-50%,-50%) translate(0,0) scale(.7); opacity: 0; }
+  18%  { opacity: 1; transform: translate(-50%,-50%) translate(0,-8px) scale(1.06); }
+  100% { transform: translate(-50%,-50%) translate(var(--dx), var(--dy)) scale(.55); opacity: 0; }
+}
+
+/* Cinematic boot: CR logo + thin animated blood bar over black. No spinner. */
+.cr-boot { animation: fadeIn .4s ease; }
+.cr-boot-bar {
+  position: relative; height: 2px; width: 148px; border-radius: 999px;
+  background: rgba(255,255,255,.08); overflow: hidden;
+}
+.cr-boot-bar::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--color-blood-500), var(--color-blood-300), var(--color-blood-500), transparent);
+  transform: translateX(-100%);
+  animation: crBoot 1.15s var(--ease-standard) infinite;
+}
+@keyframes crBoot { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+/* Skeleton shimmer for reel/grid placeholders. */
+.cr-shimmer { position: relative; overflow: hidden; background: var(--color-ink-800); }
+.cr-shimmer::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent);
+  transform: translateX(-100%); animation: crShimmer 1.4s ease-in-out infinite;
+}
+@keyframes crShimmer { 100% { transform: translateX(100%); } }
+
+/* Slim vertical swipe-progress rail (right edge). Communicates position + endlessness. */
+.cr-progress { transition: transform .35s var(--ease-standard); transform-origin: top; will-change: transform; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cr-boot-bar::after, .cr-shimmer::after, .cr-bob { animation-duration: .001ms; animation-iteration-count: 1; }
+  .cr-plus-one { animation-duration: .001ms; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Predictions — premium surfaces, probability motion, micro-interactions
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Frosted glass card surface with a soft top sheen. */
+.glass {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.045), transparent 22%),
+    linear-gradient(160deg, rgba(22,27,38,.92), rgba(9,12,17,.94));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.07);
+}
+
+/* Lift + glow on hover; a hairline top highlight tracks the pointer feel. */
+.pred-card {
+  position: relative;
+  transition: transform .28s var(--ease-out-quint),
+              box-shadow .28s var(--ease-out-quint),
+              border-color .28s;
+  will-change: transform;
+}
+@media (hover: hover) {
+  .pred-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255,255,255,.14);
+    box-shadow: 0 22px 48px -22px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.03) inset;
+  }
+}
+.pred-card:active { transform: translateY(-1px) scale(.997); }
+
+/* Probability bar fill — animates from a neutral 50% to its real value. */
+.prob-fill { transition: width 1s var(--ease-out-quint); }
+
+/* Featured card: a whisper of gold at the edge. */
+.ring-featured { box-shadow: 0 0 0 1px rgba(224,169,27,.35), 0 20px 46px -24px rgba(224,169,27,.25); }
+
+/* Vote button press feedback. */
+.tap { transition: transform .12s ease, background-color .2s, border-color .2s, color .2s; }
+.tap:active { transform: scale(.96); }
+
+/* Section entrance. */
+.rise { animation: rise .5s var(--ease-out-quint) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Animated sliding tab indicator background. */
+.seg { transition: color .2s; }
+.seg-ind { transition: transform .32s var(--ease-out-quint), width .32s var(--ease-out-quint); }
+
+/* Sheen sweep for "hot" chips. */
+.hot-sheen { position: relative; overflow: hidden; }
+.hot-sheen::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.28) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: hotSheen 3.2s ease-in-out infinite;
+}
+@keyframes hotSheen { 0%,60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pred-card, .pred-card:hover, .pred-card:active { transform: none; transition: none; }
+  .prob-fill { transition: none; }
+  .rise { animation: none; }
+  .hot-sheen::after { animation: none; display: none; }
+  .seg-ind { transition: none; }
+}

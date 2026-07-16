@@ -7,25 +7,57 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "postinstall": "prisma generate",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/lib/scraper/**/__tests__/**/*.test.ts\"",
+    "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@prisma/client": "^6.2.1",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.0.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "hls.js": "^1.6.16",
+    "jose": "^6.2.3",
     "lucide-react": "^0.469.0",
-    "next": "^15.1.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.6.0"
+    "motion": "^11.15.0",
+    "next": "15.1.4",
+    "next-themes": "^0.4.4",
+    "p-queue": "^8.0.1",
+    "p-retry": "^6.2.1",
+    "pg": "^8.21.0",
+    "pino": "^9.5.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "sharp": "^0.33.5",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "^16.2.10",
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.5",
-    "@types/react": "^19.0.2",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
-    "eslint": "^9.18.0",
-    "eslint-config-next": "^15.1.4",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "prisma": "^6.2.1",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.3"
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.63.0"
+  },
+  "optionalDependencies": {
+    "redis": "^4.7.0"
   }
 }

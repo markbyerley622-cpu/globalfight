@@ -4,6 +4,12 @@
 /build
 *.tsbuildinfo
 next-env.d.ts
-.env*.local
+.env
+.env*
+!.env.example
 .DS_Store
 npm-debug.log*
+
+# Generated fighter photos (bg-removed) + work files
+/public/headshots/
+scripts/.photowork/

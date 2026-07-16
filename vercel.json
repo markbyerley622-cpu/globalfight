@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/refresh-news", "schedule": "0 */6 * * *" },
+    { "path": "/api/cron/refresh-events", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/sync", "schedule": "30 4 * * *" },
+    { "path": "/api/cron/refresh-odds", "schedule": "0 */12 * * *" },
+    { "path": "/api/cron/refresh-results", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/refresh-bkfc", "schedule": "0 6 * * 1,4" },
+    { "path": "/api/cron/refresh-one", "schedule": "0 7 * * 1,4" },
+    { "path": "/api/cron/refresh-adcc", "schedule": "0 8 * * 1" },
+    { "path": "/api/cron/refresh-wikicards", "schedule": "0 10 * * 2,5" },
+    { "path": "/api/cron/refresh-enrich", "schedule": "0 9 * * 2" }
+  ]
+}

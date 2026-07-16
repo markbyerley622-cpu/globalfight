@@ -1,0 +1,1322 @@
+// ════════════════════════════════════════════════════════════════════════
+//  Combat Reviews 2.0 — Prisma schema (PostgreSQL)
+//  Designed for millions of records: indexed lookups, snapshot tables for
+//  time-series ranking/odds data, and denormalised counters for hot reads.
+// ════════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────
+
+enum Sport {
+  BOXING
+  MMA
+  MUAY_THAI
+  KICKBOXING
+  K1
+  BARE_KNUCKLE
+  BJJ
+  BJJ_NOGI
+  WRESTLING
+  JUDO
+  TAEKWONDO
+  SAMBO
+  COMBAT_SAMBO
+}
+
+enum Stance {
+  ORTHODOX
+  SOUTHPAW
+  SWITCH
+}
+
+enum FightResult {
+  WIN
+  LOSS
+  DRAW
+  NO_CONTEST
+  SCHEDULED
+}
+
+enum FightMethod {
+  KO
+  TKO
+  UD      // unanimous decision
+  SD      // split decision
+  MD      // majority decision
+  SUB     // submission (MMA)
+  DQ
+  RTD     // retired
+  TD      // technical decision
+  NC
+  DRAW
+}
+
+enum RankMovement {
+  UP
+  DOWN
+  SAME
+  NEW
+  RETURN
+}
+
+enum SanctioningBody {
+  WBA
+  WBC
+  IBF
+  WBO
+  RING   // Ring Magazine
+  IBO
+  THE_RING
+  UNDISPUTED
+  BKFC   // Bare Knuckle Fighting Championship (promotion-as-sanctioning-body)
+  ONE    // ONE Championship (promotion-as-sanctioning-body)
+  PFL    // Professional Fighters League (promotion-as-sanctioning-body)
+  UFC    // Ultimate Fighting Championship (promotion-as-sanctioning-body)
+}
+
+enum EventStatus {
+  ANNOUNCED
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PredictionSource {
+  AI
+  EXPERT
+  COMMUNITY
+}
+
+enum UserRole {
+  USER
+  EXPERT
+  EDITOR
+  MODERATOR
+  ADMIN
+}
+
+enum ScrapeStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+// ─── Reference data ─────────────────────────────────────────────────────
+
+model WeightClass {
+  id          String  @id @default(cuid())
+  name        String                     // "Heavyweight" — unique per sport, not globally
+  slug        String  @unique           // "heavyweight", "bk-heavyweight"
+  sport       Sport   @default(BOXING)
+  limitLbs    Float?                     // 200, 175, 147...
+  limitKg     Float?
+  order       Int                        // display order, heaviest = 0
+
+  rankings    Ranking[]
+  champions   Champion[]
+  fights      Fight[]
+
+  @@unique([sport, name])                // names repeat across sports (Heavyweight in boxing AND bare-knuckle)
+  @@index([sport, order])
+}
+
+model Language {
+  id        String  @id @default(cuid())
+  code      String  @unique             // "en", "es", "fr"...
+  name      String                       // "English"
+  nativeName String                      // "English", "Español"
+  rtl       Boolean @default(false)
+  enabled   Boolean @default(true)
+}
+
+// ─── Fighters ───────────────────────────────────────────────────────────
+
+model Fighter {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  nickname      String?
+  sport         Sport    @default(BOXING)
+
+  // bio
+  nationality   String?                    // ISO-ish country name
+  countryCode   String?                    // "US", "GB", "MX"
+  birthDate     DateTime?
+  birthPlace    String?
+  residence     String?
+  heightCm      Int?
+  reachCm       Int?
+  stance        Stance?
+  debutDate     DateTime?
+  gym           String?
+  promoter      String?
+
+  // self-service ownership — set when a user signs up as a fighter or claims
+  // an existing profile. One user owns at most one fighter profile.
+  ownerId       String?   @unique
+  owner         User?     @relation("FighterOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  claimed       Boolean   @default(false)
+  website       String?
+  instagram     String?
+  twitter       String?
+  contactEmail  String?                    // public booking/contact email
+  tagline       String?                    // hero strapline on their site
+  profileKind   String    @default("fighter") // fighter | ring_girl | ring_official …
+  beltRank      String?                    // BJJ / No-Gi
+  style         String?                    // wrestling
+  federation    String?                    // taekwondo
+  rank          String?                    // judo / taekwondo
+
+  // record (denormalised for fast reads — derived from Fight rows)
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  draws         Int      @default(0)
+  noContests    Int      @default(0)
+  koWins        Int      @default(0)
+  koLosses      Int      @default(0)
+  totalRounds   Int      @default(0)
+
+  // media (our own cached/processed images — never hotlinked source URLs)
+  thumbUrl      String?                    // square ~160px (cards, rankings, search)
+  imageUrl      String?                    // square ~512px (profile)
+  heroImageUrl  String?                    // 16:9 ~1280px (profile hero)
+
+  // Licensed external photo (Wikimedia Commons). Displayed via the /api/img
+  // proxy with the credit rendered on the profile — a source URL we hold an
+  // attribution licence for, kept separate from the own-storage fields above.
+  photoUrl        String?                  // source image URL (upload.wikimedia.org/…)
+  photoSource     String?                  // "Wikimedia Commons"
+  photoCredit     String?                  // author / "Artist" from the file metadata
+  photoLicense    String?                  // e.g. "CC BY-SA 4.0"
+  photoLicenseUrl String?                  // link to the licence deed
+
+  // meta
+  active             Boolean   @default(true)
+  bio                String?   @db.Text
+  lastScrapedAt      DateTime?              // any scrape touched the row
+  lastProfileScrapedAt DateTime?            // profile-enrichment (photo/bio) last run
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // NOTE: provenance scalars (primarySource/sourceConfidence/sourceUpdatedAt)
+  // are intentionally NOT on the model yet — they'd be auto-selected by every
+  // fighter query and 500 until the column exists in prod. They get added in a
+  // coordinated `db:push` when persistAggregated (services/sync/run.ts) lands.
+
+  rankings       Ranking[]
+  championOf     Champion[]
+  fightsAsRed    Fight[]   @relation("RedCorner")
+  fightsAsBlue   Fight[]   @relation("BlueCorner")
+  titles         Title[]
+  rankHistory    RankSnapshot[]
+  predictions    Prediction[]    @relation("PredictedWinner")
+  favoritedBy    FavoriteFighter[]
+  achievements   FighterAchievement[]
+  sponsors       FighterSponsor[]
+  socials        FighterSocial[]
+  media          FighterMedia[]
+  claims         FighterClaim[]
+  externalIds    FighterExternalId[]
+  aliases        FighterAlias[]
+
+  @@index([sport, active])
+  @@index([countryCode])
+  @@index([name])
+  @@index([wins, losses])
+  @@index([lastProfileScrapedAt])   // stale-profile detection for the enrichment queue
+}
+
+model Title {
+  id        String          @id @default(cuid())
+  fighterId String
+  fighter   Fighter         @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  body      SanctioningBody
+  weight    String                            // weight-class name at time of title
+  wonDate   DateTime?
+  lostDate  DateTime?
+  current   Boolean         @default(false)
+
+  @@index([fighterId])
+  @@index([body, current])
+}
+
+// ─── Fighter-owned website content (managed by the profile owner) ────────
+
+model FighterAchievement {
+  id        String   @id @default(cuid())
+  fighterId String
+  fighter   Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  title     String
+  year      Int?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([fighterId, order])
+}
+
+model FighterSponsor {
+  id        String   @id @default(cuid())
+  fighterId String
+  fighter   Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  name      String
+  url       String?
+  logoUrl   String?
+  order     Int      @default(0)
+
+  @@index([fighterId, order])
+}
+
+model FighterSocial {
+  id        String   @id @default(cuid())
+  fighterId String
+  fighter   Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  platform  String   // instagram | twitter | youtube | tiktok | facebook | web
+  url       String
+
+  @@unique([fighterId, platform])
+}
+
+model FighterMedia {
+  id        String   @id @default(cuid())
+  fighterId String
+  fighter   Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  type      String   // "photo" | "video"
+  url       String   // stored image URL or video (YouTube/Vimeo) URL
+  caption   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([fighterId, type, order])
+}
+
+// ─── Profile claiming & moderation ───────────────────────────────────────
+
+model FighterClaim {
+  id           String    @id @default(cuid())
+  fighterId    String
+  fighter      Fighter   @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  claimantId   String
+  claimant     User      @relation("ClaimsMade", fields: [claimantId], references: [id], onDelete: Cascade)
+  status       String    @default("PENDING")   // PENDING | APPROVED | REJECTED | INFO_REQUESTED
+  evidenceType String?                          // website | social | email | id_document
+  evidenceNote String?   @db.Text
+
+  // ── Identity evidence (passport / licence / ID card) ──────────────────────
+  // Highly sensitive. Stored PRIVATE — never a public URL, never under public/.
+  // We persist an opaque storage key, not a fetchable address; the bytes are
+  // reachable only through an authorized, audited, streaming endpoint.
+  evidenceStorageKey      String?                       // opaque object key; never returned to clients
+  evidenceStorageProvider String?                       // "r2" | "blob" | "local-private"
+  evidenceUploadedAt      DateTime?
+  evidenceDeleteAfter     DateTime?                     // retention deadline; cleanup job deletes past this
+  evidenceDeletedAt       DateTime?
+  evidenceDeletionStatus  String?                       // null | PENDING | DELETED | FAILED
+  evidenceDeletionError   String?                       // last failure reason (never the key/URL)
+  evidenceScanStatus      String?                       // PENDING | CLEAN | INFECTED | SKIPPED
+  evidenceContentType     String?
+  evidenceByteSize        Int?
+
+  /// DEPRECATED — legacy public URL from the pre-remediation implementation.
+  /// Mapped to the original `evidenceUrl` column so no data is lost on db push.
+  /// Nothing writes this. `scripts/remediate-claim-evidence.ts` reads it to
+  /// delete the underlying public objects, then nulls it. Dropped in phase 2
+  /// once every row is null (see docs/SECURITY-IDENTITY-EVIDENCE.md).
+  legacyEvidenceUrl String? @map("evidenceUrl")
+
+  reviewerId   String?
+  reviewer     User?     @relation("ClaimsReviewed", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewNote   String?
+  createdAt    DateTime  @default(now())
+  reviewedAt   DateTime?
+
+  @@unique([fighterId, claimantId])             // one claim per user per fighter
+  @@index([status, createdAt])
+  @@index([fighterId])
+  @@index([evidenceDeleteAfter])                // cleanup job scans this
+  @@index([evidenceDeletionStatus])             // retry scan for FAILED deletions
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?                              // user who performed the action
+  action    String                               // "claim.create" | "claim.approve" | …
+  entity    String                               // "FighterClaim" | "Fighter"
+  entityId  String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ─── Rankings (current snapshot, fast read) ─────────────────────────────
+
+model Ranking {
+  id            String       @id @default(cuid())
+  weightClassId String
+  weightClass   WeightClass  @relation(fields: [weightClassId], references: [id], onDelete: Cascade)
+  fighterId     String
+  fighter       Fighter      @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+
+  isPoundForPound Boolean    @default(false)
+  rank          Int
+  previousRank  Int?
+  movement      RankMovement @default(SAME)
+  rating        Float?                          // 0–100 point score
+  source        String       @default("import")
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([weightClassId, isPoundForPound, fighterId])
+  @@index([weightClassId, rank])
+  @@index([isPoundForPound, rank])
+}
+
+// Time-series history — append-only, designed for millions of rows.
+model RankSnapshot {
+  id            String   @id @default(cuid())
+  fighterId     String
+  fighter       Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  weightClass   String                          // denormalised string key
+  isPoundForPound Boolean @default(false)
+  rank          Int
+  rating        Float?
+  capturedAt    DateTime @default(now())
+
+  @@index([fighterId, capturedAt])
+  @@index([weightClass, capturedAt])
+}
+
+// ─── Champions ──────────────────────────────────────────────────────────
+
+model Champion {
+  id            String          @id @default(cuid())
+  fighterId     String
+  fighter       Fighter         @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  weightClassId String
+  weightClass   WeightClass     @relation(fields: [weightClassId], references: [id], onDelete: Cascade)
+  body          SanctioningBody
+  beltImageUrl  String?
+  since         DateTime?
+  defenses      Int             @default(0)
+  current       Boolean         @default(true)
+
+  @@unique([weightClassId, body, current])
+  @@index([body])
+}
+
+// ─── Events & Fights ────────────────────────────────────────────────────
+
+model Event {
+  id            String      @id @default(cuid())
+  slug          String      @unique
+  name          String
+  sport         Sport       @default(BOXING)
+  promotion     String?
+  promotionId   String?                                       // registry promotion (identity resolution)
+  promotionRef  Promotion?  @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  venue         String?
+  city          String?
+  country       String?
+  countryCode   String?
+  broadcaster   String?
+  posterUrl     String?
+  date          DateTime
+  status        EventStatus @default(SCHEDULED)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // provenance scalars deferred — see the note on the Fighter model.
+
+  fights        Fight[]
+  externalIds   EventExternalId[]
+
+  @@index([date, status])
+  @@index([country])
+  @@index([promotion])
+  @@index([promotionId])
+}
+
+model Fight {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  eventId       String?
+  event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  redId         String
+  red           Fighter       @relation("RedCorner", fields: [redId], references: [id], onDelete: Cascade)
+  blueId        String
+  blue          Fighter       @relation("BlueCorner", fields: [blueId], references: [id], onDelete: Cascade)
+
+  weightClassId String?
+  weightClass   WeightClass?  @relation(fields: [weightClassId], references: [id], onDelete: SetNull)
+
+  scheduledRounds Int         @default(12)
+  titleFight    Boolean       @default(false)
+  mainEvent     Boolean       @default(false)
+  coMain        Boolean       @default(false)
+  orderOnCard   Int           @default(0)
+
+  // result
+  result        FightResult   @default(SCHEDULED)
+  winnerId      String?                            // Fighter.id or null
+  method        FightMethod?
+  roundEnded    Int?
+  timeEnded     String?
+  scorecards    Json?                              // [{judge, red, blue}]
+
+  date          DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  predictions   Prediction[]
+  odds          OddsSnapshot[]
+
+  @@index([date, result])
+  @@index([redId])
+  @@index([blueId])
+  @@index([eventId, orderOnCard])
+}
+
+// ─── Predictions ────────────────────────────────────────────────────────
+
+model Prediction {
+  id              String           @id @default(cuid())
+  fightId         String
+  fight           Fight            @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  source          PredictionSource
+  authorId        String?                            // User.id for expert/community
+  author          User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  predictedWinnerId String?
+  predictedWinner   Fighter?       @relation("PredictedWinner", fields: [predictedWinnerId], references: [id], onDelete: SetNull)
+
+  redProbability  Float                              // 0..1
+  blueProbability Float
+  methodPrediction FightMethod?
+  roundPrediction  Int?
+  confidence      Float?
+  rationale       String?          @db.Text
+  createdAt       DateTime         @default(now())
+
+  @@index([fightId, source])
+  @@index([authorId])
+}
+
+// ─── Betting intelligence (NO wagering) ─────────────────────────────────
+
+model OddsSnapshot {
+  id            String   @id @default(cuid())
+  fightId       String
+  fight         Fight    @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  bookmaker     String
+  redOdds       Float                                // decimal odds
+  blueOdds      Float
+  drawOdds      Float?
+  redImplied    Float                                // implied probability 0..1
+  blueImplied   Float
+  capturedAt    DateTime @default(now())
+
+  @@index([fightId, capturedAt])
+  @@index([bookmaker])
+}
+
+// ─── News / CMS ─────────────────────────────────────────────────────────
+
+model Article {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  title         String
+  excerpt       String?
+  content       String        @db.Text
+  category      String                              // "Breaking News", "Analysis"...
+  status        ArticleStatus @default(DRAFT)
+  featured      Boolean       @default(false)
+  coverImageUrl String?
+  sourceUrl     String?                             // original article URL (RSS link) — cards link out to it
+  promotionId   String?                             // registry promotion this story is about (identity resolution)
+  promotion     Promotion?    @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  authorId      String?
+  author        User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  ogImageUrl      String?
+
+  views         Int           @default(0)
+  publishedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tags          ArticleTag[]
+
+  @@index([status, publishedAt])
+  @@index([category, publishedAt])
+  @@index([featured])
+  @@index([promotionId, publishedAt])
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  slug      String       @unique
+  articles  ArticleTag[]
+}
+
+model ArticleTag {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+}
+
+// ─── Forums ─────────────────────────────────────────────────────────────
+
+// A ForumCategory doubles as a Community: the official ones are seeded
+// (MMA, Boxing, BJJ…) and user-created communities are added as rows with an
+// ownerId. Membership lives in CommunityMember; avatar/banner/memberCount are
+// the community-presentation fields.
+model ForumCategory {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  slug        String            @unique
+  description String?
+  order       Int               @default(0)
+  icon        String?
+  avatarUrl   String?
+  bannerUrl   String?
+  memberCount Int               @default(0)
+  threads     ForumThread[]
+  members     CommunityMember[]
+  clips       Clip[]
+}
+
+// One row per member of a community (a ForumCategory). role carries the
+// owner/moderator flags used by later phases; Phase 1 only writes "member".
+model CommunityMember {
+  id          String        @id @default(cuid())
+  communityId String
+  community   ForumCategory @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String        @default("member") // member | moderator | owner
+  createdAt   DateTime      @default(now())
+
+  @@unique([communityId, userId])
+  @@index([userId])
+}
+
+model ForumThread {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  categoryId  String
+  category    ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  pinned      Boolean       @default(false)
+  locked      Boolean       @default(false)
+  // discussion | fighter_post | promoter_post | announcement — drives feed
+  // treatment (fighter/promoter updates surface in the community feed).
+  kind        String        @default("discussion")
+  views       Int           @default(0)
+  replyCount  Int           @default(0)
+  // Denormalised engagement counters for fast trending/feed sorts (no joins).
+  shareCount    Int         @default(0)
+  reactionCount Int         @default(0)   // sum of reactions across the thread's posts
+  // When set, this thread is the discussion for a Combat Feed video. SetNull so
+  // the discussion survives if the underlying feed video is pruned.
+  videoId     String?
+  video       FeedVideo?    @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  lastPostAt  DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
+  posts         ForumPost[]
+  subscriptions ForumSubscription[]
+  bookmarks     ForumBookmark[]
+
+  @@index([categoryId, lastPostAt])
+  @@index([pinned, lastPostAt])
+  @@index([kind, createdAt])
+  @@index([videoId])
+  @@index([createdAt])
+}
+
+model ForumPost {
+  id          String      @id @default(cuid())
+  threadId    String
+  thread      ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content     String      @db.Text
+  likeCount   Int         @default(0)              // legacy "like" count (kept in sync)
+  // Embedded/uploaded media: JSON array of
+  //   { type: "image"|"youtube"|"instagram"|"x"|"tiktok"|"video",
+  //     url, thumbUrl?, width?, height?, caption? }
+  attachments Json?
+  // Quoted-reply snapshot: the post id + author + short excerpt being quoted, so
+  // the quote renders even if the original is later edited/deleted.
+  quotedId      String?
+  quotedAuthor  String?
+  quotedExcerpt String?   @db.Text
+  parentId    String?                              // reply-to-reply (nesting)
+  edited      Boolean     @default(false)
+  deleted     Boolean     @default(false)          // soft-delete: keep thread shape intact
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  reactions   ForumReaction[]
+
+  @@index([threadId, createdAt])
+  @@index([authorId])
+}
+
+model ForumReaction {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @default("like")             // like | fire | etc.
+  createdAt DateTime  @default(now())
+
+  @@unique([postId, userId, type])
+  @@index([postId])
+}
+
+// Follow / Subscribe a thread — the user gets it in their "Following" feed and
+// (future) notifications. One row per user per thread.
+model ForumSubscription {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([threadId, userId])
+  @@index([userId])
+}
+
+// Bookmark / Save a thread for later (distinct from following — no feed/notify
+// semantics, just a personal saved list).
+model ForumBookmark {
+  id        String      @id @default(cuid())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([threadId, userId])
+  @@index([userId, createdAt])
+}
+
+// Community moderation — a member flags a thread or post for review.
+model ForumReport {
+  id         String   @id @default(cuid())
+  targetType String                               // "thread" | "post"
+  targetId   String
+  reporterId String
+  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String                               // spam | harassment | off_topic | other
+  detail     String?  @db.Text
+  status     String   @default("OPEN")            // OPEN | REVIEWED | DISMISSED
+  createdAt  DateTime @default(now())
+
+  @@unique([targetType, targetId, reporterId])    // one report per user per target
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+/// Copyright / takedown notices.
+///
+/// Distinct from ForumReport: a copyright claim is a legal assertion by a rights
+/// owner, needs a good-faith statement and a signature, and has a counter-notice
+/// path. A community "this is spam" report has none of that.
+///
+/// The reporter does NOT have to be a signed-in user — a rights owner is usually a
+/// stranger to the platform. Contact details are collected instead.
+///
+/// NOTE: this records notices and the action taken. It does NOT constitute
+/// registration of a DMCA designated agent — that is an external filing with the US
+/// Copyright Office, and it has not been done. See docs/EXTERNAL-COMPLIANCE-ACTIONS.md.
+model CopyrightReport {
+  id                String   @id @default(cuid())
+
+  /// What is complained about, e.g. "clip:<id>", "forumPost:<id>", "fighter:<slug>".
+  contentIdentifier String
+  contentUrl        String?
+
+  // ── The claimant ──────────────────────────────────────────────────────
+  reporterName      String
+  reporterEmail     String
+  reporterOrg       String?
+  /// The work they say was infringed.
+  workDescription   String   @db.Text
+  /// "I am the rights owner or authorised to act for them."
+  ownershipClaim    Boolean  @default(false)
+  /// "I have a good-faith belief the use is not authorised."
+  goodFaithClaim    Boolean  @default(false)
+  /// Typed full name, standing as an electronic signature.
+  signature         String
+  signedAt          DateTime @default(now())
+
+  // ── Our handling ──────────────────────────────────────────────────────
+  status            String   @default("RECEIVED")  // RECEIVED | REVIEWING | ACTIONED | REJECTED | COUNTER_NOTICED | RESTORED
+  reviewerId        String?
+  reviewer          User?    @relation("CopyrightReviewed", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewNote        String?  @db.Text
+  actionTaken       String?                        // removed | disabled | no_action
+  actionedAt        DateTime?
+
+  // ── Counter-notice ────────────────────────────────────────────────────
+  counterNoticeAt   DateTime?
+  counterNoticeBy   String?                        // user id of the uploader
+  counterNoticeText String?  @db.Text
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([contentIdentifier])
+}
+
+// ─── Combat Clips (user-uploaded native-video reels) ─────────────────────
+
+// A user-uploaded fight clip. Stored as a native video file (R2/blob), so it
+// autoplays reliably on mobile (unlike YouTube embeds). Rated by the community.
+model Clip {
+  id           String         @id @default(cuid())
+  authorId     String
+  author       User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title        String
+  videoUrl     String         // public URL of the stored MP4/webm
+  posterUrl    String?        // optional thumbnail/first-frame
+  topic        String?        // mma | boxing | … (community/topic tag)
+  communityId  String?
+  community    ForumCategory? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  durationSec  Int?
+  status       String         @default("ready") // ready | removed
+  // Denormalised rating aggregates for fast sorting (avg = ratingSum/ratingCount).
+  ratingSum    Int            @default(0)
+  ratingCount  Int            @default(0)
+  createdAt    DateTime       @default(now())
+
+  ratings      ClipRating[]
+
+  @@index([createdAt])
+  @@index([communityId])
+  @@index([status, createdAt])
+}
+
+// One rating per user per clip (1–5). Upserted; aggregates kept on Clip.
+model ClipRating {
+  id        String   @id @default(cuid())
+  clipId    String
+  clip      Clip     @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value     Int      // 1..5
+  createdAt DateTime @default(now())
+
+  @@unique([clipId, userId])
+  @@index([userId])
+}
+
+// ─── Community Predictions (native to Combat Register) ───────────────────
+// Distinct from the live external market feed (Polymarket/Kalshi, which is
+// read-only and lives entirely in src/features/predictions). These are our
+// own community questions — "Who wins?", "Will this fight happen?", "Fight of
+// the Night?" — that signed-in users vote on. Tallies are denormalised onto
+// the market row for fast reads; one vote per user per market (upserted).
+model CommunityMarket {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  kind        String   @default("who_wins") // who_wins | will_happen | fotn | prop
+  sport       String                        // Sport enum value as string (BOXING…)
+  league      String?                        // UFC | Misfits | BKFC …
+  title       String
+  subtitle    String?                        // weight class / context line
+  description String?  @db.Text
+  status      String   @default("open")      // open | closed | resolved
+  closesAt    DateTime?
+  // options: [{ id, label, sub? }] — the choices users pick between.
+  options     Json
+  // tally: { [optionId]: count } — denormalised running totals.
+  tally       Json?
+  voteCount   Int      @default(0)
+  featured    Boolean  @default(false)
+  hot         Boolean  @default(false)
+  seedKey     String?  @unique               // maps a seeded fixture → its row
+  // When set, this row is the community vote attached to an external market
+  // (e.g. "polymarket:0x…" / "kalshi:KX…") rather than a standalone question.
+  // Such rows are excluded from the standalone "Fight Pulse" list.
+  providerMarketId String? @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  votes       CommunityVote[]
+
+  @@index([sport, status])
+  @@index([status, voteCount])
+}
+
+model CommunityVote {
+  id        String          @id @default(cuid())
+  marketId  String
+  market    CommunityMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  choice    String                              // an option id from the market
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([marketId, userId])                  // one vote per user per market
+  @@index([userId])
+  @@index([marketId, choice])
+}
+
+// ─── Users & accounts (Auth.js model-compatible) ────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  username      String?   @unique
+  bannerUrl     String?                              // profile cover image (user-uploaded)
+  passwordHash  String?                              // bcrypt; null for OAuth-only accounts
+  // Session epoch. Every issued JWT carries this value; bumping it revokes all
+  // outstanding sessions at once (password change / reset / sign-out-everywhere).
+  tokenVersion  Int       @default(0)
+
+  // Age declaration. Deliberately an ACKNOWLEDGEMENT, not a date of birth: we need
+  // to know you meet the minimum age, and a full birth date is more personal data
+  // than that question requires (data minimisation). It is never displayed publicly.
+  //
+  // This is NOT proof of age and is not presented as such — see /responsible-gambling.
+  ageConfirmed     Boolean   @default(false)   // "I am at least MINIMUM_AGE"
+  ageConfirmedAt   DateTime?
+  agePolicyVersion String?                     // which wording they agreed to
+  // Set when a user tells us they are under age: the account is restricted pending
+  // deletion rather than silently kept.
+  underageFlagged  Boolean   @default(false)
+  registryRole  String    @default("fan")            // signup intent: fan|fighter|coach|gym|promoter|manager|official|media
+  role          UserRole  @default(USER)
+  reputation    Int       @default(0)
+  bio           String?
+  localePref    String    @default("en")
+  themePref     String    @default("dark")
+  createdAt     DateTime  @default(now())
+
+  accounts      Account[]
+  sessions      Session[]
+  passwordResets PasswordResetToken[]
+  predictions   Prediction[]
+  articles      Article[]
+  threads        ForumThread[]
+  posts          ForumPost[]
+  reactions      ForumReaction[]
+  subscriptions  ForumSubscription[]
+  bookmarks      ForumBookmark[]
+  reports        ForumReport[]
+  communities    CommunityMember[]
+  clips          Clip[]
+  clipRatings    ClipRating[]
+  communityVotes CommunityVote[]
+  favorites      FavoriteFighter[]
+  fighterProfile Fighter?           @relation("FighterOwner")
+  claimsMade     FighterClaim[]     @relation("ClaimsMade")
+  claimsReviewed FighterClaim[]     @relation("ClaimsReviewed")
+  copyrightReviewed CopyrightReport[] @relation("CopyrightReviewed")
+
+  @@index([reputation])
+}
+
+/// Forgotten-password reset tokens.
+///
+/// Only a SHA-256 hash of the token is stored — a database leak must not yield
+/// usable reset links. The raw token exists solely in the emailed URL. Tokens
+/// are single-use (`usedAt`), short-lived (`expiresAt`), and superseded: issuing
+/// a new token marks every prior unused token for that user as consumed.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique               // sha256(raw token), hex
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  requestIp String?                        // for abuse investigation; not shown to users
+
+  @@index([userId, usedAt])
+  @@index([expiresAt])
+}
+
+model FavoriteFighter {
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fighterId String
+  fighter   Fighter @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, fighterId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Scraper bookkeeping ────────────────────────────────────────────────
+
+model ScrapeJob {
+  id          String       @id @default(cuid())
+  target      String                               // "rankings:heavyweight", "fighter:12345"
+  status      ScrapeStatus @default(PENDING)
+  attempts    Int          @default(0)
+  error       String?      @db.Text
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([target])
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  Multi-source data-intelligence layer
+//  Registry of providers + their health/sync telemetry, and the canonical
+//  identity maps (external ids / aliases) used by the dedupe engine.
+//  See src/services/{providers,aggregator,dedupe,normalization}.
+// ════════════════════════════════════════════════════════════════════════
+
+enum DataSourceKind {
+  API
+  SCRAPER
+  MANUAL
+}
+
+model DataSource {
+  id             String         @id @default(cuid())
+  key            String         @unique          // "sportradar", "tapology", "api-sports", "scraper"
+  label          String
+  kind           DataSourceKind @default(API)
+  baseConfidence Float          @default(0.5)     // 0..1 default trust weight
+  enabled        Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+
+  health         ProviderHealth[]
+  syncs          ProviderSync[]
+}
+
+model ProviderHealth {
+  id          String     @id @default(cuid())
+  sourceKey   String
+  source      DataSource @relation(fields: [sourceKey], references: [key], onDelete: Cascade)
+  ok          Boolean    @default(true)
+  latencyMs   Int?
+  rateLimited Boolean    @default(false)
+  error       String?    @db.Text
+  checkedAt   DateTime   @default(now())
+
+  @@index([sourceKey, checkedAt])
+}
+
+model ProviderSync {
+  id            String     @id @default(cuid())
+  sourceKey     String
+  source        DataSource @relation(fields: [sourceKey], references: [key], onDelete: Cascade)
+  sport         String?                            // Sport enum value, or null = all
+  entity        String                             // events | fighters | rankings | results | news
+  status        String     @default("RUNNING")     // RUNNING | SUCCESS | FAILED | FALLBACK
+  imported      Int        @default(0)
+  updated       Int        @default(0)
+  rejected      Int        @default(0)
+  failures      Int        @default(0)
+  rateLimitHits Int        @default(0)
+  durationMs    Int?
+  fellBackTo    String?                            // source key the run fell back to
+  error         String?    @db.Text
+  startedAt     DateTime   @default(now())
+  finishedAt    DateTime?
+
+  @@index([sourceKey, startedAt])
+  @@index([entity, status])
+}
+
+model FighterExternalId {
+  id         String   @id @default(cuid())
+  fighterId  String
+  fighter    Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  source     String                                // "tapology" | "sportradar" | ...
+  externalId String
+  confidence Float    @default(1)
+  createdAt  DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@index([fighterId])
+}
+
+model EventExternalId {
+  id         String   @id @default(cuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  source     String
+  externalId String
+  confidence Float    @default(1)
+  createdAt  DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@index([eventId])
+}
+
+model FighterAlias {
+  id         String   @id @default(cuid())
+  fighterId  String
+  fighter    Fighter  @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  alias      String                                // raw alias as seen upstream
+  normalized String                                // normalized form for matching
+  source     String?
+  createdAt  DateTime @default(now())
+
+  @@index([normalized])
+  @@index([fighterId])
+}
+
+// ─── Promotion Registry ─────────────────────────────────────────────────
+// Canonical list of combat-sports promotions, seeded from the Global Combat
+// Sports Promotions Registry workbook and kept live by ingestion. Promotion
+// is the parent entity that news Articles and Events resolve to; per-promotion
+// ingestion source URLs live on PromotionSource (the DB-backed source table
+// the pipeline previously lacked — sources used to be hardcoded arrays).
+
+enum PromotionStatus {
+  VERIFIED_ACTIVE
+  ACTIVE_RECURRING
+  ACTIVE_SPORADIC
+  ANNOUNCED
+  ACTIVITY_UNCLEAR
+  DORMANT
+  DEFUNCT
+}
+
+enum PromotionSourceType {
+  OFFICIAL_SITE
+  NEWS
+  PRESS
+  RSS
+  SCHEDULE          // upcoming events / calendar page
+  RESULTS
+  YOUTUBE
+  INSTAGRAM
+  FACEBOOK
+  TWITTER           // X
+  TIKTOK
+  AGGREGATOR        // tapology / sherdog / espn secondary source
+}
+
+model Promotion {
+  id           String          @id @default(cuid())
+  slug         String          @unique              // slugify(name)
+  name         String
+  acronym      String?
+  sport        Sport                                // mapped from registry "Sport"
+  ruleset      String?                              // raw "Ruleset / Discipline" text
+  country      String?
+  countryCode  String?
+  region       String?
+  scope        String?                              // "Geographic Scope"
+  entityType   String?                              // "Commercial promotion", "Federation-operated"...
+  status       PromotionStatus @default(ACTIVE_RECURRING)
+  officialUrl  String?                              // "Primary Source URL"
+  secondaryUrl String?                              // "Secondary Source URL"
+  confidence   String?                              // "High" | "Medium" | "Low"
+  evidence     String?         @db.Text             // "Evidence / Recency"
+  notes        String?         @db.Text
+  active       Boolean         @default(true)       // false = dormant/defunct
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  sources      PromotionSource[]
+  articles     Article[]
+  events       Event[]
+
+  @@index([sport, status])
+  @@index([country])
+  @@index([active])
+}
+
+model PromotionSource {
+  id            String              @id @default(cuid())
+  promotionId   String
+  promotion     Promotion           @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  type          PromotionSourceType
+  url           String
+  label         String?
+  method        String?             // "rss-syndication" | "scrape" | "link-only"
+  official      Boolean             @default(true)
+  enabled       Boolean             @default(true)  // gated by ingestion policy; link-only sources are not fetched
+  lastFetchedAt DateTime?
+  lastStatus    String?
+  discoveredAt  DateTime            @default(now())
+
+  @@unique([promotionId, url])
+  @@index([type, enabled])
+  @@index([promotionId])
+}
+
+// News outlets / media platforms — the press side of the registry, seeded from
+// the Global Combat-Sports News Platforms directory. These are RSS/syndication
+// sources for the news pipeline (distinct from Promotion, which is the org).
+model NewsOutlet {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  website   String
+  sports    Sport[]                              // multi-discipline outlets carry several
+  region    String?
+  language  String?
+  notes     String?  @db.Text
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+}
+
+// ─── Combat Feed ────────────────────────────────────────────────────────
+// Video catalog + per-user feed state. `key` is the feed identity: an
+// authenticated user id when signed in (so preferences follow the account
+// across devices), otherwise the anonymous browser client id.
+
+model FeedVideo {
+  id          String    @id // YouTube video id
+  title       String
+  channel     String
+  channelId   String?
+  description String?
+  publishedAt DateTime?
+  viewCount   Int?
+  topic       String?
+  tags        String[]
+  addedAt     DateTime  @default(now())
+
+  discussions ForumThread[]
+
+  @@index([addedAt])
+  @@index([topic])
+}
+
+model FeedView {
+  key      String
+  videoId  String
+  servedAt DateTime @default(now())
+
+  @@id([key, videoId])
+  @@index([key])
+}
+
+model FeedHiddenChannel {
+  key       String
+  channelId String
+
+  @@id([key, channelId])
+}
+
+model FeedNotInterested {
+  key     String
+  videoId String
+
+  @@id([key, videoId])
+}
+
+model FeedInterest {
+  key    String
+  tag    String
+  weight Float  @default(0)
+
+  @@id([key, tag])
+}
+
+// ─── Combat Feed · Personal Library ─────────────────────────────────────
+// Saved videos, Watch Later, Favorites and user-made Collections. `key` is the
+// feed identity (authed user id when signed in, else anonymous client id), same
+// as the other feed tables. Item rows snapshot the video's display fields so a
+// saved video still renders even after it ages out of the rolling catalog.
+
+model FeedCollection {
+  id        String               @id @default(cuid())
+  key       String
+  name      String
+  system    String? // "watch_later" | "favorites" | null (user-created)
+  createdAt DateTime             @default(now())
+  items     FeedCollectionItem[]
+
+  @@unique([key, system]) // at most one of each system collection per key
+  @@index([key])
+}
+
+model FeedCollectionItem {
+  collectionId String
+  videoId      String
+  title        String
+  channel      String
+  channelId    String?
+  topic        String?
+  addedAt      DateTime @default(now())
+  collection   FeedCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, videoId])
+  @@index([videoId])
+}
