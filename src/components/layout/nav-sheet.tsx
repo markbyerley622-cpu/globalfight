@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { User } from "lucide-react";
-import { PRIMARY_NAV, SITE, type NavItem } from "@/lib/config";
+import { FOOTER_NAV, PRIMARY_NAV, SITE, type NavItem } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
@@ -18,6 +18,8 @@ function isActive(pathname: string, href: string) {
  * full PRIMARY_NAV (Clips, Community, Library, Combat and every Explore child)
  * so the 5-tab bottom bar loses nothing, plus account + language.
  */
+const legal = FOOTER_NAV.find((s) => s.title === "Legal");
+
 export function NavSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const t = useT();
@@ -31,8 +33,10 @@ export function NavSheet({ open, onClose }: { open: boolean; onClose: () => void
         href={item.href}
         onClick={onClose}
         className={cn(
+          // py-3 keeps every row at a >=44px touch target (iOS guidance); the
+          // previous py-2/py-2.5 landed at ~36px on the app's primary nav.
           "block rounded-xl px-3 transition-colors",
-          sub ? "py-2 text-sm font-medium" : "py-2.5 font-display text-sm font-semibold uppercase tracking-wide",
+          sub ? "py-3 text-sm font-medium" : "py-3 font-display text-sm font-semibold uppercase tracking-wide",
           item.accent
             ? "border border-blood-500/40 bg-blood-500/10 text-blood-300"
             : active
@@ -83,6 +87,31 @@ export function NavSheet({ open, onClose }: { open: boolean; onClose: () => void
           ),
         )}
       </nav>
+
+      {/* Legal — the footer is `hidden lg:block` in AppShell, and it is the only
+          surface linking privacy/terms/cookies/guidelines/copyright/sources. On a
+          phone that left them with no route at all, on a product that takes
+          accounts and uploads. Rendering the footer itself here is too heavy (a
+          5-column grid), so the Legal column is reproduced condensed. */}
+      {legal && (
+        <div className="mt-4 border-t border-ink-800 px-5 pt-4">
+          <div className="pb-2 font-display text-[0.65rem] font-bold uppercase tracking-widest text-fog">
+            {t(legal.title)}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {legal.items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className="py-2 text-xs text-mist transition-colors hover:text-chalk"
+              >
+                {t(item.label)}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="mt-4 px-5 text-center text-[0.65rem] leading-relaxed text-fog">
         {SITE.name} — {SITE.tagline}. Independent platform; data sourced from public records.

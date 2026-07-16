@@ -39,11 +39,14 @@ export function ReelsLauncher() {
         </div>
       </div>
 
-      {/* Mobile: floating Reels button, clear of the bottom tab bar. */}
+      {/* Mobile: floating Reels button. It must clear BOTH pieces of bottom
+          chrome, not just the tab bar: SponsorsStrip (~64px) sits above
+          BottomTabBar (~70px), so at the old 5.5rem the button landed inside the
+          sponsors band. 9rem clears the stack. */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Open Reels"
-        className="tap fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-blood-500 px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-white shadow-[0_10px_30px_-8px_rgba(225,29,42,0.85)] lg:hidden"
+        className="tap fixed bottom-[calc(9rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-2 rounded-full bg-blood-500 px-4 py-3 font-display text-xs font-bold uppercase tracking-wide text-white shadow-[0_10px_30px_-8px_rgba(225,29,42,0.85)] lg:hidden"
       >
         <Film className="size-4" /> Reels
       </button>

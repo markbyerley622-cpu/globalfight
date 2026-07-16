@@ -68,14 +68,14 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                     <span className="flex min-w-0 items-center gap-2">
                       {f.mainEvent && <Badge tone="red">{t("Main")}</Badge>}
                       {f.coMain && <Badge tone="neutral">{t("Co-Main")}</Badge>}
-                      <span className="flex items-center gap-2">
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
                         <FighterAvatar fighter={f.red} size="sm" />
-                        <span className="font-display text-sm font-semibold text-chalk">{f.red.name}</span>
+                        <span className="truncate font-display text-sm font-semibold text-chalk">{f.red.name}</span>
                       </span>
-                      <span className="text-xs font-bold text-fog">vs</span>
-                      <span className="flex items-center gap-2">
+                      <span className="shrink-0 text-xs font-bold text-fog">vs</span>
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
                         <FighterAvatar fighter={f.blue} size="sm" />
-                        <span className="font-display text-sm font-semibold text-chalk">{f.blue.name}</span>
+                        <span className="truncate font-display text-sm font-semibold text-chalk">{f.blue.name}</span>
                       </span>
                     </span>
                     {f.weightClass && <span className="shrink-0 text-xs text-fog">{f.weightClass}</span>}

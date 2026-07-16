@@ -13,9 +13,17 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#05070a",
     theme_color: "#05070a",
     orientation: "portrait",
+    // cr-logo.png is 507x350 and transparent. It was declared here as a 512x512
+    // maskable icon, which is two separate lies: the size is wrong, and Android
+    // crops maskable icons to a circle/squircle — an edge-to-edge wordmark loses
+    // its sides. The maskable variants below are pre-padded into the central 80%
+    // safe zone; the `any` variants keep the logo large for launchers that don't
+    // mask. Both are square and sit on the app's ink background.
     icons: [
-      { src: "/cr-logo.png", sizes: "any", type: "image/png", purpose: "any" },
-      { src: "/cr-logo.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

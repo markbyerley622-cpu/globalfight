@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
+import { scrollToTop } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 
 export interface EventSection {
@@ -50,7 +51,7 @@ export function EventSectionNavigation({
 
   function goto(id: string) {
     setActive(id);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
 
   return (
@@ -58,7 +59,10 @@ export function EventSectionNavigation({
       <div
         role="tablist"
         aria-label="Event sections"
-        className="hide-scrollbar sticky top-14 z-30 flex gap-1 overflow-x-auto border-b border-ink-700/70 bg-ink-950/90 px-3 py-2 backdrop-blur"
+        // top-0, not top-14: the sticky context is <main>, whose top edge already
+        // sits below the fixed header. Offsetting by the header height again left
+        // a 56px gap that content scrolled through, above the "sticky" bar.
+        className="hide-scrollbar sticky top-0 z-30 flex gap-1 overflow-x-auto border-b border-ink-700/70 bg-ink-950/90 px-3 py-2 backdrop-blur"
       >
         {sections.map((section) => {
           const isActive = section.id === activeSection?.id;

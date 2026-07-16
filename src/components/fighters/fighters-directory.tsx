@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { useT } from "@/lib/i18n";
+import { scrollToTop } from "@/lib/scroll";
 import { SPORTS, SPORT_LABEL, formatSportRecord } from "@/lib/sports";
 import type { FighterListItem } from "@/lib/types";
 import type { Paginated } from "@/lib/forum/types";
@@ -83,7 +84,7 @@ export function FightersDirectory() {
     setHistory((h) => [...h.slice(0, pageIndex + 1), cur]);
     setPageIndex((i) => i + 1);
     setLoading(false);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
 
   async function goPrev() {
@@ -94,7 +95,7 @@ export function FightersDirectory() {
     setNextCursor(data.nextCursor);
     setPageIndex((i) => i - 1);
     setLoading(false);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
 
   const hasFilters = !!(sport || country || status || q);

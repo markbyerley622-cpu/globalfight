@@ -118,6 +118,20 @@
     letter-spacing: -0.01em;
   }
 
+  /* iOS Safari force-zooms the page when a focused control's text is under 16px,
+     and the shell is `h-[100dvh] overflow-hidden` with no page-level scroll — so
+     once zoomed, there is nothing to scroll back and the user has to pinch out
+     by hand. Controls are `text-sm` (14px) throughout, so this floors them at
+     16px on phones only; `sm:` and up keep the designed size. Pinch-zoom is
+     deliberately left enabled (no maximumScale), which is why this is needed. */
+  @media (max-width: 639px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+
   ::selection {
     background: var(--color-blood-500);
     color: white;

@@ -6,8 +6,15 @@
 #   1. Render → New → Blueprint → point at this repo.
 #   2. Fill the `sync: false` secrets in the "globalfight" env group
 #      (DATABASE_URL is wired automatically from the Postgres instance below).
-#   3. Run `npx prisma db push` once (Render Shell on the web service) to create
-#      the tables — this repo has no Prisma migrations.
+#
+#
+# The schema is applied by the web service's buildCommand (`prisma db push`) on
+# every deploy — this repo has no Prisma migrations, so nothing else creates the
+# tables. This used to be a manual "run it once in the Render Shell" step, and
+# the first deploy shipped without it: with no tables, every page rendered its
+# empty state ("No upcoming") instead of erroring, because the queries swallow
+# the failure — the site looked dataless rather than tableless. Keep it in the
+# build.
 #
 # Cadences are grouped to keep the service count (and cost) down; they mirror
 # vercel.json. Each job is a plain curl, so a failure just retries next tick.
@@ -85,7 +92,12 @@ services:
     # --include=dev is REQUIRED: NODE_ENV=production (set in the env group) makes
     # `npm ci` skip devDependencies, and the build needs @tailwindcss/postcss,
     # tailwindcss, typescript and prisma from there.
-    buildCommand: npm ci --include=dev && npm run build
+    #
+    # `db push` runs without --accept-data-loss on purpose: if a schema change
+    # would drop a populated column it fails the deploy rather than silently
+    # destroying rows. Resolve those by hand. --skip-generate because the
+    # postinstall hook already ran `prisma generate`.
+    buildCommand: npm ci --include=dev && npx prisma db push --skip-generate && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
