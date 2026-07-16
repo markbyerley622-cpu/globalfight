@@ -32,11 +32,35 @@ async function throttle() {
 
 export interface FetchResult { url: string; html: string; status: number }
 
+/**
+ * The master ingestion gate. Exact-match "true" and nothing else, deliberately:
+ * this is the switch that decides whether we touch someone else's server, so it
+ * fails closed on anything ambiguous.
+ *
+ * Strictness is right, but the old error said only "set ENABLE_SCRAPER=true" —
+ * which is a lie when the variable IS set and merely mis-shaped. `.env` here
+ * quotes it (ENABLE_SCRAPER="true"); paste that into a dashboard that doesn't
+ * strip quotes and the value is literally `"true"`, which fails this check while
+ * looking correct in the UI. Same for `True`, `TRUE`, or a stray trailing space.
+ * So report what we actually observed. The value is a boolean-ish flag, never a
+ * secret, so echoing it leaks nothing — and it turns a silent no-op into a
+ * one-line diagnosis.
+ */
+function scraperGateError(): string | null {
+  const raw = process.env.ENABLE_SCRAPER;
+  if (raw === "true") return null;
+  if (raw === undefined) return "Scraper disabled: ENABLE_SCRAPER is not set. Set it to exactly true.";
+  const hint =
+    raw.trim().toLowerCase().replace(/^["']|["']$/g, "") === "true"
+      ? " — it looks like you meant true, but the value must be exactly `true` (no quotes, no spaces, lowercase)."
+      : "";
+  return `Scraper disabled: ENABLE_SCRAPER is ${JSON.stringify(raw)}, expected "true"${hint}`;
+}
+
 /** Rate-limited, bounded-retry, honest fetch of a single public page. */
 export async function fetchPage(url: string): Promise<FetchResult> {
-  if (process.env.ENABLE_SCRAPER !== "true") {
-    throw new Error("Scraper disabled (set ENABLE_SCRAPER=true).");
-  }
+  const gate = scraperGateError();
+  if (gate) throw new Error(gate);
 
   return pRetry(
     async () => {
