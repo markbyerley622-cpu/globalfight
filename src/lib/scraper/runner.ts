@@ -34,7 +34,10 @@ const WIKICARD_BATCH = Number(process.env.WIKICARD_BATCH ?? 40);
 const CONCURRENCY = Number(process.env.SCRAPER_CONCURRENCY ?? 2);
 
 /** Run one target end-to-end inside a ScrapeJob lifecycle. */
-async function runJob(target: string, fn: () => Promise<number>): Promise<number> {
+// `number | string`: most jobs report a row count, but some report a short status
+// ("scanned=30 enriched=8 photos=0"). `results` has always been
+// Record<string, number | string> — only this signature was narrower.
+async function runJob(target: string, fn: () => Promise<number | string>): Promise<number | string> {
   const job = await prisma.scrapeJob.create({ data: { target, status: "RUNNING", startedAt: new Date(), attempts: 1 } });
   try {
     const count = await fn();
@@ -54,7 +57,7 @@ async function runJob(target: string, fn: () => Promise<number>): Promise<number
 export async function refresh(kind: RefreshKind): Promise<Record<string, number | string>> {
   const queue = new PQueue({ concurrency: CONCURRENCY });
   const results: Record<string, number | string> = {};
-  const safe = (target: string, fn: () => Promise<number>) =>
+  const safe = (target: string, fn: () => Promise<number | string>) =>
     queue.add(async () => {
       try { results[target] = await runJob(target, fn); }
       catch (e) { results[target] = (e as Error).message; }
@@ -169,7 +172,13 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
       // Profile enrichment: photos + bio for new/stale fighters.
       await safe("enrich", async () => {
         const r = await enrichPending(ENRICH_BATCH);
-        return r.enriched;
+        // Report scanned/enriched/photos, not just `enriched`. `enriched` counts
+        // any field filled (height, reach, bio), so it reads as success while
+        // zero photos land — which is exactly what a fail-closed
+        // MEDIA_INGESTION_ENABLED looks like from outside. `photos` is the only
+        // number that answers "why are there no fighter images", and it was
+        // being computed and thrown away.
+        return `scanned=${r.scanned} enriched=${r.enriched} photos=${r.photos}`;
       });
       break;
   }
