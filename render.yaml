@@ -82,7 +82,10 @@ services:
     name: globalfight
     runtime: node
     plan: starter
-    buildCommand: npm ci && npm run build
+    # --include=dev is REQUIRED: NODE_ENV=production (set in the env group) makes
+    # `npm ci` skip devDependencies, and the build needs @tailwindcss/postcss,
+    # tailwindcss, typescript and prisma from there.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
