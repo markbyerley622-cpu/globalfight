@@ -32,6 +32,8 @@ function ArticleLink({ item, className, children }: { item: NewsItem; className?
 }
 
 const CHUNK = 12;
+/** How far down the newest articles the hero may reach to find one with a cover. */
+const LEAD_WINDOW = 8;
 
 // All disciplines the site covers — shown as filters even before any article
 // carries that category. Merged with whatever categories the data actually has.
@@ -66,8 +68,15 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
   }, [filtered.length]);
 
   const shown = filtered.slice(0, visible);
-  const lead = shown[0];
-  const rest = shown.slice(1);
+  // The hero is the only full-bleed image on the page (18rem tall), so a lead
+  // with no publisher cover renders as generated art — the emptiest possible
+  // first impression. Most items come from Google News RSS, which carries no
+  // syndication image, so the newest article usually has none and the hero was
+  // blank far more often than not. Prefer the newest article that actually has
+  // a cover, bounded to LEAD_WINDOW so the hero stays current rather than
+  // reaching back for an old article just because it had a photo.
+  const lead = shown.slice(0, LEAD_WINDOW).find((a) => a.coverImageUrl) ?? shown[0];
+  const rest = shown.filter((a) => a !== lead);
 
   return (
     <>
