@@ -1,0 +1,169 @@
+# ── Render blueprint ───────────────────────────────────────────────────────
+# Render does NOT read vercel.json, so the cron schedules are defined here as
+# Cron Job services that call the /api/cron/* routes with the shared secret.
+#
+# Setup:
+#   1. Render → New → Blueprint → point at this repo.
+#   2. Fill the `sync: false` secrets in the "globalfight" env group
+#      (DATABASE_URL is wired automatically from the Postgres instance below).
+#   3. Run `npx prisma db push` once (Render Shell on the web service) to create
+#      the tables — this repo has no Prisma migrations.
+#
+# Cadences are grouped to keep the service count (and cost) down; they mirror
+# vercel.json. Each job is a plain curl, so a failure just retries next tick.
+
+databases:
+  - name: globalfight-db
+    databaseName: globalfight
+    plan: starter
+
+envVarGroups:
+  - name: globalfight
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Shared cron secret — cron-handler.ts accepts SCRAPE_CRON_SECRET or CRON_SECRET.
+      - key: CRON_SECRET
+        generateValue: true
+      - key: AUTH_SECRET
+        generateValue: true
+      # Master ingestion gate. Per-source writes are ALSO gated by
+      # src/lib/ingestion-registry.ts. Leave false until you intend to scrape.
+      - key: ENABLE_SCRAPER
+        value: "false"
+      - key: SCRAPER_RATE_LIMIT_MS
+        value: "800"
+      - key: SCRAPER_MAX_RETRIES
+        value: "2"
+      - key: BKFC_CONCURRENCY
+        value: "3"
+      - key: BKFC_MAX_PAGES
+        value: "0"
+      - key: ONE_CONCURRENCY
+        value: "3"
+      - key: ONE_MAX_PAGES
+        value: "0"
+      - key: WIKICARD_BATCH
+        value: "40"
+      - key: WIKICARD_CONCURRENCY
+        value: "2"
+      - key: MEDIA_INGESTION_ENABLED
+        value: "true"
+      - key: ENRICH_BATCH
+        value: "30"
+      - key: LOG_LEVEL
+        value: info
+      # ── Fill these in the Render dashboard (never commit real values) ──────
+      - key: ODDS_API_KEY
+        sync: false
+      - key: API_SPORTS_KEY
+        sync: false
+      # Image storage — required for fighter photos in production (public/headshots
+      # is gitignored, so local files do not deploy). See scripts/photos-upload.mts.
+      - key: STORAGE_PROVIDER
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_PUBLIC_BASE_URL
+        sync: false
+
+services:
+  # ── Web app ──────────────────────────────────────────────────────────────
+  - type: web
+    name: globalfight
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - fromGroup: globalfight
+      - key: DATABASE_URL
+        fromDatabase:
+          name: globalfight-db
+          property: connectionString
+      - key: NEXT_PUBLIC_SITE_URL
+        fromService:
+          type: web
+          name: globalfight
+          property: host
+
+  # ── Cron: news + coverage (every 6h) ─────────────────────────────────────
+  - type: cron
+    name: gf-cron-news
+    runtime: node
+    plan: starter
+    schedule: "0 */6 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 600 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/refresh-news"
+    envVars:
+      - fromGroup: globalfight
+      - key: APP_URL
+        fromService:
+          type: web
+          name: globalfight
+          property: hostport
+
+  # ── Cron: events, results, odds, predictions (daily) ─────────────────────
+  - type: cron
+    name: gf-cron-daily
+    runtime: node
+    plan: starter
+    schedule: "0 4 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      for p in refresh-events sync refresh-results refresh-odds; do
+        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$p" || true;
+      done
+    envVars:
+      - fromGroup: globalfight
+      - key: APP_URL
+        fromService:
+          type: web
+          name: globalfight
+          property: hostport
+
+  # ── Cron: promotion scrapers + Wikipedia cards (Mon & Thu) ───────────────
+  - type: cron
+    name: gf-cron-promotions
+    runtime: node
+    plan: starter
+    schedule: "0 6 * * 1,4"
+    buildCommand: "true"
+    startCommand: >-
+      for p in refresh-bkfc refresh-one refresh-wikicards; do
+        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$p" || true;
+      done
+    envVars:
+      - fromGroup: globalfight
+      - key: APP_URL
+        fromService:
+          type: web
+          name: globalfight
+          property: hostport
+
+  # ── Cron: BJJ + fighter photo enrichment (weekly) ────────────────────────
+  - type: cron
+    name: gf-cron-weekly
+    runtime: node
+    plan: starter
+    schedule: "0 8 * * 1"
+    buildCommand: "true"
+    startCommand: >-
+      for p in refresh-adcc refresh-enrich; do
+        curl -fsS -m 900 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/$p" || true;
+      done
+    envVars:
+      - fromGroup: globalfight
+      - key: APP_URL
+        fromService:
+          type: web
+          name: globalfight
+          property: hostport
