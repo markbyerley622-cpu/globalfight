@@ -487,11 +487,36 @@ model Fight {
 
   predictions   Prediction[]
   odds          OddsSnapshot[]
+  picks         FightPick[]
 
   @@index([date, result])
   @@index([redId])
   @@index([blueId])
   @@index([eventId, orderOnCard])
+}
+
+/// A signed-in user's pick on a single bout — the crowd-prediction primitive and
+/// the North Star (WAPU) driver. One pick per user per fight (upserted). `corner`
+/// is "RED" | "BLUE" (resolved against winningCorner() at fight time, not a
+/// fighter FK, so it survives roster edits). `confidence` is an optional 1–5
+/// star. `correct` is set by a future resolution pass to power accuracy /
+/// credibility / streaks / collectible rewards — the fields the plan's habit
+/// loop is built on. Distinct from CommunityMarket/Vote (generic open-ended
+/// polls) and the dead editorial Prediction model.
+model FightPick {
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fightId    String
+  fight      Fight       @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  corner     String                              // "RED" | "BLUE"
+  method     FightMethod?
+  confidence Int?                                // 1..5
+  correct    Boolean?                            // set when the bout resolves
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@id([userId, fightId])
+  @@index([fightId, corner])
 }
 
 // ─── Predictions ────────────────────────────────────────────────────────
@@ -947,6 +972,7 @@ model User {
   communityVotes CommunityVote[]
   favorites      FavoriteFighter[]
   promotionFollows FavoritePromotion[]
+  fightPicks     FightPick[]
   fighterProfile Fighter?           @relation("FighterOwner")
   claimsMade     FighterClaim[]     @relation("ClaimsMade")
   claimsReviewed FighterClaim[]     @relation("ClaimsReviewed")

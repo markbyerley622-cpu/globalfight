@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { LineChart, Users, UserCheck, Target } from "lucide-react";
+import { MessagesSquare, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { FighterAvatar } from "@/components/fighter-avatar";
-import { ProbabilityBar } from "@/components/probability-bar";
 import { Badge } from "@/components/ui/badge";
 import { getFight, getFeaturedPredictions } from "@/lib/repo";
+import { getCurrentUser } from "@/lib/auth";
+import { getCrowdForFight, getMyPick } from "@/lib/picks";
 import { Flag } from "@/components/flag";
 import { formatRecord, koPercentage } from "@/lib/utils";
-import { flags } from "@/lib/feature-flags";
-import { FeatureUnavailable } from "@/components/feature-unavailable";
+import { winningCorner } from "@/lib/event-format";
+import { BoutPick } from "@/components/predictions/bout-pick";
 
 export async function generateStaticParams() {
   const fights = await getFeaturedPredictions();
@@ -21,36 +23,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const f = await getFight(slug);
   if (!f) return {};
   const title = `${f.red.name} vs ${f.blue.name} — Prediction`;
-  return { title, description: `Win probability, method and round forecast for ${f.red.name} vs ${f.blue.name}.` };
+  return { title, description: `Make your pick and see the crowd read for ${f.red.name} vs ${f.blue.name}.` };
 }
 
-const PredCard = ({ icon: Icon, label, redName, blueName, redPct, accent }: {
-  icon: typeof LineChart; label: string; redName: string; blueName: string; redPct: number; accent?: boolean;
-}) => (
-  <div className={`card-surface p-5 ${accent ? "ring-1 ring-blood-500/30" : ""}`}>
-    <div className="mb-3 flex items-center gap-2">
-      <Icon className="size-4 text-blood-400" />
-      <span className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{label}</span>
-    </div>
-    <ProbabilityBar redLabel={redName} blueLabel={blueName} redProbability={redPct / 100} />
-  </div>
-);
-
 export default async function PredictionDetail({ params }: { params: Promise<{ slug: string }> }) {
-
-  // Disabled for the public launch. The route itself refuses — hiding the nav
-  // entry is not a control.
-  if (!flags().marketPricesEnabled) {
-    return <FeatureUnavailable title="Predictions" reason="Prediction-market prices are not available. Market data from third-party trading venues is disabled pending licensing and regulatory review." />;
-  }
   const { slug } = await params;
   const fight = await getFight(slug);
   if (!fight) notFound();
 
-  const p = fight.prediction;
-  const aiRed = Math.round((p?.redProbability ?? 0.5) * 100);
-  const communityRed = Math.round((p?.communityRed ?? 0.5) * 100);
-  const expertRed = Math.round((p?.expertRed ?? 0.5) * 100);
+  // Native crowd data — our own users, never third-party market prices, so this
+  // is not gated by marketPricesEnabled (which only guards Kalshi/Polymarket).
+  const user = await getCurrentUser();
+  const [crowd, myPick] = await Promise.all([
+    getCrowdForFight(slug),
+    user ? getMyPick(user.id, slug) : Promise.resolve(null),
+  ]);
+
+  const done = fight.result !== "SCHEDULED";
+  const winner = winningCorner(fight);
 
   return (
     <>
@@ -66,13 +56,13 @@ export default async function PredictionDetail({ params }: { params: Promise<{ s
         {/* Tale of the tape */}
         <div className="card-surface mb-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-6">
           {[fight.red, fight.blue].map((fx, i) => (
-            <div key={fx.slug} className={`flex flex-col items-center gap-3 text-center ${i === 1 ? "order-3" : ""}`}>
+            <Link key={fx.slug} href={`/fighters/${fx.slug}`} className={`flex flex-col items-center gap-3 text-center transition-opacity hover:opacity-80 ${i === 1 ? "order-3" : ""}`}>
               <FighterAvatar fighter={fx} size="xl" showFlag />
               <div>
                 <p className="flex items-center justify-center gap-2 font-display text-lg font-bold text-chalk"><Flag code={fx.countryCode} /> {fx.name}</p>
                 <p className="text-xs text-fog">{[formatRecord(fx.wins, fx.losses, fx.draws), fx.wins ? `${koPercentage(fx.koWins, fx.wins)}% KO` : ""].filter(Boolean).join(" · ")}</p>
               </div>
-            </div>
+            </Link>
           ))}
           <div className="order-2 flex size-14 items-center justify-center rounded-full bg-blood-500 font-display text-xl font-black text-white shadow-glow-red">VS</div>
         </div>
@@ -102,37 +92,67 @@ export default async function PredictionDetail({ params }: { params: Promise<{ s
           })}
         </div>
 
-        {/* Prediction grid */}
         <div className="grid gap-4 lg:grid-cols-2">
-          <PredCard icon={LineChart} label="Model Projection" redName={fight.red.name} blueName={fight.blue.name} redPct={aiRed} accent />
-          <PredCard icon={Users} label="Community Picks" redName={fight.red.name} blueName={fight.blue.name} redPct={communityRed} />
-          <PredCard icon={UserCheck} label="Expert Consensus" redName={fight.red.name} blueName={fight.blue.name} redPct={expertRed} />
-          <div className="card-surface p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <Target className="size-4 text-gold-400" />
-              <span className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Expected Outcome</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-ink-950/40 p-3 text-center">
-                <p className="text-[0.6rem] uppercase tracking-wider text-fog">Likely Method</p>
-                <p className="font-display text-2xl font-bold text-gold-400">{p?.methodPrediction ?? "DEC"}</p>
-              </div>
-              <div className="rounded-lg bg-ink-950/40 p-3 text-center">
-                <p className="text-[0.6rem] uppercase tracking-wider text-fog">Likely Round</p>
-                <p className="font-display text-2xl font-bold text-gold-400">{p?.roundPrediction ?? "—"}</p>
-              </div>
-            </div>
+          {/* Crowd pick — the habit loop */}
+          {done ? (
+            <ResultCard fight={fight} winner={winner} crowd={crowd} />
+          ) : (
+            <BoutPick
+              fightSlug={fight.slug}
+              redName={fight.red.name}
+              blueName={fight.blue.name}
+              initialCrowd={crowd}
+              initialPick={myPick}
+            />
+          )}
+
+          {/* Discussion — predictions and argument sit together, never apart */}
+          <div className="card-surface flex flex-col justify-center gap-3 p-5 text-center">
+            <MessagesSquare className="mx-auto size-7 text-blood-400" />
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Argue the read</p>
+            <p className="text-xs text-mist">Break down the matchup, back your pick, and see who called it.</p>
+            <Link href="/forums" className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blood-600">
+              Open the discussion <ArrowRight className="size-4" />
+            </Link>
           </div>
         </div>
-
-        {p?.rationale && (
-          <div className="card-surface mt-8 p-6">
-            <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-fog">Matchup Analysis</h3>
-            <p className="text-sm leading-relaxed text-mist">{p.rationale}</p>
-          </div>
-        )}
       </div>
     </>
+  );
+}
+
+/** Once a bout resolves, the pick card becomes the outcome + how the crowd did. */
+function ResultCard({
+  fight,
+  winner,
+  crowd,
+}: {
+  fight: Awaited<ReturnType<typeof getFight>> & object;
+  winner: "red" | "blue" | null;
+  crowd: { red: number; blue: number; total: number };
+}) {
+  const winName = winner === "red" ? fight.red.name : winner === "blue" ? fight.blue.name : null;
+  const crowdRight = winner === "red" ? crowd.red : winner === "blue" ? crowd.blue : 0;
+  const pct = crowd.total ? Math.round((crowdRight / crowd.total) * 100) : 0;
+  return (
+    <div className="card-surface p-5">
+      <span className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Result</span>
+      <div className="mt-3 rounded-lg bg-ink-800 p-4 text-center">
+        {winName ? (
+          <p className="text-chalk">
+            <span className="font-display text-lg font-bold text-blood-300">{winName}</span>
+            {fight.method ? <span className="text-fog"> · {fight.method}{fight.roundEnded ? ` R${fight.roundEnded}` : ""}</span> : null}
+          </p>
+        ) : (
+          <p className="text-mist">{fight.result === "DRAW" ? "Draw" : fight.result === "NO_CONTEST" ? "No contest" : "Result pending"}</p>
+        )}
+      </div>
+      {crowd.total > 0 && winner && (
+        <p className="mt-3 text-center text-xs text-fog">
+          <span className="font-semibold text-chalk">{pct}%</span> of {crowd.total.toLocaleString()} picks called it right.
+        </p>
+      )}
+    </div>
   );
 }
 

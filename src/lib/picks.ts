@@ -1,0 +1,97 @@
+import "server-only";
+import { prisma } from "@/lib/db";
+
+// ── Crowd bout predictions ──────────────────────────────────────────────────
+// The North Star mechanic: a signed-in user picks a corner (+ optional 1–5
+// confidence) on a bout; the aggregate becomes the red-vs-blue crowd read. One
+// pick per user per fight (upserted). Resolution/accuracy is a later pass — this
+// is the write + aggregate half of the loop.
+
+export type Corner = "RED" | "BLUE";
+export interface CrowdRead {
+  red: number;
+  blue: number;
+  total: number;
+}
+export interface MyPick {
+  corner: Corner;
+  confidence: number | null;
+}
+
+const isCorner = (v: unknown): v is Corner => v === "RED" || v === "BLUE";
+
+async function fightIdBySlug(slug: string): Promise<string> {
+  const f = await prisma.fight.findUnique({ where: { slug }, select: { id: true } });
+  if (!f) throw new Error("Fight not found");
+  return f.id;
+}
+
+/** Cast or change a pick. `confidence` is clamped to 1–5 when provided. */
+export async function castPick(
+  userId: string,
+  fightSlug: string,
+  corner: string,
+  confidence?: number,
+): Promise<{ crowd: CrowdRead; myPick: MyPick }> {
+  if (!isCorner(corner)) throw new Error("Invalid corner");
+  const fightId = await fightIdBySlug(fightSlug);
+  const conf = confidence == null ? null : Math.max(1, Math.min(5, Math.round(confidence)));
+  await prisma.fightPick.upsert({
+    where: { userId_fightId: { userId, fightId } },
+    create: { userId, fightId, corner, confidence: conf },
+    update: { corner, confidence: conf },
+  });
+  return { crowd: await crowdFor(fightId), myPick: { corner, confidence: conf } };
+}
+
+/** Remove a pick. */
+export async function clearPick(userId: string, fightSlug: string): Promise<{ crowd: CrowdRead }> {
+  const fightId = await fightIdBySlug(fightSlug);
+  await prisma.fightPick.deleteMany({ where: { userId, fightId } });
+  return { crowd: await crowdFor(fightId) };
+}
+
+async function crowdFor(fightId: string): Promise<CrowdRead> {
+  const rows = await prisma.fightPick.groupBy({
+    by: ["corner"],
+    where: { fightId },
+    _count: { corner: true },
+  });
+  const red = rows.find((r) => r.corner === "RED")?._count.corner ?? 0;
+  const blue = rows.find((r) => r.corner === "BLUE")?._count.corner ?? 0;
+  return { red, blue, total: red + blue };
+}
+
+/** The crowd read for one bout, by slug. */
+export async function getCrowdForFight(fightSlug: string): Promise<CrowdRead> {
+  return crowdFor(await fightIdBySlug(fightSlug));
+}
+
+/** The viewer's own pick on a bout, or null. */
+export async function getMyPick(userId: string, fightSlug: string): Promise<MyPick | null> {
+  const fightId = await fightIdBySlug(fightSlug);
+  const row = await prisma.fightPick.findUnique({
+    where: { userId_fightId: { userId, fightId } },
+    select: { corner: true, confidence: true },
+  });
+  return row && isCorner(row.corner) ? { corner: row.corner, confidence: row.confidence } : null;
+}
+
+/** Crowd reads for many fights at once (by fight id) — for cards/lists. */
+export async function getCrowdForFightIds(fightIds: string[]): Promise<Map<string, CrowdRead>> {
+  const out = new Map<string, CrowdRead>();
+  if (!fightIds.length) return out;
+  const rows = await prisma.fightPick.groupBy({
+    by: ["fightId", "corner"],
+    where: { fightId: { in: fightIds } },
+    _count: { corner: true },
+  });
+  for (const id of fightIds) out.set(id, { red: 0, blue: 0, total: 0 });
+  for (const r of rows) {
+    const c = out.get(r.fightId)!;
+    if (r.corner === "RED") c.red = r._count.corner;
+    else if (r.corner === "BLUE") c.blue = r._count.corner;
+    c.total = c.red + c.blue;
+  }
+  return out;
+}
