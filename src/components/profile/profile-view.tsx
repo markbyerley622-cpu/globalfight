@@ -7,6 +7,7 @@ import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera } from "luc
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
 import { ProfileSettings } from "./profile-settings";
+import { ProfileStats } from "./profile-stats";
 
 const initials = (u: { name: string | null; username: string | null }) =>
   (u.name ?? u.username ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -114,6 +115,9 @@ export function ProfileView() {
         {user.username && <span className="text-[0.8rem] text-fog">@{user.username}</span>}
         <span className="text-[0.8rem] text-fog">· Combat Register member</span>
       </div>
+
+      {/* Identity: reputation, accuracy, streak, collection, activity */}
+      <ProfileStats />
 
       {/* Account shortcuts */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">

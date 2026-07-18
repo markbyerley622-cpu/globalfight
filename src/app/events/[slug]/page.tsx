@@ -12,6 +12,9 @@ import { orderFights, highlightsUrl, rankCoverage, groupCoverage, winningCorner 
 import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowingPromotion } from "@/lib/follows";
+import { getEventPickSummary } from "@/lib/profile-stats";
+import { prisma } from "@/lib/db";
+import { ResultReveal } from "@/components/event/result-reveal";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
@@ -100,10 +103,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const promotionFollowing =
     viewer && event.promotion ? await isFollowingPromotion(viewer.id, event.promotion) : false;
 
+  // Result reveal — only on a completed event, only for a viewer who made picks.
+  const isCompleted = event.status === "COMPLETED";
+  const [pickSummary, viewerStreak] = viewer && isCompleted
+    ? await Promise.all([
+        getEventPickSummary(viewer.id, fights.map((f) => f.id)),
+        prisma.user.findUnique({ where: { id: viewer.id }, select: { pickStreak: true } }).then((u) => u?.pickStreak ?? 0),
+      ])
+    : [null, 0];
+
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>
       {/* Hero → Schedule → Main event → tabbed card. Same order, every event. */}
       <EventHeader event={event} promotionFollowing={promotionFollowing} />
+      {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
       <EventSchedule date={event.date} status={event.status} />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
       <EventSectionNavigation sections={sections} initialId="card" />

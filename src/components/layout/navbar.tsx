@@ -12,6 +12,7 @@ import { Logo } from "@/components/logo";
 import { SearchOverlay } from "@/components/search/search-overlay";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { LanguageSwitcher } from "./language-switcher";
+import { NotificationBell } from "./notification-bell";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -86,6 +87,8 @@ export function Navbar() {
             </button>
 
             <LanguageSwitcher />
+
+            {user && <NotificationBell />}
 
             {user ? (
               <Link
