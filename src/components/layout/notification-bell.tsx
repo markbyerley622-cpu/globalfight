@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Bell, Loader2 } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
+import { track } from "@/lib/analytics-client";
 
 interface Notif {
   id: string; type: string; title: string; body: string | null;
@@ -35,6 +36,7 @@ export function NotificationBell() {
 
   async function openSheet() {
     setOpen(true);
+    track("notification_open", { unread });
     if (items === null) await load();
     if (unread > 0) {
       setUnread(0);

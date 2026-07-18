@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { track } from "@/lib/analytics";
 
 // ── Crowd bout predictions ──────────────────────────────────────────────────
 // The North Star mechanic: a signed-in user picks a corner (+ optional 1–5
@@ -39,11 +40,16 @@ export async function castPick(
   if (f.result !== "SCHEDULED") throw new Error("This bout is already decided");
   const fightId = f.id;
   const conf = confidence == null ? null : Math.max(1, Math.min(5, Math.round(confidence)));
+  const existing = await prisma.fightPick.findUnique({
+    where: { userId_fightId: { userId, fightId } },
+    select: { corner: true },
+  });
   await prisma.fightPick.upsert({
     where: { userId_fightId: { userId, fightId } },
     create: { userId, fightId, corner, confidence: conf },
     update: { corner, confidence: conf },
   });
+  track(existing ? "prediction_changed" : "prediction_made", userId, { fight: fightSlug, corner });
   return { crowd: await crowdFor(fightId), myPick: { corner, confidence: conf } };
 }
 

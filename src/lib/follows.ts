@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { resolvePromotion } from "@/lib/promotions";
+import { track } from "@/lib/analytics";
 
 // ── Following ───────────────────────────────────────────────────────────────
 // Wires the previously-dead FavoriteFighter table + the new FavoritePromotion
@@ -18,6 +19,7 @@ export async function toggleFollowFighter(userId: string, fighterSlug: string): 
     return { following: false };
   }
   await prisma.favoriteFighter.create({ data: { userId, fighterId: f.id } });
+  track("follow_fighter", userId, { fighter: fighterSlug });
   return { following: true };
 }
 
@@ -39,6 +41,7 @@ export async function toggleFollowPromotion(userId: string, promotion: string): 
     return { following: false };
   }
   await prisma.favoritePromotion.create({ data: { userId, promotion: slug } });
+  track("follow_promotion", userId, { promotion: slug });
   return { following: true };
 }
 

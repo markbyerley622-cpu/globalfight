@@ -10,17 +10,16 @@ export default function CookiesPage() {
     <LegalPage title="Cookie Policy" intro="Every cookie this site sets, and why.">
       <H2>The short version</H2>
       <p>
-        We set <b>{COOKIES.length}</b> cookies. There is <b>no analytics, no advertising, and no
-        third-party tracking</b> on this site.
+        We set <b>{COOKIES.length}</b> cookies. There is <b>no advertising and no third-party
+        tracking</b> on this site. Our product analytics are <b>first-party and cookieless</b>: we
+        keep a server-side count of actions like page views and predictions — tied to your account
+        only when you are signed in — and store <b>nothing on your device</b> to do it.
       </p>
       <p>
         That is why you have not been shown a cookie banner. Under PECR, consent is required for
-        optional cookies — and we do not set any. Showing you a banner that consents to nothing
-        would be theatre, so we have not added one.
-      </p>
-      <p className="text-fog">
-        If we ever add analytics, this changes: optional cookies would default to OFF, nothing would
-        load before you agreed, and declining would be exactly as easy as accepting.
+        optional cookies — and we do not set any. Because the analytics store nothing on your device,
+        they trigger no banner either. Showing you a banner that consents to nothing would be theatre,
+        so we have not added one.
       </p>
 
       <H2>The cookies we set</H2>

@@ -167,11 +167,14 @@ export interface CookieEntry {
 /**
  * Every cookie and client-side store the application sets.
  *
- * There is currently NO analytics, NO marketing pixel, and NO third-party script:
- * the package manifest contains no analytics dependency and the layout loads no
- * external script. That is why there is no consent banner — under PECR, a banner is
- * required for optional cookies, and there are none. We say so plainly rather than
- * adding a decorative banner that consents to nothing.
+ * Product analytics are FIRST-PARTY and COOKIELESS: a server-side event log
+ * (AnalyticsEvent) records aggregate usage — pageviews, predictions, follows —
+ * keyed to your account id only when you are signed in, and to no identifier at
+ * all when you are not. It sets NO cookie and writes NOTHING to your device, uses
+ * NO third-party script, and the package manifest carries no analytics/marketing
+ * dependency. Because nothing optional is stored on your device, PECR requires no
+ * consent banner — the cookie list below is unchanged. We say so plainly rather
+ * than adding a decorative banner that consents to nothing.
  */
 export const COOKIES: CookieEntry[] = [
   {

@@ -1475,3 +1475,21 @@ model CardAward {
   @@index([userId, createdAt])
   @@index([fighterId])
 }
+
+// ─── Analytics (first-party, cookieless) ────────────────────────────────────
+// The innovation-accounting instrument. First-party only — NO third-party
+// scripts, NO tracking cookie (preserving the documented privacy posture).
+// Signed-in events carry userId (the north-star audience is registered
+// predictors); anonymous events are recorded with no identity, for aggregate
+// volume only. Append-only; never blocks a request (recordEvent swallows errors).
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  name      String              // allow-listed event name (see src/lib/analytics.ts)
+  userId    String?             // set when signed in; no anonymous cross-session id
+  path      String?             // route, for pageviews
+  props     Json?
+  ts        DateTime @default(now())
+
+  @@index([name, ts])
+  @@index([userId, ts])
+}

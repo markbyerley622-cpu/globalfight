@@ -121,9 +121,10 @@ export default function PrivacyPage() {
 
       <H2>Cookies</H2>
       <p>
-        We set {COOKIES.length} cookies and no others. There is <b>no analytics, no advertising and
-        no third-party tracking</b> on this site, which is why you have not been shown a consent
-        banner: there is nothing optional to consent to. See the{" "}
+        We set {COOKIES.length} cookies and no others. There is <b>no advertising and no third-party
+        tracking</b> on this site; our product analytics are <b>first-party and cookieless</b> and
+        store nothing on your device, which is why you have not been shown a consent banner: there is
+        nothing optional to consent to. See the{" "}
         <a href="/cookies" className="text-blood-400 hover:text-blood-300">cookie policy</a> for the
         full list.
       </p>

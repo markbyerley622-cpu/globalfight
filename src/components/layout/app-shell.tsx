@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { AnalyticsPageviews } from "@/components/analytics-pageviews";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { SectionTabs, activeSection, sectionIndex } from "./section-tabs";
 import { SponsorsStrip } from "./sponsors-strip";
@@ -96,6 +97,7 @@ export function AppShell({
     <div className="relative flex h-[100dvh] w-full overflow-hidden bg-ink-950">
       {/* App-wide rotating photo backdrop — sits above the base ink, below the UI. */}
       <RotatingBackdrop />
+      <AnalyticsPageviews />
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Top bar — logo + actions row, with the Breaking ticker docked
             directly beneath inside the same header block. */}
