@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
  *  metrics well-defined. Add here first, then emit. */
 export const EVENTS = [
   "pageview",
+  "home_view",
   "prediction_made",
   "prediction_changed",
   "follow_fighter",

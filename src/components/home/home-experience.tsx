@@ -5,7 +5,11 @@ import { PredictionsSection } from "@/components/home/predictions-section";
 import { Spotlight } from "@/components/home/spotlight";
 import { Community } from "@/components/home/community";
 import { ReelsLauncher } from "@/components/home/reels-launcher";
+import { PersonalizedHome } from "@/components/home/personalized-home";
+import { HomeViewTracker } from "@/components/home/home-view-tracker";
 import { getUpcomingEvents } from "@/lib/repo";
+import { getCurrentUser } from "@/lib/auth";
+import { getHomeSections } from "@/lib/home/recommendations";
 
 async function buildSlides(): Promise<HeroSlide[]> {
   const events = await getUpcomingEvents();
@@ -39,10 +43,16 @@ async function buildSlides(): Promise<HeroSlide[]> {
  * spotlight + community, wrapped in the official sponsor marquees.
  */
 export async function HomeExperience() {
-  const slides = await buildSlides();
+  const user = await getCurrentUser();
+  const [slides, home] = await Promise.all([buildSlides(), getHomeSections(user?.id ?? null)]);
+  const hasPersonal =
+    home.live.length > 0 || home.continueWeek.length > 0 || home.becauseYouFollow.length > 0;
   return (
     <>
       <ReelsLauncher />
+      <HomeViewTracker personalized={home.personalized && hasPersonal} />
+      {/* Intent-ranked, per-user rails on top; the curated global dashboard below. */}
+      <PersonalizedHome data={home} />
       <Hero slides={slides} />
       <RankingsPreview />
       <ScheduleSection />
