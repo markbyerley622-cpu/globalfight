@@ -420,6 +420,7 @@ export function mapFight(f: PFightFull): Fight {
     winnerId: f.winnerId ?? undefined,
     method: (f.method as FightMethod) ?? undefined,
     roundEnded: f.roundEnded ?? undefined,
+    timeEnded: f.timeEnded ?? undefined,
     date: isoReq(f.date),
     prediction: mapPrediction(f.predictions),
   };

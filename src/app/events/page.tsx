@@ -9,6 +9,7 @@ import { FighterAvatar } from "@/components/fighter-avatar";
 import { getUpcomingEvents } from "@/lib/repo";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { Flag } from "@/components/flag";
+import { PromotionLogo } from "@/components/promotion-logo";
 import { Pager } from "@/components/pager";
 import { getServerT } from "@/lib/i18n-server";
 import { formatDate } from "@/lib/utils";
@@ -45,6 +46,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               <div className="flex flex-col gap-4 border-b border-ink-700 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
+                    <PromotionLogo promotion={e.promotion} size="sm" />
                     <Badge tone={e.status === "ANNOUNCED" ? "neutral" : "red"}>{e.status}</Badge>
                     <span className="text-xs text-fog">{e.promotion}</span>
                   </div>

@@ -17,9 +17,14 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
   const { red, blue } = fight;
 
   return (
-    <section className="border-b border-ink-700/70 px-4 py-5" aria-label="Headline matchup">
-      <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
-        {fight.mainEvent && <Badge tone="red">Main event</Badge>}
+    <section className="relative overflow-hidden border-b border-ink-700/70 px-4 py-7" aria-label="Headline matchup">
+      {/* Subtle poster glow behind the marquee bout. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blood-500/10 to-transparent" aria-hidden />
+
+      <p className="mb-1 text-center font-display text-[0.7rem] font-bold uppercase tracking-[0.3em] text-blood-400">
+        {fight.mainEvent ? "Main Event" : "Featured Bout"}
+      </p>
+      <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
         {fight.titleFight && <Badge tone="gold">Title fight</Badge>}
         {fight.weightClass && <Badge tone="neutral">{fight.weightClass}</Badge>}
         <Badge tone="neutral">{fight.scheduledRounds} × Round</Badge>
@@ -28,7 +33,7 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
       <div className="flex items-stretch gap-2">
         <Corner fighter={red} side="red" />
         <div className="flex flex-col items-center justify-center px-1">
-          <span className="font-display text-lg font-black text-fog">VS</span>
+          <span className="font-display text-2xl font-black text-fog sm:text-3xl">VS</span>
         </div>
         <Corner fighter={blue} side="blue" alignEnd />
       </div>
@@ -46,13 +51,6 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
           Awaiting live betting lines for this bout.
         </p>
       )}
-
-      <Link
-        href={`/predictions/${fight.slug}`}
-        className="mt-4 flex items-center justify-center rounded-lg border border-ink-700 bg-ink-950/40 py-2.5 text-sm font-semibold text-chalk transition-colors hover:border-blood-500/40 hover:text-blood-300"
-      >
-        Full breakdown &amp; predictions
-      </Link>
     </section>
   );
 }
@@ -64,7 +62,7 @@ function Corner({ fighter, side, alignEnd }: { fighter: Fight["red"]; side: "red
       <div className={cn(alignEnd && "flex flex-col items-end")}>
         <Link
           href={`/fighters/${fighter.slug}`}
-          className="font-display text-base font-bold leading-tight text-chalk hover:text-blood-300"
+          className="font-display text-lg font-bold leading-tight text-chalk hover:text-blood-300 sm:text-xl"
         >
           {fighter.name}
         </Link>

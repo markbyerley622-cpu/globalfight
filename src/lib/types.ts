@@ -128,6 +128,7 @@ export interface Fight {
   winnerId?: string;
   method?: FightMethod;
   roundEnded?: number;
+  timeEnded?: string;
   date: string;
   prediction?: FightPrediction;
   odds?: Odds[];

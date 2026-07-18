@@ -1,9 +1,10 @@
 import { CalendarDays, MapPin, Radio, Building } from "lucide-react";
 import type { FightEvent } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { mapsUrl } from "@/lib/event-format";
 import { Badge } from "@/components/ui/badge";
-import { Countdown } from "@/components/countdown";
 import { Flag } from "@/components/flag";
+import { PromotionLogo } from "@/components/promotion-logo";
 
 /**
  * Top of the event destination. Frames the event and reflects lifecycle:
@@ -16,13 +17,17 @@ export function EventHeader({ event }: { event: FightEvent }) {
   const isCompleted = event.status === "COMPLETED";
   const location = [event.city, event.country].filter(Boolean).join(", ");
   const badgeTone = isLive ? "live" : isCompleted ? "neutral" : "red";
+  const maps = mapsUrl(event);
 
   return (
     <header className="border-b border-ink-700/70 px-4 pb-5 pt-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-blood-400">
-          {event.promotion ?? "Fight Card"}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <PromotionLogo promotion={event.promotion} size="md" />
+          <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-blood-400">
+            {event.promotion ?? "Fight Card"}
+          </p>
+        </div>
         <Badge tone={badgeTone}>
           {isLive && <span className="live-dot" aria-hidden />} {event.status}
         </Badge>
@@ -44,9 +49,21 @@ export function EventHeader({ event }: { event: FightEvent }) {
         )}
         {location && (
           <Meta icon={<MapPin className="size-4" />} label="Location" className="col-span-2">
-            <span className="inline-flex items-center gap-1.5">
-              {location} <Flag code={event.countryCode} />
-            </span>
+            {maps ? (
+              <a
+                href={maps}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400"
+              >
+                {location} <Flag code={event.countryCode} />
+                <span className="text-[11px] font-medium text-blood-400">· Map</span>
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                {location} <Flag code={event.countryCode} />
+              </span>
+            )}
           </Meta>
         )}
         {event.broadcaster && (
@@ -70,12 +87,7 @@ export function EventHeader({ event }: { event: FightEvent }) {
         <div className="mt-4 rounded-lg bg-ink-800 px-3 py-2 text-sm text-mist">
           This event is complete. Results and post-event coverage are below.
         </div>
-      ) : (
-        <div className="mt-4 flex items-center justify-between rounded-lg bg-ink-800 px-3 py-2.5">
-          <span className="text-xs uppercase tracking-wide text-fog">Event starts in</span>
-          <Countdown date={event.date} compact />
-        </div>
-      )}
+      ) : null}
     </header>
   );
 }

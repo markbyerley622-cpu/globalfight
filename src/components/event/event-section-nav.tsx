@@ -62,7 +62,7 @@ export function EventSectionNavigation({
         // top-0, not top-14: the sticky context is <main>, whose top edge already
         // sits below the fixed header. Offsetting by the header height again left
         // a 56px gap that content scrolled through, above the "sticky" bar.
-        className="hide-scrollbar sticky top-0 z-30 flex gap-1 overflow-x-auto border-b border-ink-700/70 bg-ink-950/90 px-3 py-2 backdrop-blur"
+        className="hide-scrollbar sticky top-0 z-30 flex gap-1.5 overflow-x-auto border-b border-ink-700/70 bg-ink-950/95 px-3 py-2.5 backdrop-blur sm:gap-2 sm:px-4 sm:py-3"
       >
         {sections.map((section) => {
           const isActive = section.id === activeSection?.id;
@@ -77,8 +77,10 @@ export function EventSectionNavigation({
               onClick={() => setActive(section.id)}
               style={{ scrollSnapAlign: "start" }}
               className={cn(
-                "flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                isActive ? "bg-chalk text-ink-950" : "text-mist hover:bg-ink-800 hover:text-chalk",
+                "flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all sm:min-h-12 sm:px-5 sm:text-base",
+                isActive
+                  ? "bg-chalk text-ink-950 shadow-glow-red"
+                  : "text-mist hover:bg-ink-800 hover:text-chalk active:scale-95",
               )}
             >
               {section.label}

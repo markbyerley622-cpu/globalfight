@@ -4,6 +4,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/countdown";
 import { Flag } from "@/components/flag";
+import { PromotionLogo } from "@/components/promotion-logo";
 import { getUpcomingEvents } from "@/lib/repo";
 import { formatDate } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export async function ScheduleSection() {
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
+                    <PromotionLogo promotion={e.promotion} size="sm" />
                     {e.status === "ANNOUNCED" ? <Badge tone="neutral">Announced</Badge> : <Badge tone="red">On sale</Badge>}
                     {main?.titleFight && <Badge tone="gold">Title Fight</Badge>}
                   </div>
