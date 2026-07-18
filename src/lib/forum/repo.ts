@@ -321,6 +321,7 @@ function threadKindFor(role: string, requested?: string): string {
 export async function createThread(input: {
   authorId: string; categorySlug: string; title: string; content: string;
   attachments?: ForumAttachment[]; kind?: string; videoId?: string;
+  eventId?: string; fighterId?: string; promotion?: string;
 }): Promise<ForumThreadDTO> {
   await ensureForumSeed();
   const category = await prisma.forumCategory.findUnique({
@@ -339,6 +340,9 @@ export async function createThread(input: {
     data: {
       slug, title: input.title.trim(), categoryId: category.id, authorId: input.authorId, kind,
       videoId: input.videoId ?? undefined,
+      eventId: input.eventId ?? undefined,
+      fighterId: input.fighterId ?? undefined,
+      promotion: input.promotion ?? undefined,
       posts: { create: { authorId: input.authorId, content: input.content.trim(), attachments: input.attachments ?? undefined } },
     },
     include: THREAD_INCLUDE,

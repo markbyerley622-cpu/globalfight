@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, MessagesSquare, PlayCircle } from "lucide-react";
+import { ArrowRight, PlayCircle } from "lucide-react";
 import { getEvent, getEventCoverage, getOddsForFight } from "@/lib/repo";
 import { marketProbability, type MarketProb } from "@/lib/market";
 import { safeNewsCover } from "@/lib/media-safe";
@@ -15,6 +15,8 @@ import { isFollowingPromotion } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
+import { getOrCreateEventThread } from "@/lib/community/entity-threads";
+import { ThreadDiscussion } from "@/components/forums/thread-discussion";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
@@ -59,6 +61,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   const withMarket = fights.filter((f) => marketBySlug.get(f.slug)).length;
 
+  // Every event has ONE discussion thread — provisioned on first view, seeded so
+  // the room is never empty. Predictions and discussion, one surface.
+  const thread = await getOrCreateEventThread({ id: event.id, name: event.name, sport: event.sport });
+
   // Tabs: Fight card (default) → Coverage → Predictions → Discussion. No
   // Overview (redundant) and no Results tab — the prediction cards transform
   // into results once a bout is decided, keeping one continuous surface.
@@ -90,7 +96,17 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     {
       id: "discussion",
       label: "Discussion",
-      node: <DiscussionPanel eventName={event.name} />,
+      badge: thread.replyCount || undefined,
+      node: (
+        <div className="mx-auto max-w-3xl">
+          <ThreadDiscussion
+            threadSlug={thread.slug}
+            locked={thread.locked}
+            threadAuthorId={thread.authorId}
+            categorySlug={thread.categorySlug}
+          />
+        </div>
+      ),
     },
   ];
 
@@ -278,22 +294,6 @@ function PredictionsPanel({ fights, marketBySlug }: { fights: Fight[]; marketByS
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function DiscussionPanel({ eventName }: { eventName: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-6 text-center">
-      <MessagesSquare className="size-8 text-blood-400" />
-      <p className="text-sm font-semibold text-chalk">Talk about {eventName}</p>
-      <p className="max-w-xs text-xs text-mist">Break down the card, post your picks, and react live with the community.</p>
-      <Link
-        href="/forums"
-        className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blood-600"
-      >
-        Open the forums <ArrowRight className="size-4" />
-      </Link>
     </div>
   );
 }

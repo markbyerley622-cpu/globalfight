@@ -236,6 +236,7 @@ model Fighter {
   claims         FighterClaim[]
   externalIds    FighterExternalId[]
   aliases        FighterAlias[]
+  discussionThread ForumThread?
 
   @@index([sport, active])
   @@index([countryCode])
@@ -447,6 +448,7 @@ model Event {
 
   fights        Fight[]
   externalIds   EventExternalId[]
+  discussionThread ForumThread?
 
   @@index([date, status])
   @@index([country])
@@ -676,6 +678,14 @@ model ForumThread {
   // the discussion survives if the underlying feed video is pruned.
   videoId     String?
   video       FeedVideo?    @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  // Entity-linked auto-threads: every event/fighter/promotion gets ONE discussion
+  // thread (1:1, provisioned on demand). Predictions and discussion become one
+  // surface. promotion is a registry slug (resolvePromotion), not an FK.
+  eventId     String?       @unique
+  event       Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  fighterId   String?       @unique
+  fighter     Fighter?      @relation(fields: [fighterId], references: [id], onDelete: SetNull)
+  promotion   String?       @unique
   lastPostAt  DateTime      @default(now())
   createdAt   DateTime      @default(now())
 
