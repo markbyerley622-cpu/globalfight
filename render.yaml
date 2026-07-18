@@ -194,6 +194,8 @@ services:
     schedule: "0 * * * *"
     buildCommand: "true"
     startCommand: >-
-      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-enrich" || true
+      for p in refresh-enrich return-engine; do
+        curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
+      done
     envVars:
       - fromGroup: globalfight

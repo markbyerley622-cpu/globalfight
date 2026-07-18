@@ -1412,6 +1412,7 @@ enum NotificationType {
   CARD_EARNED
   REP_MILESTONE
   FIGHT_ANNOUNCED
+  EVENT_LIVE
   FOLLOW
   COMMUNITY_REPLY
   SYSTEM
@@ -1428,9 +1429,15 @@ model Notification {
   body      String?
   url       String?
   icon      String?          // optional emoji key for the UI
+  // Idempotency for SCHEDULED notifications (Return Engine): e.g.
+  // "event_soon:<eventId>". Null for one-off notifications (pick results). The
+  // unique guarantees a given reminder is delivered to a user at most once, so
+  // the scheduler can re-run safely and use createMany(skipDuplicates).
+  dedupeKey String?
   readAt    DateTime?
   createdAt DateTime         @default(now())
 
+  @@unique([userId, dedupeKey])
   @@index([userId, readAt])
   @@index([userId, createdAt])
 }
