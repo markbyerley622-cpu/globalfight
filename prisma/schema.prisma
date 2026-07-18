@@ -228,6 +228,7 @@ model Fighter {
   rankHistory    RankSnapshot[]
   predictions    Prediction[]    @relation("PredictedWinner")
   favoritedBy    FavoriteFighter[]
+  cardAwards     CardAward[]
   achievements   FighterAchievement[]
   sponsors       FighterSponsor[]
   socials        FighterSocial[]
@@ -488,6 +489,9 @@ model Fight {
   predictions   Prediction[]
   odds          OddsSnapshot[]
   picks         FightPick[]
+  // Set once by the resolution engine after a decided bout's picks are graded
+  // and consequences fanned out — the idempotency guard so it never double-awards.
+  picksResolvedAt DateTime?
 
   @@index([date, result])
   @@index([redId])
@@ -950,6 +954,12 @@ model User {
   registryRole  String    @default("fan")            // signup intent: fan|fighter|coach|gym|promoter|manager|official|media
   role          UserRole  @default(USER)
   reputation    Int       @default(0)
+  // Denormalised prediction record — written only by the resolution engine
+  // (src/lib/intelligence/resolve.ts) so accuracy/streak/leaderboard are O(1) reads.
+  picksResolved  Int      @default(0)
+  picksCorrect   Int      @default(0)
+  pickStreak     Int      @default(0)   // current consecutive correct picks
+  bestPickStreak Int      @default(0)
   bio           String?
   localePref    String    @default("en")
   themePref     String    @default("dark")
@@ -973,6 +983,10 @@ model User {
   favorites      FavoriteFighter[]
   promotionFollows FavoritePromotion[]
   fightPicks     FightPick[]
+  reputationEvents ReputationEvent[]
+  notifications  Notification[]
+  activities     Activity[]
+  cardAwards     CardAward[]
   fighterProfile Fighter?           @relation("FighterOwner")
   claimsMade     FighterClaim[]     @relation("ClaimsMade")
   claimsReviewed FighterClaim[]     @relation("ClaimsReviewed")
@@ -1360,4 +1374,104 @@ model FeedCollectionItem {
 
   @@id([collectionId, videoId])
   @@index([videoId])
+}
+
+// ─── Combat Intelligence Engine ─────────────────────────────────────────────
+// The single systems every engagement mechanic fans into. The resolution
+// pipeline (src/lib/intelligence/resolve.ts) is the only writer of reputation +
+// pick stats; these tables are the durable record it and future sources emit to.
+
+/// Append-only reputation ledger. `User.reputation` is the running total; this
+/// explains every point so the score is auditable and recomputable. ONE score,
+/// many sources (correct picks now; forum upvotes, verified roles, streaks later).
+model ReputationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta     Int
+  reason    String              // "pick_correct" | "pick_streak" | "forum_upvote" | …
+  refType   String?             // "fight" | "post" | …
+  refId     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  PICK_RESULT
+  CARD_EARNED
+  REP_MILESTONE
+  FIGHT_ANNOUNCED
+  FOLLOW
+  COMMUNITY_REPLY
+  SYSTEM
+}
+
+/// Personal, user-targeted notifications (distinct from /api/notifications, which
+/// is a computed public content ticker). Written by notify() from any subsystem.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  url       String?
+  icon      String?          // optional emoji key for the UI
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+enum ActivityType {
+  PICK_MADE
+  PICK_CORRECT
+  CARD_EARNED
+  REP_MILESTONE
+  FOLLOW
+  THREAD_CREATED
+}
+
+/// One shared activity stream. Everything a user does that's worth surfacing
+/// emits here; the homepage/profile feeds read from it.
+model Activity {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ActivityType
+  title     String
+  url       String?
+  meta      Json?
+  createdAt DateTime     @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+enum CardRarity {
+  BASE
+  RARE
+  EPIC
+  CHAMPION
+  LEGEND
+}
+
+/// A collectible fighter card a user has EARNED (the collectible-infrastructure
+/// spine — no gambling). Rarity is derived from the bout's stakes. Marketplace/
+/// packs build on this ownership record later.
+model CardAward {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fighterId String
+  fighter   Fighter    @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+  rarity    CardRarity
+  reason    String              // "correct_pick" | "streak_milestone" | …
+  fightId   String?
+  createdAt DateTime   @default(now())
+
+  @@index([userId, createdAt])
+  @@index([fighterId])
 }

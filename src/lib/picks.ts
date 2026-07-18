@@ -34,7 +34,10 @@ export async function castPick(
   confidence?: number,
 ): Promise<{ crowd: CrowdRead; myPick: MyPick }> {
   if (!isCorner(corner)) throw new Error("Invalid corner");
-  const fightId = await fightIdBySlug(fightSlug);
+  const f = await prisma.fight.findUnique({ where: { slug: fightSlug }, select: { id: true, result: true } });
+  if (!f) throw new Error("Fight not found");
+  if (f.result !== "SCHEDULED") throw new Error("This bout is already decided");
+  const fightId = f.id;
   const conf = confidence == null ? null : Math.max(1, Math.min(5, Math.round(confidence)));
   await prisma.fightPick.upsert({
     where: { userId_fightId: { userId, fightId } },
