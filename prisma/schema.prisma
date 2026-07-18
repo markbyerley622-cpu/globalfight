@@ -946,6 +946,7 @@ model User {
   clipRatings    ClipRating[]
   communityVotes CommunityVote[]
   favorites      FavoriteFighter[]
+  promotionFollows FavoritePromotion[]
   fighterProfile Fighter?           @relation("FighterOwner")
   claimsMade     FighterClaim[]     @relation("ClaimsMade")
   claimsReviewed FighterClaim[]     @relation("ClaimsReviewed")
@@ -982,6 +983,20 @@ model FavoriteFighter {
   createdAt DateTime @default(now())
 
   @@id([userId, fighterId])
+}
+
+/// A user following a promotion. Keyed by the promotion REGISTRY slug
+/// (resolvePromotion().slug, e.g. "ufc") rather than a Promotion FK, because
+/// events carry promotion as a free-text name and the Promotion table is sparse
+/// — the registry slug is the stable identifier used across the UI.
+model FavoritePromotion {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promotion String
+  createdAt DateTime @default(now())
+
+  @@id([userId, promotion])
+  @@index([promotion])
 }
 
 model Account {

@@ -10,6 +10,8 @@ import type { Article, Fight } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { orderFights, highlightsUrl, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
 import { resolvePromotion } from "@/lib/promotions";
+import { getCurrentUser } from "@/lib/auth";
+import { isFollowingPromotion } from "@/lib/follows";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
@@ -93,10 +95,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // brand colour flows through the hero/schedule/main-event accents via --accent.
   const accent = resolvePromotion(event.promotion).brand;
 
+  // Is the viewer following this promotion? (drives the header follow button)
+  const viewer = await getCurrentUser();
+  const promotionFollowing =
+    viewer && event.promotion ? await isFollowingPromotion(viewer.id, event.promotion) : false;
+
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>
       {/* Hero → Schedule → Main event → tabbed card. Same order, every event. */}
-      <EventHeader event={event} />
+      <EventHeader event={event} promotionFollowing={promotionFollowing} />
       <EventSchedule date={event.date} status={event.status} />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
       <EventSectionNavigation sections={sections} initialId="card" />

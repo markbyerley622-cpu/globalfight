@@ -15,6 +15,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { RecordDonut, StatBar } from "@/components/charts";
 import { getFighter, getFighterFights } from "@/lib/repo";
 import { winningCorner, currentStreak } from "@/lib/event-format";
+import { isFollowingFighter } from "@/lib/follows";
+import { FollowButton } from "@/components/follow-button";
 import { getFighterPublicProfile } from "@/lib/fighters/profile";
 import { SITE } from "@/lib/config";
 import { SPORT_LABEL, formatSportRecord } from "@/lib/sports";
@@ -50,6 +52,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
   const fights = await getFighterFights(slug);
   const currentUser = await getCurrentUser();
   const isOwner = !!currentUser && !!profile.ownerId && profile.ownerId === currentUser.id;
+  const following_ = currentUser ? await isFollowingFighter(currentUser.id, fighter.id) : false;
   const upcoming = fights.find((f) => f.result === "SCHEDULED");
   const past = fights.filter((f) => f.result !== "SCHEDULED");
   const streak = currentStreak(fights, slug);
@@ -141,6 +144,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
               </p>
               {profile.tagline && <p className="mt-1 text-sm italic text-fog">{profile.tagline}</p>}
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                {!isOwner && <FollowButton kind="fighter" slug={slug} initialFollowing={following_} />}
                 <ClaimProfileButton slug={slug} ownerId={profile.ownerId} />
               </div>
             </div>

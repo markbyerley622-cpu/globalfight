@@ -5,13 +5,14 @@ import { mapsUrl } from "@/lib/event-format";
 import { Badge } from "@/components/ui/badge";
 import { Flag } from "@/components/flag";
 import { PromotionLogo } from "@/components/promotion-logo";
+import { FollowButton } from "@/components/follow-button";
 
 /**
  * Top of the event destination. Frames the event and reflects lifecycle:
  * countdown (upcoming), live banner (live), completed marker (completed),
  * prominent status (cancelled/postponed).
  */
-export function EventHeader({ event }: { event: FightEvent }) {
+export function EventHeader({ event, promotionFollowing }: { event: FightEvent; promotionFollowing?: boolean }) {
   const disrupted = event.status === "CANCELLED" || event.status === "POSTPONED";
   const isLive = event.status === "LIVE";
   const isCompleted = event.status === "COMPLETED";
@@ -34,9 +35,14 @@ export function EventHeader({ event }: { event: FightEvent }) {
             {event.promotion ?? "Fight Card"}
           </p>
         </div>
-        <Badge tone={badgeTone}>
-          {isLive && <span className="live-dot" aria-hidden />} {event.status}
-        </Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          {event.promotion && (
+            <FollowButton kind="promotion" slug={event.promotion} initialFollowing={promotionFollowing} size="sm" />
+          )}
+          <Badge tone={badgeTone}>
+            {isLive && <span className="live-dot" aria-hidden />} {event.status}
+          </Badge>
+        </div>
       </div>
 
       <h1 className="mt-1.5 font-display text-xl font-bold leading-tight text-chalk sm:text-2xl">
