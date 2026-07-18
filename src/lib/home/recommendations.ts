@@ -25,8 +25,10 @@ const isFollowed = (e: FightEvent, promos: Set<string>, fighters: Set<string>): 
   (!!e.promotion && promos.has(resolvePromotion(e.promotion).slug)) ||
   e.fights.some((f) => fighters.has(f.red.id) || fighters.has(f.blue.id));
 
-export async function getHomeSections(userId: string | null): Promise<HomeData> {
-  const upcoming = await getUpcomingEvents();
+export async function getHomeSections(userId: string | null, upcomingIn?: FightEvent[]): Promise<HomeData> {
+  // Reuse the caller's already-fetched list when provided (the home page fetches
+  // upcoming events once and passes them here) — no duplicate query.
+  const upcoming = upcomingIn ?? (await getUpcomingEvents());
   const live = upcoming.filter((e) => e.status === "LIVE");
   const liveIds = new Set(live.map((e) => e.id));
 

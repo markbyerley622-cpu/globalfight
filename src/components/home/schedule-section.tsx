@@ -6,10 +6,12 @@ import { Countdown } from "@/components/countdown";
 import { Flag } from "@/components/flag";
 import { PromotionLogo } from "@/components/promotion-logo";
 import { getUpcomingEvents } from "@/lib/repo";
+import type { FightEvent } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
-export async function ScheduleSection() {
-  const events = (await getUpcomingEvents()).slice(0, 4);
+export async function ScheduleSection({ events: eventsIn }: { events?: FightEvent[] } = {}) {
+  // Reuse the caller's list when provided (home fetches once); otherwise fetch.
+  const events = (eventsIn ?? (await getUpcomingEvents())).slice(0, 4);
 
   return (
     <section className="border-y border-ink-800 bg-ink-900/40 py-12">

@@ -10,9 +10,9 @@ import { HomeViewTracker } from "@/components/home/home-view-tracker";
 import { getUpcomingEvents } from "@/lib/repo";
 import { getCurrentUser } from "@/lib/auth";
 import { getHomeSections } from "@/lib/home/recommendations";
+import type { FightEvent } from "@/lib/types";
 
-async function buildSlides(): Promise<HeroSlide[]> {
-  const events = await getUpcomingEvents();
+function buildSlides(events: FightEvent[]): HeroSlide[] {
   return events.slice(0, 3).map((e) => {
     const main = e.fights.find((f) => f.mainEvent) ?? e.fights[0];
     if (!main) return null; // event with no fights — skip rather than build a broken slide
@@ -44,7 +44,10 @@ async function buildSlides(): Promise<HeroSlide[]> {
  */
 export async function HomeExperience() {
   const user = await getCurrentUser();
-  const [slides, home] = await Promise.all([buildSlides(), getHomeSections(user?.id ?? null)]);
+  // Fetch upcoming events ONCE and share across the hero, personalized rails and
+  // the schedule section — no duplicate work per render.
+  const upcoming = await getUpcomingEvents();
+  const [slides, home] = [buildSlides(upcoming), await getHomeSections(user?.id ?? null, upcoming)];
   const hasPersonal =
     home.live.length > 0 || home.continueWeek.length > 0 || home.becauseYouFollow.length > 0;
   return (
@@ -55,7 +58,7 @@ export async function HomeExperience() {
       <PersonalizedHome data={home} />
       <Hero slides={slides} />
       <RankingsPreview />
-      <ScheduleSection />
+      <ScheduleSection events={upcoming} />
       <PredictionsSection />
       <Spotlight />
       <Community />
