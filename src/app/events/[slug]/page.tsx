@@ -15,8 +15,7 @@ import { isFollowingPromotion } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
-import { getOrCreateEventThread } from "@/lib/community/entity-threads";
-import { ThreadDiscussion } from "@/components/forums/thread-discussion";
+import { EventDiscussion } from "@/components/event/event-discussion";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
@@ -61,10 +60,6 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   const withMarket = fights.filter((f) => marketBySlug.get(f.slug)).length;
 
-  // Every event has ONE discussion thread — provisioned on first view, seeded so
-  // the room is never empty. Predictions and discussion, one surface.
-  const thread = await getOrCreateEventThread({ id: event.id, name: event.name, sport: event.sport });
-
   // Tabs: Fight card (default) → Coverage → Predictions → Discussion. No
   // Overview (redundant) and no Results tab — the prediction cards transform
   // into results once a bout is decided, keeping one continuous surface.
@@ -96,17 +91,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     {
       id: "discussion",
       label: "Discussion",
-      badge: thread.replyCount || undefined,
-      node: (
-        <div className="mx-auto max-w-3xl">
-          <ThreadDiscussion
-            threadSlug={thread.slug}
-            locked={thread.locked}
-            threadAuthorId={thread.authorId}
-            categorySlug={thread.categorySlug}
-          />
-        </div>
-      ),
+      node: <EventDiscussion slug={event.slug} />,
     },
   ];
 
