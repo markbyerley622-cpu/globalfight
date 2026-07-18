@@ -4,12 +4,14 @@ import { FighterAvatar } from "./fighter-avatar";
 import { Badge } from "./ui/badge";
 import { ProbabilityBar } from "./probability-bar";
 import { formatRecord } from "@/lib/utils";
+import { winningCorner } from "@/lib/event-format";
 
 // Versus card used on schedule, predictions, and event pages.
 export function FightCard({ fight, showPrediction = true }: { fight: Fight; showPrediction?: boolean }) {
-  const { red, blue, prediction, result, winnerId } = fight;
-  const redWon = result === "WIN" && winnerId === red.slug;
-  const blueWon = result === "WIN" && winnerId === blue.slug;
+  const { red, blue, prediction, result } = fight;
+  const won = winningCorner(fight);
+  const redWon = won === "red";
+  const blueWon = won === "blue";
 
   return (
     <Link

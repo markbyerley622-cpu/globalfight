@@ -20,8 +20,14 @@ export function EventHeader({ event }: { event: FightEvent }) {
   const maps = mapsUrl(event);
 
   return (
-    <header className="border-b border-ink-700/70 px-4 pb-5 pt-4">
-      <div className="flex items-center justify-between gap-2">
+    <header
+      className="relative overflow-hidden border-b border-ink-700/70 px-4 pb-5 pt-4"
+      style={{
+        backgroundImage:
+          "radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--accent, #e11d2a) 14%, transparent), transparent 70%)",
+      }}
+    >
+      <div className="relative flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <PromotionLogo promotion={event.promotion} size="md" />
           <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-blood-400">

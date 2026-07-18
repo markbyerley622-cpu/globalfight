@@ -18,10 +18,17 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
 
   return (
     <section className="relative overflow-hidden border-b border-ink-700/70 px-4 py-7" aria-label="Headline matchup">
-      {/* Subtle poster glow behind the marquee bout. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blood-500/10 to-transparent" aria-hidden />
+      {/* Subtle poster glow tinted by the promotion's brand colour (--accent). */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-40"
+        style={{ background: "linear-gradient(to bottom, color-mix(in srgb, var(--accent, #e11d2a) 16%, transparent), transparent)" }}
+        aria-hidden
+      />
 
-      <p className="mb-1 text-center font-display text-[0.7rem] font-bold uppercase tracking-[0.3em] text-blood-400">
+      <p
+        className="mb-1 text-center font-display text-[0.7rem] font-bold uppercase tracking-[0.3em]"
+        style={{ color: "var(--accent, #f2555f)" }}
+      >
         {fight.mainEvent ? "Main Event" : "Featured Bout"}
       </p>
       <div className="mb-4 flex flex-wrap items-center justify-center gap-2">

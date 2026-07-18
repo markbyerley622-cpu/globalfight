@@ -58,9 +58,12 @@ export function EventSchedule({ date, status }: { date: string; status: EventSta
   return (
     <section
       aria-label="Schedule"
-      className={`relative overflow-hidden border-b border-ink-700/70 px-4 py-6 ${
-        urgent ? "shadow-[inset_0_0_60px_-20px_rgba(225,29,42,0.6)]" : ""
-      }`}
+      className="relative overflow-hidden border-b border-ink-700/70 px-4 py-6"
+      style={
+        urgent
+          ? { boxShadow: "inset 0 0 60px -20px color-mix(in srgb, var(--accent, #e11d2a) 60%, transparent)" }
+          : undefined
+      }
     >
       <div className="mb-3 flex items-center justify-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-fog">
         <CalendarClock className="size-3.5" />

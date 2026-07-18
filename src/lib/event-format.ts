@@ -13,6 +13,45 @@ export function mapsUrl(event: Pick<FightEvent, "venue" | "city" | "country">): 
 }
 
 /**
+ * Which corner won — robust to how `winnerId` was stored. The schema documents
+ * it as a Fighter id, but seed/mock data and some providers use the slug, so the
+ * whole app must match against BOTH or winners silently never highlight. Returns
+ * null for scheduled bouts, draws, and no-contests.
+ */
+export function winningCorner(fight: Pick<Fight, "result" | "winnerId" | "red" | "blue">): "red" | "blue" | null {
+  if (fight.result !== "WIN" || !fight.winnerId) return null;
+  const w = fight.winnerId;
+  if (w === fight.red.id || w === fight.red.slug) return "red";
+  if (w === fight.blue.id || w === fight.blue.slug) return "blue";
+  return null;
+}
+
+/**
+ * A fighter's current streak from their fight history (newest-first). Positive =
+ * win streak, negative = losing streak, 0 = last bout wasn't a win/loss. Derived
+ * — no new data needed. `fighterKey` is the fighter's id or slug.
+ */
+export function currentStreak(fights: Fight[], fighterKey: string): number {
+  let streak = 0;
+  let sign = 0;
+  for (const f of fights) {
+    if (f.result === "SCHEDULED") continue;
+    const won = winningCorner(f);
+    const isRed = f.red.id === fighterKey || f.red.slug === fighterKey;
+    const isBlue = f.blue.id === fighterKey || f.blue.slug === fighterKey;
+    if (!isRed && !isBlue) continue;
+    let outcome = 0; // +1 win, -1 loss, 0 draw/nc
+    if (won === "red") outcome = isRed ? 1 : -1;
+    else if (won === "blue") outcome = isBlue ? 1 : -1;
+    if (outcome === 0) break; // draw/NC ends the streak
+    if (sign === 0) sign = outcome;
+    if (outcome !== sign) break;
+    streak += 1;
+  }
+  return sign * streak;
+}
+
+/**
  * Order a card the way a fight fan reads it: main event, co-main, then remaining
  * title fights, then everything else in the promotion's official card order
  * (the DB already returns fights by `orderOnCard`). A stable sort preserves that

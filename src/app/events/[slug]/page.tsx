@@ -8,7 +8,8 @@ import { marketProbability, type MarketProb } from "@/lib/market";
 import { safeNewsCover } from "@/lib/media-safe";
 import type { Article, Fight } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { orderFights, highlightsUrl, rankCoverage, groupCoverage } from "@/lib/event-format";
+import { orderFights, highlightsUrl, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
+import { resolvePromotion } from "@/lib/promotions";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
@@ -88,14 +89,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     },
   ];
 
+  // Promotion personality: every event uses the SAME layout, but its promotion's
+  // brand colour flows through the hero/schedule/main-event accents via --accent.
+  const accent = resolvePromotion(event.promotion).brand;
+
   return (
-    <>
+    <div style={{ "--accent": accent } as React.CSSProperties}>
       {/* Hero → Schedule → Main event → tabbed card. Same order, every event. */}
       <EventHeader event={event} />
       <EventSchedule date={event.date} status={event.status} />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
       <EventSectionNavigation sections={sections} initialId="card" />
-    </>
+    </div>
   );
 }
 
@@ -199,7 +204,8 @@ function PredictionsPanel({ fights, marketBySlug }: { fights: Fight[]; marketByS
       {fights.map((f) => {
         const market = marketBySlug.get(f.slug);
         const done = f.result !== "SCHEDULED";
-        const winner = f.winnerId === f.red.slug ? f.red : f.winnerId === f.blue.slug ? f.blue : null;
+        const won = winningCorner(f);
+        const winner = won === "red" ? f.red : won === "blue" ? f.blue : null;
         const loser = winner ? (winner.slug === f.red.slug ? f.blue : f.red) : null;
         return (
           <div

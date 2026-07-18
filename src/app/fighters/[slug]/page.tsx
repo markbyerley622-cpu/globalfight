@@ -14,6 +14,7 @@ import { ClaimProfileButton } from "@/components/fighters/claim-profile-button";
 import { getCurrentUser } from "@/lib/auth";
 import { RecordDonut, StatBar } from "@/components/charts";
 import { getFighter, getFighterFights } from "@/lib/repo";
+import { winningCorner, currentStreak } from "@/lib/event-format";
 import { getFighterPublicProfile } from "@/lib/fighters/profile";
 import { SITE } from "@/lib/config";
 import { SPORT_LABEL, formatSportRecord } from "@/lib/sports";
@@ -51,6 +52,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
   const isOwner = !!currentUser && !!profile.ownerId && profile.ownerId === currentUser.id;
   const upcoming = fights.find((f) => f.result === "SCHEDULED");
   const past = fights.filter((f) => f.result !== "SCHEDULED");
+  const streak = currentStreak(fights, slug);
   const age = ageFrom(fighter.birthDate);
   const ko = koPercentage(fighter.koWins, fighter.wins);
   const sportLabel = SPORT_LABEL[profile.sport] ?? profile.sport;
@@ -183,6 +185,15 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 </div>
               ))}
             </div>
+            {streak !== 0 && (
+              <p
+                className={`w-full rounded-lg py-1.5 text-center font-display text-xs font-bold uppercase tracking-wide ${
+                  streak > 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"
+                }`}
+              >
+                {streak > 0 ? `${streak}-fight win streak` : `${-streak}-fight skid`}
+              </p>
+            )}
           </div>
 
           {fighter.wins > 0 && (
@@ -313,12 +324,21 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
             {past.length > 0 ? (
               <ul className="divide-y divide-ink-800">
                 {past.map((f) => {
-                  const opp = f.red.slug === slug ? f.blue : f.red;
-                  const won = f.winnerId === slug;
+                  const isRed = f.red.slug === slug;
+                  const opp = isRed ? f.blue : f.red;
+                  const corner = winningCorner(f);
+                  // W / L / D / NC — no longer forces a loss for draws or when
+                  // winnerId is stored as an id rather than a slug.
+                  const outcome =
+                    corner === null
+                      ? f.result === "NO_CONTEST" ? "NC" : "D"
+                      : (corner === "red") === isRed ? "W" : "L";
+                  const tone =
+                    outcome === "W" ? "bg-up/20 text-up" : outcome === "L" ? "bg-down/20 text-down" : "bg-ink-700 text-mist";
                   return (
                     <li key={f.id}>
                       <Link href={`/predictions/${f.slug}`} className="flex items-center gap-4 px-6 py-3 hover:bg-ink-800/50">
-                        <span className={`flex size-8 items-center justify-center rounded font-display text-xs font-bold ${won ? "bg-up/20 text-up" : "bg-down/20 text-down"}`}>{won ? "W" : "L"}</span>
+                        <span className={`flex size-8 items-center justify-center rounded font-display text-xs font-bold ${tone}`}>{outcome}</span>
                         <FighterAvatar fighter={opp} size="sm" showFlag />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-display text-sm font-semibold text-chalk">{opp.name}</p>

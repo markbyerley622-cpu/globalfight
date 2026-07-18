@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, Crown } from "lucide-react";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
-import { boutLabel, highlightsUrl } from "@/lib/event-format";
+import { boutLabel, highlightsUrl, winningCorner } from "@/lib/event-format";
 import { formatRecord } from "@/lib/utils";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -24,14 +24,21 @@ export function FightRow({
   index: number;
   market?: MarketProb | null;
 }) {
-  const { red, blue, result, winnerId } = fight;
+  const { red, blue, result } = fight;
   const done = result !== "SCHEDULED";
-  const redWon = result === "WIN" && winnerId === red.slug;
-  const blueWon = result === "WIN" && winnerId === blue.slug;
+  const won = winningCorner(fight);
+  const redWon = won === "red";
+  const blueWon = won === "blue";
   const redP = market?.redP ?? fight.prediction?.redProbability;
 
   return (
-    <div className="card-surface overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-blood-500/40 hover:shadow-[0_10px_40px_-16px_rgba(225,29,42,0.45)]">
+    <div
+      className={`card-surface overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-blood-500/40 hover:shadow-[0_10px_40px_-16px_rgba(225,29,42,0.45)] ${
+        fight.titleFight ? "ring-1 ring-gold-500/30" : ""
+      }`}
+    >
+      {/* Championship bar — title fights read as premium without breaking layout. */}
+      {fight.titleFight && <div className="h-0.5 bg-gradient-to-r from-gold-500/60 via-gold-400 to-gold-500/60" />}
       <Link href={`/predictions/${fight.slug}`} className="group block">
         {/* Meta strip */}
         <div className="flex items-center justify-between gap-2 border-b border-ink-700/70 px-4 py-2 text-[11px]">
@@ -39,7 +46,11 @@ export function FightRow({
             <span className="shrink-0 font-display font-bold uppercase tracking-wide text-blood-400">
               {boutLabel(fight, index)}
             </span>
-            {fight.titleFight && <Badge tone="gold">Title</Badge>}
+            {fight.titleFight && (
+              <span className="inline-flex items-center gap-1 rounded bg-gold-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-300">
+                <Crown className="size-3" /> Title
+              </span>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-fog">
             {fight.weightClass && <span className="truncate">{fight.weightClass}</span>}
