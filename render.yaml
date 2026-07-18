@@ -102,11 +102,19 @@ services:
     # `npm ci` skip devDependencies, and the build needs @tailwindcss/postcss,
     # tailwindcss, typescript and prisma from there.
     #
-    # `db push` runs without --accept-data-loss on purpose: if a schema change
-    # would drop a populated column it fails the deploy rather than silently
-    # destroying rows. Resolve those by hand. --skip-generate because the
-    # postinstall hook already ran `prisma generate`.
-    buildCommand: npm ci --include=dev && npx prisma db push --skip-generate && npm run build
+    # `db push` runs WITH --accept-data-loss. Prisma flags *adding a unique
+    # constraint* (ForumThread.eventId, Notification[userId,dedupeKey], …) as
+    # possible data loss and aborts without the flag — even though those columns
+    # are new/empty and nothing is dropped — which blocked a deploy. The flag
+    # silences that false alarm. --skip-generate because the postinstall hook
+    # already ran `prisma generate`.
+    #
+    # TRADE-OFF (owner-approved): this removes the automatic guard against a
+    # schema change that would drop a POPULATED column. That safety is now a
+    # code-review responsibility — inspect every schema diff for real column
+    # drops/renames before merging, or migrate to Prisma Migrations (which apply
+    # additive uniques cleanly) to restore the automatic guard.
+    buildCommand: npm ci --include=dev && npx prisma db push --skip-generate --accept-data-loss && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
