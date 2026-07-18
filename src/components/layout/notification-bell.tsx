@@ -78,7 +78,9 @@ export function NotificationBell() {
               );
               return (
                 <div key={n.id} className="mb-2">
-                  {n.url ? <Link href={n.url} onClick={() => setOpen(false)}>{inner}</Link> : inner}
+                  {n.url ? (
+                    <Link href={n.url} onClick={() => { track("notification_click", { type: n.type }); setOpen(false); }}>{inner}</Link>
+                  ) : inner}
                 </div>
               );
             })

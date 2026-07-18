@@ -12,11 +12,13 @@ import { prisma } from "@/lib/db";
 export const EVENTS = [
   "pageview",
   "home_view",
+  "home_rail_click",
   "prediction_made",
   "prediction_changed",
   "follow_fighter",
   "follow_promotion",
   "notification_open",
+  "notification_click",
   "result_reveal_view",
   "signup",
 ] as const;

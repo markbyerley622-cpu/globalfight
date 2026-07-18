@@ -9,6 +9,7 @@ import { PageHero } from "@/components/page-hero";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
+import { track } from "@/lib/analytics-client";
 import { AGE_STATEMENT, MINIMUM_AGE } from "@/lib/age-policy";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ export default function AccountPage() {
     try {
       if (isSignup) {
         await signup({ name, email, password, registryRole: role, ageConfirmed });
+        track("signup", { role });
         setSuccess("Account created — you're signed in.");
       } else {
         await login(email, password);

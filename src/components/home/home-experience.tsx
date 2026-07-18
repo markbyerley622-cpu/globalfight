@@ -6,7 +6,7 @@ import { Spotlight } from "@/components/home/spotlight";
 import { Community } from "@/components/home/community";
 import { ReelsLauncher } from "@/components/home/reels-launcher";
 import { PersonalizedHome } from "@/components/home/personalized-home";
-import { HomeViewTracker } from "@/components/home/home-view-tracker";
+import { TrackView } from "@/components/analytics-track";
 import { getUpcomingEvents } from "@/lib/repo";
 import { getCurrentUser } from "@/lib/auth";
 import { getHomeSections } from "@/lib/home/recommendations";
@@ -53,7 +53,7 @@ export async function HomeExperience() {
   return (
     <>
       <ReelsLauncher />
-      <HomeViewTracker personalized={home.personalized && hasPersonal} />
+      <TrackView name="home_view" props={{ personalized: home.personalized && hasPersonal }} />
       {/* Intent-ranked, per-user rails on top; the curated global dashboard below. */}
       <PersonalizedHome data={home} />
       <Hero slides={slides} />

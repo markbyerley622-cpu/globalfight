@@ -3,8 +3,7 @@ import { Radio, ListChecks, Heart, TrendingUp, Trophy, Flame, Layers, Target, Ch
 import type { HomeData } from "@/lib/home/recommendations";
 import type { FightEvent } from "@/lib/types";
 import { DiscoveryEventCard } from "@/components/events/discovery-event-card";
-
-type Upcoming = Parameters<typeof DiscoveryEventCard>[0]["event"];
+import { TrackClick } from "@/components/analytics-track";
 
 /**
  * Renders the intent-ranked home sections from the recommendation service.
@@ -45,11 +44,11 @@ function Rail({
         <h2 className="font-display text-sm font-bold uppercase tracking-widest text-chalk">{title}</h2>
         {hint && <span className="text-xs text-fog">· {hint}</span>}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <TrackClick name="home_rail_click" props={{ section: title }} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {events.map((e) => (
-          <DiscoveryEventCard key={e.id} event={e as unknown as Upcoming} />
+          <DiscoveryEventCard key={e.id} event={e} />
         ))}
-      </div>
+      </TrackClick>
     </section>
   );
 }

@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { createThread } from "@/lib/forum/repo";
-import { resolvePromotion } from "@/lib/promotions";
 import type { Sport } from "@prisma/client";
 
 // ── Entity-linked discussion threads ────────────────────────────────────────
@@ -87,29 +86,3 @@ export async function getOrCreateEventThread(event: { id: string; name: string; 
   );
 }
 
-export async function getOrCreateFighterThread(fighter: { id: string; name: string; sport: Sport }): Promise<EntityThread> {
-  return provision(
-    async () => {
-      const t = await prisma.forumThread.findUnique({ where: { fighterId: fighter.id }, select: selectThread() });
-      return t ? map(t) : null;
-    },
-    async () => {
-      const author = await ensureSystemUser();
-      const t = await createThread({
-        authorId: author,
-        categorySlug: categoryForSport(fighter.sport),
-        title: `${fighter.name} — fan discussion`.slice(0, 155),
-        content: `Talk **${fighter.name}** — form, matchups, and what's next.`,
-        fighterId: fighter.id,
-        kind: "discussion",
-      });
-      return { slug: t.slug, categorySlug: t.categorySlug, locked: t.locked, authorId: t.authorId, replyCount: t.replyCount };
-    },
-  );
-}
-
-/** Read-only counts for badges — never provisions (cheap, safe on list pages). */
-export async function getEventThreadReplyCount(eventId: string): Promise<number | null> {
-  const t = await prisma.forumThread.findUnique({ where: { eventId }, select: { replyCount: true } });
-  return t?.replyCount ?? null;
-}
