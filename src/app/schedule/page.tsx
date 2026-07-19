@@ -9,6 +9,8 @@ import { FighterAvatar } from "@/components/fighter-avatar";
 import { getUpcomingEvents } from "@/lib/repo";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { Flag } from "@/components/flag";
+import { PromotionLogo } from "@/components/promotion-logo";
+import { promotionLabel } from "@/lib/promotions";
 import { Pager } from "@/components/pager";
 import { getServerT } from "@/lib/i18n-server";
 import { formatDate } from "@/lib/utils";
@@ -39,14 +41,14 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       <div className="container-cr space-y-4 py-10">
         <SportFilter />
         {events.map((e) => {
-          const main = e.fights.find((f) => f.mainEvent) ?? e.fights[0];
           return (
             <div key={e.id} className="card-surface overflow-hidden">
               <div className="flex flex-col gap-4 border-b border-ink-700 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
+                    <PromotionLogo promotion={e.promotion} size="sm" />
                     <Badge tone={e.status === "ANNOUNCED" ? "neutral" : "red"}>{e.status}</Badge>
-                    <span className="text-xs text-fog">{e.promotion}</span>
+                    <span className="text-xs text-fog">{promotionLabel(e.promotion)}</span>
                   </div>
                   <h2 className="mt-1.5 font-display text-2xl font-bold text-chalk">{e.name}</h2>
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mist">

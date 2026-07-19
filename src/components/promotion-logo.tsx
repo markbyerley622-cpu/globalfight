@@ -3,9 +3,9 @@ import { resolvePromotion } from "@/lib/promotions";
 import { cn } from "@/lib/utils";
 
 const SIZES = {
-  sm: { box: "h-6", pad: "px-1.5 text-[10px]", img: 24 },
-  md: { box: "h-8", pad: "px-2 text-xs", img: 32 },
-  lg: { box: "h-11", pad: "px-2.5 text-sm", img: 44 },
+  sm: { box: "h-8", pad: "px-2 text-xs", img: 32 },
+  md: { box: "h-10", pad: "px-2.5 text-sm", img: 40 },
+  lg: { box: "h-14", pad: "px-3 text-base", img: 56 },
 } as const;
 
 /**
