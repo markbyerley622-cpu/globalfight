@@ -9,3 +9,16 @@ export function scrollToTop(behavior: ScrollBehavior = "smooth") {
   if (typeof document === "undefined") return;
   document.getElementById("main")?.scrollTo({ top: 0, behavior });
 }
+
+/**
+ * Smooth-scroll a section into view inside the same `#main` container. Sections
+ * carry a `scroll-mt-*` so they clear the sticky section rail — scrollIntoView
+ * honours that scroll-margin, so we don't hand-compute the offset. No route
+ * change, no remount — just moves the existing scroll position.
+ */
+export function scrollToSection(id: string, behavior: ScrollBehavior = "smooth") {
+  if (typeof document === "undefined") return;
+  // Honour reduced-motion: jump instead of gliding for users who ask for less.
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : behavior, block: "start" });
+}

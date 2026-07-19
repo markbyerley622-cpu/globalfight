@@ -86,6 +86,24 @@ export async function getMyPick(userId: string, fightSlug: string): Promise<MyPi
   return row && isCorner(row.corner) ? { corner: row.corner, confidence: row.confidence } : null;
 }
 
+/** The viewer's picks across many fights at once (by fight id) — the batch
+ *  counterpart to getMyPick, so a whole card renders without an N+1. */
+export async function getMyPicksForFightIds(
+  userId: string,
+  fightIds: string[],
+): Promise<Map<string, MyPick>> {
+  const out = new Map<string, MyPick>();
+  if (!fightIds.length) return out;
+  const rows = await prisma.fightPick.findMany({
+    where: { userId, fightId: { in: fightIds } },
+    select: { fightId: true, corner: true, confidence: true },
+  });
+  for (const r of rows) {
+    if (isCorner(r.corner)) out.set(r.fightId, { corner: r.corner, confidence: r.confidence });
+  }
+  return out;
+}
+
 /** Crowd reads for many fights at once (by fight id) — for cards/lists. */
 export async function getCrowdForFightIds(fightIds: string[]): Promise<Map<string, CrowdRead>> {
   const out = new Map<string, CrowdRead>();

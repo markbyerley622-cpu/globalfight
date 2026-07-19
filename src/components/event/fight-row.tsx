@@ -3,9 +3,8 @@ import { PlayCircle, Crown } from "lucide-react";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
 import { boutLabel, highlightsUrl, winningCorner } from "@/lib/event-format";
-import { formatRecord } from "@/lib/utils";
+import { formatRecord, koPercentage } from "@/lib/utils";
 import { FighterAvatar } from "@/components/fighter-avatar";
-import { Badge } from "@/components/ui/badge";
 import { ProbabilityBar } from "@/components/probability-bar";
 
 /**
@@ -123,6 +122,10 @@ function Corner({
   dim?: boolean;
   alignEnd?: boolean;
 }) {
+  // KO ratio from data already on the card (no extra query). A high finisher
+  // rate is the card's "danger" tell, so surface it as a signal — tinted blood
+  // when it's a real threat — rather than a faint afterthought.
+  const ko = fighter.wins > 0 ? koPercentage(fighter.koWins, fighter.wins) : 0;
   return (
     <div className={`flex min-w-0 items-center gap-2.5 ${alignEnd ? "flex-row-reverse text-right" : "text-left"}`}>
       <FighterAvatar fighter={fighter} size="md" showFlag />
@@ -131,8 +134,11 @@ function Corner({
           {fighter.name}
           {won && <span className="ml-1 text-blood-400">✓</span>}
         </p>
-        <p className="truncate text-xs tabular-nums text-fog">
+        <p className="truncate text-xs tabular-nums text-mist">
           {formatRecord(fighter.wins, fighter.losses, fighter.draws)}
+          {ko > 0 && (
+            <span className={ko >= 60 ? "font-semibold text-blood-300" : "text-fog"}> · {ko}% KO</span>
+          )}
         </p>
       </div>
     </div>

@@ -13,12 +13,21 @@ import { slugify } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
 import { getEventAdapters } from "./registry";
+import { promotionFromText } from "@/lib/promotions";
 import type { AdapterBout, AdapterEvent, SportEnum } from "./adapters/types";
 
 function eventSlug(ev: AdapterEvent): string {
   const base = slugify(ev.name).slice(0, 60) || "event";
   return `${ev.sport.toLowerCase()}-${base}-${ev.date.slice(0, 10)}`;
 }
+
+// Professional (scripted) wrestling leaks into the Wikidata WRESTLING subtree
+// (WWE/AEW PPVs like "Money in the Bank", "Worlds Collide"). It is not a combat
+// sport — the news pipeline already drops it (see EXCLUDE in lib/news/ingest) —
+// so we skip it here too rather than surface it as a "Various" wrestling event.
+// Freestyle promotions (RAF etc.) don't match these tokens, so they're kept.
+const PRO_WRESTLING =
+  /\b(wwe|aew|nxt|tna|njpw|gcw|roh|wrestlemania|summerslam|royal rumble|survivor series|money in the bank|worlds collide|night of champions|crown jewel|elimination chamber|clash at the castle|saturday night'?s main event|wrestle kingdom|g1 climax|double or nothing|all out|full gear|forbidden door|all in\b|revolution)\b/i;
 
 async function upsertFighter(name: string, sport: SportEnum): Promise<string> {
   const slug = slugify(name);
@@ -48,14 +57,20 @@ async function upsertBout(eventId: string, sport: SportEnum, bout: AdapterBout, 
 async function upsertAdapterEvent(ev: AdapterEvent): Promise<number> {
   const date = new Date(ev.date);
   if (Number.isNaN(+date)) return 0;
+  if (PRO_WRESTLING.test(ev.name)) return 0;   // scripted wrestling — not a combat sport
   const slug = eventSlug(ev);
+
+  // Prefer the adapter's promotion; otherwise try to read a known org out of the
+  // event title ("UFC Fight Night: …" → "UFC") before settling for the neutral
+  // "Various" placeholder. This is what stops most events showing the grey mark.
+  const promotion = ev.promotion ?? promotionFromText(ev.name) ?? "Various";
 
   const event = await prisma.event.upsert({
     where: { slug },
-    update: { date, venue: ev.venue ?? undefined, city: ev.city ?? undefined, country: ev.country ?? undefined },
+    update: { date, venue: ev.venue ?? undefined, city: ev.city ?? undefined, country: ev.country ?? undefined, promotion },
     create: {
       slug, name: ev.name, sport: ev.sport,
-      promotion: ev.promotion ?? "Various",
+      promotion,
       venue: ev.venue ?? null, city: ev.city ?? null, country: ev.country ?? null,
       date, status: "SCHEDULED",
     },

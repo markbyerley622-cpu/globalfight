@@ -2,26 +2,28 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, PlayCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { getEvent, getEventCoverage, getOddsForFight } from "@/lib/repo";
 import { marketProbability, type MarketProb } from "@/lib/market";
 import { safeNewsCover } from "@/lib/media-safe";
 import type { Article, Fight } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { orderFights, highlightsUrl, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
+import { orderFights, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
 import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowingPromotion } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
+import { getCrowdForFightIds, getMyPicksForFightIds, type CrowdRead, type MyPick } from "@/lib/picks";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
 import { EventDiscussion } from "@/components/event/event-discussion";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
-import { EventSectionNavigation, type EventSection } from "@/components/event/event-section-nav";
+import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
 import { FightRow } from "@/components/event/fight-row";
-import { ProbabilityBar } from "@/components/probability-bar";
+import { BoutPick } from "@/components/predictions/bout-pick";
+import { WhenVisible } from "@/components/when-visible";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -58,43 +60,6 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const coveragePool = await getEventCoverage(coverageTerms(event.promotion, fights, event.name), 30);
   const coverage = rankCoverage(coveragePool, 8);
 
-  const withMarket = fights.filter((f) => marketBySlug.get(f.slug)).length;
-
-  // Tabs: Fight card (default) → Coverage → Predictions → Discussion. No
-  // Overview (redundant) and no Results tab — the prediction cards transform
-  // into results once a bout is decided, keeping one continuous surface.
-  const sections: EventSection[] = [
-    {
-      id: "card",
-      label: "Fight card",
-      badge: fights.length,
-      node: (
-        <div className="flex flex-col gap-3">
-          {fights.map((f, i) => (
-            <FightRow key={f.id} fight={f} index={i} market={marketBySlug.get(f.slug) ?? null} />
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: "coverage",
-      label: "Coverage",
-      badge: coverage.length || undefined,
-      node: <CoveragePanel articles={coverage} />,
-    },
-    {
-      id: "predictions",
-      label: "Predictions",
-      badge: withMarket || undefined,
-      node: <PredictionsPanel fights={fights} marketBySlug={marketBySlug} />,
-    },
-    {
-      id: "discussion",
-      label: "Discussion",
-      node: <EventDiscussion slug={event.slug} />,
-    },
-  ];
-
   // Promotion personality: every event uses the SAME layout, but its promotion's
   // brand colour flows through the hero/schedule/main-event accents via --accent.
   const accent = resolvePromotion(event.promotion).brand;
@@ -103,6 +68,16 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const viewer = await getCurrentUser();
   const promotionFollowing =
     viewer && event.promotion ? await isFollowingPromotion(viewer.id, event.promotion) : false;
+
+  // Crowd predictions for the whole card in TWO queries (batched — no N+1): the
+  // aggregate read for everyone, and this viewer's own picks. Same store and the
+  // same /api/fights/[slug]/pick write BoutPick uses on /predictions — one source
+  // of truth, not a parallel prediction system.
+  const fightIds = fights.map((f) => f.id);
+  const [crowdByFightId, myPicksByFightId] = await Promise.all([
+    getCrowdForFightIds(fightIds),
+    viewer ? getMyPicksForFightIds(viewer.id, fightIds) : Promise.resolve(new Map<string, MyPick>()),
+  ]);
 
   // Result reveal — only on a completed event, only for a viewer who made picks.
   const isCompleted = event.status === "COMPLETED";
@@ -113,14 +88,156 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       ])
     : [null, 0];
 
+  // One scroll, card → predictions → discussion → coverage. The rail is
+  // navigation only; every section is always mounted below it.
+  const spy: SpySection[] = [
+    { id: "card", label: "Fight card", badge: fights.length },
+    { id: "predictions", label: "Predictions" },
+    { id: "discussion", label: "Discussion" },
+    ...(coverage.length ? [{ id: "coverage", label: "Coverage", badge: coverage.length } satisfies SpySection] : []),
+  ];
+
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>
-      {/* Hero → Schedule → Main event → tabbed card. Same order, every event. */}
+      {/* Hero → Schedule (when) → Headline (the fight) — the top of the funnel. */}
       <EventHeader event={event} promotionFollowing={promotionFollowing} />
       {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
       <EventSchedule date={event.date} status={event.status} />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
-      <EventSectionNavigation sections={sections} initialId="card" />
+
+      {/* Sticky scroll-spy, then the sections continuously below it. */}
+      <EventScrollSpy sections={spy} />
+
+      <ScrollSection id="card" title="Fight card" seam={false}>
+        <div className="flex flex-col gap-3">
+          {fights.map((f, i) => (
+            <FightRow key={f.id} fight={f} index={i} market={marketBySlug.get(f.slug) ?? null} />
+          ))}
+        </div>
+      </ScrollSection>
+
+      <ScrollSection id="predictions" title="Predictions · the crowd read">
+        <div className="flex flex-col gap-3">
+          {fights.map((f) => (
+            <BoutPrediction
+              key={f.id}
+              fight={f}
+              crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
+              myPick={myPicksByFightId.get(f.id) ?? null}
+            />
+          ))}
+        </div>
+      </ScrollSection>
+
+      <ScrollSection id="discussion" title="Discussion">
+        {/* Provision the thread only when the reader reaches it (as the old tab
+            did on open) — keeps the write off every page load. A quiet skeleton
+            holds the space; the reader is never told about the mechanism. */}
+        <WhenVisible placeholder={<DiscussionSkeleton />}>
+          <EventDiscussion slug={event.slug} />
+        </WhenVisible>
+      </ScrollSection>
+
+      {coverage.length > 0 && (
+        <ScrollSection id="coverage" title="Related coverage">
+          <CoveragePanel articles={coverage} />
+        </ScrollSection>
+      )}
+
+      {/* Tail space so the last section can scroll clear of the sticky rail and
+          the bottom tab bar — no abrupt end to the document. */}
+      <div className="h-16" aria-hidden />
+    </div>
+  );
+}
+
+/** Space-holding skeleton while the discussion mounts — no words, no spinner,
+ *  no mention of loading; it simply reads as the conversation settling in. */
+function DiscussionSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-3" aria-hidden>
+      <div className="h-11 rounded-xl bg-ink-800/50" />
+      <div className="h-24 rounded-xl bg-ink-900/70 ring-1 ring-ink-800/60" />
+      <div className="ml-6 h-16 rounded-xl bg-ink-900/50 ring-1 ring-ink-800/50" />
+    </div>
+  );
+}
+
+/**
+ * One section of the single-scroll event page. Centralises the rhythm so every
+ * section breathes identically: consistent padding, a hairline seam (softer than
+ * a hard rule) between sections, a quiet eyebrow title, `scroll-mt` so the sticky
+ * rail never covers the heading on a jump, and a scroll-driven reveal as it
+ * arrives. `id` is the scroll-spy anchor.
+ */
+function ScrollSection({
+  id,
+  title,
+  seam = true,
+  children,
+}: {
+  id: string;
+  title: string;
+  seam?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      className={`reveal scroll-mt-16 px-4 py-8 ${seam ? "border-t border-ink-800/50" : ""}`}
+    >
+      <h2 className="mb-4 font-display text-sm font-bold uppercase tracking-[0.18em] text-fog">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * One bout's prediction on the event scroll. A scheduled bout renders the real
+ * crowd-pick control (BoutPick — same component and backend as /predictions); a
+ * decided bout collapses to its outcome and how the crowd called it.
+ */
+function BoutPrediction({ fight, crowd, myPick }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null }) {
+  if (fight.result === "SCHEDULED") {
+    return (
+      <BoutPick
+        fightSlug={fight.slug}
+        redName={fight.red.name}
+        blueName={fight.blue.name}
+        initialCrowd={crowd}
+        initialPick={myPick}
+      />
+    );
+  }
+
+  const won = winningCorner(fight);
+  const winner = won === "red" ? fight.red : won === "blue" ? fight.blue : null;
+  const crowdRight = won === "red" ? crowd.red : won === "blue" ? crowd.blue : 0;
+  const pct = crowd.total ? Math.round((crowdRight / crowd.total) * 100) : 0;
+  return (
+    <div className="card-surface pred-card p-4">
+      <div className="mb-2 flex items-center justify-between text-sm font-semibold text-chalk">
+        <span className="truncate">{fight.red.name}</span>
+        <span className="px-2 text-xs text-fog">vs</span>
+        <span className="truncate text-right">{fight.blue.name}</span>
+      </div>
+      <div className="rounded-lg bg-ink-800 px-3 py-2 text-sm">
+        {winner ? (
+          <p className="text-chalk">
+            <span className="font-semibold text-blood-300">{winner.name}</span>{" "}
+            <span className="text-fog">
+              def.{fight.method ? ` · ${fight.method}${fight.roundEnded ? ` R${fight.roundEnded}` : ""}` : ""}
+            </span>
+          </p>
+        ) : (
+          <p className="text-mist">{fight.result === "DRAW" ? "Draw" : fight.result === "NO_CONTEST" ? "No contest" : "Result pending"}</p>
+        )}
+      </div>
+      {crowd.total > 0 && winner && (
+        <p className="mt-2 text-xs text-fog">
+          <span className="font-semibold text-chalk">{pct}%</span> of {crowd.total.toLocaleString()} picks called it.
+        </p>
+      )}
     </div>
   );
 }
@@ -209,76 +326,6 @@ function CoveragePanel({ articles }: { articles: Article[] }) {
           </div>
         </section>
       ))}
-    </div>
-  );
-}
-
-/**
- * Predictions that become results. Before a bout: market-implied win
- * probability. After it's decided: the same card transforms into the outcome
- * (winner, method, round) with a highlights link — no separate Results tab, one
- * continuous surface so nothing is duplicated.
- */
-function PredictionsPanel({ fights, marketBySlug }: { fights: Fight[]; marketBySlug: Map<string, MarketProb | null> }) {
-  return (
-    <div className="flex flex-col gap-3">
-      {fights.map((f) => {
-        const market = marketBySlug.get(f.slug);
-        const done = f.result !== "SCHEDULED";
-        const won = winningCorner(f);
-        const winner = won === "red" ? f.red : won === "blue" ? f.blue : null;
-        const loser = winner ? (winner.slug === f.red.slug ? f.blue : f.red) : null;
-        return (
-          <div
-            key={f.id}
-            className="rounded-xl border border-ink-700 bg-ink-900 p-3.5 transition-colors hover:border-blood-500/40"
-          >
-            <Link href={`/predictions/${f.slug}`} className="block">
-              <div className="mb-2 flex items-center justify-between text-sm font-semibold text-chalk">
-                <span className="truncate">{f.red.name}</span>
-                <span className="px-2 text-xs text-fog">vs</span>
-                <span className="truncate text-right">{f.blue.name}</span>
-              </div>
-
-              {done ? (
-                <div className="rounded-lg bg-ink-800 px-3 py-2 text-sm">
-                  {winner && loser ? (
-                    <p className="text-chalk">
-                      <span className="font-semibold text-blood-300">{winner.name}</span>{" "}
-                      <span className="text-fog">def.</span> {loser.name}
-                      {f.method ? (
-                        <span className="text-fog"> · {f.method}{f.roundEnded ? ` R${f.roundEnded}` : ""}</span>
-                      ) : null}
-                    </p>
-                  ) : (
-                    <p className="text-mist">
-                      {f.result === "DRAW" ? "Draw" : f.result === "NO_CONTEST" ? "No contest" : "Result pending"}
-                    </p>
-                  )}
-                </div>
-              ) : market ? (
-                <>
-                  <ProbabilityBar redLabel={f.red.name} blueLabel={f.blue.name} redProbability={market.redP} compact />
-                  <p className="mt-1.5 text-right text-[11px] text-fog">Market implied · {market.books} book{market.books === 1 ? "" : "s"}</p>
-                </>
-              ) : (
-                <p className="rounded-lg bg-ink-800 px-3 py-2 text-center text-xs text-fog">Awaiting live betting lines.</p>
-              )}
-            </Link>
-
-            {done && (
-              <a
-                href={highlightsUrl(f)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blood-300 hover:text-blood-200"
-              >
-                <PlayCircle className="size-4" /> Highlights &amp; finish
-              </a>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }

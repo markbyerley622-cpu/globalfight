@@ -5,6 +5,7 @@ import { mapsUrl } from "@/lib/event-format";
 import { Badge } from "@/components/ui/badge";
 import { Flag } from "@/components/flag";
 import { PromotionLogo } from "@/components/promotion-logo";
+import { resolvePromotion } from "@/lib/promotions";
 import { FollowButton } from "@/components/follow-button";
 
 /**
@@ -19,6 +20,10 @@ export function EventHeader({ event, promotionFollowing }: { event: FightEvent; 
   const location = [event.city, event.country].filter(Boolean).join(", ");
   const badgeTone = isLive ? "live" : isCompleted ? "neutral" : "red";
   const maps = mapsUrl(event);
+  // Resolve to the canonical org so we show a real name (never a raw "Various")
+  // and only offer "follow" when it's an actual promotion, not the neutral mark.
+  const org = resolvePromotion(event.promotion);
+  const isRealOrg = org.slug !== "combat";
 
   return (
     <header
@@ -32,12 +37,12 @@ export function EventHeader({ event, promotionFollowing }: { event: FightEvent; 
         <div className="flex min-w-0 items-center gap-2">
           <PromotionLogo promotion={event.promotion} size="md" />
           <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-blood-400">
-            {event.promotion ?? "Fight Card"}
+            {org.name}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {event.promotion && (
-            <FollowButton kind="promotion" slug={event.promotion} initialFollowing={promotionFollowing} size="sm" />
+          {isRealOrg && (
+            <FollowButton kind="promotion" slug={event.promotion!} initialFollowing={promotionFollowing} size="sm" />
           )}
           <Badge tone={badgeTone}>
             {isLive && <span className="live-dot" aria-hidden />} {event.status}

@@ -410,6 +410,21 @@
 .rise { animation: rise .5s var(--ease-out-quint) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Scroll-reveal — sections fade-rise into place as they enter the scroll view.
+   Pure CSS view() timeline: runs off the main thread (60fps), needs zero JS, and
+   where unsupported (older WebKit) or under reduced-motion the content is simply
+   shown. Reuses the `rise` keyframe so there is one entrance motion, not two.
+   The timeline resolves against the nearest scroll container (#main). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view(block);
+      animation-range: entry 4% entry 30%;
+    }
+  }
+}
+
 /* Animated sliding tab indicator background. */
 .seg { transition: color .2s; }
 .seg-ind { transition: transform .32s var(--ease-out-quint), width .32s var(--ease-out-quint); }

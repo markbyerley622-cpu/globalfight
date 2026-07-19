@@ -103,16 +103,18 @@ export function BoutPick({
       {pick && (
         <div className="mt-4 flex items-center justify-center gap-2">
           <span className="text-[0.65rem] uppercase tracking-wider text-fog">Confidence</span>
-          <div className="flex items-center gap-0.5">
+          <div className="-my-1 flex items-center">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 type="button"
-                aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                aria-label={`Confidence ${n} of 5`}
+                aria-pressed={(pick.confidence ?? 0) >= n}
                 onClick={() => send(pick.corner, n)}
-                className="p-0.5"
+                // Comfortable ~36px thumb target; the visual star stays 16px.
+                className="tap p-2"
               >
-                <Star className={cn("size-4", (pick.confidence ?? 0) >= n ? "fill-gold-400 text-gold-400" : "text-ink-600")} />
+                <Star className={cn("size-4 transition-colors", (pick.confidence ?? 0) >= n ? "fill-gold-400 text-gold-400" : "text-ink-600")} />
               </button>
             ))}
           </div>

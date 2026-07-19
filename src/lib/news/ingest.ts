@@ -222,6 +222,73 @@ function imageFrom(itemXml: string): string | null {
   return m ? m[1] : null;
 }
 
+// ── Cover-photo backfill (Open Graph) ──────────────────────────────────────
+// Most feeds — especially Google News — carry no <media:*> image, so the item
+// arrives with none and the card falls back to generated art. The article page
+// itself almost always declares an og:image (the same photo the publisher shows
+// on social); we read that so the feed shows real cover photos. The image is
+// still served ATTRIBUTED + LINKED via /api/img — we index and refer traffic
+// out, we do not host the article (the plan's headline-only rule).
+const OG_CONCURRENCY = 10;
+const OG_TIMEOUT_MS = 5000;
+const OG_HEAD_BYTES = 200_000;   // og tags live in <head>; stop reading after this
+const OG_MAX_LOOKUPS = 60;       // hard cap per run so we stay inside the cron budget
+
+/** Pull og:image / twitter:image / rel=image_src out of a page's <head>. */
+function ogImageFrom(html: string, pageUrl: string): string | null {
+  const m =
+    html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']/i) ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+    html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i) ||
+    html.match(/<link[^>]+rel=["']image_src["'][^>]*href=["']([^"']+)["']/i);
+  if (!m) return null;
+  try {
+    // Decode entities first — publishers HTML-escape the & in image query
+    // strings (…?quality=90&amp;strip=all), which would otherwise truncate the
+    // proxied URL's params.
+    const abs = new URL(decodeEntities(m[1].trim()), pageUrl).toString();  // resolve relative/protocol-relative
+    return abs.startsWith("https://") ? abs : null;                        // proxy only accepts https
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch just enough of an article page to read its og:image, or null. */
+async function fetchOgImage(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { headers: UA, redirect: "follow", signal: AbortSignal.timeout(OG_TIMEOUT_MS) });
+    if (!res.ok || !res.body) return null;
+    if (!/text\/html/i.test(res.headers.get("content-type") ?? "")) return null;
+    // Read only the head — abort once we have enough or hit the byte cap.
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let html = "";
+    while (html.length < OG_HEAD_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += dec.decode(value, { stream: true });
+      if (/<\/head>/i.test(html)) break;
+    }
+    reader.cancel().catch(() => {});
+    return ogImageFrom(html, res.url || url);
+  } catch {
+    return null;
+  }
+}
+
+/** Backfill cover photos for the newest items that arrived without a feed image. */
+async function backfillCovers(items: Item[]): Promise<void> {
+  const targets = items.filter((it) => !it.image && it.link).slice(0, OG_MAX_LOOKUPS);
+  let cursor = 0;
+  const workers = Array.from({ length: OG_CONCURRENCY }, async () => {
+    while (cursor < targets.length) {
+      const it = targets[cursor++];
+      it.image = await fetchOgImage(it.link);
+    }
+  });
+  await Promise.all(workers);
+}
+
 type Item = { title: string; link: string; date: Date; excerpt: string; image: string | null; source: string; category: string };
 
 async function fetchFeed(f: (typeof FEEDS)[number], out: Item[]): Promise<void> {
@@ -260,6 +327,12 @@ export async function ingestNews(): Promise<number> {
 
   // newest first; newest overall becomes featured
   items.sort((a, b) => +b.date - +a.date);
+
+  // Give the newest items real cover photos: fetch og:image for those the feed
+  // didn't supply one for. Bounded (OG_MAX_LOOKUPS) and ordered newest-first, so
+  // the hero + top cards — the only large images on the page — get covered.
+  await backfillCovers(items);
+
   const featuredSlug = slugify(items[0]?.title ?? "").slice(0, 80);
   const seen = new Set<string>();
   let created = 0, updated = 0, idx = 0;

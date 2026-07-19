@@ -33,11 +33,11 @@ export interface Promotion {
 export const PROMOTIONS: Promotion[] = [
   { slug: "road-to-ufc", name: "Road to UFC", mark: "RTU", brand: "#d20a0a", logo: "/promotions/road-to-ufc.svg", aliases: ["road to ufc"] },
   { slug: "dwcs", name: "Dana White's Contender Series", mark: "DWCS", brand: "#d20a0a", logo: "/promotions/dwcs.svg", aliases: ["contender series", "dana white", "dwcs"] },
-  { slug: "ufc", name: "UFC", mark: "UFC", brand: "#d20a0a", logo: "/promotions/ufc.svg", aliases: ["ufc", "ultimate fighting"] },
-  { slug: "one", name: "ONE Championship", mark: "ONE", brand: "#e8112d", logo: "/promotions/one.svg", aliases: ["one championship", "one fight night", "one friday fights", "onefc", "one fc"] },
-  { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.svg", aliases: ["pfl", "professional fighters league"] },
-  { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.svg", aliases: ["bellator"] },
-  { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.svg", aliases: ["bkfc", "bare knuckle", "bare-knuckle"] },
+  { slug: "ufc", name: "UFC", mark: "UFC", brand: "#d20a0a", logo: "/promotions/ufc.png", aliases: ["ufc", "ultimate fighting"] },
+  { slug: "one", name: "ONE Championship", mark: "ONE", brand: "#e8112d", logo: "/promotions/one.png", aliases: ["one championship", "one fight night", "one friday fights", "onefc", "one fc"] },
+  { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.png", aliases: ["pfl", "professional fighters league"] },
+  { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.png", aliases: ["bellator"] },
+  { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.png", aliases: ["bkfc", "bare knuckle", "bare-knuckle"] },
   { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.svg", aliases: ["glory kickboxing", "glory"] },
   { slug: "rizin", name: "RIZIN", mark: "RIZ", brand: "#c9a227", logo: "/promotions/rizin.svg", aliases: ["rizin"] },
   { slug: "ksw", name: "KSW", mark: "KSW", brand: "#d0021b", logo: "/promotions/ksw.svg", aliases: ["ksw", "konfrontacja"] },
@@ -45,39 +45,92 @@ export const PROMOTIONS: Promotion[] = [
   { slug: "cage-warriors", name: "Cage Warriors", mark: "CW", brand: "#d10a11", logo: "/promotions/cage-warriors.svg", aliases: ["cage warriors"] },
   { slug: "lfa", name: "LFA", mark: "LFA", brand: "#b11116", logo: "/promotions/lfa.svg", aliases: ["lfa", "legacy fighting", "legacy fc"] },
   { slug: "eternal-mma", name: "Eternal MMA", mark: "ETL", brand: "#1e88e5", logo: "/promotions/eternal-mma.svg", aliases: ["eternal mma"] },
-  { slug: "hex", name: "Hex Fight Series", mark: "HEX", brand: "#7b1fa2", logo: "/promotions/hex.svg", aliases: ["hex fight", "hex "] },
+  { slug: "hex", name: "Hex Fight Series", mark: "HEX", brand: "#7b1fa2", logo: "/promotions/hex.svg", aliases: ["hex fight"] },
   { slug: "cffc", name: "CFFC", mark: "CFFC", brand: "#c0161d", logo: "/promotions/cffc.svg", aliases: ["cffc", "cage fury"] },
   { slug: "invicta", name: "Invicta FC", mark: "INV", brand: "#e91e63", logo: "/promotions/invicta.svg", aliases: ["invicta"] },
   { slug: "karate-combat", name: "Karate Combat", mark: "KC", brand: "#00b4d8", logo: "/promotions/karate-combat.svg", aliases: ["karate combat"] },
-  { slug: "adcc", name: "ADCC", mark: "ADCC", brand: "#2e7d32", logo: "/promotions/adcc.svg", aliases: ["adcc", "submission fighting"] },
+  { slug: "adcc", name: "ADCC", mark: "ADCC", brand: "#2e7d32", logo: "/promotions/adcc.png", aliases: ["adcc", "submission fighting"] },
+  // "RAF 12" / "RAF Next Gen" / "RAF Moscow" — the alias must match the bare
+  // token, which the word-boundary matcher does safely (won't fire on "Rafael").
+  { slug: "raf", name: "Real American Freestyle", mark: "RAF", brand: "#d21e2b", logo: "/promotions/raf.png", aliases: ["real american freestyle", "raf"] },
+  // Governing body, not a fight promotion — but it is the real organiser of the
+  // World Judo Championships / Grand Slam / Grand Prix events Wikidata surfaces,
+  // so its events get a real identity instead of the neutral "Various" mark.
+  // No official logo asset yet → branded monogram fallback.
+  { slug: "ijf", name: "IJF", mark: "IJF", brand: "#0b4ea2", logo: "/promotions/ijf.png", aliases: ["ijf", "world judo", "judo grand slam", "judo grand prix", "judo championships", "judo masters"] },
 ];
 
 const FALLBACK: Promotion = {
   slug: "combat",
-  name: "Fight Card",
+  name: "Multiple promotions",
   mark: "★",
   brand: "#8a8f98",
   aliases: [],
 };
 
+// Placeholder promotion strings we synthesise when a source doesn't name an org
+// (e.g. the daily odds card that aggregates several promotions). These must
+// render as the neutral ★ mark — never as an ugly "V" monogram derived from the
+// word "Various".
+const GENERIC_PROMOTION = /^(various|multiple|multiple promotions|mixed|assorted|tbd|tba|n\/?a|none|unknown|fight card|—|-)$/i;
+
+// One compiled matcher per alias, in PROMOTIONS order (so specific promotions
+// beat broad ones — "road to ufc" before "ufc"). Word boundaries are what make
+// short aliases safe: `\braf\b` matches "RAF 12" but never "Rafael"/"giraffe".
+// This is the SINGLE place aliases are turned into matchers — both the display
+// resolver and the ingest attributor go through findByAlias, so there are no
+// duplicated regexes to drift.
+const ALIAS_MATCHERS: { promo: Promotion; re: RegExp }[] = PROMOTIONS.flatMap((p) =>
+  p.aliases.map((a) => ({
+    promo: p,
+    re: new RegExp(`\\b${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"),
+  })),
+);
+
+/** First promotion whose alias appears as a whole word/phrase in `text`, else null. */
+function findByAlias(text: string): Promotion | null {
+  for (const { promo, re } of ALIAS_MATCHERS) {
+    if (re.test(text)) return promo;
+  }
+  return null;
+}
+
 /**
  * Resolve a free-text promotion string to a registry entry. Never returns null
- * — an unknown promotion still gets a neutral fallback mark so the UI stays
- * consistent. When `promotion` is a plain unknown name we keep its display text
- * but use a generic mark derived from the name's initials.
+ * — an unknown or placeholder promotion still gets a neutral fallback mark so
+ * the UI stays consistent. When `promotion` is a plain unknown name we keep its
+ * display text but use a generic mark derived from the name's initials.
  */
 export function resolvePromotion(promotion?: string | null): Promotion {
-  const q = (promotion ?? "").toLowerCase().trim();
-  if (!q) return FALLBACK;
-  for (const p of PROMOTIONS) {
-    if (p.aliases.some((a) => q.includes(a))) return p;
-  }
+  const q = (promotion ?? "").trim();
+  if (!q || GENERIC_PROMOTION.test(q)) return FALLBACK;
+  const hit = findByAlias(q);
+  if (hit) return hit;
   // Unknown promotion: keep its real name, derive a monogram from its initials.
-  const mark = promotion!
+  const mark = q
     .split(/\s+/)
     .map((w) => w[0])
     .join("")
     .slice(0, 4)
     .toUpperCase();
-  return { ...FALLBACK, name: promotion!, mark: mark || FALLBACK.mark };
+  return { ...FALLBACK, name: q, mark: mark || FALLBACK.mark };
+}
+
+/**
+ * Attribute an event to a KNOWN promotion from free text (usually its title),
+ * or null when nothing is recognised. Used at ingest time so an event named
+ * "UFC Fight Night: …" / "ONE Fight Night 39" / "PFL 5" is stored under its real
+ * org instead of the placeholder "Various". Only returns a canonical registry
+ * name — never a guess — so callers can safely fall back when it's null.
+ */
+export function promotionFromText(text?: string | null): string | null {
+  const q = (text ?? "").trim();
+  if (!q) return null;
+  return findByAlias(q)?.name ?? null;
+}
+
+/** Display label for a promotion string — collapses placeholders to the neutral
+ *  "Multiple promotions" and normalises known aliases to their canonical name. */
+export function promotionLabel(promotion?: string | null): string {
+  return resolvePromotion(promotion).name;
 }

@@ -6,6 +6,7 @@ import { Countdown } from "@/components/countdown";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { Flag } from "@/components/flag";
 import { PromotionLogo } from "@/components/promotion-logo";
+import { promotionLabel } from "@/lib/promotions";
 import type { getUpcomingEvents } from "@/lib/repo";
 
 type UpcomingEvent = Awaited<ReturnType<typeof getUpcomingEvents>>[number];
@@ -44,7 +45,7 @@ export function DiscoveryEventCard({ event }: { event: UpcomingEvent }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <PromotionLogo promotion={event.promotion} size="sm" />
-          <span className="min-w-0 truncate text-xs font-medium text-mist">{event.promotion ?? "—"}</span>
+          <span className="min-w-0 truncate text-xs font-medium text-mist">{promotionLabel(event.promotion)}</span>
         </div>
         <Badge tone={isLive ? "red" : "neutral"}>{event.status}</Badge>
       </div>
