@@ -1,24 +1,25 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  Development Seed World — entry point.
+//  Development Seed World — manual entry point.
 //
-//    npm run seed:demo        wipe the demo world, then regenerate it
-//    npm run seed:demo wipe   only wipe the demo world
+//    npm run seed:demo       wipe the demo world, then regenerate it
+//    npm run seed:refresh    alias of the above (explicit wipe + regenerate)
+//    npm run seed:wipe       only wipe the demo world
 //
-//  Generates a believable combat-sports community (personas, behavioural picks,
-//  threaded discussion, cards, reputation, notifications, activity, analytics) so
-//  the product can be evaluated as it would feel after months of organic growth —
-//  BEFORE acquiring a single real user. Dev/staging/demo only; see guard.mts.
+//  Host-safe: runs only against a LOCAL database or an explicitly allowlisted
+//  demo host (see guard.mts). Dev/staging/demo only — never production.
 // ════════════════════════════════════════════════════════════════════════════
-import { assertSeedAllowed } from "./guard.mts";
+import { assertManualSeedAllowed, seedBanner } from "./guard.mts";
 import { generateWorld } from "./world.mts";
 import { wipeWorld } from "./wipe.mts";
+import { writeMarker, deployId } from "./marker.mts";
 import { prisma } from "../../src/lib/db.ts";
 
 async function main() {
   const t0 = Date.now();
-  const ctx = assertSeedAllowed();
-  const mode = process.argv[2] === "wipe" ? "wipe" : "regenerate";
-  console.log(`\n🌍 Seed World — ${mode}  ·  db=${ctx.database}@${ctx.host}\n`);
+  const arg = process.argv[2];
+  const mode = arg === "wipe" ? "wipe" : "regenerate"; // "refresh" falls through to regenerate
+  const ctx = assertManualSeedAllowed();
+  console.log("\n" + seedBanner(ctx) + "\n");
 
   console.log("🧹 wiping existing demo data…");
   const wiped = await wipeWorld();
@@ -31,6 +32,7 @@ async function main() {
 
   console.log("👥 generating the community…");
   const summary = await generateWorld();
+  writeMarker({ deploy: deployId(), generatedAt: new Date().toISOString(), mode: "manual" });
 
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   console.log("\n✅ Seed World ready:");
@@ -38,8 +40,7 @@ async function main() {
   console.log(`\n   done in ${secs}s · sign in as any @seed.local user with password "demo-passw0rd"\n`);
 
   if (!summary.events) {
-    console.log("⚠️  No events found in this database — picks & discussion need events.");
-    console.log("    Run the ingest first (e.g. the refresh-events / sync cron) so the world has cards to predict.\n");
+    console.log("⚠️  No events found — picks & discussion need events. Run the ingest (refresh-events / sync) first.\n");
   }
 }
 
