@@ -31,7 +31,8 @@ export default async function Image({ params }: { params: { slug: string } }) {
     accent: promo.brand,
     chips: [
       when,
-      `${event._count.fights} bout${event._count.fights === 1 ? "" : "s"}`,
+      // A card whose bouts aren't published yet must not advertise "0 bouts".
+      event._count.fights > 0 ? `${event._count.fights} bout${event._count.fights === 1 ? "" : "s"}` : null,
       [event.city, event.country].filter(Boolean).join(", ") || null,
       event.broadcaster,
     ],

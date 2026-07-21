@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { SPORTS } from "@/lib/sports";
-import { resolvePromotion, promotionBySlug } from "@/lib/promotions";
+import { resolvePromotion, promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
 import { ROLES, SPORT_MAX } from "@/lib/onboarding-options";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -102,7 +102,10 @@ export async function completeOnboarding(userId: string): Promise<{ eventsFollow
       where: {
         date: { gte: now, lte: horizon },
         OR: [
-          ...(promotionSlugs.length ? [{ promotion: { in: promotionSlugs } }] : []),
+          // Event.promotion is FREE TEXT ("ONE Friday Fights 163"); a follow is a
+          // registry slug ("one"). Matching them directly found nothing, so the
+          // flow ended on the empty feed it exists to prevent.
+          ...promotionSearchTerms(promotionSlugs).map((t) => ({ promotion: { contains: t, mode: "insensitive" as const } })),
           ...(fighterIds.length
             ? [{ fights: { some: { OR: [{ redId: { in: fighterIds } }, { blueId: { in: fighterIds } }] } } }]
             : []),

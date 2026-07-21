@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { promotionBySlug } from "@/lib/promotions";
+import { promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -86,7 +86,10 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
             date: { gte: now, lte: soon },
             OR: [
               ...(eventIds.length ? [{ id: { in: eventIds } }] : []),
-              ...(promotions.length ? [{ promotion: { in: promotions } }] : []),
+              // Event.promotion is FREE TEXT; a follow is a registry slug.
+              // `promotion IN ('one')` matched nothing, so "cards run by a
+              // promotion you follow" silently never appeared in the feed.
+              ...promotionSearchTerms(promotions).map((t) => ({ promotion: { contains: t, mode: "insensitive" as const } })),
             ],
           },
           orderBy: { date: "asc" },

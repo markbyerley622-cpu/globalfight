@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { SPORT_BY_SLUG } from "@/lib/sports";
-import { resolvePromotion, promotionBySlug } from "@/lib/promotions";
+import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Event discovery.
@@ -83,10 +83,9 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
   }
 
   // Promotion is stored as free text; a registry slug maps to the aliases that
-  // identify it, so following "ufc" matches "UFC 300" and "UFC Fight Night".
+  // identify it, so selecting "ufc" matches "UFC 300" and "UFC Fight Night".
   if (use("promotion") && f.promotion) {
-    const p = promotionBySlug(f.promotion);
-    where.OR = (p ? p.aliases : [f.promotion]).map((a) => ({ promotion: { contains: a, mode: "insensitive" as const } }));
+    where.OR = promotionSearchTerms([f.promotion]).map((t) => ({ promotion: { contains: t, mode: "insensitive" as const } }));
   }
 
   if (use("country") && f.country) where.countryCode = f.country.toUpperCase();

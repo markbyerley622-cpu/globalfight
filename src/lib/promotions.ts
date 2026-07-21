@@ -101,6 +101,25 @@ export function promotionBySlug(slug?: string | null): Promotion | null {
   return BY_SLUG.get((slug ?? "").trim().toLowerCase()) ?? null;
 }
 
+/**
+ * Free-text search terms for a set of registry slugs.
+ *
+ * Event.promotion holds whatever the source called it ("ONE Friday Fights 163",
+ * "UFC Fight Night"), but a FOLLOW stores a registry slug. Comparing the two
+ * directly — `promotion IN ('one')` — matches nothing, silently. Every query
+ * that filters events by a followed/selected promotion must go through here.
+ *
+ * Terms shorter than 3 characters are dropped: they are substring-matched, and a
+ * 2-character term matches half the table.
+ */
+export function promotionSearchTerms(slugs: string[]): string[] {
+  return [
+    ...new Set(
+      slugs.flatMap((s) => promotionBySlug(s)?.aliases ?? [s]).filter((a) => a.length >= 3),
+    ),
+  ];
+}
+
 /** First promotion whose alias appears as a whole word/phrase in `text`, else null. */
 function findByAlias(text: string): Promotion | null {
   for (const { promo, re } of ALIAS_MATCHERS) {

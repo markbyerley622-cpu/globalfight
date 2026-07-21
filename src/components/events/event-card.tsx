@@ -81,9 +81,13 @@ export function EventCard({ event }: { event: EventCardData }) {
       <div className="p-3.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-mist">
           <span>{formatDate(event.date, { weekday: "short", month: "short", day: "numeric" })}</span>
-          <span className="inline-flex items-center gap-1 text-fog">
-            <Swords className="size-3.5 text-blood-400" />{event.boutCount} bout{event.boutCount === 1 ? "" : "s"}
-          </span>
+          {/* A card whose bouts aren't published yet says nothing rather than
+              advertising "0 bouts". */}
+          {event.boutCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-fog">
+              <Swords className="size-3.5 text-blood-400" />{event.boutCount} bout{event.boutCount === 1 ? "" : "s"}
+            </span>
+          )}
           {location && (
             <span className="inline-flex min-w-0 items-center gap-1 text-fog">
               <MapPin className="size-3.5 text-blood-400" />
