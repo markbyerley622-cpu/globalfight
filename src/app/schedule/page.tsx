@@ -66,7 +66,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               </div>
               <div className="divide-y divide-ink-800">
                 {e.fights.map((f) => (
-                  <Link key={f.id} href={`/predictions/${f.slug}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-ink-800/50">
+                  <Link key={f.id} href={`/events/${e.slug}#predictions`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-ink-800/50">
                     <span className="flex min-w-0 items-center gap-2">
                       {f.mainEvent && <Badge tone="red">{t("Main")}</Badge>}
                       {f.coMain && <Badge tone="neutral">{t("Co-Main")}</Badge>}
