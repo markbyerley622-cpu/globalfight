@@ -13,7 +13,7 @@ import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowingPromotion } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
-import { getCrowdForFightIds, getMyPicksForFightIds, type CrowdRead, type MyPick } from "@/lib/picks";
+import { getCrowdForFightIds, getMyPicksForFightIds, getOpponentsForFights, type CrowdRead, type MyPick, type Opponent } from "@/lib/picks";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
 import { EventDiscussion } from "@/components/event/event-discussion";
@@ -23,6 +23,7 @@ import { HeadlineMatchup } from "@/components/event/headline-matchup";
 import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
+import { FightOpponents } from "@/components/predictions/fight-opponents";
 import { WhenVisible } from "@/components/when-visible";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -78,6 +79,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     getCrowdForFightIds(fightIds),
     viewer ? getMyPicksForFightIds(viewer.id, fightIds) : Promise.resolve(new Map<string, MyPick>()),
   ]);
+  // Prediction Battles: for the bouts the viewer has picked, who took the other side.
+  const opponentsByFightId = viewer
+    ? await getOpponentsForFights(myPicksByFightId, viewer.id)
+    : new Map<string, Opponent[]>();
 
   // Result reveal — only on a completed event, only for a viewer who made picks.
   const isCompleted = event.status === "COMPLETED";
@@ -125,6 +130,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
               myPick={myPicksByFightId.get(f.id) ?? null}
               market={marketBySlug.get(f.slug) ?? null}
+              opponents={opponentsByFightId.get(f.id) ?? []}
             />
           ))}
         </div>
@@ -198,17 +204,24 @@ function ScrollSection({
  * crowd-pick control (BoutPick — same component and backend as /predictions); a
  * decided bout collapses to its outcome and how the crowd called it.
  */
-function BoutPrediction({ fight, crowd, myPick, market }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null }) {
+function BoutPrediction({ fight, crowd, myPick, market, opponents }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null; opponents: Opponent[] }) {
   if (fight.result === "SCHEDULED") {
+    // The fighter the opponents backed = the one the viewer did NOT pick.
+    const theirFighter = myPick ? (myPick.corner === "RED" ? fight.blue.name : fight.red.name) : "";
     return (
-      <BoutPick
-        fightSlug={fight.slug}
-        redName={fight.red.name}
-        blueName={fight.blue.name}
-        initialCrowd={crowd}
-        initialPick={myPick}
-        marketRedP={market?.redP ?? null}
-      />
+      <div>
+        <BoutPick
+          fightSlug={fight.slug}
+          redName={fight.red.name}
+          blueName={fight.blue.name}
+          initialCrowd={crowd}
+          initialPick={myPick}
+          marketRedP={market?.redP ?? null}
+        />
+        {myPick && opponents.length > 0 && (
+          <FightOpponents opponents={opponents} theirFighter={theirFighter} discussionHref="#discussion" />
+        )}
+      </div>
     );
   }
 
