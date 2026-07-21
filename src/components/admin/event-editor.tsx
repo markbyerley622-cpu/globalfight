@@ -24,7 +24,7 @@ export interface EditableEvent {
 const STATUSES = ["DRAFT", "ANNOUNCED", "SCHEDULED", "LIVE", "COMPLETED", "CANCELLED", "POSTPONED"]
   .map((v) => ({ value: v, label: v.charAt(0) + v.slice(1).toLowerCase() }));
 
-export function EventEditor({ initial }: { initial: EditableEvent }) {
+export function EventEditor({ initial, card }: { initial: EditableEvent; card: React.ReactNode }) {
   const [v, setV] = useState(initial);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -156,6 +156,8 @@ export function EventEditor({ initial }: { initial: EditableEvent }) {
               <Text value={v.ticketUrl ?? ""} onChange={(s) => bind("ticketUrl")(s || null)} onBlur={save.flush} invalid={!!save.issueFor("ticketUrl")} mono />
             </Row>
           </Section>
+
+          {card}
         </div>
 
         <aside className="space-y-4">
@@ -167,16 +169,6 @@ export function EventEditor({ initial }: { initial: EditableEvent }) {
               {isDraft
                 ? "Draft events are invisible everywhere — discovery, search, sitemap, feeds and calendar exports. Publishing requires exactly one main event on the card."
                 : "This event is live to the public."}
-            </div>
-          </Section>
-
-          <Section title="Card">
-            <div className="flex items-center justify-between px-3 py-2.5 text-sm">
-              <span className="text-fog">Bouts</span>
-              <span className="tabular-nums text-chalk">{v.boutCount}</span>
-            </div>
-            <div className="border-t border-ink-800 px-3 py-2 text-[0.7rem] text-fog">
-              The fight card editor lands in the next commit.
             </div>
           </Section>
 
