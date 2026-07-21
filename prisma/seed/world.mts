@@ -4,7 +4,7 @@ import { prisma } from "../../src/lib/db.ts";
 import { resolvePromotion } from "../../src/lib/promotions.ts";
 import { Rng, pastMoment, daysAgo } from "./rng.mts";
 import {
-  ARCHETYPES, NAMES, CITIES, GYMS, COMMENT_BANKS, TOPIC_BANK, FIGHTER_BANK, TOPIC_TITLES,
+  ARCHETYPES, NAMES, CITIES, GYMS, COMMENT_BANKS, BATTLE_BANK, TOPIC_BANK, FIGHTER_BANK, TOPIC_TITLES,
   type Persona,
 } from "./pools.mts";
 
@@ -113,7 +113,12 @@ async function buildUsers(rng: Rng, now: number): Promise<SeedUser[]> {
       used.add(handle);
       const city = rng.pick(CITIES[p.region]);
       const gym = rng.pick(GYMS);
-      const createdAt = pastMoment(rng, 180, now); // joined over the last ~6 months
+      // Joined over the last ~18 months. This MUST outrun the resolvable fight
+      // history: graded picks, settled battles and rivalries are only created for
+      // users who already existed on fight night, and the newest cards carrying
+      // real results are often a year old. A 6-month community produced a world
+      // with zero graded picks, zero resolved battles and zero rivalries.
+      const createdAt = pastMoment(rng, 540, now);
       const bio = p.tagline.replace("{gym}", gym).replace("{city}", city);
       rows.push({
         email: `${handle}${SEED_EMAIL_DOMAIN}`,
@@ -191,7 +196,14 @@ async function loadEvents(now: Date): Promise<{ upcoming: EventWithFights[]; rec
   const inc = { fights: { include: { red: true, blue: true }, orderBy: { orderOnCard: "asc" as const } } };
   const [upcoming, recent] = await Promise.all([
     prisma.event.findMany({ where: { date: { gte: now } }, include: inc, orderBy: { date: "asc" }, take: 5 }),
-    prisma.event.findMany({ where: { date: { lt: now } }, include: inc, orderBy: { date: "desc" }, take: 8 }),
+    // Only past cards whose results are actually IN. The newest scraped events
+    // often have no result rows yet; anchoring on them produced a world with no
+    // graded picks, no settled battles and no rivalry history — an empty reward
+    // layer. Requiring a decisive bout gives the demo real, resolved history.
+    prisma.event.findMany({
+      where: { date: { lt: now }, fights: { some: { result: "WIN", winnerId: { not: null } } } },
+      include: inc, orderBy: { date: "desc" }, take: 8,
+    }),
   ]);
   return { upcoming, recent };
 }
@@ -297,7 +309,7 @@ async function buildGradedHistory(rng: Rng, users: SeedUser[], recent: EventWith
       u.resolved++;
       picks.push({ userId: u.id, fightId: e.fight.id, corner, method: e.method, confidence: e.confidence, correct: e.correct, createdAt: pickedAt });
       analytics.push({ name: "prediction_made", userId: u.id, path: `/events/${e.ev.slug}`, ts: pickedAt });
-      const boutUrl = `/events/${e.ev.slug}#predictions`;
+      const boutUrl = `/events/${e.ev.slug}#fight-${e.fight.slug}`;
       if (e.correct) {
         u.correct++; u.streak++; u.bestStreak = Math.max(u.bestStreak, u.streak);
         const rep = pickReputation({ upsetFactor: upsetByFight.get(e.fight.id) ?? 0.5, confidence: e.confidence, streak: u.streak });
@@ -419,10 +431,123 @@ async function uniqueThreadSlug(title: string): Promise<string> {
   return slug;
 }
 
-// Event threads — reuse the app's if present, else provision one.
-async function buildDiscussion(rng: Rng, users: SeedUser[], events: EventWithFights[], now: number) {
-  const journalists = users.filter((u) => u.persona.registryRole === "media");
-  let threads = 0, posts = 0, reactions = 0;
+// ════════════════════════════════════════════════════════════════════════════
+//  Arenas — every fight is a room
+//
+//  Discussion is FIGHT-scoped, so the seed populates both layers of every bout:
+//    Layer 2  a public community room  (ForumThread.fightId)
+//    Layer 1  a private battle room    (ForumThread.battleId) per paired duel
+//
+//  Battles are paired off REAL seeded picks (opposite corners), settled against
+//  the real result on completed cards, and the head-to-head is written to
+//  Rivalry — so rematch history, streaks and records are all lived-in, not faked
+//  at read time. A tester never opens an empty arena.
+// ════════════════════════════════════════════════════════════════════════════
+
+const SYSTEM_EMAIL = "system@combatreviews.local";
+
+/** The account that owns auto-provisioned rooms — mirrors lib/community/rooms. */
+async function ensureSystemUser(): Promise<string> {
+  const u = await prisma.user.upsert({
+    where: { email: SYSTEM_EMAIL },
+    update: {},
+    create: { email: SYSTEM_EMAIL, name: "Combat Reviews", username: "combatreviews", registryRole: "media" },
+    select: { id: true },
+  });
+  return u.id;
+}
+
+/** Mirror of reputation.ts::battleReputation — the seed pays the SAME rates the
+ *  resolution engine does, so demo standings are not a divergent fake. */
+function battleReputation(o: { opponentAccuracy: number; winnerWasUnderdog: boolean; opponentConfidence: number | null }): number {
+  const acc = Math.max(0, Math.min(100, o.opponentAccuracy));
+  return 6 + Math.round((acc / 100) * 8) + (o.winnerWasUnderdog ? 5 : 0) + Math.max(0, (o.opponentConfidence ?? 3) - 3);
+}
+
+function fillBattle(t: string, mine: string, theirs: string, rng: Rng): string {
+  return t
+    .replace(/\{mine\}/g, mine).replace(/\{theirs\}/g, theirs)
+    .replace(/\{method\}/g, rng.pick(["KO", "submission", "decision", "TKO"]))
+    .replace(/\{round\}/g, String(rng.int(1, 5)));
+}
+
+interface RoomPost { authorId: string; content: string; createdAt: Date }
+
+/** A battle room is a two-person conversation — flat and chronological, not a
+ *  tree. One createMany + one counter update. */
+async function seedFlatRoom(threadId: string, rows: RoomPost[]): Promise<number> {
+  if (!rows.length) return 0;
+  await prisma.forumPost.createMany({ data: rows.map((r) => ({ threadId, ...r })) });
+  const lastPostAt = rows.reduce((a, b) => (a.createdAt > b.createdAt ? a : b)).createdAt;
+  // App contract (forum/repo::createPost): every post after the opener counts.
+  await prisma.forumThread.update({ where: { id: threadId }, data: { replyCount: rows.length, lastPostAt } });
+  return rows.length;
+}
+
+/** The community layer keeps its reply tree. Roots in bulk, then replies against
+ *  those roots, then reactions on a sample — four queries, not one per post. */
+async function seedThreadedRoom(
+  threadId: string, rows: RoomPost[], reactors: SeedUser[], rng: Rng,
+): Promise<{ posts: number; reactions: number }> {
+  if (!rows.length) return { posts: 0, reactions: 0 };
+  const rootCount = Math.max(1, Math.round(rows.length * 0.45));
+  const roots = rows.slice(0, rootCount);
+  const replies = rows.slice(rootCount);
+
+  await prisma.forumPost.createMany({ data: roots.map((r) => ({ threadId, ...r })) });
+  const rootIds = (await prisma.forumPost.findMany({
+    where: { threadId, parentId: null }, select: { id: true },
+  })).map((p) => p.id);
+
+  if (replies.length && rootIds.length) {
+    await prisma.forumPost.createMany({
+      data: replies.map((r) => ({ threadId, ...r, parentId: rng.pick(rootIds) })),
+    });
+  }
+
+  // Combat-native reactions on a slice of the room, using the app's own types.
+  let reactions = 0;
+  const reactable = rng.sample(rootIds, Math.min(rootIds.length, rng.int(1, 4)));
+  for (const postId of reactable) {
+    const who = rng.sample(reactors, rng.int(1, 5));
+    if (!who.length) continue;
+    await prisma.forumReaction.createMany({
+      data: who.map((u) => ({ postId, userId: u.id, type: rng.chance(0.85) ? "respect" : "disrespect" })),
+      skipDuplicates: true,
+    });
+    reactions += who.length;
+  }
+
+  const lastPostAt = rows.reduce((a, b) => (a.createdAt > b.createdAt ? a : b)).createdAt;
+  await prisma.forumThread.update({
+    where: { id: threadId },
+    data: { replyCount: rows.length, reactionCount: reactions, lastPostAt, views: rng.int(60, 1400) },
+  });
+  return { posts: rows.length, reactions };
+}
+
+type PickRow = { userId: string; corner: string; method: FightMethod | null; confidence: number | null };
+
+/** Running head-to-head for a canonical (userA < userB) pair. */
+interface RivalryAcc {
+  userAId: string; userBId: string; aWins: number; bWins: number; draws: number;
+  currentStreakUserId: string | null; currentStreak: number;
+  bestStreakUserId: string | null; bestStreak: number;
+  totalMessages: number; firstBattleAt: Date; lastBattleAt: Date;
+}
+
+async function buildArenas(rng: Rng, users: SeedUser[], events: EventWithFights[], now: number) {
+  const system = await ensureSystemUser();
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const rivalries = new Map<string, RivalryAcc>();
+  // Battle outcomes accumulate per user and are written in ONE pass at the end.
+  const tally = new Map<string, { wins: number; losses: number; draws: number; rep: number; streak: number; best: number }>();
+  const bump = (id: string) => {
+    let t = tally.get(id);
+    if (!t) { t = { wins: 0, losses: 0, draws: 0, rep: 0, streak: 0, best: 0 }; tally.set(id, t); }
+    return t;
+  };
+  let rooms = 0, battleCount = 0, battleMessages = 0, communityMessages = 0, reactions = 0;
 
   for (const ev of events) {
     if (!ev.fights.length) continue;
@@ -430,37 +555,200 @@ async function buildDiscussion(rng: Rng, users: SeedUser[], events: EventWithFig
     const catSlug = CATEGORY_FOR_SPORT[ev.sport as string] ?? "general";
     const category = await prisma.forumCategory.findUnique({ where: { slug: catSlug }, select: { id: true } });
     if (!category) continue;
-    const base = daysAgo(rng.int(6, 20), now);
 
-    let thread = await prisma.forumThread.findUnique({ where: { eventId: ev.id }, select: { id: true } });
-    if (!thread) {
-      const author = (journalists.length ? rng.pick(journalists) : rng.pick(users)).id;
-      const title = `${ev.name} — discussion`.slice(0, 155);
-      const slug = await uniqueThreadSlug(title);
-      thread = await prisma.forumThread.create({
-        data: {
-          slug, title, categoryId: category.id, authorId: author, kind: "discussion", eventId: ev.id,
-          createdAt: base, lastPostAt: base,
-          posts: { create: { authorId: author, content: `Predictions, live reactions and results for **${ev.name}**. Make your picks, back your read, and see who called it.`, createdAt: base } },
-        },
-        select: { id: true },
+    for (const f of ev.fights) {
+      const allPicks = await prisma.fightPick.findMany({
+        where: { fightId: f.id },
+        select: { userId: true, corner: true, method: true, confidence: true },
       });
-      threads++;
+      const picks = allPicks.filter((p) => byId.has(p.userId)) as PickRow[];
+      if (picks.length < 2) continue;
+
+      const base = daysAgo(rng.int(4, 18), now);
+      // Talk keeps running right up to the bell, and after it on a settled card.
+      const ceiling = completed ? Math.min(now, ev.date.getTime() + 4 * 3_600_000) : now;
+      const at = () => new Date(base.getTime() + Math.floor(rng.float() * Math.max(1, ceiling - base.getTime())));
+
+      // ── Layer 2: the public community room ──────────────────────────────
+      let room = await prisma.forumThread.findUnique({ where: { fightId: f.id }, select: { id: true } });
+      if (!room) {
+        room = await prisma.forumThread.create({
+          data: {
+            slug: `fight-${f.slug}`.slice(0, 90),
+            title: `${f.red.name} vs ${f.blue.name}`.slice(0, 155),
+            categoryId: category.id, authorId: system, kind: "discussion",
+            fightId: f.id, visibility: "public", createdAt: base, lastPostAt: base,
+            posts: { create: { authorId: system, content: `Everything on **${f.red.name} vs ${f.blue.name}** at ${ev.name} — reads, tape, tactics, trash talk. Make your pick, then defend it.`, createdAt: base } },
+          },
+          select: { id: true },
+        });
+        rooms++;
+      }
+
+      const speakers = rng.sample(picks.map((p) => byId.get(p.userId)!), rng.int(4, 11));
+      const crowdRows: RoomPost[] = speakers.flatMap((u) => {
+        const bank = COMMENT_BANKS[u.persona.tone];
+        return Array.from({ length: rng.int(1, 3) }, () => {
+          const postResult = completed && rng.chance(0.45);
+          const raw = postResult ? rng.pick(bank.postResult) : rng.chance(0.5) ? rng.pick(bank.opener) : rng.pick(bank.reply);
+          return { authorId: u.id, content: fill(raw, f, rng, ev.sport as string, u.gym), createdAt: at() };
+        });
+      }).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      const crowd = await seedThreadedRoom(room.id, crowdRows, speakers, rng);
+      communityMessages += crowd.posts;
+      reactions += crowd.reactions;
+
+      // ── Layer 1: private battle rooms, paired off real opposite picks ────
+      const reds = rng.shuffle(picks.filter((p) => p.corner === "RED"));
+      const blues = rng.shuffle(picks.filter((p) => p.corner === "BLUE"));
+      const won = winnerCorner(f);
+      const pairs = Math.min(reds.length, blues.length, completed ? 4 : 6);
+      // Underdog bonus uses the same crowd-minority rule as the resolution engine.
+      const winShare = won ? picks.filter((p) => p.corner === won).length / picks.length : 1;
+      const winnerWasUnderdog = !!won && winShare < 0.5;
+
+      for (let i = 0; i < pairs; i++) {
+        const r = reds[i], b = blues[i];
+        const challengerFirst = rng.chance(0.5);
+        const [ch, op] = challengerFirst ? [r, b] : [b, r];
+        const matchedAt = new Date(base.getTime() + rng.int(1, 240) * 60_000);
+
+        const battle = await prisma.battle.create({
+          data: {
+            fightId: f.id,
+            challengerId: ch.userId, challengerCorner: ch.corner, challengerMethod: ch.method, challengerConfidence: ch.confidence,
+            opponentId: op.userId, opponentCorner: op.corner, opponentMethod: op.method, opponentConfidence: op.confidence,
+            state: "ACTIVE", createdAt: base, matchedAt,
+          },
+          select: { id: true },
+        });
+        battleCount++;
+
+        const chUser = byId.get(ch.userId)!, opUser = byId.get(op.userId)!;
+        const nameFor = (p: PickRow) => (p.corner === "RED" ? f.red.name : f.blue.name);
+
+        // The talk itself.
+        const msgs: RoomPost[] = [];
+        const turns = rng.int(4, 14);
+        for (let k = 0; k < turns; k++) {
+          const speaker = k % 2 === 0 ? ch : op;
+          const u = speaker === ch ? chUser : opUser;
+          const other = speaker === ch ? op : ch;
+          const bank = BATTLE_BANK[u.persona.tone];
+          const raw = k === 0 ? rng.pick(bank.open) : rng.pick(bank.reply);
+          msgs.push({ authorId: u.id, content: fillBattle(raw, nameFor(speaker), nameFor(other), rng), createdAt: at() });
+        }
+        msgs.sort((a, b2) => a.createdAt.getTime() - b2.createdAt.getTime());
+
+        // Settle it — the fight is the referee.
+        let winnerId: string | null = null, loserId: string | null = null;
+        if (completed) {
+          if (won) {
+            const chWon = ch.corner === won;
+            winnerId = chWon ? ch.userId : op.userId;
+            loserId = chWon ? op.userId : ch.userId;
+          }
+          const winnerUser = winnerId ? byId.get(winnerId)! : null;
+          const loserUser = loserId ? byId.get(loserId)! : null;
+          if (winnerUser && loserUser) {
+            const wBank = BATTLE_BANK[winnerUser.persona.tone];
+            const lBank = BATTLE_BANK[loserUser.persona.tone];
+            const wPick = winnerId === ch.userId ? ch : op;
+            const lPick = loserId === ch.userId ? ch : op;
+            const settledAt = new Date(Math.min(now, ev.date.getTime() + rng.int(20, 200) * 60_000));
+            msgs.push({ authorId: winnerId!, content: fillBattle(rng.pick(wBank.win), nameFor(wPick), nameFor(lPick), rng), createdAt: settledAt });
+            msgs.push({ authorId: loserId!, content: fillBattle(rng.pick(lBank.loss), nameFor(lPick), nameFor(wPick), rng), createdAt: new Date(settledAt.getTime() + rng.int(2, 90) * 60_000) });
+
+            const accuracy = loserUser.resolved > 0 ? (loserUser.correct / loserUser.resolved) * 100 : 50;
+            const bonus = battleReputation({ opponentAccuracy: accuracy, winnerWasUnderdog, opponentConfidence: lPick.confidence });
+            const w = bump(winnerId!), l = bump(loserId!);
+            w.wins++; w.rep += bonus; w.streak++; w.best = Math.max(w.best, w.streak);
+            l.losses++; l.rep -= 3; l.streak = 0;
+          } else {
+            bump(ch.userId).draws++; bump(op.userId).draws++;
+          }
+          await prisma.battle.update({
+            where: { id: battle.id },
+            data: { state: "RESOLVED", winnerId, loserId, resolvedSource: "fight_result", resolvedAt: new Date(Math.min(now, ev.date.getTime() + 3_600_000)) },
+          });
+
+          // Head-to-head, accumulated canonically (userA < userB).
+          const [x, y] = ch.userId < op.userId ? [ch.userId, op.userId] : [op.userId, ch.userId];
+          const key = `${x}|${y}`;
+          const acc = rivalries.get(key) ?? {
+            userAId: x, userBId: y, aWins: 0, bWins: 0, draws: 0,
+            currentStreakUserId: null, currentStreak: 0, bestStreakUserId: null, bestStreak: 0,
+            totalMessages: 0, firstBattleAt: base, lastBattleAt: base,
+          };
+          if (!winnerId) acc.draws++;
+          else if (winnerId === x) acc.aWins++;
+          else acc.bWins++;
+          acc.currentStreak = !winnerId ? 0 : acc.currentStreakUserId === winnerId ? acc.currentStreak + 1 : 1;
+          acc.currentStreakUserId = winnerId;
+          if (acc.currentStreak > acc.bestStreak) { acc.bestStreak = acc.currentStreak; acc.bestStreakUserId = winnerId; }
+          acc.totalMessages += msgs.length;
+          if (base < acc.firstBattleAt) acc.firstBattleAt = base;
+          if (ev.date > acc.lastBattleAt) acc.lastBattleAt = ev.date < new Date(now) ? ev.date : acc.lastBattleAt;
+          rivalries.set(key, acc);
+        }
+
+        // The room itself.
+        const bRoom = await prisma.forumThread.create({
+          data: {
+            slug: `battle-${battle.id}`,
+            title: `Battle · ${chUser.name} vs ${opUser.name} · ${f.red.name}–${f.blue.name}`.slice(0, 155),
+            categoryId: category.id, authorId: system, kind: "discussion",
+            battleId: battle.id, visibility: "battle", createdAt: base, lastPostAt: base,
+            posts: { create: { authorId: system, content: `You two called it differently. ${f.red.name} vs ${f.blue.name} settles it — no moderators, no votes, just the result.`, createdAt: base } },
+          },
+          select: { id: true },
+        });
+        rooms++;
+        battleMessages += await seedFlatRoom(bRoom.id, msgs);
+        await prisma.battle.update({ where: { id: battle.id }, data: { messageCount: msgs.length } });
+      }
+
+      // A couple of unmatched challengers, so "waiting for an opponent" is a real
+      // state a tester can walk into rather than a theoretical one.
+      if (!completed) {
+        const lonely = (reds.length > blues.length ? reds : blues).slice(pairs, pairs + rng.int(0, 2));
+        for (const p of lonely) {
+          await prisma.battle.create({
+            data: {
+              fightId: f.id, challengerId: p.userId, challengerCorner: p.corner,
+              challengerMethod: p.method, challengerConfidence: p.confidence,
+              state: "WAITING", createdAt: base,
+            },
+          });
+          battleCount++;
+        }
+      }
     }
-
-    const participants = rng.sample(users, rng.int(6, Math.min(14, users.length)));
-    const contentFor: ContentFor = (author, isReply, isPostResult) => {
-      const bank = COMMENT_BANKS[author.persona.tone];
-      const raw = isPostResult ? rng.pick(bank.postResult) : isReply ? rng.pick(bank.reply) : rng.pick(bank.opener);
-      return fill(raw, rng.pick(ev.fights), rng, ev.sport as string, author.gym);
-    };
-    const r = await seedThread(thread.id, participants, rng.int(8, 22), now, completed, base, contentFor, rng);
-    posts += r.posts; reactions += r.reactions;
-
-    const activityAuthor = journalists.length ? rng.pick(journalists) : rng.pick(users);
-    await prisma.activity.create({ data: { userId: activityAuthor.id, type: "THREAD_CREATED" as ActivityType, title: `Started the discussion on ${ev.name}`, url: `/events/${ev.slug}#discussion`, createdAt: base } });
   }
-  return { threads, posts, reactions };
+
+  // ── One write pass for standings + head-to-head ───────────────────────────
+  if (rivalries.size) {
+    await prisma.rivalry.createMany({ data: [...rivalries.values()], skipDuplicates: true });
+  }
+  for (const [userId, t] of tally) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        battleWins: { increment: t.wins }, battleLosses: { increment: t.losses }, battleDraws: { increment: t.draws },
+        battleStreak: t.streak, bestBattleStreak: t.best,
+        reputation: { increment: t.rep },
+      },
+    });
+  }
+  if (tally.size) {
+    await prisma.reputationEvent.createMany({
+      data: [...tally.entries()].filter(([, t]) => t.rep !== 0).map(([userId, t]) => ({
+        userId, delta: t.rep, reason: t.rep > 0 ? "battle_win" : "battle_loss", refType: "battle",
+      })),
+    });
+  }
+
+  return { rooms, battles: battleCount, battleMessages, communityMessages, reactions, rivalries: rivalries.size };
 }
 
 const SLUG_SPORT: Record<string, string> = {
@@ -619,9 +907,10 @@ export async function generateWorld(): Promise<Record<string, number>> {
   const openPicks = await buildOpenPicks(rng, users, upcoming, now);
   const graded = await buildGradedHistory(rng, users, recent);
 
-  // Populate every discussion surface — event, category, fighter and promotion
-  // threads — so a tester never lands on an empty conversation.
-  const evT = await buildDiscussion(rng, users, [...upcoming, ...recent], now);
+  // Populate every discussion surface. The ARENAS come first and matter most:
+  // discussion is fight-scoped now, so every bout gets a populated community
+  // room and a set of settled/live battle rooms with real head-to-head history.
+  const arenas = await buildArenas(rng, users, [...upcoming, ...recent], now);
   const topicT = await buildTopicThreads(rng, users, now);
   const fighterT = await buildFighterThreads(rng, users, now);
   const promoT = await buildPromotionThreads(rng, users, now);
@@ -635,8 +924,12 @@ export async function generateWorld(): Promise<Record<string, number>> {
     openPicks,
     gradedPicks: graded.graded,
     cards: graded.cards,
-    threads: evT.threads + topicT.threads + fighterT.threads + promoT.threads,
-    posts: evT.posts + topicT.posts + fighterT.posts + promoT.posts,
-    reactions: evT.reactions + topicT.reactions + fighterT.reactions + promoT.reactions,
+    rooms: arenas.rooms,
+    battles: arenas.battles,
+    battleMessages: arenas.battleMessages,
+    rivalries: arenas.rivalries,
+    threads: topicT.threads + fighterT.threads + promoT.threads,
+    posts: arenas.communityMessages + arenas.battleMessages + topicT.posts + fighterT.posts + promoT.posts,
+    reactions: arenas.reactions + topicT.reactions + fighterT.reactions + promoT.reactions,
   };
 }

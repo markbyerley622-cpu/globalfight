@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma, FightMethod } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
@@ -35,29 +35,146 @@ export async function pairBattle(userId: string, fightId: string): Promise<void>
   if (!pick || !isCorner(pick.corner)) return;
   const corner = pick.corner;
 
-  await prisma.$transaction(async (tx) => {
+  const matched = await prisma.$transaction(async (tx) => {
     const mine = await tx.battle.findFirst({
       where: { fightId, state: { in: ["WAITING", "ACTIVE"] }, OR: [{ challengerId: userId }, { opponentId: userId }] },
       select: { id: true },
     });
-    if (mine) return; // already battling here
+    if (mine) return null; // already battling here
 
     const open = await tx.battle.findFirst({
       where: { fightId, state: "WAITING", opponentId: null, challengerCorner: opposite(corner), challengerId: { not: userId } },
       orderBy: { createdAt: "asc" },
-      select: { id: true },
+      select: { id: true, challengerId: true },
     });
     if (open) {
       const joined = await tx.battle.updateMany({
         where: { id: open.id, state: "WAITING", opponentId: null }, // guard against a concurrent join
         data: { opponentId: userId, opponentCorner: corner, opponentMethod: pick.method, opponentConfidence: pick.confidence, state: "ACTIVE", matchedAt: new Date() },
       });
-      if (joined.count > 0) return;
+      if (joined.count > 0) return { battleId: open.id, a: open.challengerId, b: userId };
     }
     await tx.battle.create({
       data: { fightId, challengerId: userId, challengerCorner: corner, challengerMethod: pick.method, challengerConfidence: pick.confidence },
     });
+    return null;
   });
+
+  if (matched) await announceMatch(fightId, matched.a, matched.b);
+}
+
+// ── "Opponent joined" — the moment the room goes live ────────────────────────
+/** Tell both sides a battle just matched. Best-effort: a notification failure
+ *  must never undo a pairing that already committed. */
+async function announceMatch(fightId: string, aId: string, bId: string): Promise<void> {
+  try {
+    const f = await prisma.fight.findUnique({
+      where: { id: fightId },
+      select: { slug: true, red: { select: { name: true } }, blue: { select: { name: true } }, event: { select: { slug: true } } },
+    });
+    const url = f?.event ? `/events/${f.event.slug}#fight-${f.slug}` : "/";
+    const bout = f ? `${f.red.name} vs ${f.blue.name}` : "this bout";
+    const users = await prisma.user.findMany({ where: { id: { in: [aId, bId] } }, select: { id: true, name: true, username: true } });
+    const nameOf = (id: string) => {
+      const u = users.find((x) => x.id === id);
+      return u?.name ?? u?.username ?? "Someone";
+    };
+    for (const [me, them] of [[aId, bId], [bId, aId]] as const) {
+      await notify(prisma, me, {
+        type: "BATTLE_MATCHED",
+        title: `${nameOf(them)} took the other side`,
+        body: `${bout} settles it. Your battle room is open.`,
+        url, icon: "⚔️",
+      });
+    }
+  } catch { /* non-fatal */ }
+}
+
+// ── Spectator → challenger ───────────────────────────────────────────────────
+/**
+ * Convert a community-room spectator into a battle. Both sides must already have
+ * OPPOSITE picks on the bout — the prediction is what creates the right to argue,
+ * so there is no "challenge" without a call on the line. Joins the target's open
+ * battle (or the challenger's) where one exists rather than opening a duplicate.
+ */
+export async function challengeUser(
+  challengerId: string,
+  fightId: string,
+  targetId: string,
+): Promise<{ battleId: string } | { error: string }> {
+  if (challengerId === targetId) return { error: "You can't battle yourself." };
+  const [mine, theirs] = await Promise.all([
+    prisma.fightPick.findUnique({ where: { userId_fightId: { userId: challengerId, fightId } }, select: { corner: true, method: true, confidence: true } }),
+    prisma.fightPick.findUnique({ where: { userId_fightId: { userId: targetId, fightId } }, select: { corner: true, method: true, confidence: true } }),
+  ]);
+  if (!mine || !isCorner(mine.corner)) return { error: "Make your pick first — that's what you'd be defending." };
+  if (!theirs || !isCorner(theirs.corner)) return { error: "They haven't picked this bout yet." };
+  if (mine.corner === theirs.corner) return { error: "You both picked the same corner — nothing to settle." };
+
+  type ChallengeResult = { battleId: string; matched: boolean } | { error: string };
+  const result = await prisma.$transaction(async (tx): Promise<ChallengeResult> => {
+    // Already paired with each other? Reuse it.
+    const existing = await tx.battle.findFirst({
+      where: {
+        fightId, state: { in: ["WAITING", "ACTIVE"] },
+        OR: [
+          { challengerId, opponentId: targetId },
+          { challengerId: targetId, opponentId: challengerId },
+        ],
+      },
+      select: { id: true },
+    });
+    if (existing) return { battleId: existing.id, matched: false };
+
+    // Either side already locked into someone else on this bout? One open battle
+    // per user per fight keeps a rivalry meaningful.
+    const blocking = await tx.battle.findFirst({
+      where: {
+        fightId, state: "ACTIVE",
+        OR: [
+          { challengerId }, { opponentId: challengerId },
+          { challengerId: targetId }, { opponentId: targetId },
+        ],
+      },
+      select: { challengerId: true, opponentId: true },
+    });
+    if (blocking) {
+      const mineBlocked = blocking.challengerId === challengerId || blocking.opponentId === challengerId;
+      return { error: mineBlocked ? "You're already in a battle on this bout." : "They're already battling someone here." };
+    }
+
+    // Join their waiting battle if they have one; else open one and pull them in.
+    const waiting = await tx.battle.findFirst({
+      where: { fightId, state: "WAITING", opponentId: null, challengerId: targetId },
+      select: { id: true },
+    });
+    if (waiting) {
+      const joined = await tx.battle.updateMany({
+        where: { id: waiting.id, state: "WAITING", opponentId: null },
+        data: { opponentId: challengerId, opponentCorner: mine.corner, opponentMethod: mine.method, opponentConfidence: mine.confidence, state: "ACTIVE", matchedAt: new Date() },
+      });
+      if (joined.count > 0) return { battleId: waiting.id, matched: true };
+    }
+    // Retire my own dangling WAITING battle so I don't hold two slots.
+    await tx.battle.updateMany({
+      where: { fightId, challengerId, state: "WAITING", opponentId: null },
+      data: { state: "CANCELLED", resolvedAt: new Date() },
+    });
+    const created = await tx.battle.create({
+      data: {
+        fightId,
+        challengerId, challengerCorner: mine.corner, challengerMethod: mine.method, challengerConfidence: mine.confidence,
+        opponentId: targetId, opponentCorner: theirs.corner, opponentMethod: theirs.method, opponentConfidence: theirs.confidence,
+        state: "ACTIVE", matchedAt: new Date(),
+      },
+      select: { id: true },
+    });
+    return { battleId: created.id, matched: true };
+  });
+
+  if ("error" in result) return { error: result.error };
+  if (result.matched) await announceMatch(fightId, challengerId, targetId);
+  return { battleId: result.battleId };
 }
 
 // ── Rivalry (persisted head-to-head, canonical pair userA<userB) ──────────────
@@ -122,7 +239,9 @@ export async function resolveFightBattles(fightId: string, winnerCorner: Corner 
   }
 
   const f = await prisma.fight.findUnique({ where: { id: fightId }, select: { slug: true, event: { select: { slug: true } } } });
-  const boutUrl = f?.event ? `/events/${f.event.slug}#predictions` : `/predictions/${f?.slug ?? ""}`;
+  // Deep-link straight into the bout's arena — the battle lives on the fight,
+  // not on a page-wide discussion anchor.
+  const boutUrl = f?.event ? `/events/${f.event.slug}#fight-${f.slug}` : `/predictions/${f?.slug ?? ""}`;
 
   let resolved = 0;
   for (const b of battles) {
@@ -188,69 +307,3 @@ export async function resolveFightBattles(fightId: string, winnerCorner: Corner 
   return { resolved };
 }
 
-// ── Read side (for the Battle card on the fight) ──────────────────────────────
-export interface BattleOpponent {
-  username: string | null;
-  name: string | null;
-  image: string | null;
-  corner: string | null;
-  method: FightMethod | null;
-  confidence: number | null;
-}
-export interface FightBattle {
-  state: "WAITING" | "ACTIVE";
-  opponent: BattleOpponent | null; // null while still waiting for a match
-  record: { you: number; them: number } | null; // viewer's head-to-head vs this opponent
-}
-
-/**
- * The viewer's OPEN battle on each of the given bouts, with the opponent + the
- * head-to-head record. One battle query + one rivalry query (no N+1). Degrades to
- * an empty map if the Battle tables aren't migrated yet, so the page never breaks.
- */
-export async function getBattlesForFights(viewerId: string, fightIds: string[]): Promise<Map<string, FightBattle>> {
-  const out = new Map<string, FightBattle>();
-  if (!fightIds.length) return out;
-  try {
-    const [battles, rivalries] = await Promise.all([
-      prisma.battle.findMany({
-        where: { fightId: { in: fightIds }, state: { in: ["WAITING", "ACTIVE"] }, OR: [{ challengerId: viewerId }, { opponentId: viewerId }] },
-        select: {
-          fightId: true, state: true, challengerId: true, opponentId: true,
-          challengerCorner: true, challengerMethod: true, challengerConfidence: true,
-          opponentCorner: true, opponentMethod: true, opponentConfidence: true,
-          challenger: { select: { username: true, name: true, image: true } },
-          opponent: { select: { username: true, name: true, image: true } },
-        },
-      }),
-      prisma.rivalry.findMany({ where: { OR: [{ userAId: viewerId }, { userBId: viewerId }] } }),
-    ]);
-
-    const recordByOther = new Map<string, { you: number; them: number }>();
-    for (const r of rivalries) {
-      const other = r.userAId === viewerId ? r.userBId : r.userAId;
-      recordByOther.set(other, r.userAId === viewerId ? { you: r.aWins, them: r.bWins } : { you: r.bWins, them: r.aWins });
-    }
-
-    for (const b of battles) {
-      const iAmChallenger = b.challengerId === viewerId;
-      const oppUser = iAmChallenger ? b.opponent : b.challenger;
-      const oppId = iAmChallenger ? b.opponentId : b.challengerId;
-      out.set(b.fightId, {
-        state: b.state as "WAITING" | "ACTIVE",
-        opponent: oppUser
-          ? {
-              username: oppUser.username, name: oppUser.name, image: oppUser.image,
-              corner: iAmChallenger ? b.opponentCorner : b.challengerCorner,
-              method: iAmChallenger ? b.opponentMethod : b.challengerMethod,
-              confidence: iAmChallenger ? b.opponentConfidence : b.challengerConfidence,
-            }
-          : null,
-        record: oppId ? recordByOther.get(oppId) ?? null : null,
-      });
-    }
-  } catch {
-    /* Battle tables not migrated yet — no battle cards, page still renders. */
-  }
-  return out;
-}

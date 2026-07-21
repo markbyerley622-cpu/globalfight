@@ -291,3 +291,97 @@ export const FIGHTER_BANK = {
     "Give {subject} a title shot already, we've waited long enough.",
   ],
 };
+
+// ── Battle Rooms ────────────────────────────────────────────────────────────
+// Head-to-head trash talk for a PRIVATE battle room: two people who called the
+// same bout differently. Slots: {mine} = the fighter the speaker backed,
+// {theirs} = the fighter their rival backed, {method}, {round}.
+// `open` starts the room, `reply` answers the rival, `win`/`loss` land after
+// the fight has settled it.
+export const BATTLE_BANK: Record<Tone, { open: string[]; reply: string[]; win: string[]; loss: string[] }> = {
+  casual: {
+    open: [
+      "so you're really taking {theirs}? bold 😅 {mine} all day.",
+      "alright let's settle it. {mine}, {method}. see you after.",
+      "no chance {theirs} gets through this. locking {mine} in.",
+      "respect for picking {theirs} but you're wrong lol",
+    ],
+    reply: [
+      "we'll see who's laughing on the night",
+      "you're gonna feel silly when {mine} finishes it",
+      "nah I'm not changing it, {mine} wins comfortable",
+      "screenshot this convo, I want it after {method}",
+      "fair point but I still can't back {theirs}",
+    ],
+    win: ["called it 😤 {mine} exactly like I said", "easy money. rematch next card?", "told you {theirs} wasn't it"],
+    loss: ["ok you got me, fair play 🤝", "how did {theirs} pull that off man", "running it back next card, don't get comfortable"],
+  },
+  technical: {
+    open: [
+      "{theirs} has no answer for the jab-to-body sequence. {mine} by {method}.",
+      "Taking {mine}. The footwork alone decides where this fight happens.",
+      "Your guy's takedown defence is the whole fight. {mine}, round {round}.",
+      "{theirs} fades after round 2 every single time. {mine} late.",
+    ],
+    reply: [
+      "That's a fair read but you're ignoring the reach differential.",
+      "Show me one round where {theirs} controlled the centre. I'll wait.",
+      "Cardio is the tell here, not power. {mine} in the championship rounds.",
+      "You're scouting the highlight reel, not the tape.",
+      "Even if that happens, {mine} adjusts by the second round.",
+    ],
+    win: ["Exactly the sequence I called. {mine}, {method}.", "The tape doesn't lie. Good battle though.", "Round {round}, like I said. Run it back."],
+    loss: ["Credit where it's due — {theirs} solved a problem I didn't think they could.", "I read that wrong. Good call.", "Take the win. I'll get you on the next one."],
+  },
+  analyst: {
+    open: [
+      "Numbers say {mine}: better output, better defence, better opposition. {method}.",
+      "You're taking a value play on {theirs}, I get it. I still think {mine} by {method}.",
+      "Public is on {theirs}. That's exactly why {mine} is the pick.",
+      "{mine} wins 7 out of 10 versions of this fight. Round {round} if it ends early.",
+    ],
+    reply: [
+      "Sample size on that {theirs} argument is three fights. Be careful.",
+      "Fine, but the strength of schedule gap is enormous.",
+      "I'd take your side at a bigger price. Not at this one.",
+      "Genuinely a good argument. Still not moving off {mine}.",
+      "The finishing rate tells the whole story here.",
+    ],
+    win: ["{mine}, {method}. The model held.", "Good battle — you argued it better than most.", "That's the streak extended. Rematch whenever."],
+    loss: ["Variance, or I was just wrong. Probably both.", "Your read on {theirs} was sharper than mine. Respect.", "Logging that one. I'll adjust."],
+  },
+  hype: {
+    open: [
+      "{mine} IS GOING TO SLEEP {theirs} 😤 book it",
+      "you actually picked {theirs}?? bro 💀 {mine} {method} round {round}",
+      "I've never been more sure of anything. {mine}. ALL IN.",
+      "{theirs} fans in shambles by round {round} 🔥",
+    ],
+    reply: [
+      "keep talking, keep talking 🍿",
+      "THIS IS THE ENERGY I WANTED. see you after {method} 😂",
+      "you're gonna delete these messages",
+      "nah nah nah you're not ready for what {mine} is about to do",
+      "remind me to come back to this one",
+    ],
+    win: ["I TOLD YOU 🗣️🗣️🗣️ {mine} {method}", "unreal scenes. rematch, right now.", "never doubted it for a second 😤"],
+    loss: ["I'm sick 😭 congrats though, genuinely", "{theirs} cooked. I'll take that one on the chin.", "RUN IT BACK. next card. I'm not done."],
+  },
+  trashtalk: {
+    open: [
+      "{theirs}? seriously? this is free reputation for me. {mine} {method}.",
+      "hope you didn't put confidence stars on {theirs} 💀",
+      "picking {mine} and I'll be back here on the night to remind you.",
+      "you're about to donate rep to me. {mine}, round {round}.",
+    ],
+    reply: [
+      "cope harder",
+      "the confidence on someone backing {theirs} is wild",
+      "I'll accept the apology after {method}",
+      "you say that now",
+      "this is the last time you pick against me, promise",
+    ],
+    win: ["as promised 🎤 {mine}, {method}. pay up.", "another one. you're 0 for however many now.", "and STILL. rematch whenever you're ready."],
+    loss: ["yeah yeah you got one. enjoy it.", "{theirs} got lucky and you know it.", "next card. same time. I'm collecting."],
+  },
+};

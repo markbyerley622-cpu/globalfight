@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PlayCircle, Crown } from "lucide-react";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
@@ -12,7 +11,11 @@ import { ProbabilityBar } from "@/components/probability-bar";
  * the event page and the schedule so every combat sport reads identically.
  * Red corner · VS · Blue corner, with a meta strip (slot, division, rounds) and
  * a lifecycle-aware footer: win probability before the fight, a rich result
- * (method · round · time) and a highlights link after it. Subtle hover lift.
+ * (method · round · time) and a highlights link after it.
+ *
+ * The row does NOT link anywhere: it is the masthead of the bout's own module
+ * (see components/fight/fight-module), and the arena it used to link to is the
+ * block directly beneath it.
  */
 export function FightRow({
   fight,
@@ -31,14 +34,10 @@ export function FightRow({
   const redP = market?.redP ?? fight.prediction?.redProbability;
 
   return (
-    <div
-      className={`card-surface overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-blood-500/40 hover:shadow-[0_10px_40px_-16px_rgba(225,29,42,0.45)] ${
-        fight.titleFight ? "ring-1 ring-gold-500/30" : ""
-      }`}
-    >
+    <div className={`card-surface overflow-hidden ${fight.titleFight ? "ring-1 ring-gold-500/30" : ""}`}>
       {/* Championship bar — title fights read as premium without breaking layout. */}
       {fight.titleFight && <div className="h-0.5 bg-gradient-to-r from-gold-500/60 via-gold-400 to-gold-500/60" />}
-      <Link href={`/predictions/${fight.slug}`} className="group block">
+      <div className="block">
         {/* Meta strip */}
         <div className="flex items-center justify-between gap-2 border-b border-ink-700/70 px-4 py-2 text-[11px]">
           <div className="flex min-w-0 items-center gap-2">
@@ -94,9 +93,9 @@ export function FightRow({
             )}
           </div>
         )}
-      </Link>
+      </div>
 
-      {/* Post-fight: highlights link (sibling, not nested inside the row link) */}
+      {/* Post-fight: highlights link */}
       {done && (
         <a
           href={highlightsUrl(fight)}

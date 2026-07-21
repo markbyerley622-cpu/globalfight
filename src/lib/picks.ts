@@ -126,45 +126,9 @@ export async function getMyPicksForFightIds(
   return out;
 }
 
-/** An opponent — someone who picked the OTHER corner on a bout. The raw material
- *  for Prediction Battles: every pick creates a natural adversary. */
-export interface Opponent {
-  username: string | null;
-  name: string | null;
-  image: string | null;
-  method: PickMethod | null;
-  confidence: number | null;
-}
-
-/**
- * For each bout the viewer has picked, find users who picked the OPPOSITE corner —
- * candidate opponents to debate. Async pairing off existing picks (seed users
- * included), so there is always someone who disagrees without live matchmaking.
- */
-export async function getOpponentsForFights(
-  viewerPicks: Map<string, MyPick>,
-  viewerId: string,
-  limitPer = 5,
-): Promise<Map<string, Opponent[]>> {
-  const out = new Map<string, Opponent[]>();
-  await Promise.all(
-    [...viewerPicks.entries()].map(async ([fightId, mine]) => {
-      const rows = await prisma.fightPick.findMany({
-        where: { fightId, corner: mine.corner === "RED" ? "BLUE" : "RED", userId: { not: viewerId } },
-        select: { method: true, confidence: true, user: { select: { username: true, name: true, image: true } } },
-        orderBy: { updatedAt: "desc" },
-        take: limitPer,
-      });
-      if (rows.length) {
-        out.set(
-          fightId,
-          rows.map((r) => ({ username: r.user.username, name: r.user.name, image: r.user.image, method: asMethod(r.method), confidence: r.confidence })),
-        );
-      }
-    }),
-  );
-  return out;
-}
+// NOTE: getOpponentsForFights (the "someone disagrees" teaser) is gone. Finding
+// an adversary is no longer a per-card suggestion — pairing is the Battle domain
+// (lib/battles.ts::pairBattle) and the adversary lives in the bout's Battle Room.
 
 /** Crowd reads for many fights at once (by fight id) — for cards/lists. */
 export async function getCrowdForFightIds(fightIds: string[]): Promise<Map<string, CrowdRead>> {

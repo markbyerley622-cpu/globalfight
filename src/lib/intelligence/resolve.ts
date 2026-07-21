@@ -59,9 +59,10 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   const decisive = corner !== null; // draw / no-contest ⇒ picks voided, no payout
   const winnerFighterId = corner === "RED" ? fight.redId : corner === "BLUE" ? fight.blueId : null;
   const winnerName = corner === "RED" ? fight.red.name : corner === "BLUE" ? fight.blue.name : null;
-  // Deep-link the reward straight to the fused event page (predictions section),
-  // falling back to the bout redirect for the rare orphan fight with no event.
-  const boutUrl = fight.event ? `/events/${fight.event.slug}#predictions` : `/predictions/${fight.slug}`;
+  // Deep-link the reward straight into THIS bout's arena on the event page (the
+  // module opens itself on a #fight-<slug> hash), falling back to the bout
+  // redirect for the rare orphan fight with no event.
+  const boutUrl = fight.event ? `/events/${fight.event.slug}#fight-${fight.slug}` : `/predictions/${fight.slug}`;
   const rarity = rarityForFight(fight);
 
   // Upset factor = the share of the crowd that got this bout WRONG, read from the
