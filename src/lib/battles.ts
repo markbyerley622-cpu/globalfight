@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
@@ -186,4 +186,71 @@ export async function resolveFightBattles(fightId: string, winnerCorner: Corner 
     });
   }
   return { resolved };
+}
+
+// ── Read side (for the Battle card on the fight) ──────────────────────────────
+export interface BattleOpponent {
+  username: string | null;
+  name: string | null;
+  image: string | null;
+  corner: string | null;
+  method: FightMethod | null;
+  confidence: number | null;
+}
+export interface FightBattle {
+  state: "WAITING" | "ACTIVE";
+  opponent: BattleOpponent | null; // null while still waiting for a match
+  record: { you: number; them: number } | null; // viewer's head-to-head vs this opponent
+}
+
+/**
+ * The viewer's OPEN battle on each of the given bouts, with the opponent + the
+ * head-to-head record. One battle query + one rivalry query (no N+1). Degrades to
+ * an empty map if the Battle tables aren't migrated yet, so the page never breaks.
+ */
+export async function getBattlesForFights(viewerId: string, fightIds: string[]): Promise<Map<string, FightBattle>> {
+  const out = new Map<string, FightBattle>();
+  if (!fightIds.length) return out;
+  try {
+    const [battles, rivalries] = await Promise.all([
+      prisma.battle.findMany({
+        where: { fightId: { in: fightIds }, state: { in: ["WAITING", "ACTIVE"] }, OR: [{ challengerId: viewerId }, { opponentId: viewerId }] },
+        select: {
+          fightId: true, state: true, challengerId: true, opponentId: true,
+          challengerCorner: true, challengerMethod: true, challengerConfidence: true,
+          opponentCorner: true, opponentMethod: true, opponentConfidence: true,
+          challenger: { select: { username: true, name: true, image: true } },
+          opponent: { select: { username: true, name: true, image: true } },
+        },
+      }),
+      prisma.rivalry.findMany({ where: { OR: [{ userAId: viewerId }, { userBId: viewerId }] } }),
+    ]);
+
+    const recordByOther = new Map<string, { you: number; them: number }>();
+    for (const r of rivalries) {
+      const other = r.userAId === viewerId ? r.userBId : r.userAId;
+      recordByOther.set(other, r.userAId === viewerId ? { you: r.aWins, them: r.bWins } : { you: r.bWins, them: r.aWins });
+    }
+
+    for (const b of battles) {
+      const iAmChallenger = b.challengerId === viewerId;
+      const oppUser = iAmChallenger ? b.opponent : b.challenger;
+      const oppId = iAmChallenger ? b.opponentId : b.challengerId;
+      out.set(b.fightId, {
+        state: b.state as "WAITING" | "ACTIVE",
+        opponent: oppUser
+          ? {
+              username: oppUser.username, name: oppUser.name, image: oppUser.image,
+              corner: iAmChallenger ? b.opponentCorner : b.challengerCorner,
+              method: iAmChallenger ? b.opponentMethod : b.challengerMethod,
+              confidence: iAmChallenger ? b.opponentConfidence : b.challengerConfidence,
+            }
+          : null,
+        record: oppId ? recordByOther.get(oppId) ?? null : null,
+      });
+    }
+  } catch {
+    /* Battle tables not migrated yet — no battle cards, page still renders. */
+  }
+  return out;
 }

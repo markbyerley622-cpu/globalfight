@@ -14,6 +14,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isFollowingPromotion } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
 import { getCrowdForFightIds, getMyPicksForFightIds, getOpponentsForFights, type CrowdRead, type MyPick, type Opponent } from "@/lib/picks";
+import { getBattlesForFights, type FightBattle } from "@/lib/battles";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
 import { EventDiscussion } from "@/components/event/event-discussion";
@@ -24,6 +25,7 @@ import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { FightOpponents } from "@/components/predictions/fight-opponents";
+import { BattleCard } from "@/components/predictions/battle-card";
 import { WhenVisible } from "@/components/when-visible";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -79,10 +81,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     getCrowdForFightIds(fightIds),
     viewer ? getMyPicksForFightIds(viewer.id, fightIds) : Promise.resolve(new Map<string, MyPick>()),
   ]);
-  // Prediction Battles: for the bouts the viewer has picked, who took the other side.
-  const opponentsByFightId = viewer
-    ? await getOpponentsForFights(myPicksByFightId, viewer.id)
-    : new Map<string, Opponent[]>();
+  // Prediction Battles: the viewer's active battle per bout (with opponent + record),
+  // and — as a pre-migration fallback — who simply took the other side.
+  const [battlesByFightId, opponentsByFightId] = viewer
+    ? await Promise.all([
+        getBattlesForFights(viewer.id, fightIds),
+        getOpponentsForFights(myPicksByFightId, viewer.id),
+      ])
+    : [new Map<string, FightBattle>(), new Map<string, Opponent[]>()];
 
   // Result reveal — only on a completed event, only for a viewer who made picks.
   const isCompleted = event.status === "COMPLETED";
@@ -131,6 +137,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               myPick={myPicksByFightId.get(f.id) ?? null}
               market={marketBySlug.get(f.slug) ?? null}
               opponents={opponentsByFightId.get(f.id) ?? []}
+              battle={battlesByFightId.get(f.id) ?? null}
             />
           ))}
         </div>
@@ -204,9 +211,10 @@ function ScrollSection({
  * crowd-pick control (BoutPick — same component and backend as /predictions); a
  * decided bout collapses to its outcome and how the crowd called it.
  */
-function BoutPrediction({ fight, crowd, myPick, market, opponents }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null; opponents: Opponent[] }) {
+function BoutPrediction({ fight, crowd, myPick, market, opponents, battle }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null; opponents: Opponent[]; battle: FightBattle | null }) {
   if (fight.result === "SCHEDULED") {
-    // The fighter the opponents backed = the one the viewer did NOT pick.
+    // Your side = the fighter you picked; theirs = the other corner.
+    const myFighter = myPick ? (myPick.corner === "RED" ? fight.red.name : fight.blue.name) : "";
     const theirFighter = myPick ? (myPick.corner === "RED" ? fight.blue.name : fight.red.name) : "";
     return (
       <div>
@@ -218,9 +226,19 @@ function BoutPrediction({ fight, crowd, myPick, market, opponents }: { fight: Fi
           initialPick={myPick}
           marketRedP={market?.redP ?? null}
         />
-        {myPick && opponents.length > 0 && (
+        {myPick && battle ? (
+          <BattleCard
+            myFighter={myFighter}
+            myMethod={myPick.method}
+            myConfidence={myPick.confidence}
+            theirFighter={theirFighter}
+            battle={battle}
+            fightDate={fight.date}
+            discussionHref="#discussion"
+          />
+        ) : myPick && opponents.length > 0 ? (
           <FightOpponents opponents={opponents} theirFighter={theirFighter} discussionHref="#discussion" />
-        )}
+        ) : null}
       </div>
     );
   }
