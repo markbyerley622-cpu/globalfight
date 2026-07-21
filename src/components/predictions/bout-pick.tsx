@@ -17,18 +17,28 @@ interface Pick { corner: Corner; confidence: number | null }
  * Signed-out users are routed to /account. Reusable on the bout page and inline
  * on cards.
  */
+// A corner priced at or below this vig-free market probability is the underdog —
+// roughly +140 or longer. Below the threshold we surface an "Underdog" chip and,
+// when the user picks that corner, an upset nudge (the pick is worth more if it
+// lands — see reputation.ts::pickReputation).
+const UNDERDOG_THRESHOLD = 0.42;
+
 export function BoutPick({
   fightSlug,
   redName,
   blueName,
   initialCrowd,
   initialPick,
+  marketRedP = null,
 }: {
   fightSlug: string;
   redName: string;
   blueName: string;
   initialCrowd: Crowd;
   initialPick: Pick | null;
+  /** Vig-free market win probability for the RED corner (0..1), or null when no
+   *  odds are connected (niche sports) — the underdog cue simply stays hidden. */
+  marketRedP?: number | null;
 }) {
   const { user } = useAuth();
   const [crowd, setCrowd] = useState<Crowd>(initialCrowd);
@@ -76,6 +86,11 @@ export function BoutPick({
 
   const redP = crowd.total ? crowd.red / crowd.total : 0.5;
 
+  const redUnderdog = marketRedP != null && marketRedP <= UNDERDOG_THRESHOLD;
+  const blueUnderdog = marketRedP != null && 1 - marketRedP <= UNDERDOG_THRESHOLD;
+  const pickedUnderdog =
+    (pick?.corner === "RED" && redUnderdog) || (pick?.corner === "BLUE" && blueUnderdog);
+
   return (
     <div className="card-surface p-5">
       <div className="mb-3 flex items-center justify-between">
@@ -89,15 +104,25 @@ export function BoutPick({
           name={redName}
           picked={pick?.corner === "RED"}
           tone="red"
+          underdog={redUnderdog}
           onClick={() => send("RED", pick?.corner === "RED" ? pick.confidence : null)}
         />
         <CornerButton
           name={blueName}
           picked={pick?.corner === "BLUE"}
           tone="blue"
+          underdog={blueUnderdog}
           onClick={() => send("BLUE", pick?.corner === "BLUE" ? pick.confidence : null)}
         />
       </div>
+
+      {/* Upset nudge — the pick is against the market; correct upset calls score
+          higher, and saying so at pick time makes the reward legible. */}
+      {pickedUnderdog && (
+        <p className="mt-3 text-center text-[0.7rem] font-semibold text-gold-400">
+          🔥 You&apos;re calling the upset — worth more if you nail it.
+        </p>
+      )}
 
       {/* Confidence — appears once a corner is chosen */}
       {pick && (
@@ -143,11 +168,13 @@ function CornerButton({
   name,
   picked,
   tone,
+  underdog = false,
   onClick,
 }: {
   name: string;
   picked: boolean;
   tone: "red" | "blue";
+  underdog?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -156,7 +183,7 @@ function CornerButton({
       onClick={onClick}
       aria-pressed={picked}
       className={cn(
-        "flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-center transition-all active:scale-95",
+        "relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-center transition-all active:scale-95",
         picked
           ? tone === "red"
             ? "border-blood-500 bg-blood-500/15 text-chalk shadow-glow-red"
@@ -164,6 +191,11 @@ function CornerButton({
           : "border-ink-700 text-mist hover:border-ink-600 hover:bg-ink-800",
       )}
     >
+      {underdog && (
+        <span className="absolute right-1.5 top-1.5 rounded bg-gold-400/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-gold-400">
+          Underdog
+        </span>
+      )}
       <span className={cn("text-[0.6rem] font-bold uppercase tracking-wider", tone === "red" ? "text-blood-400" : "text-volt-400")}>
         {tone === "red" ? "Red corner" : "Blue corner"}
       </span>

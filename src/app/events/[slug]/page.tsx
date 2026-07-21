@@ -124,6 +124,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               fight={f}
               crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
               myPick={myPicksByFightId.get(f.id) ?? null}
+              market={marketBySlug.get(f.slug) ?? null}
             />
           ))}
         </div>
@@ -197,7 +198,7 @@ function ScrollSection({
  * crowd-pick control (BoutPick — same component and backend as /predictions); a
  * decided bout collapses to its outcome and how the crowd called it.
  */
-function BoutPrediction({ fight, crowd, myPick }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null }) {
+function BoutPrediction({ fight, crowd, myPick, market }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null }) {
   if (fight.result === "SCHEDULED") {
     return (
       <BoutPick
@@ -206,6 +207,7 @@ function BoutPrediction({ fight, crowd, myPick }: { fight: Fight; crowd: CrowdRe
         blueName={fight.blue.name}
         initialCrowd={crowd}
         initialPick={myPick}
+        marketRedP={market?.redP ?? null}
       />
     );
   }
