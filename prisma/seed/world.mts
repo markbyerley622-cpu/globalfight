@@ -4,7 +4,8 @@ import { prisma } from "../../src/lib/db.ts";
 import { resolvePromotion } from "../../src/lib/promotions.ts";
 import { Rng, pastMoment, daysAgo } from "./rng.mts";
 import {
-  ARCHETYPES, NAMES, CITIES, GYMS, COMMENT_BANKS, type Persona, type Tone,
+  ARCHETYPES, NAMES, CITIES, GYMS, COMMENT_BANKS, TOPIC_BANK, FIGHTER_BANK, TOPIC_TITLES,
+  type Persona,
 } from "./pools.mts";
 
 export const SEED_EMAIL_DOMAIN = "@seed.local";
@@ -335,6 +336,7 @@ async function buildGradedHistory(rng: Rng, users: SeedUser[], recent: EventWith
 }
 
 // ── Discussion — threads, nested replies, reactions, spread over days ────────
+// Fill an event-comment template from a specific bout.
 function fill(t: string, f: EventWithFights["fights"][number] | undefined, rng: Rng, sport: string, gym: string): string {
   if (!f) return t.replace(/\{[^}]+\}/g, "the main event");
   const fav = (f.red.wins ?? 0) >= (f.blue.wins ?? 0) ? f.red.name : f.blue.name;
@@ -352,6 +354,72 @@ function fill(t: string, f: EventWithFights["fights"][number] | undefined, rng: 
     .replace(/\{gym\}/g, gym).replace(/\{city\}/g, "");
 }
 
+// Fill a topic / fighter template (no specific bout).
+function fillText(t: string, opts: { sport?: string; gym?: string; subject?: string }): string {
+  return t
+    .replace(/\{sport\}/g, (opts.sport ?? "combat sports").toLowerCase().replace(/_/g, " "))
+    .replace(/\{gym\}/g, opts.gym ?? "the gym")
+    .replace(/\{subject\}/g, opts.subject ?? "this fighter")
+    .replace(/\{[^}]+\}/g, "");
+}
+
+type ContentFor = (author: SeedUser, isReply: boolean, isPostResult: boolean) => string;
+
+// The shared thread populator: nested posts + respect/disrespect reactions,
+// timestamps spread from `base` to now, denormalised counters kept honest.
+async function seedThread(
+  threadId: string, participants: SeedUser[], count: number, now: number, completed: boolean,
+  base: Date, contentFor: ContentFor, rng: Rng,
+): Promise<{ posts: number; reactions: number }> {
+  const roots: string[] = [];
+  let replyCount = 0, threadReactions = 0, lastPostAt = base, posts = 0, reactions = 0;
+  const span = Math.max(1, now - base.getTime());
+
+  for (let i = 0; i < count; i++) {
+    const author = rng.pick(participants);
+    const isReply = roots.length > 0 && rng.chance(0.55);
+    const isPostResult = completed && rng.chance(0.4);
+    const content = contentFor(author, isReply, isPostResult);
+    const createdAt = new Date(Math.min(base.getTime() + Math.floor(rng.float() * span), now - rng.int(1, 600) * 60_000));
+    if (createdAt.getTime() > lastPostAt.getTime()) lastPostAt = createdAt;
+
+    const post = await prisma.forumPost.create({
+      data: { threadId, authorId: author.id, content, parentId: isReply ? rng.pick(roots) : null, createdAt },
+      select: { id: true },
+    });
+    posts++;
+    if (!isReply) roots.push(post.id);
+    else replyCount++; // app contract: replyCount = replies only (OP + roots excluded)
+
+    // Combat-native reactions using the app's existing types: respect (the
+    // fist-bump) dominant, the occasional disrespect. reactionCount = total rows.
+    const reactors = rng.sample(participants.filter((u) => u.id !== author.id), rng.int(0, 6));
+    if (reactors.length) {
+      await prisma.forumReaction.createMany({
+        data: reactors.map((u) => ({ postId: post.id, userId: u.id, type: rng.chance(0.85) ? "respect" : "disrespect", createdAt: new Date(createdAt.getTime() + rng.int(1, 240) * 60_000) })),
+        skipDuplicates: true,
+      });
+      threadReactions += reactors.length;
+      reactions += reactors.length;
+    }
+  }
+
+  await prisma.forumThread.update({
+    where: { id: threadId },
+    data: { replyCount, reactionCount: threadReactions, lastPostAt, views: rng.int(40, 900) },
+  });
+  return { posts, reactions };
+}
+
+// Ensure a slug is unique before creating a thread.
+async function uniqueThreadSlug(title: string): Promise<string> {
+  const base = slugifyThread(title);
+  let slug = base;
+  for (let i = 2; await prisma.forumThread.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${base}-${i}`;
+  return slug;
+}
+
+// Event threads — reuse the app's if present, else provision one.
 async function buildDiscussion(rng: Rng, users: SeedUser[], events: EventWithFights[], now: number) {
   const journalists = users.filter((u) => u.persona.registryRole === "media");
   let threads = 0, posts = 0, reactions = 0;
@@ -362,80 +430,142 @@ async function buildDiscussion(rng: Rng, users: SeedUser[], events: EventWithFig
     const catSlug = CATEGORY_FOR_SPORT[ev.sport as string] ?? "general";
     const category = await prisma.forumCategory.findUnique({ where: { slug: catSlug }, select: { id: true } });
     if (!category) continue;
+    const base = daysAgo(rng.int(6, 20), now);
 
-    // Reuse an existing event thread if the app already made one; else create it.
     let thread = await prisma.forumThread.findUnique({ where: { eventId: ev.id }, select: { id: true } });
     if (!thread) {
       const author = (journalists.length ? rng.pick(journalists) : rng.pick(users)).id;
       const title = `${ev.name} — discussion`.slice(0, 155);
-      let slug = slugifyThread(title);
-      for (let i = 2; await prisma.forumThread.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${slugifyThread(title)}-${i}`;
-      const createdAt = daysAgo(rng.int(6, 20), now);
+      const slug = await uniqueThreadSlug(title);
       thread = await prisma.forumThread.create({
         data: {
           slug, title, categoryId: category.id, authorId: author, kind: "discussion", eventId: ev.id,
-          createdAt, lastPostAt: createdAt,
-          posts: { create: { authorId: author, content: `Predictions, live reactions and results for **${ev.name}**. Make your picks, back your read, and see who called it.`, createdAt } },
+          createdAt: base, lastPostAt: base,
+          posts: { create: { authorId: author, content: `Predictions, live reactions and results for **${ev.name}**. Make your picks, back your read, and see who called it.`, createdAt: base } },
         },
         select: { id: true },
       });
       threads++;
     }
 
-    // Generate a branching conversation.
-    const n = rng.int(7, 18);
-    const roots: string[] = [];
-    let replyCount = 0, threadReactions = 0, lastPostAt = ev.date < new Date(now) ? ev.date : daysAgo(1, now);
     const participants = rng.sample(users, rng.int(6, Math.min(14, users.length)));
-
-    for (let i = 0; i < n; i++) {
-      const author = rng.pick(participants);
-      const tone: Tone = author.persona.tone;
-      const bank = COMMENT_BANKS[tone];
-      const f = rng.pick(ev.fights);
-      const isReply = roots.length > 0 && rng.chance(0.55);
-      const isPostResult = completed && rng.chance(0.4);
+    const contentFor: ContentFor = (author, isReply, isPostResult) => {
+      const bank = COMMENT_BANKS[author.persona.tone];
       const raw = isPostResult ? rng.pick(bank.postResult) : isReply ? rng.pick(bank.reply) : rng.pick(bank.opener);
-      const content = fill(raw, f, rng, ev.sport as string, author.gym);
-      // Spread over the run-up (and after, for completed events).
-      const span = completed ? daysAgo(rng.int(0, 12), now) : daysAgo(rng.int(1, 14), now);
-      const createdAt = new Date(Math.min(span.getTime(), now - rng.int(1, 600) * 60_000));
-      if (createdAt.getTime() > lastPostAt.getTime()) lastPostAt = createdAt;
+      return fill(raw, rng.pick(ev.fights), rng, ev.sport as string, author.gym);
+    };
+    const r = await seedThread(thread.id, participants, rng.int(8, 22), now, completed, base, contentFor, rng);
+    posts += r.posts; reactions += r.reactions;
 
-      const post = await prisma.forumPost.create({
+    const activityAuthor = journalists.length ? rng.pick(journalists) : rng.pick(users);
+    await prisma.activity.create({ data: { userId: activityAuthor.id, type: "THREAD_CREATED" as ActivityType, title: `Started the discussion on ${ev.name}`, url: `/events/${ev.slug}#discussion`, createdAt: base } });
+  }
+  return { threads, posts, reactions };
+}
+
+const SLUG_SPORT: Record<string, string> = {
+  mma: "MMA", boxing: "Boxing", "muay-thai": "Muay Thai", kickboxing: "Kickboxing", bjj: "BJJ",
+  wrestling: "Wrestling", judo: "Judo", sambo: "Sambo", "bare-knuckle": "Bare Knuckle",
+  taekwondo: "Taekwondo", general: "combat sports", industry: "the industry",
+};
+
+// Topic threads in every forum category — so /forums and each discipline board
+// is alive even with no event on the calendar.
+async function buildTopicThreads(rng: Rng, users: SeedUser[], now: number) {
+  let threads = 0, posts = 0, reactions = 0;
+  const categories = await prisma.forumCategory.findMany({ select: { id: true, slug: true, name: true } });
+  for (const cat of categories) {
+    const sportLabel = SLUG_SPORT[cat.slug] ?? cat.name;
+    const relevant = users.filter((u) => u.persona.sports.some((s) => CATEGORY_FOR_SPORT[s] === cat.slug));
+    const pool = relevant.length >= 4 ? relevant : users;
+    const nThreads = cat.slug === "general" ? 3 : 2;
+    for (let t = 0; t < nThreads; t++) {
+      const author = rng.pick(pool);
+      const title = fillText(rng.pick(TOPIC_TITLES), { sport: sportLabel }).slice(0, 155);
+      const slug = await uniqueThreadSlug(title);
+      const base = daysAgo(rng.int(3, 40), now);
+      const thread = await prisma.forumThread.create({
         data: {
-          threadId: thread.id, authorId: author.id, content,
-          parentId: isReply ? rng.pick(roots) : null, createdAt,
+          slug, title, categoryId: cat.id, authorId: author.id, kind: "discussion", createdAt: base, lastPostAt: base,
+          posts: { create: { authorId: author.id, content: fillText(rng.pick(TOPIC_BANK.opener), { sport: sportLabel, gym: author.gym }), createdAt: base } },
         },
         select: { id: true },
       });
-      posts++;
-      // Per the app's contract, replyCount counts replies only (the OP and
-      // top-level roots aside): every non-root post increments it.
-      if (!isReply) roots.push(post.id);
-      else replyCount++;
-
-      // "like" reactions (matches the live default reaction path → visible likeCount)
-      const likers = rng.sample(participants.filter((u) => u.id !== author.id), rng.int(0, 7));
-      if (likers.length) {
-        await prisma.forumReaction.createMany({
-          data: likers.map((u) => ({ postId: post.id, userId: u.id, type: "like", createdAt: new Date(createdAt.getTime() + rng.int(1, 240) * 60_000) })),
-          skipDuplicates: true,
-        });
-        await prisma.forumPost.update({ where: { id: post.id }, data: { likeCount: likers.length } });
-        threadReactions += likers.length;
-        reactions += likers.length;
-      }
+      threads++;
+      const participants = rng.sample(pool, rng.int(5, Math.min(12, pool.length)));
+      const contentFor: ContentFor = (a, isReply) => fillText(isReply ? rng.pick(TOPIC_BANK.reply) : rng.pick(TOPIC_BANK.opener), { sport: sportLabel, gym: a.gym });
+      const r = await seedThread(thread.id, participants, rng.int(6, 16), now, false, base, contentFor, rng);
+      posts += r.posts; reactions += r.reactions;
     }
+  }
+  return { threads, posts, reactions };
+}
 
-    // The app's contract: replyCount counts replies only (OP excluded); we treat
-    // every non-root post as a reply. reactionCount = total reaction rows.
-    await prisma.forumThread.update({
-      where: { id: thread.id },
-      data: { replyCount, reactionCount: threadReactions, lastPostAt, views: rng.int(40, 900) },
-    });
-    const author = journalists.length ? rng.pick(journalists) : rng.pick(users);
-    await prisma.activity.create({ data: { userId: author.id, type: "THREAD_CREATED" as ActivityType, title: `Started the discussion on ${ev.name}`, url: `/events/${ev.slug}#discussion`, createdAt: daysAgo(rng.int(6, 20), now) } });
+// A discussion thread on popular fighters' pages.
+async function buildFighterThreads(rng: Rng, users: SeedUser[], now: number) {
+  let threads = 0, posts = 0, reactions = 0;
+  const fighters = await prisma.fighter.findMany({ select: { id: true, name: true, sport: true }, orderBy: { wins: "desc" }, take: 24 });
+  for (const f of fighters) {
+    const catSlug = CATEGORY_FOR_SPORT[f.sport as string] ?? "general";
+    const category = await prisma.forumCategory.findUnique({ where: { slug: catSlug }, select: { id: true } });
+    if (!category) continue;
+    const relevant = users.filter((u) => u.persona.sports.includes(f.sport));
+    const pool = relevant.length >= 4 ? relevant : users;
+    const author = rng.pick(pool);
+    const title = `${f.name} — discussion`.slice(0, 155);
+    const slug = await uniqueThreadSlug(title);
+    const base = daysAgo(rng.int(3, 40), now);
+    const sportLabel = (f.sport as string).toLowerCase().replace(/_/g, " ");
+    // fighterId is unique — if a thread already exists, skip gracefully.
+    const thread = await prisma.forumThread.create({
+      data: {
+        slug, title, categoryId: category.id, authorId: author.id, kind: "discussion", fighterId: f.id, createdAt: base, lastPostAt: base,
+        posts: { create: { authorId: author.id, content: fillText(rng.pick(FIGHTER_BANK.opener), { subject: f.name, sport: sportLabel, gym: author.gym }), createdAt: base } },
+      },
+      select: { id: true },
+    }).catch(() => null);
+    if (!thread) continue;
+    threads++;
+    const participants = rng.sample(pool, rng.int(4, Math.min(10, pool.length)));
+    const contentFor: ContentFor = (a, isReply) => fillText(isReply ? rng.pick(FIGHTER_BANK.reply) : rng.pick(FIGHTER_BANK.opener), { subject: f.name, sport: sportLabel, gym: a.gym });
+    const r = await seedThread(thread.id, participants, rng.int(4, 12), now, false, base, contentFor, rng);
+    posts += r.posts; reactions += r.reactions;
+  }
+  return { threads, posts, reactions };
+}
+
+// A discussion thread per promotion.
+async function buildPromotionThreads(rng: Rng, users: SeedUser[], now: number) {
+  let threads = 0, posts = 0, reactions = 0;
+  const events = await prisma.event.findMany({ select: { promotion: true, sport: true }, take: 200 });
+  const promos = new Map<string, { slug: string; label: string; sport: string }>();
+  for (const e of events) {
+    if (!e.promotion) continue;
+    const slug = resolvePromotion(e.promotion).slug;
+    if (!promos.has(slug)) promos.set(slug, { slug, label: e.promotion, sport: e.sport as string });
+  }
+  for (const p of [...promos.values()].slice(0, 6)) {
+    const catSlug = CATEGORY_FOR_SPORT[p.sport] ?? "general";
+    const category = await prisma.forumCategory.findUnique({ where: { slug: catSlug }, select: { id: true } });
+    if (!category) continue;
+    const author = rng.pick(users);
+    const title = `${p.label} — promotion talk`.slice(0, 155);
+    const slug = await uniqueThreadSlug(title);
+    const base = daysAgo(rng.int(3, 40), now);
+    const sportLabel = p.sport.toLowerCase().replace(/_/g, " ");
+    const thread = await prisma.forumThread.create({
+      data: {
+        slug, title, categoryId: category.id, authorId: author.id, kind: "discussion", promotion: p.slug, createdAt: base, lastPostAt: base,
+        posts: { create: { authorId: author.id, content: fillText(rng.pick(TOPIC_BANK.opener), { sport: sportLabel, gym: author.gym }), createdAt: base } },
+      },
+      select: { id: true },
+    }).catch(() => null);
+    if (!thread) continue;
+    threads++;
+    const participants = rng.sample(users, rng.int(5, Math.min(12, users.length)));
+    const contentFor: ContentFor = (a, isReply) => fillText(isReply ? rng.pick(TOPIC_BANK.reply) : rng.pick(TOPIC_BANK.opener), { sport: sportLabel, gym: a.gym });
+    const r = await seedThread(thread.id, participants, rng.int(6, 14), now, false, base, contentFor, rng);
+    posts += r.posts; reactions += r.reactions;
   }
   return { threads, posts, reactions };
 }
@@ -488,7 +618,13 @@ export async function generateWorld(): Promise<Record<string, number>> {
 
   const openPicks = await buildOpenPicks(rng, users, upcoming, now);
   const graded = await buildGradedHistory(rng, users, recent);
-  const discussion = await buildDiscussion(rng, users, [...upcoming, ...recent], now);
+
+  // Populate every discussion surface — event, category, fighter and promotion
+  // threads — so a tester never lands on an empty conversation.
+  const evT = await buildDiscussion(rng, users, [...upcoming, ...recent], now);
+  const topicT = await buildTopicThreads(rng, users, now);
+  const fighterT = await buildFighterThreads(rng, users, now);
+  const promoT = await buildPromotionThreads(rng, users, now);
   await buildAmbient(rng, users, upcoming, now);
 
   return {
@@ -499,8 +635,8 @@ export async function generateWorld(): Promise<Record<string, number>> {
     openPicks,
     gradedPicks: graded.graded,
     cards: graded.cards,
-    threads: discussion.threads,
-    posts: discussion.posts,
-    reactions: discussion.reactions,
+    threads: evT.threads + topicT.threads + fighterT.threads + promoT.threads,
+    posts: evT.posts + topicT.posts + fighterT.posts + promoT.posts,
+    reactions: evT.reactions + topicT.reactions + fighterT.reactions + promoT.reactions,
   };
 }

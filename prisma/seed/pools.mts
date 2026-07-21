@@ -246,4 +246,48 @@ export const TOPIC_TITLES = [
   "Best gym in the world for {sport} — settle it",
   "Who's the scariest finisher in the game?",
   "Rank your top 5 pound-for-pound, go",
+  "What got you into {sport}?",
+  "Hardest skill to learn in {sport}, and why",
 ];
+
+// Generic discussion for category / topic threads (no specific bout). Slots:
+// {sport} {gym}. Keeps forum categories alive without inventing fake fights.
+export const TOPIC_BANK = {
+  opener: [
+    "Hot take: {sport} is the most technical thing in combat sports and it's not close.",
+    "Nobody talks about how deep the {sport} talent pool has gotten. Wild era to be a fan.",
+    "The judging in {sport} has been genuinely bad lately. Someone tell me I'm wrong.",
+    "Grappling saves lives. That's the post. {sport} heads already know.",
+    "Gym culture matters more than genetics. {gym} is proof — change my mind.",
+    "Who's the most underrated name outside the {sport} hardcore bubble?",
+    "Footwork is 80% of {sport} and nobody drills it enough.",
+  ],
+  reply: [
+    "Solid take. Coaching is the real difference-maker for me.",
+    "Hard disagree, but I respect where you're coming from.",
+    "This is exactly why I love {sport} — the nuance is unreal.",
+    "Nah, the talent gap is closing fast, casuals just aren't watching.",
+    "Say it louder. The judges have ended too many careers early.",
+    "The {gym} crew is built different, can't argue that one.",
+    "Come train and say that 😅 — respectfully.",
+    "Been saying this for years and getting laughed at. Vindicated.",
+  ],
+};
+
+// Discussion for a single fighter's thread. Slot {subject} = fighter name.
+export const FIGHTER_BANK = {
+  opener: [
+    "{subject} is criminally underrated. Prime years happening right now.",
+    "Rewatched every {subject} fight this week — the timing is on another level.",
+    "{subject} vs anyone in the division and I'm taking {subject} every time.",
+    "The way {subject} sets up the finish is basically chess. Elite fight IQ.",
+    "Genuinely think {subject} is one bad matchup from being a superstar.",
+  ],
+  reply: [
+    "Agree on the IQ, but the durability question is real.",
+    "This. {subject} does the quiet things that win rounds.",
+    "Overrating them a touch imo, but the ceiling is undeniable.",
+    "The footwork alone is worth the price of admission.",
+    "Give {subject} a title shot already, we've waited long enough.",
+  ],
+};

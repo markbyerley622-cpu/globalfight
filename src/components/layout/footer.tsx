@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FOOTER_NAV, SITE } from "@/lib/config";
 import { Logo } from "@/components/logo";
 import { useT } from "@/lib/i18n";
+import { DEMO_WORLD } from "@/lib/demo-world";
 
 export function Footer() {
   const t = useT();
@@ -34,6 +35,12 @@ export function Footer() {
             </div>
           ))}
         </div>
+
+        {DEMO_WORLD && (
+          <p className="mt-8 text-center text-xs text-volt-400/80">
+            Simulated community activity • Reset periodically
+          </p>
+        )}
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-ink-800 pt-6 text-xs text-fog sm:flex-row">
           <p>© 2026 {SITE.name}. {t("All rights reserved.")}</p>

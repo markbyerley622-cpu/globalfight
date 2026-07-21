@@ -27,6 +27,15 @@ databases:
     # The whole dataset (fighters/events/fights/articles) is well under 256MB.
     plan: basic-256mb
 
+  # ── Demo database (Seed World) ───────────────────────────────────────────
+  # A SEPARATE Postgres for the tester/QA demo service. Its databaseName
+  # ("globalfight_demo") is the token the Seed World safety allowlist matches on
+  # (SEED_WORLD_DEMO_HOSTS below) — structurally distinct from prod's
+  # "globalfight", so the seeder can never target the production database.
+  - name: globalfight-demo-db
+    databaseName: globalfight_demo
+    plan: basic-256mb
+
 envVarGroups:
   - name: globalfight
     envVars:
@@ -130,6 +139,54 @@ services:
       # (Dashboard → globalfight → the URL under the service name). It looks like
       # https://globalfight.onrender.com — paste THAT, not this sentence. A
       # literal placeholder here is not a URL and config.ts will discard it.
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+
+  # ── Demo web app (Seed World) ────────────────────────────────────────────
+  # A DEDICATED service for external testers/QA. Identical build to prod, but:
+  #   • points at the separate globalfight-demo-db,
+  #   • runs boot.mts BEFORE `next start` to auto-populate the demo world,
+  #   • carries the SEED_WORLD_* switches.
+  # The production service above is UNCHANGED (its start command stays `npm start`,
+  # so seed code never executes there). See docs/SEED-WORLD.md for setup + the
+  # safety guarantee.
+  - type: web
+    name: combatreviews-demo
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --include=dev && npx prisma db push --skip-generate --accept-data-loss && npm run build
+    # boot.mts is guarded: if misconfigured it exits non-zero and the `&&` stops
+    # `next start`, so the demo service refuses to start rather than risk a bad seed.
+    startCommand: node --import tsx prisma/seed/boot.mts && npm start
+    healthCheckPath: /
+    envVars:
+      # Shared scraper/storage config (ENABLE_SCRAPER stays false on demo too).
+      - fromGroup: globalfight
+      # Separate demo database.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: globalfight-demo-db
+          property: connectionString
+      - key: APP_ENV
+        value: demo
+      # Turns on the transparent "Demo World" pill + footer (build-time inlined).
+      - key: NEXT_PUBLIC_SEED_WORLD
+        value: demo
+      # Seed World switches. Modes: off | demo | refresh.
+      - key: SEED_WORLD_MODE
+        value: demo
+      - key: ALLOW_SEED_WORLD
+        value: "true"
+      - key: SEED_WORLD_ALLOW_REMOTE
+        value: "true"
+      # POSITIVE allowlist — matches the demo DB's databaseName only. Prod's
+      # database ("globalfight") is not listed, so it can never be seeded.
+      - key: SEED_WORLD_DEMO_HOSTS
+        value: globalfight_demo
+      # Bearer token for POST /api/admin/seed-world/refresh (read it in the dashboard).
+      - key: SEED_WORLD_ADMIN_TOKEN
+        generateValue: true
+      # Demo origin (set to the URL Render assigns this service after first deploy).
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
 

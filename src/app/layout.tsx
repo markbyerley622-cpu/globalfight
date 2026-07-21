@@ -3,6 +3,7 @@ import { Oswald } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Footer } from "@/components/layout/footer";
+import { DemoWorldBanner } from "@/components/layout/demo-world-banner";
 import { Ticker } from "@/components/layout/ticker";
 import { AppShell } from "@/components/layout/app-shell";
 import { I18nProvider } from "@/lib/i18n";
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <ChunkReloadGuard />
+        <DemoWorldBanner />
         <I18nProvider>
           <AuthProvider>
             <AppShell ticker={<Ticker />} footer={<Footer />}>
