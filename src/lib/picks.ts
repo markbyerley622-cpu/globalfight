@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { track } from "@/lib/analytics";
+import { pairBattle } from "@/lib/battles";
 
 // ── Crowd bout predictions ──────────────────────────────────────────────────
 // The North Star mechanic: a signed-in user picks a corner (+ optional 1–5
@@ -68,6 +69,9 @@ export async function castPick(
     update: { corner, confidence: conf, method: m },
   });
   track(existing ? "prediction_changed" : "prediction_made", userId, { fight: fightSlug, corner });
+  // Prediction Battles: pair with an opposite-corner opponent (best-effort — a
+  // pairing hiccup must never break a pick).
+  try { await pairBattle(userId, fightId); } catch { /* non-fatal */ }
   return { crowd: await crowdFor(fightId), myPick: { corner, confidence: conf, method: m } };
 }
 

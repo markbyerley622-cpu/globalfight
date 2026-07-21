@@ -491,6 +491,7 @@ model Fight {
   predictions   Prediction[]
   odds          OddsSnapshot[]
   picks         FightPick[]
+  battles       Battle[]
   // Set once by the resolution engine after a decided bout's picks are graded
   // and consequences fanned out — the idempotency guard so it never double-awards.
   picksResolvedAt DateTime?
@@ -970,6 +971,12 @@ model User {
   picksCorrect   Int      @default(0)
   pickStreak     Int      @default(0)   // current consecutive correct picks
   bestPickStreak Int      @default(0)
+  // Denormalised battle record (O(1) profile reads) — written by resolveFightBattles.
+  battleWins       Int    @default(0)
+  battleLosses     Int    @default(0)
+  battleDraws      Int    @default(0)
+  battleStreak     Int    @default(0)   // current consecutive battle wins
+  bestBattleStreak Int    @default(0)
   bio           String?
   localePref    String    @default("en")
   themePref     String    @default("dark")
@@ -997,6 +1004,10 @@ model User {
   notifications  Notification[]
   activities     Activity[]
   cardAwards     CardAward[]
+  battlesChallenged Battle[]        @relation("BattleChallenger")
+  battlesOpposed    Battle[]        @relation("BattleOpponent")
+  rivalriesA        Rivalry[]       @relation("RivalryA")
+  rivalriesB        Rivalry[]       @relation("RivalryB")
   fighterProfile Fighter?           @relation("FighterOwner")
   claimsMade     FighterClaim[]     @relation("ClaimsMade")
   claimsReviewed FighterClaim[]     @relation("ClaimsReviewed")
@@ -1415,6 +1426,7 @@ enum NotificationType {
   EVENT_LIVE
   FOLLOW
   COMMUNITY_REPLY
+  BATTLE_RESULT
   SYSTEM
 }
 
@@ -1449,6 +1461,7 @@ enum ActivityType {
   REP_MILESTONE
   FOLLOW
   THREAD_CREATED
+  BATTLE_WON
 }
 
 /// One shared activity stream. Everything a user does that's worth surfacing
@@ -1491,6 +1504,82 @@ model CardAward {
 
   @@index([userId, createdAt])
   @@index([fighterId])
+}
+
+// ─── Prediction Battles (PvP) ───────────────────────────────────────────────
+// Every prediction can create an adversary: two users who picked OPPOSITE corners
+// on the same bout are paired into a Battle. The fight itself is the referee — the
+// resolution engine reads each side's graded FightPick.correct and declares the
+// winner. No moderators, no voting. Battle stakes layer onto the ONE reputation
+// score; Rivalry persists head-to-head history for future rival pages / ladders.
+
+enum BattleState {
+  WAITING     // challenger in, awaiting an opponent
+  ACTIVE      // both sides matched
+  RESOLVED    // fight decided, winner set (or draw)
+  CANCELLED   // withdrawn
+  EXPIRED     // fight passed with no opponent
+}
+
+model Battle {
+  id            String       @id @default(cuid())
+  fightId       String
+  fight         Fight        @relation(fields: [fightId], references: [id], onDelete: Cascade)
+
+  challengerId  String
+  challenger    User         @relation("BattleChallenger", fields: [challengerId], references: [id], onDelete: Cascade)
+  // Snapshots for display only — the WINNER is decided from the graded FightPick,
+  // so editing a pick after matching is handled correctly.
+  challengerCorner     String
+  challengerMethod     FightMethod?
+  challengerConfidence Int?
+
+  opponentId    String?
+  opponent      User?        @relation("BattleOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
+  opponentCorner       String?
+  opponentMethod       FightMethod?
+  opponentConfidence   Int?
+
+  state         BattleState  @default(WAITING)
+  winnerId      String?      // User.id, or null for a draw/void
+  loserId       String?
+  resolvedSource String?     // "fight_result"
+  messageCount  Int          @default(0)
+
+  createdAt     DateTime     @default(now())
+  matchedAt     DateTime?
+  resolvedAt    DateTime?
+  updatedAt     DateTime     @updatedAt
+
+  @@index([fightId, state])
+  @@index([challengerId, state])
+  @@index([opponentId, state])
+  // At most one OPEN battle per challenger per fight is enforced in the pairing
+  // transaction (a partial unique isn't expressible in Prisma).
+}
+
+/// Persisted head-to-head between two users (never computed per-request). The pair
+/// is stored canonically with userAId < userBId so it is unique and O(1) to look up.
+model Rivalry {
+  id            String   @id @default(cuid())
+  userAId       String
+  userA         User     @relation("RivalryA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId       String
+  userB         User     @relation("RivalryB", fields: [userBId], references: [id], onDelete: Cascade)
+  aWins         Int      @default(0)   // battles userA won
+  bWins         Int      @default(0)
+  draws         Int      @default(0)
+  currentStreakUserId String?          // who is on the active win streak
+  currentStreak Int      @default(0)
+  bestStreakUserId    String?
+  bestStreak    Int      @default(0)
+  totalMessages Int      @default(0)
+  firstBattleAt DateTime @default(now())
+  lastBattleAt  DateTime @default(now())
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
 }
 
 // ─── Analytics (first-party, cookieless) ────────────────────────────────────
