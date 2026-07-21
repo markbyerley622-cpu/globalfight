@@ -9,6 +9,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-client";
 import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
+import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { SITE } from "@/lib/config";
 
 // Mona Sans (owner-supplied variable font) is the primary UI/body typeface.
@@ -55,6 +57,7 @@ export const metadata: Metadata = {
   title: { default: `${SITE.name} — ${SITE.tagline}`, template: `%s · ${SITE.name}` },
   description: SITE.description,
   applicationName: SITE.name,
+  appleWebApp: { capable: true, title: "Combat", statusBarStyle: "black-translucent" },
   keywords: [
     "boxing", "rankings", "pound for pound", "fight predictions",
     "champions", "combat sports", "fight schedule", "boxing news", "P4P",
@@ -86,12 +89,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <ChunkReloadGuard />
+        <ServiceWorkerRegistrar />
         <DemoWorldBanner />
         <I18nProvider>
           <AuthProvider>
             <AppShell ticker={<Ticker />} footer={<Footer />}>
               {children}
             </AppShell>
+            <InstallPrompt />
           </AuthProvider>
         </I18nProvider>
       </body>
