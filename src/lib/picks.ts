@@ -14,12 +14,18 @@ export interface CrowdRead {
   blue: number;
   total: number;
 }
+// The three method choices the pick UI offers (a subset of FightMethod; UD is any
+// decision). Stored on FightPick.method for the plan's winner+method+confidence pick.
+const PICK_METHODS = ["KO", "SUB", "UD"] as const;
+export type PickMethod = (typeof PICK_METHODS)[number];
 export interface MyPick {
   corner: Corner;
   confidence: number | null;
+  method: PickMethod | null;
 }
 
 const isCorner = (v: unknown): v is Corner => v === "RED" || v === "BLUE";
+const asMethod = (v: unknown): PickMethod | null => (PICK_METHODS.includes(v as PickMethod) ? (v as PickMethod) : null);
 
 async function fightIdBySlug(slug: string): Promise<string> {
   const f = await prisma.fight.findUnique({ where: { slug }, select: { id: true } });
@@ -33,6 +39,7 @@ export async function castPick(
   fightSlug: string,
   corner: string,
   confidence?: number,
+  method?: unknown,
 ): Promise<{ crowd: CrowdRead; myPick: MyPick }> {
   if (!isCorner(corner)) throw new Error("Invalid corner");
   const f = await prisma.fight.findUnique({
@@ -50,17 +57,18 @@ export async function castPick(
   }
   const fightId = f.id;
   const conf = confidence == null ? null : Math.max(1, Math.min(5, Math.round(confidence)));
+  const m = asMethod(method);
   const existing = await prisma.fightPick.findUnique({
     where: { userId_fightId: { userId, fightId } },
     select: { corner: true },
   });
   await prisma.fightPick.upsert({
     where: { userId_fightId: { userId, fightId } },
-    create: { userId, fightId, corner, confidence: conf },
-    update: { corner, confidence: conf },
+    create: { userId, fightId, corner, confidence: conf, method: m },
+    update: { corner, confidence: conf, method: m },
   });
   track(existing ? "prediction_changed" : "prediction_made", userId, { fight: fightSlug, corner });
-  return { crowd: await crowdFor(fightId), myPick: { corner, confidence: conf } };
+  return { crowd: await crowdFor(fightId), myPick: { corner, confidence: conf, method: m } };
 }
 
 /** Remove a pick. */
@@ -91,9 +99,9 @@ export async function getMyPick(userId: string, fightSlug: string): Promise<MyPi
   const fightId = await fightIdBySlug(fightSlug);
   const row = await prisma.fightPick.findUnique({
     where: { userId_fightId: { userId, fightId } },
-    select: { corner: true, confidence: true },
+    select: { corner: true, confidence: true, method: true },
   });
-  return row && isCorner(row.corner) ? { corner: row.corner, confidence: row.confidence } : null;
+  return row && isCorner(row.corner) ? { corner: row.corner, confidence: row.confidence, method: asMethod(row.method) } : null;
 }
 
 /** The viewer's picks across many fights at once (by fight id) — the batch
@@ -106,10 +114,10 @@ export async function getMyPicksForFightIds(
   if (!fightIds.length) return out;
   const rows = await prisma.fightPick.findMany({
     where: { userId, fightId: { in: fightIds } },
-    select: { fightId: true, corner: true, confidence: true },
+    select: { fightId: true, corner: true, confidence: true, method: true },
   });
   for (const r of rows) {
-    if (isCorner(r.corner)) out.set(r.fightId, { corner: r.corner, confidence: r.confidence });
+    if (isCorner(r.corner)) out.set(r.fightId, { corner: r.corner, confidence: r.confidence, method: asMethod(r.method) });
   }
   return out;
 }

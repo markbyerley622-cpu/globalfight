@@ -7,8 +7,17 @@ import { useAuth } from "@/lib/auth-client";
 import { ProbabilityBar } from "@/components/probability-bar";
 
 type Corner = "RED" | "BLUE";
+type Method = "KO" | "SUB" | "UD";
 interface Crowd { red: number; blue: number; total: number }
-interface Pick { corner: Corner; confidence: number | null }
+interface Pick { corner: Corner; confidence: number | null; method: Method | null }
+
+// The plan's Phase-1 pick: winner + method + confidence. Three plain choices map
+// to FightMethod enum values (UD stands in for any decision).
+const METHODS: { value: Method; label: string }[] = [
+  { value: "KO", label: "KO/TKO" },
+  { value: "SUB", label: "Submission" },
+  { value: "UD", label: "Decision" },
+];
 
 /**
  * The crowd pick — the core habit-loop control. One tap picks a corner; a 1–5
@@ -45,14 +54,14 @@ export function BoutPick({
   const [pick, setPick] = useState<Pick | null>(initialPick);
   const [busy, setBusy] = useState(false);
 
-  async function send(corner: Corner, confidence: number | null) {
+  async function send(corner: Corner, confidence: number | null, method: Method | null) {
     if (!user) { window.location.href = "/account"; return; }
     if (busy) return;
     setBusy(true);
 
     // Optimistic crowd move.
     const prev = pick;
-    setPick({ corner, confidence });
+    setPick({ corner, confidence, method });
     setCrowd((c) => {
       const next = { ...c };
       if (!prev) { next.total += 1; corner === "RED" ? next.red++ : next.blue++; }
@@ -67,7 +76,7 @@ export function BoutPick({
       const res = await fetch(`/api/fights/${encodeURIComponent(fightSlug)}/pick`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ corner, confidence }),
+        body: JSON.stringify({ corner, confidence, method }),
       });
       if (res.ok) {
         const d = await res.json();
@@ -105,14 +114,14 @@ export function BoutPick({
           picked={pick?.corner === "RED"}
           tone="red"
           underdog={redUnderdog}
-          onClick={() => send("RED", pick?.corner === "RED" ? pick.confidence : null)}
+          onClick={() => send("RED", pick?.corner === "RED" ? pick.confidence : null, pick?.corner === "RED" ? pick.method : null)}
         />
         <CornerButton
           name={blueName}
           picked={pick?.corner === "BLUE"}
           tone="blue"
           underdog={blueUnderdog}
-          onClick={() => send("BLUE", pick?.corner === "BLUE" ? pick.confidence : null)}
+          onClick={() => send("BLUE", pick?.corner === "BLUE" ? pick.confidence : null, pick?.corner === "BLUE" ? pick.method : null)}
         />
       </div>
 
@@ -135,7 +144,7 @@ export function BoutPick({
                 type="button"
                 aria-label={`Confidence ${n} of 5`}
                 aria-pressed={(pick.confidence ?? 0) >= n}
-                onClick={() => send(pick.corner, n)}
+                onClick={() => send(pick.corner, n, pick.method)}
                 // Comfortable ~36px thumb target; the visual star stays 16px.
                 className="tap p-2"
               >
@@ -143,6 +152,27 @@ export function BoutPick({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Method — the plan's third pick dimension. Optional, appears with a corner. */}
+      {pick && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <span className="w-full text-center text-[0.65rem] uppercase tracking-wider text-fog">How it ends</span>
+          {METHODS.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              aria-pressed={pick.method === m.value}
+              onClick={() => send(pick.corner, pick.confidence, pick.method === m.value ? null : m.value)}
+              className={cn(
+                "tap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                pick.method === m.value ? "border-blood-500 bg-blood-500/15 text-chalk" : "border-ink-700 text-mist hover:border-ink-600 hover:bg-ink-800",
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
       )}
 
