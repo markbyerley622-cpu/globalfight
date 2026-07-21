@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { awardReputation, REP } from "@/lib/reputation";
+import { awardReputation, pickReputation } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
 import { recordActivity } from "@/lib/activity";
 import { awardCard, rarityForFight } from "@/lib/collectibles";
@@ -61,6 +61,13 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   const boutUrl = fight.event ? `/events/${fight.event.slug}#predictions` : `/predictions/${fight.slug}`;
   const rarity = rarityForFight(fight);
 
+  // Upset factor = the share of the crowd that got this bout WRONG, read from the
+  // full pick set at resolution. It scales the reputation reward so calling an
+  // obvious favourite pays the floor and calling a genuine upset pays far more —
+  // the anti-farming lever. 0.5 when nobody picked (neutral).
+  const onWinner = decisive ? fight.picks.filter((p) => p.corner === corner).length : 0;
+  const upsetFactor = decisive && fight.picks.length > 0 ? 1 - onWinner / fight.picks.length : 0.5;
+
   let resolved = 0;
   for (const pick of fight.picks) {
     const correct = decisive && pick.corner === corner;
@@ -88,7 +95,7 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
         if (user.pickStreak > user.bestPickStreak) {
           await tx.user.update({ where: { id: pick.userId }, data: { bestPickStreak: user.pickStreak } });
         }
-        const rep = REP.PICK_CORRECT + Math.min(user.pickStreak, 5) * REP.STREAK_STEP;
+        const rep = pickReputation({ upsetFactor, confidence: pick.confidence, streak: user.pickStreak });
         await awardReputation(tx, pick.userId, rep, "pick_correct", { type: "fight", id: fightId });
 
         if (winnerFighterId) {

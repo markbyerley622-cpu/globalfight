@@ -11,9 +11,32 @@ import { prisma } from "@/lib/db";
 type Db = Prisma.TransactionClient;
 
 export const REP = {
-  PICK_CORRECT: 8, // base for a correct pick
+  CORRECT_BASE: 4, // floor for a correct pick — calling an obvious favourite earns little
+  UPSET_BONUS: 16, // added × upsetFactor — the reward is for calling against the crowd
   STREAK_STEP: 2, // × min(streak, 5) — bonus that grows with a hot streak
 } as const;
+
+/**
+ * Reputation for one correct pick — rewards SKILL over volume.
+ *
+ *   points = (CORRECT_BASE + UPSET_BONUS·upset) · confidenceMultiplier + streakBonus
+ *
+ * - `upsetFactor` (0..1) is the share of the crowd that got it WRONG, so calling
+ *   an obvious favourite (everyone agreed) pays ~the floor while calling a genuine
+ *   upset pays up to ~5× — this is what kills favourite-farming: you can still
+ *   grind chalk, it just earns almost nothing, so the leaderboard ranks callers.
+ * - confidence is a legible multiplier, neutral (×1.0) at 3★, 0.8..1.2 across 1–5★.
+ *   (No downside on a WRONG high-confidence pick yet — calibration risk is a
+ *   deliberate P1 follow-up; the upset scaling already removes the main exploit.)
+ */
+export function pickReputation(opts: { upsetFactor: number; confidence: number | null; streak: number }): number {
+  const upset = Math.max(0, Math.min(1, opts.upsetFactor));
+  const conf = opts.confidence ?? 3; // neutral when the user left confidence unset
+  const base = REP.CORRECT_BASE + Math.round(REP.UPSET_BONUS * upset);
+  const confMult = 0.7 + 0.1 * conf; // 1★→0.8 … 3★→1.0 … 5★→1.2
+  const streakBonus = Math.min(opts.streak, 5) * REP.STREAK_STEP;
+  return Math.round(base * confMult) + streakBonus;
+}
 
 /** Apply a reputation delta and record why. No-op for a zero delta. */
 export async function awardReputation(
