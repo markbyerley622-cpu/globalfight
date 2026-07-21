@@ -1,0 +1,17 @@
+og-noto-sans-400.ttf
+--------------------
+Noto Sans (Latin subset, weight 400).
+
+Copyright the Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic).
+Licensed under the SIL Open Font License, Version 1.1.
+Full text: https://openfontlicense.org
+
+Vendored from next/dist/compiled/@vercel/og so the Open Graph renderer loads a
+font from a path WE control. next/og's built-in fallback constructs its font
+path incorrectly on Windows (".\file:\C:\..." → ERR_INVALID_URL), which made
+every share image 500. Supplying the font explicitly removes that
+platform-dependent code path entirely.
+
+Only weight 400 exists. src/lib/og.tsx therefore builds hierarchy from size,
+colour, case and letter-spacing rather than declaring weights that cannot be
+rendered.
