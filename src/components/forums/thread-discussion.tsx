@@ -211,6 +211,7 @@ function PostItem({
           role={post.authorRole}
           appRole={post.authorAppRole}
           sport={post.authorSport}
+          username={post.authorUsername}
           op={isOp}
           subline={`${post.authorReputation} rep · ${timeAgo(post.createdAt)}${post.edited ? " · edited" : ""}`}
         />

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { RoleBadge, AdminBadge } from "@/components/role-badge";
 import { SPORT_LABEL } from "@/lib/sports";
 import { cn } from "@/lib/utils";
@@ -50,19 +51,26 @@ export function ForumAvatar({
  * Used in thread cards, posts and the feed so "who people are" reads instantly.
  */
 export function AuthorIdentity({
-  name, image, role, appRole, sport, size = "md", subline, op, className,
+  name, image, role, appRole, sport, size = "md", subline, op, username, className,
 }: {
   name: string; image?: string | null; role: string; appRole?: string; sport?: string | null;
-  size?: keyof typeof SIZE; subline?: React.ReactNode; op?: boolean; className?: string;
+  size?: keyof typeof SIZE; subline?: React.ReactNode; op?: boolean; username?: string | null; className?: string;
 }) {
   const sportLabel = role === "fighter" && sport ? SPORT_LABEL[sport] ?? sport : undefined;
   const isStaff = appRole === "ADMIN" || appRole === "MODERATOR";
+  // When we know the author's handle, the avatar + name link to their public
+  // profile — so respect (rep, streak, accuracy) is one tap away from any post.
+  const avatar = username
+    ? <Link href={`/u/${username}`} className="transition-opacity hover:opacity-80"><ForumAvatar name={name} image={image} size={size} /></Link>
+    : <ForumAvatar name={name} image={image} size={size} />;
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      <ForumAvatar name={name} image={image} size={size} />
+      {avatar}
       <div className="min-w-0">
         <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-bold leading-tight text-chalk">
-          <span className="truncate">{name}</span>
+          {username
+            ? <Link href={`/u/${username}`} className="truncate hover:text-blood-300 hover:underline">{name}</Link>
+            : <span className="truncate">{name}</span>}
           {isStaff && <AdminBadge role={appRole} />}
           <RoleBadge role={role} sport={sportLabel} />
           {op && <span className="rounded bg-blood-500/15 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-blood-300">OP</span>}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, Loader2 } from "lucide-react";
+import { Star, Loader2, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-client";
 import { ProbabilityBar } from "@/components/probability-bar";
@@ -119,8 +119,8 @@ export function BoutPick({
       {/* Upset nudge — the pick is against the market; correct upset calls score
           higher, and saying so at pick time makes the reward legible. */}
       {pickedUnderdog && (
-        <p className="mt-3 text-center text-[0.7rem] font-semibold text-gold-400">
-          🔥 You&apos;re calling the upset — worth more if you nail it.
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-[0.7rem] font-semibold text-gold-400">
+          <Flame className="size-3.5" /> You&apos;re calling the upset — worth more if you nail it.
         </p>
       )}
 

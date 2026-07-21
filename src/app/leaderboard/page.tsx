@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { Trophy, Flame, Target } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { getReputationLeaders } from "@/lib/reputation";
@@ -29,8 +30,9 @@ export default async function LeaderboardPage() {
             {leaders.map((u, i) => {
               const acc = u.picksResolved ? Math.round((u.picksCorrect / u.picksResolved) * 100) : 0;
               const medal = i === 0 ? "text-gold-300" : i === 1 ? "text-mist" : i === 2 ? "text-gold-600" : "text-fog";
-              return (
-                <div key={u.id} className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 last:border-b-0">
+              const rowClass = "flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 last:border-b-0";
+              const inner = (
+                <>
                   <span className={`w-7 shrink-0 text-center font-display text-lg font-black tabular-nums ${medal}`}>{i + 1}</span>
                   {u.image ? (
                     <Image src={u.image} alt="" width={36} height={36} className="size-9 rounded-full object-cover" unoptimized />
@@ -49,7 +51,13 @@ export default async function LeaderboardPage() {
                   <span className="inline-flex items-center gap-1.5 font-display text-lg font-black tabular-nums text-chalk">
                     <Trophy className="size-4 text-gold-400" /> {u.reputation.toLocaleString()}
                   </span>
-                </div>
+                </>
+              );
+              // The whole row taps through to the predictor's public profile.
+              return u.username ? (
+                <Link key={u.id} href={`/u/${u.username}`} className={`${rowClass} transition-colors hover:bg-ink-850`}>{inner}</Link>
+              ) : (
+                <div key={u.id} className={rowClass}>{inner}</div>
               );
             })}
           </div>
