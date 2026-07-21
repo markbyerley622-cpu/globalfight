@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { editPost, deletePost } from "@/lib/forum/repo";
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const post = await editPost({ postId: id, userId: user.id, isAdmin: isAdmin(user.role), content });
+    const post = await editPost({ postId: id, userId: user.id, isAdmin: isAdminRole(user.role), content });
     return NextResponse.json({ post });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not edit post.";
@@ -31,7 +31,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!user) return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
 
   try {
-    await deletePost({ postId: id, userId: user.id, isAdmin: isAdmin(user.role) });
+    await deletePost({ postId: id, userId: user.id, isAdmin: isAdminRole(user.role) });
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not delete post.";

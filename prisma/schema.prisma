@@ -83,6 +83,10 @@ enum SanctioningBody {
 }
 
 enum EventStatus {
+  /// Admin-only. Never appears on any public surface, in search, or in the
+  /// sitemap. Scraped events are never DRAFT — this is only for cards an
+  /// operator is building by hand before announcing them.
+  DRAFT
   ANNOUNCED
   SCHEDULED
   LIVE
@@ -426,23 +430,47 @@ model Champion {
 // ─── Events & Fights ────────────────────────────────────────────────────
 
 model Event {
-  id           String      @id @default(cuid())
-  slug         String      @unique
-  name         String
-  sport        Sport       @default(BOXING)
-  promotion    String?
-  promotionId  String? // registry promotion (identity resolution)
-  promotionRef Promotion?  @relation(fields: [promotionId], references: [id], onDelete: SetNull)
-  venue        String?
-  city         String?
-  country      String?
-  countryCode  String?
-  broadcaster  String?
-  posterUrl    String?
-  date         DateTime
-  status       EventStatus @default(SCHEDULED)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  name             String
+  sport            Sport       @default(BOXING)
+  promotion        String?
+  promotionId      String? // registry promotion (identity resolution)
+  promotionRef     Promotion?  @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  venue            String?
+  city             String?
+  country          String?
+  countryCode      String?
+  broadcaster      String?
+  posterUrl        String?
+  /// 16:9 artwork for the event hero. Distinct from posterUrl (the vertical
+  /// promotional poster) — different aspect, different placement.
+  heroUrl          String?
+  description      String?     @db.Text
+  /// IANA zone for the venue, e.g. "Asia/Bangkok". `date` stays absolute UTC;
+  /// this only tells the UI which local wall-clock the card is billed at.
+  timezone         String?
+  eventUrl         String?
+  ticketUrl        String?
+  date             DateTime
+  /// Broadcast block starts. Null means "derive it" (see lib/card-segments) —
+  /// an operator filling these in is what turns an estimate into a fact.
+  broadcastStartAt DateTime?
+  prelimStartAt    DateTime?
+  mainCardStartAt  DateTime?
+  status           EventStatus @default(SCHEDULED)
+
+  /// Field-level provenance. Any column an operator has edited is listed here,
+  /// and the ingest pipeline refuses to overwrite it (services/sync/persist).
+  ///
+  /// Without this the editor is decorative: the scrapers re-run on cron and
+  /// unconditionally rewrite name/date/venue/status, so every manual correction
+  /// would silently revert within hours. Locking is per FIELD, not per row, so
+  /// a human fixing a venue never freezes the automatic result updates.
+  lockedFields String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // provenance scalars deferred — see the note on the Fighter model.
 
@@ -471,22 +499,34 @@ model Fight {
   weightClassId String?
   weightClass   WeightClass? @relation(fields: [weightClassId], references: [id], onDelete: SetNull)
 
-  scheduledRounds Int     @default(12)
-  titleFight      Boolean @default(false)
-  mainEvent       Boolean @default(false)
-  coMain          Boolean @default(false)
-  orderOnCard     Int     @default(0)
+  scheduledRounds  Int       @default(12)
+  titleFight       Boolean   @default(false)
+  /// An interim belt. Separate from titleFight so the badge can read "Interim
+  /// Title" — conflating them loses information a fan cares about.
+  interimTitle     Boolean   @default(false)
+  mainEvent        Boolean   @default(false)
+  coMain           Boolean   @default(false)
+  orderOnCard      Int       @default(0)
+  /// Post-fight awards, entered by an operator after the card.
+  performanceBonus Boolean   @default(false)
+  fightOfTheNight  Boolean   @default(false)
+  /// Explicit walkout time. Null means the schedule estimates it.
+  estimatedStartAt DateTime?
+  /// See Event.lockedFields. Critical here: the ingest pipeline rewrites
+  /// orderOnCard from the SOURCE's index on every run, so drag-and-drop
+  /// ordering would be destroyed by the next cron without this.
+  lockedFields     String[]
   /// Which broadcast block this bout sits in: "MAIN" | "PRELIM" | "EARLY_PRELIM".
   /// Only set when a provider actually tells us. When null the schedule DERIVES a
   /// split from card size and bout order and labels it as an estimate — we never
   /// present a guessed broadcast block as fact.
-  cardSegment     String?
+  cardSegment      String?
   /// A bout pulled from the card (injury, weight miss, withdrawal). Kept rather
   /// than deleted so the change is visible to a fan who already made a pick.
-  cancelled       Boolean @default(false)
+  cancelled        Boolean   @default(false)
   /// Free-text note for a scratched or reshuffled bout, e.g. "Jones out (injury)
   /// — replaced by Silva". Rendered verbatim next to the bout.
-  cardNote        String?
+  cardNote         String?
 
   // result
   result     FightResult  @default(SCHEDULED)

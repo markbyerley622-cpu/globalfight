@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -83,6 +84,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     followsSomething
       ? prisma.event.findMany({
           where: {
+            ...PUBLIC_EVENT,
             date: { gte: now, lte: soon },
             OR: [
               ...(eventIds.length ? [{ id: { in: eventIds } }] : []),
@@ -101,7 +103,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     // Results from cards you followed.
     eventIds.length
       ? prisma.event.findMany({
-          where: { id: { in: eventIds }, date: { gte: recently, lt: now } },
+          where: { ...PUBLIC_EVENT, id: { in: eventIds }, date: { gte: recently, lt: now } },
           orderBy: { date: "desc" },
           take: 15,
           select: { id: true, slug: true, name: true, date: true, promotion: true, _count: { select: { fights: true } } },

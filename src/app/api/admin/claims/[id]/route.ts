@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { reviewClaim } from "@/lib/fighters/profile";
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  if (!user || !isAdmin(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!user || !isAdminRole(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }

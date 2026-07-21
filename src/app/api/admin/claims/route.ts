@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { listClaims } from "@/lib/fighters/profile";
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user || !isAdmin(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!user || !isAdminRole(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   const status = new URL(req.url).searchParams.get("status") ?? undefined;
   const claims = await listClaims(status);
   return NextResponse.json({ claims });

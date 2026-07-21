@@ -8,6 +8,7 @@
 // core enrichment (the visible fix) without throwing.
 
 import { prisma } from "@/lib/db";
+import { stripLocked } from "@/lib/admin/provenance";
 import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
@@ -173,7 +174,17 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
 
   let eventId: string;
   if (match.eventId) {
-    await prisma.event.update({ where: { id: match.eventId }, data: fill });
+    // Never overwrite a field an operator owns. Without this the admin editor
+    // is decorative: this runs on cron and would revert every manual correction
+    // to name/date/venue/status within hours, silently.
+    const current = await prisma.event.findUnique({
+      where: { id: match.eventId },
+      select: { lockedFields: true },
+    });
+    const data = stripLocked(fill, current?.lockedFields ?? []);
+    if (Object.keys(data).length > 0) {
+      await prisma.event.update({ where: { id: match.eventId }, data });
+    }
     eventId = match.eventId;
   } else {
     const slug = slugify(ev.name) || slugify(`${ev.name}-${ev.date.slice(0, 10)}`);
@@ -295,6 +306,18 @@ async function upsertFight(
     winnerId,
     date,
   });
+
+  // Same rule as events, and it matters most here: `orderOnCard` above is
+  // rebuilt from the SOURCE's index every run, so an operator's drag-and-drop
+  // ordering (and any early-entered result) would be destroyed by the next cron.
+  const existing = await prisma.fight.findUnique({ where: { slug }, select: { id: true, lockedFields: true } });
+  if (existing) {
+    const update = stripLocked(data, existing.lockedFields);
+    if (Object.keys(update).length > 0) {
+      await prisma.fight.update({ where: { id: existing.id }, data: update });
+    }
+    return;
+  }
 
   await prisma.fight.upsert({
     where: { slug },

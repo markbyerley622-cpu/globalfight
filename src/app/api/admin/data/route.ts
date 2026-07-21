@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { prisma } from "@/lib/db";
 import { PROVIDERS } from "@/services/providers/registry";
 import { sourcePriority } from "@/services/aggregator/priority";
@@ -7,14 +8,13 @@ import { SPORTS } from "@/lib/sports";
 
 export const dynamic = "force-dynamic";
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 // Powers /admin/data. Combines static provider config with live health/sync
 // telemetry. If the data-intelligence tables aren't pushed yet it still returns
 // the provider config with migrated:false so the page renders a setup hint.
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user || !isAdmin(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!user || !isAdminRole(user.role)) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const providers = PROVIDERS.map((p) => ({
     key: p.key,

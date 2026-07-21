@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { SPORTS } from "@/lib/sports";
 import { resolvePromotion, promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
 import { ROLES, SPORT_MAX } from "@/lib/onboarding-options";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  First run.
@@ -100,6 +101,7 @@ export async function completeOnboarding(userId: string): Promise<{ eventsFollow
   if (promotionSlugs.length || fighterIds.length || user?.sportPrefs.length) {
     const events = await prisma.event.findMany({
       where: {
+        ...PUBLIC_EVENT,
         date: { gte: now, lte: horizon },
         OR: [
           // Event.promotion is FREE TEXT ("ONE Friday Fights 163"); a follow is a
@@ -158,7 +160,7 @@ export async function getOnboardingOptions(sports: string[]) {
 
   const [events, fights] = await Promise.all([
     prisma.event.findMany({
-      where: { date: { gte: now, lte: horizon }, promotion: { not: null }, ...sportFilter },
+      where: { ...PUBLIC_EVENT, date: { gte: now, lte: horizon }, promotion: { not: null }, ...sportFilter },
       select: { promotion: true },
       take: 400,
     }),

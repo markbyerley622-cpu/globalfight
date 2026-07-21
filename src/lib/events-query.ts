@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { SPORT_BY_SLUG } from "@/lib/sports";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -57,7 +58,8 @@ const WINDOW_DAYS: Record<DateWindow, number> = { week: 7, month: 30, quarter: 9
  *  the counts can never disagree with the results. */
 function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Prisma.EventWhereInput {
   const now = new Date();
-  const where: Prisma.EventWhereInput = {};
+  // DRAFT never reaches discovery, search or the sitemap.
+  const where: Prisma.EventWhereInput = { ...PUBLIC_EVENT };
   const use = (k: keyof EventFilters) => opts?.ignore !== k;
 
   const status = (f.status ?? "upcoming") as EventStatusFilter;

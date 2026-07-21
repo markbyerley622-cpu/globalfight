@@ -7,6 +7,7 @@
 
 import "server-only";
 import { prisma } from "@/lib/db";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { toCountryCode } from "@/lib/countries";
 import { imageProxyUrl } from "@/lib/media-safe";
 import type {
@@ -453,7 +454,7 @@ function mapEvent(e: PEvent & { fights: PFightFull[] }): FightEvent {
 
 export async function getUpcomingEvents(): Promise<FightEvent[]> {
   const rows = await prisma.event.findMany({
-    where: { date: { gte: new Date() }, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+    where: { ...PUBLIC_EVENT, date: { gte: new Date() }, status: { notIn: ["COMPLETED", "CANCELLED", "DRAFT"] } },
     orderBy: { date: "asc" },
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
   });
@@ -462,7 +463,7 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
 
 export async function getResults(): Promise<FightEvent[]> {
   const rows = await prisma.event.findMany({
-    where: { OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" }] },
+    where: { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" }] },
     orderBy: { date: "desc" },
     take: 50,
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
