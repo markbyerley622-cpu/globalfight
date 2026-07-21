@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { deleteThread } from "@/lib/forum/repo";
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -10,7 +10,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ slug
   if (!user) return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
 
   try {
-    const out = await deleteThread({ threadSlug: slug, userId: user.id, isAdmin: isAdmin(user.role) });
+    const out = await deleteThread({ threadSlug: slug, userId: user.id, isAdmin: isAdminRole(user.role) });
     return NextResponse.json({ ok: true, ...out });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not delete thread.";

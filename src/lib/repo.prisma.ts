@@ -7,6 +7,7 @@
 
 import "server-only";
 import { prisma } from "@/lib/db";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { toCountryCode } from "@/lib/countries";
 import { imageProxyUrl } from "@/lib/media-safe";
 import type {
@@ -453,7 +454,7 @@ function mapEvent(e: PEvent & { fights: PFightFull[] }): FightEvent {
 
 export async function getUpcomingEvents(): Promise<FightEvent[]> {
   const rows = await prisma.event.findMany({
-    where: { date: { gte: new Date() }, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+    where: { ...PUBLIC_EVENT, date: { gte: new Date() }, status: { notIn: ["COMPLETED", "CANCELLED", "DRAFT"] } },
     orderBy: { date: "asc" },
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
   });
@@ -462,7 +463,7 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
 
 export async function getResults(): Promise<FightEvent[]> {
   const rows = await prisma.event.findMany({
-    where: { OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" }] },
+    where: { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" }] },
     orderBy: { date: "desc" },
     take: 50,
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
@@ -470,9 +471,15 @@ export async function getResults(): Promise<FightEvent[]> {
   return rows.map(mapEvent);
 }
 
+/**
+ * The public event page. A DRAFT is not published, so this returns null for one
+ * and the route 404s — excluding drafts from LISTS is not enough, because the
+ * slug is guessable and an operator building a card would otherwise be
+ * publishing it the moment they typed the title.
+ */
 export async function getEvent(slug: string): Promise<FightEvent | null> {
-  const e = await prisma.event.findUnique({
-    where: { slug },
+  const e = await prisma.event.findFirst({
+    where: { slug, ...PUBLIC_EVENT },
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
   });
   return e ? mapEvent(e) : null;

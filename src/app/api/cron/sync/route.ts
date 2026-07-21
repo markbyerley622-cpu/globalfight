@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { cronAuthorized } from "@/lib/scraper/cron-handler";
 import { syncSports, type SyncEntity } from "@/services/sync/run";
 import { enrichBoxingFighters } from "@/services/sync/enrich-boxing-fighters";
@@ -8,7 +9,6 @@ import type { Sport } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 // Sport groups per the spec's cron jobs (sync-mma, sync-boxing, …).
 const GROUPS: Record<string, Sport[]> = {
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   const secret = req.headers.get("x-cron-secret");
   const viaCron = secret && secret === process.env.SCRAPE_CRON_SECRET;
-  if (!viaCron && (!user || !isAdmin(user.role))) {
+  if (!viaCron && (!user || !isAdminRole(user.role))) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { SITE } from "@/lib/config";
 import { buildIcs, icsFilename } from "@/lib/calendar";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 
 /**
  * The event as a downloadable .ics — the path Apple Calendar, Outlook desktop
@@ -10,8 +11,9 @@ import { buildIcs, icsFilename } from "@/lib/calendar";
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const event = await prisma.event.findUnique({
-    where: { slug },
+  // A draft is not published — it must not be exportable to a calendar either.
+  const event = await prisma.event.findFirst({
+    where: { slug, ...PUBLIC_EVENT },
     select: {
       id: true, slug: true, name: true, date: true, venue: true, city: true, country: true,
       broadcaster: true, _count: { select: { fights: true } },

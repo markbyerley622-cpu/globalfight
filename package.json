@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"src/lib/scraper/**/__tests__/**/*.test.ts\"",
+    "test": "node --import tsx --test \"src/lib/**/__tests__/**/*.test.ts\"",
     "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
