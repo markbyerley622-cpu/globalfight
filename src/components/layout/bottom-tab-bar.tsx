@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CalendarDays, Users, User } from "lucide-react";
+import { Home, CalendarDays, Heart, Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
 /**
- * Four bottom buttons: Home (unified flow) · Events · Community · Profile.
+ * Five bottom buttons: Home · Events · Following · Community · Profile.
  * Home owns the sport-filtered feed of news + events; Events is the
- * event-centric core (schedule/results folded in); Community carries forums
- * and the respect / middle-finger reactions.
+ * event-centric core (schedule/results folded in); Following is the return leg
+ * (everything from what you follow); Community carries forums and the respect /
+ * middle-finger reactions.
  */
 const HOME_MATCH = (p: string) => p === "/";
 const EVENTS_MATCH = (p: string) =>
   p.startsWith("/events") || p.startsWith("/schedule") || p.startsWith("/results");
+const FOLLOWING_MATCH = (p: string) => p.startsWith("/following");
 const COMMUNITY_MATCH = (p: string) =>
   p.startsWith("/community") || p.startsWith("/forums");
 const PROFILE_MATCH = (p: string) => p.startsWith("/profile") || p.startsWith("/account");
@@ -46,6 +48,7 @@ export function BottomTabBar({ className }: { className?: string }) {
     >
       {item("/", "Home", Home, HOME_MATCH(pathname))}
       {item("/events", "Events", CalendarDays, EVENTS_MATCH(pathname))}
+      {item("/following", "Following", Heart, FOLLOWING_MATCH(pathname))}
       {item("/community", "Community", Users, COMMUNITY_MATCH(pathname))}
       {item("/profile", "Profile", User, PROFILE_MATCH(pathname))}
     </nav>
