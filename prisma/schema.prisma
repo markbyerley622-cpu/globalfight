@@ -1013,6 +1013,13 @@ model User {
   battleStreak     Int       @default(0) // current consecutive battle wins
   bestBattleStreak Int       @default(0)
   bio              String?
+  /// Disciplines chosen in the first-run flow. A scalar list rather than a join
+  /// table: it is a small ordered set read on nearly every personalised query,
+  /// so a join would cost a round trip to save nothing.
+  sportPrefs       String[]
+  /// Stamped when the first-run flow is finished OR skipped. Null means the user
+  /// has never seen it — the only condition that routes anyone into onboarding.
+  onboardedAt      DateTime?
   localePref       String    @default("en")
   themePref        String    @default("dark")
   createdAt        DateTime  @default(now())

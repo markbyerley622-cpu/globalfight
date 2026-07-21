@@ -67,6 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (input: SignupInput) => {
     const data = await postJson("/api/auth/signup", input);
     setUser(data.user);
+    // Straight into the first run. A brand-new account with no follows lands on
+    // an empty product otherwise, which is the single worst first session we can
+    // give someone. A full navigation (not router.push) so the new session
+    // cookie is picked up by the server render.
+    if (typeof window !== "undefined") window.location.href = "/welcome";
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Users, Building2, ArrowRight } from "lucide-react";
+import { CalendarDays, Users, Building2, ArrowRight, Sparkles } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getFollowingFeed, getFollowingSummary, type FeedItem } from "@/lib/following";
 import { timeAgo } from "@/lib/utils";
@@ -89,7 +89,9 @@ function EmptyFeed({ following }: { following: boolean }) {
           : "Follow an event to get reminded, a fighter to know when they're booked, or a promotion to catch every card."}
       </p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        <Cta href="/events" icon={<CalendarDays className="size-4" />} label="Browse events" primary />
+        {/* The fastest route out of an empty feed is the flow that fills it. */}
+        <Cta href="/welcome" icon={<Sparkles className="size-4" />} label="Set up my feed" primary />
+        <Cta href="/events" icon={<CalendarDays className="size-4" />} label="Browse events" />
         <Cta href="/fighters" icon={<Users className="size-4" />} label="Find fighters" />
         <Cta href="/registry" icon={<Building2 className="size-4" />} label="Promotions" />
       </div>

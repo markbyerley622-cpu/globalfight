@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { promotionBySlug } from "@/lib/promotions";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -74,6 +75,15 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
 
   const followsSomething = eventIds.length > 0 || fighterIds.length > 0 || promotions.length > 0;
 
+  // Curated, specific phrases for the promotions this user follows. Short or
+  // ambiguous aliases are dropped — a 4-character term in a `contains` match is
+  // a false-positive generator, not a filter.
+  const coverageTerms = [
+    ...new Set(
+      promotions.flatMap((slug) => promotionBySlug(slug)?.aliases ?? []).filter((a) => a.length >= 5),
+    ),
+  ];
+
   const [upcomingEvents, results, fighterFights, personal, coverage] = await Promise.all([
     // Cards you follow directly, or run by a promotion you follow.
     followsSomething
@@ -128,12 +138,19 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       select: { id: true, type: true, title: true, body: true, url: true, icon: true, createdAt: true },
     }),
 
-    // Coverage naming a promotion you follow. Fighter-name matching is left out
-    // deliberately: a surname LIKE across the whole article table is the kind of
-    // query that looks fine on a laptop and falls over on a real news corpus.
-    promotions.length
+    // Coverage naming a promotion you follow.
+    //
+    // Matched on the registry's curated ALIASES, never the slug. A slug is a
+    // short token and `contains` is a substring test, so following "one" matched
+    // "sees only one winner", "one more round", "On To the Next One" — mostly
+    // noise. The alias list is specific by design ("one championship", "one
+    // friday fights") and deliberately omits bare "one" for this exact reason.
+    //
+    // Fighter-name matching stays out: a surname LIKE across the whole article
+    // table looks fine on a laptop and falls over on a real news corpus.
+    coverageTerms.length
       ? prisma.article.findMany({
-          where: { status: "PUBLISHED", publishedAt: { gte: recently }, OR: promotions.map((p) => ({ title: { contains: p, mode: "insensitive" as const } })) },
+          where: { status: "PUBLISHED", publishedAt: { gte: recently }, OR: coverageTerms.map((t) => ({ title: { contains: t, mode: "insensitive" as const } })) },
           orderBy: { publishedAt: "desc" },
           take: 10,
           // publishedAt is nullable on the model; the WHERE above guarantees a
