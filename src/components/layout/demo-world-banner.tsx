@@ -1,10 +1,10 @@
-import { DEMO_WORLD } from "@/lib/demo-world";
+import { isDemoMode } from "@/lib/demo-world";
 
-// A subtle, honest indicator shown ONLY on the demo environment. Keeps the
+// A subtle, honest indicator shown ONLY when SEED_WORLD_MODE=demo. Keeps the
 // experience transparent for testers without alarming wording. Renders nothing
-// anywhere NEXT_PUBLIC_SEED_WORLD is unset (production, local).
+// otherwise. Server component — reads the runtime flag directly.
 export function DemoWorldBanner() {
-  if (!DEMO_WORLD) return null;
+  if (!isDemoMode()) return null;
   return (
     <div className="pointer-events-none fixed right-3 top-3 z-[150]">
       <span

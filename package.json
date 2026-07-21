@@ -14,7 +14,6 @@
     "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "demo": "node --env-file=.env --import tsx prisma/seed/demo.mts sync",
     "seed:demo": "node --env-file=.env --import tsx prisma/seed/demo.mts",
     "seed:refresh": "node --env-file=.env --import tsx prisma/seed/demo.mts refresh",
     "seed:wipe": "node --env-file=.env --import tsx prisma/seed/demo.mts wipe",

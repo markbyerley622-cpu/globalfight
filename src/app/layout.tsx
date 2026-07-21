@@ -11,6 +11,7 @@ import { AuthProvider } from "@/lib/auth-client";
 import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { isDemoMode } from "@/lib/demo-world";
 import { SITE } from "@/lib/config";
 
 // Mona Sans (owner-supplied variable font) is the primary UI/body typeface.
@@ -93,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <DemoWorldBanner />
         <I18nProvider>
           <AuthProvider>
-            <AppShell ticker={<Ticker />} footer={<Footer />}>
+            <AppShell ticker={<Ticker />} footer={<Footer demoMode={isDemoMode()} />}>
               {children}
             </AppShell>
             <InstallPrompt />

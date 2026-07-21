@@ -5,27 +5,20 @@
 //    npm run seed:refresh    alias of the above (explicit wipe + regenerate)
 //    npm run seed:wipe       only wipe the demo world
 //
-//  Host-safe: runs only against a LOCAL database or an explicitly allowlisted
-//  demo host (see guard.mts). Dev/staging/demo only — never production.
+//  Runs against the configured DATABASE_URL. Seed rows are marked (@seed.local)
+//  so cleanup is safe and never touches real accounts.
 // ════════════════════════════════════════════════════════════════════════════
-import { assertManualSeedAllowed, seedBanner } from "./guard.mts";
+import { manualContext, seedBanner } from "./guard.mts";
 import { generateWorld } from "./world.mts";
 import { wipeWorld } from "./wipe.mts";
 import { writeMarker, deployId } from "./marker.mts";
 import { prisma } from "../../src/lib/db.ts";
 
-const demoFlagOn = ["true", "1", "on", "yes"].includes((process.env.DEMO_MODE ?? "").toLowerCase());
-
 async function main() {
   const t0 = Date.now();
   const arg = process.argv[2];
-  // `sync` reads DEMO_MODE from the env: true → populate, false → clear. This is
-  // the one-command on/off toggle (npm run demo). `wipe` clears; anything else
-  // regenerates. Physical presence, not a query filter — off means the rows are
-  // actually gone, so nothing can ever leak.
-  const mode = arg === "wipe" ? "wipe" : arg === "sync" ? (demoFlagOn ? "regenerate" : "wipe") : "regenerate";
-  const ctx = assertManualSeedAllowed();
-  if (arg === "sync") console.log(`\nDEMO_MODE=${process.env.DEMO_MODE ?? "(unset)"} → ${demoFlagOn ? "ON (populate)" : "OFF (clear)"}`);
+  const mode = arg === "wipe" ? "wipe" : "regenerate"; // "refresh" falls through to regenerate
+  const ctx = manualContext();
   console.log("\n" + seedBanner(ctx) + "\n");
 
   console.log("🧹 wiping existing demo data…");

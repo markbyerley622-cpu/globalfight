@@ -4,9 +4,8 @@ import Link from "next/link";
 import { FOOTER_NAV, SITE } from "@/lib/config";
 import { Logo } from "@/components/logo";
 import { useT } from "@/lib/i18n";
-import { DEMO_WORLD } from "@/lib/demo-world";
 
-export function Footer() {
+export function Footer({ demoMode = false }: { demoMode?: boolean }) {
   const t = useT();
   return (
     <footer className="mt-20 border-t border-ink-700 bg-ink-950">
@@ -36,7 +35,7 @@ export function Footer() {
           ))}
         </div>
 
-        {DEMO_WORLD && (
+        {demoMode && (
           <p className="mt-8 text-center text-xs text-volt-400/80">
             Simulated community activity • Reset periodically
           </p>

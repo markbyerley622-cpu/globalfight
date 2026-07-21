@@ -1,5 +1,8 @@
-// True only on the demo Render service, where NEXT_PUBLIC_SEED_WORLD is set at
-// build time. Unset (production, local) → false, so every demo indicator
-// disappears automatically. Inlined by Next at build, safe in client + server.
-export const DEMO_WORLD =
-  process.env.NEXT_PUBLIC_SEED_WORLD === "on" || process.env.NEXT_PUBLIC_SEED_WORLD === "demo";
+import "server-only";
+
+// Demo mode is driven by the SINGLE source of truth, SEED_WORLD_MODE, read at
+// runtime on the server. "demo" → the transparent Demo World badge + footer show.
+// (Server-only: client components receive this as a prop from a server parent.)
+export function isDemoMode(): boolean {
+  return process.env.SEED_WORLD_MODE === "demo";
+}

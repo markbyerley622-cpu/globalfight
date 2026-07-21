@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
 import { spawn } from "node:child_process";
 
-// POST /api/admin/seed-world/refresh  (Bearer <SEED_WORLD_ADMIN_TOKEN>)
+// POST /api/admin/seed-world/reset  (Authorization: Bearer <SEED_WORLD_ADMIN_TOKEN>)
 //
-// Wipes and regenerates the demo world on the demo service. Triple-gated:
-//   1. SEED_WORLD_ADMIN_TOKEN must be configured (else the route is 404 — inert).
-//   2. SEED_WORLD_MODE must be demo|refresh (off on production → 403).
-//   3. The Bearer token must match.
-// It SPAWNS the guarded seed script (prisma/seed/demo.mts) rather than importing
-// it, so no seed code is ever bundled into the app — and the script re-checks the
-// host allowlist, so even here the production DB cannot be seeded.
+// Removes every seeded object (all @seed.local users → cascades their picks,
+// comments, cards, notifications, activity, reactions, threads; plus their
+// analytics rows; then repairs thread counters). Never touches real accounts.
+//
+// Works regardless of SEED_WORLD_MODE — so you can turn the mode off (which leaves
+// the data in place, by design) and then clean it up explicitly when ready.
+// SPAWNS the guarded script rather than importing it, so no seed code enters the
+// app bundle. Inert (404) unless SEED_WORLD_ADMIN_TOKEN is configured.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const token = process.env.SEED_WORLD_ADMIN_TOKEN;
   if (!token) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const mode = (process.env.SEED_WORLD_MODE ?? "off").toLowerCase();
-  if (mode !== "demo" && mode !== "refresh") {
-    return NextResponse.json({ error: "Seed World is off in this environment." }, { status: 403 });
-  }
 
   const auth = req.headers.get("authorization") ?? "";
   const provided = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
@@ -29,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const result = await new Promise<{ code: number; out: string }>((resolve) => {
-    const child = spawn(process.execPath, ["--import", "tsx", "prisma/seed/demo.mts", "refresh"], {
+    const child = spawn(process.execPath, ["--import", "tsx", "prisma/seed/demo.mts", "wipe"], {
       cwd: process.cwd(),
       env: process.env,
     });
