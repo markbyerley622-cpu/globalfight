@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, Undo2, X } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 
 interface Change { field: string; from: unknown; to: unknown }
@@ -18,6 +18,8 @@ const show = (v: unknown): string => {
  *  edit that can be missing from this list. */
 export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [undoing, setUndoing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/admin/events/${eventId}`)
@@ -25,6 +27,26 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
       .then((d) => setEntries(d.history ?? []))
       .catch(() => setEntries([]));
   }, [eventId]);
+
+  /**
+   * Undo is applied as a NORMAL edit — same validation, same locking, its own
+   * audit entry. A raw revert could restore a state the card can no longer be
+   * in (a slug now taken by another event), and would be the one change with no
+   * trail of its own.
+   */
+  async function undo(id: string) {
+    setUndoing(id); setError(null);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/locks`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ undo: id }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.issues?.[0]?.message ?? "Could not undo that change."); return; }
+      window.location.reload();
+    } catch { setError("Could not undo that change."); }
+    finally { setUndoing(null); }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -44,6 +66,7 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
         </header>
 
         <div className="flex-1 overflow-y-auto">
+          {error && <p className="border-b border-ink-800 bg-blood-500/10 px-4 py-2 text-xs text-blood-300">{error}</p>}
           {entries === null ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-fog">
               <Loader2 className="size-4 animate-spin" /> Loading…
@@ -60,7 +83,18 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
                       <span className="font-mono text-[0.7rem] text-blood-300">{e.action}</span>
                       <span className="text-[0.68rem] text-fog">{timeAgo(e.at)}</span>
                     </div>
-                    <p className="mt-0.5 text-xs text-mist">{e.actor}</p>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <p className="text-xs text-mist">{e.actor}</p>
+                      {e.action === "event.update" && changes.length > 0 && (
+                        <button
+                          onClick={() => undo(e.id)}
+                          disabled={undoing === e.id}
+                          className="inline-flex items-center gap-1 rounded border border-ink-700 px-1.5 py-0.5 text-[0.65rem] font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300 disabled:opacity-40"
+                        >
+                          {undoing === e.id ? <Loader2 className="size-2.5 animate-spin" /> : <Undo2 className="size-2.5" />} Undo
+                        </button>
+                      )}
+                    </div>
                     {changes.length > 0 && (
                       <ul className="mt-1.5 space-y-1">
                         {changes.map((c, i) => (

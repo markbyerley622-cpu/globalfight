@@ -260,6 +260,51 @@ export async function createDraftEvent(actorId: string, input: { name: string; s
   return ev;
 }
 
+/**
+ * Release fields back to the importers.
+ *
+ * Locking is one-way without this: an operator who edits a field by mistake
+ * freezes it forever and the importer silently stops maintaining it. Unlocking
+ * is itself audited, because "why did this start changing again?" is exactly as
+ * important a question as "why did it stop?".
+ */
+export async function unlockEventFields(actorId: string, eventId: string, fields: string[]): Promise<{ ok: boolean; lockedFields: string[] }> {
+  const before = await prisma.event.findUnique({ where: { id: eventId }, select: { lockedFields: true } });
+  if (!before) return { ok: false, lockedFields: [] };
+  const release = new Set(lockableEventFields(fields));
+  const next = before.lockedFields.filter((f) => !release.has(f));
+  if (next.length === before.lockedFields.length) return { ok: true, lockedFields: next };
+
+  const [updated] = await prisma.$transaction([
+    prisma.event.update({ where: { id: eventId }, data: { lockedFields: next }, select: { lockedFields: true } }),
+    prisma.auditLog.create({
+      data: { actorId, action: "event.unlock", entity: "Event", entityId: eventId, meta: { released: [...release] } as Prisma.JsonObject },
+    }),
+  ]);
+  return { ok: true, lockedFields: updated.lockedFields };
+}
+
+/**
+ * Revert one audited change.
+ *
+ * Undo is expressed as a normal edit — same validation, same locking, a new
+ * audit entry — rather than a raw write. A revert that bypassed validation
+ * could restore a state the card can no longer be in (a second main event, a
+ * slug now taken), and a silent revert would be the one change with no trail.
+ */
+export async function undoEventChange(actorId: string, auditId: string): Promise<SaveResult> {
+  const entry = await prisma.auditLog.findUnique({ where: { id: auditId } });
+  if (!entry || entry.entity !== "Event" || entry.action !== "event.update") {
+    return { ok: false, issues: [{ field: "id", message: "That entry cannot be undone." }] };
+  }
+  const changes = (entry.meta as { changes?: { field: string; from: unknown }[] } | null)?.changes ?? [];
+  if (!changes.length) return { ok: false, issues: [{ field: "id", message: "Nothing to revert." }] };
+
+  const patch: Record<string, unknown> = {};
+  for (const c of changes) patch[c.field] = c.from;
+  return saveEvent(actorId, entry.entityId, patch as EventPatch);
+}
+
 /** Audit history for one event, newest first. */
 export async function getEventHistory(eventId: string, limit = 50) {
   const rows = await prisma.auditLog.findMany({
