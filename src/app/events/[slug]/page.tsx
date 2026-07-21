@@ -21,6 +21,7 @@ import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
 import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
+import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress } from "@/lib/card-segments";
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { FightModule } from "@/components/fight/fight-module";
@@ -46,6 +47,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // official undercard order.
   const fights = orderFights(event.fights);
   const headline = fights.find((f) => f.mainEvent) ?? fights[0];
+
+  // The card as a fan watches it: broadcast blocks in run order, each bout with
+  // an estimated walkout time and where it sits in the night. `derived` is true
+  // when no provider gave us blocks — every time is then labelled an estimate.
+  const { derived: segmentsDerived, blocks } = segmentCard(fights);
+  const eventDate = new Date(event.date);
+  const boutTimes = estimateBoutTimes(blocks, eventDate);
+  const liveBoutId = currentBoutId(blocks, event.status);
 
   // Real market-implied probability per bout, from the licensed odds feed.
   const oddsList = await Promise.all(fights.map((f) => getOddsForFight(f.slug)));
@@ -118,7 +127,17 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         boutCount={fights.length}
       />
       {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
-      <EventSchedule date={event.date} status={event.status} />
+      <EventSchedule
+        date={event.date}
+        status={event.status}
+        estimated={segmentsDerived}
+        blocks={blocks.map((b) => ({
+          key: b.meta.key,
+          label: b.meta.label,
+          startsAt: new Date(eventDate.getTime() - b.meta.offsetMinutes * 60_000).toISOString(),
+          bouts: b.fights.length,
+        }))}
+      />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
 
       {/* Sticky scroll-spy, then the sections continuously below it. */}
@@ -127,22 +146,47 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {/* The card IS the product surface: every bout is an independent module
           carrying its own prediction, battle and discussion. */}
       <ScrollSection id="card" title="Fight card" seam={false}>
-        <div className="flex flex-col gap-8">
-          {fights.map((f, i) => (
-            <FightModule
-              key={f.id}
-              fightSlug={f.slug}
-              summary={roomsByFightId.get(f.id) ?? { voices: 0, battle: null }}
-              header={<FightRow fight={f} index={i} market={marketBySlug.get(f.slug) ?? null} />}
-              pick={
-                <BoutPrediction
-                  fight={f}
-                  crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
-                  myPick={myPicksByFightId.get(f.id) ?? null}
-                  market={marketBySlug.get(f.slug) ?? null}
-                />
-              }
-            />
+        <div className="flex flex-col gap-10">
+          {blocks.map((block) => (
+            <section key={block.meta.key} aria-label={block.meta.label}>
+              {/* Only head a block when the card actually splits into more than
+                  one — a 5-bout show is just "the card". */}
+              {blocks.length > 1 && (
+                <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-ink-800 pb-2">
+                  <h3 className="font-display text-base font-bold text-chalk">{block.meta.label}</h3>
+                  <span className="text-[0.7rem] uppercase tracking-wider text-fog">
+                    {block.fights.length} bout{block.fights.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col gap-8">
+                {block.fights.map((f) => (
+                  <FightModule
+                    key={f.id}
+                    fightSlug={f.slug}
+                    summary={roomsByFightId.get(f.id) ?? { voices: 0, battle: null }}
+                    header={
+                      <FightRow
+                        fight={f}
+                        index={fights.indexOf(f)}
+                        market={marketBySlug.get(f.slug) ?? null}
+                        estimatedAt={boutTimes.get(f.id)?.toISOString() ?? null}
+                        estimated={segmentsDerived}
+                        progress={boutProgress(f, f.id === liveBoutId)}
+                      />
+                    }
+                    pick={
+                      <BoutPrediction
+                        fight={f}
+                        crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
+                        myPick={myPicksByFightId.get(f.id) ?? null}
+                        market={marketBySlug.get(f.slug) ?? null}
+                      />
+                    }
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </ScrollSection>

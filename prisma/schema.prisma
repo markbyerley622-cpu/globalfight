@@ -476,6 +476,17 @@ model Fight {
   mainEvent       Boolean @default(false)
   coMain          Boolean @default(false)
   orderOnCard     Int     @default(0)
+  /// Which broadcast block this bout sits in: "MAIN" | "PRELIM" | "EARLY_PRELIM".
+  /// Only set when a provider actually tells us. When null the schedule DERIVES a
+  /// split from card size and bout order and labels it as an estimate — we never
+  /// present a guessed broadcast block as fact.
+  cardSegment     String?
+  /// A bout pulled from the card (injury, weight miss, withdrawal). Kept rather
+  /// than deleted so the change is visible to a fan who already made a pick.
+  cancelled       Boolean @default(false)
+  /// Free-text note for a scratched or reshuffled bout, e.g. "Jones out (injury)
+  /// — replaced by Silva". Rendered verbatim next to the bout.
+  cardNote        String?
 
   // result
   result     FightResult  @default(SCHEDULED)

@@ -1,4 +1,6 @@
-import { PlayCircle, Crown } from "lucide-react";
+import { PlayCircle, Crown, Ban } from "lucide-react";
+import type { BoutProgress } from "@/lib/card-segments";
+import { LocalTime } from "@/components/event/event-schedule";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
 import { boutLabel, highlightsUrl, winningCorner } from "@/lib/event-format";
@@ -21,12 +23,22 @@ export function FightRow({
   fight,
   index,
   market,
+  estimatedAt,
+  estimated,
+  progress = "upcoming",
 }: {
   fight: Fight;
   index: number;
   market?: MarketProb | null;
+  /** ISO estimated walkout time, or null when there's nothing to anchor it to. */
+  estimatedAt?: string | null;
+  /** True when the walkout time was derived rather than supplied. */
+  estimated?: boolean;
+  progress?: BoutProgress;
 }) {
   const { red, blue, result } = fight;
+  const cancelled = progress === "cancelled";
+  const isCurrent = progress === "current";
   const done = result !== "SCHEDULED";
   const won = winningCorner(fight);
   const redWon = won === "red";
@@ -34,9 +46,13 @@ export function FightRow({
   const redP = market?.redP ?? fight.prediction?.redProbability;
 
   return (
-    <div className={`card-surface overflow-hidden ${fight.titleFight ? "ring-1 ring-gold-500/30" : ""}`}>
+    <div
+      className={`card-surface overflow-hidden ${fight.titleFight ? "ring-1 ring-gold-500/30" : ""} ${
+        isCurrent ? "ring-2 ring-blood-500/60" : ""
+      } ${cancelled ? "opacity-60" : ""}`}
+    >
       {/* Championship bar — title fights read as premium without breaking layout. */}
-      {fight.titleFight && <div className="h-0.5 bg-gradient-to-r from-gold-500/60 via-gold-400 to-gold-500/60" />}
+      {fight.titleFight && !cancelled && <div className="h-0.5 bg-gradient-to-r from-gold-500/60 via-gold-400 to-gold-500/60" />}
       <div className="block">
         {/* Meta strip */}
         <div className="flex items-center justify-between gap-2 border-b border-ink-700/70 px-4 py-2 text-[11px]">
@@ -49,13 +65,40 @@ export function FightRow({
                 <Crown className="size-3" /> Title
               </span>
             )}
+            {isCurrent && (
+              <span className="inline-flex items-center gap-1 rounded bg-blood-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blood-300">
+                <span className="live-dot" aria-hidden /> In the cage
+              </span>
+            )}
+            {cancelled && (
+              <span className="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fog">
+                <Ban className="size-3" /> Cancelled
+              </span>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-fog">
+            {/* Estimated walkout — the single most-asked question about a card. */}
+            {!done && !cancelled && estimatedAt && (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  {estimated && <span className="text-[9px] uppercase tracking-wide">est.</span>}
+                  <LocalTime iso={estimatedAt} className="font-semibold tabular-nums text-mist" />
+                </span>
+                <span aria-hidden>·</span>
+              </>
+            )}
             {fight.weightClass && <span className="truncate">{fight.weightClass}</span>}
             <span aria-hidden>·</span>
             <span className="tabular-nums">{fight.scheduledRounds} rds</span>
           </div>
         </div>
+
+        {/* A scratched or reshuffled bout explains itself in place. */}
+        {fight.cardNote && (
+          <p className="border-b border-ink-700/70 bg-ink-950/40 px-4 py-1.5 text-[11px] text-gold-300">
+            {fight.cardNote}
+          </p>
+        )}
 
         {/* Matchup — one line: red | VS | blue */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3.5">

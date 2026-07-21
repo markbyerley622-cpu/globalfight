@@ -16,13 +16,31 @@ function diff(target: number) {
   };
 }
 
+export interface ScheduleBlock {
+  key: string;
+  label: string;
+  /** ISO start time for the block. */
+  startsAt: string;
+  bouts: number;
+}
+
 /**
  * The schedule — deliberately the loudest thing above the fold after the hero.
  * A live ticking clock to the first bell that ramps up urgency as the event
- * nears (pulsing glow inside 24h), plus the date in the viewer's own timezone.
+ * nears (pulsing glow inside 24h), the date in the viewer's own timezone, and
+ * the running order of the night's broadcast blocks.
  * Standard across every combat sport: same block, same position, every event.
  */
-export function EventSchedule({ date, status }: { date: string; status: EventStatus }) {
+export function EventSchedule({
+  date, status, blocks, estimated,
+}: {
+  date: string;
+  status: EventStatus;
+  /** Broadcast blocks, earliest first. Omitted for a card with nothing to split. */
+  blocks?: ScheduleBlock[];
+  /** True when the blocks were derived rather than supplied by a provider. */
+  estimated?: boolean;
+}) {
   const target = new Date(date).getTime();
   const [t, setT] = useState<ReturnType<typeof diff>>(null);
   const [local, setLocal] = useState<string>("");
@@ -95,6 +113,47 @@ export function EventSchedule({ date, status }: { date: string; status: EventSta
           {local} <span className="text-mist">· your time</span>
         </p>
       )}
+
+      {/* Running order. A fan asks "when is my guy on?" before anything else —
+          every time is shown in their OWN timezone, and flagged as an estimate
+          whenever we derived the split rather than being told it. */}
+      {blocks && blocks.length > 1 && (
+        <div className="mx-auto mt-5 max-w-md">
+          <ol className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-700 bg-ink-950/40">
+            {blocks.map((b) => (
+              <li key={b.key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <span className="font-display font-semibold text-chalk">{b.label}</span>
+                <span className="flex items-center gap-2 text-xs text-fog">
+                  <span className="tabular-nums">{b.bouts} bout{b.bouts === 1 ? "" : "s"}</span>
+                  <LocalTime iso={b.startsAt} />
+                </span>
+              </li>
+            ))}
+          </ol>
+          {estimated && (
+            <p className="mt-1.5 text-center text-[0.65rem] text-fog">
+              Block times estimated from the card — not an official broadcast schedule.
+            </p>
+          )}
+        </div>
+      )}
     </section>
+  );
+}
+
+/**
+ * A time rendered in the VIEWER's timezone. Server-rendered as an empty slot and
+ * filled on mount: the server has no idea what timezone the reader is in, and
+ * rendering a server-side guess would hydrate-mismatch and mislead.
+ */
+export function LocalTime({ iso, className }: { iso: string; className?: string }) {
+  const [label, setLabel] = useState("");
+  useEffect(() => {
+    setLabel(new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(iso)));
+  }, [iso]);
+  return (
+    <time dateTime={iso} className={className ?? "font-semibold tabular-nums text-mist"}>
+      {label || "—"}
+    </time>
   );
 }

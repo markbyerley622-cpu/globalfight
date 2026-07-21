@@ -422,6 +422,9 @@ export function mapFight(f: PFightFull): Fight {
     roundEnded: f.roundEnded ?? undefined,
     timeEnded: f.timeEnded ?? undefined,
     date: isoReq(f.date),
+    cardSegment: f.cardSegment ?? null,
+    cancelled: f.cancelled,
+    cardNote: f.cardNote ?? null,
     prediction: mapPrediction(f.predictions),
   };
 }
