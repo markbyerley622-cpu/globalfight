@@ -145,7 +145,7 @@ services:
     envVars:
       - fromGroup: globalfight
 
-  # ── Cron: events, results, odds, predictions (daily) ─────────────────────
+  # ── Cron: events, odds, sync (daily) ─────────────────────────────────────
   - type: cron
     name: gf-cron-daily
     runtime: node
@@ -153,7 +153,28 @@ services:
     schedule: "0 4 * * *"
     buildCommand: "true"
     startCommand: >-
-      for p in refresh-events sync refresh-results refresh-odds resolve-picks; do
+      for p in refresh-events sync refresh-odds; do
+        curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
+      done
+    envVars:
+      - fromGroup: globalfight
+
+  # ── Cron: results + pick resolution (every 3h) ───────────────────────────
+  # The reward step of the habit loop — "you called it, card earned" — only fires
+  # once a bout's result is ingested AND picks are graded. Running this daily meant
+  # a Sunday-afternoon card's reward could wait ~a day, long after the dopamine
+  # window. Every 3h ingests results then grades picks in the same run, so the
+  # payoff lands within hours of the final bell. Cheap off-event: the results
+  # scrape is polite (8×/day) and resolve-picks only touches decided, ungraded
+  # bouts, scanning 0 rows when nothing new has finished.
+  - type: cron
+    name: gf-cron-results
+    runtime: node
+    plan: starter
+    schedule: "0 */3 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      for p in refresh-results resolve-picks; do
         curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
     envVars:
