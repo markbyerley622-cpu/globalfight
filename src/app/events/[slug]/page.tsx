@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { orderFights, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
 import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
-import { isFollowingPromotion } from "@/lib/follows";
+import { isFollowingPromotion, isFollowingEvent } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
 import { getCrowdForFightIds, getMyPicksForFightIds, type CrowdRead, type MyPick } from "@/lib/picks";
 import { getRoomSummaries } from "@/lib/community/rooms";
@@ -68,8 +68,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   // Is the viewer following this promotion? (drives the header follow button)
   const viewer = await getCurrentUser();
-  const promotionFollowing =
-    viewer && event.promotion ? await isFollowingPromotion(viewer.id, event.promotion) : false;
+  const [promotionFollowing, eventFollowing] = viewer
+    ? await Promise.all([
+        event.promotion ? isFollowingPromotion(viewer.id, event.promotion) : Promise.resolve(false),
+        isFollowingEvent(viewer.id, event.id),
+      ])
+    : [false, false];
 
   // Crowd predictions for the whole card in TWO queries (batched — no N+1): the
   // aggregate read for everyone, and this viewer's own picks. Same store and the
@@ -107,7 +111,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>
       {/* Hero → Schedule (when) → Headline (the fight) — the top of the funnel. */}
-      <EventHeader event={event} promotionFollowing={promotionFollowing} />
+      <EventHeader
+        event={event}
+        promotionFollowing={promotionFollowing}
+        eventFollowing={eventFollowing}
+        boutCount={fights.length}
+      />
       {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
       <EventSchedule date={event.date} status={event.status} />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}

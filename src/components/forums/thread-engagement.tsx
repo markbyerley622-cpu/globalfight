@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bookmark, Bell, BellRing, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-client";
-import { ShareMenu, CopyLinkButton } from "@/components/forums/share-menu";
+import { ShareMenu, CopyLinkButton } from "@/components/share-menu";
 import { ReportButton } from "@/components/forums/report-dialog";
 import type { ForumThreadDTO } from "@/lib/forum/types";
 
@@ -65,10 +65,15 @@ export function ThreadEngagement({ thread }: { thread: ForumThreadDTO }) {
         {following ? "Following" : "Follow"}
       </button>
 
-      <ShareMenu categorySlug={thread.categorySlug} slug={thread.slug} title={thread.title} />
+      <ShareMenu
+        path={`/forums/${thread.categorySlug}/${thread.slug}`}
+        title={thread.title}
+        // The forum's own signal: shares feed the trending score.
+        onShared={() => { fetch(`/api/forums/threads/${thread.slug}/share`, { method: "POST" }).catch(() => {}); }}
+      />
       {shareCount > 0 && <span className="text-xs text-fog">{shareCount} share{shareCount === 1 ? "" : "s"}</span>}
 
-      <CopyLinkButton categorySlug={thread.categorySlug} slug={thread.slug} />
+      <CopyLinkButton path={`/forums/${thread.categorySlug}/${thread.slug}`} />
       <ReportButton targetType="thread" targetId={thread.id} />
     </div>
   );

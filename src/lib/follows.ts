@@ -54,6 +54,39 @@ export async function isFollowingPromotion(userId: string, promotion: string): P
   return !!row;
 }
 
+// ── Events ───────────────────────────────────────────────────────────────────
+// Following an EVENT is the strongest intent signal in Phase 1: it means "remind
+// me". It is what the Following feed and the reminder scheduler key off, and it
+// is deliberately separate from following the promotion that runs it.
+
+export async function toggleFollowEvent(userId: string, eventSlug: string): Promise<{ following: boolean }> {
+  const e = await prisma.event.findUnique({ where: { slug: eventSlug }, select: { id: true } });
+  if (!e) throw new Error("Event not found");
+  const key = { userId_eventId: { userId, eventId: e.id } };
+  const existing = await prisma.favoriteEvent.findUnique({ where: key, select: { userId: true } });
+  if (existing) {
+    await prisma.favoriteEvent.delete({ where: key });
+    return { following: false };
+  }
+  await prisma.favoriteEvent.create({ data: { userId, eventId: e.id } });
+  track("follow_event", userId, { event: eventSlug });
+  return { following: true };
+}
+
+export async function isFollowingEvent(userId: string, eventId: string): Promise<boolean> {
+  const row = await prisma.favoriteEvent.findUnique({
+    where: { userId_eventId: { userId, eventId } },
+    select: { userId: true },
+  });
+  return !!row;
+}
+
+/** Event ids a user follows, for batch-marking lists without an N+1. */
+export async function getFollowedEventIds(userId: string): Promise<Set<string>> {
+  const rows = await prisma.favoriteEvent.findMany({ where: { userId }, select: { eventId: true } });
+  return new Set(rows.map((r) => r.eventId));
+}
+
 /** Registry slugs of the promotions a user follows (for personalized surfaces). */
 export async function getFollowedPromotionSlugs(userId: string): Promise<string[]> {
   const rows = await prisma.favoritePromotion.findMany({ where: { userId }, select: { promotion: true } });

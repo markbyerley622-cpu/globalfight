@@ -17,6 +17,11 @@ export const EVENTS = [
   "prediction_changed",
   "follow_fighter",
   "follow_promotion",
+  // Following an EVENT is the strongest Phase-1 intent signal ("remind me"), and
+  // calendar export is the moment the product leaves the app and lives in the
+  // surface the fan already checks. Both are tracked as first-class conversions.
+  "follow_event",
+  "calendar_add",
   "notification_open",
   "notification_click",
   "result_reveal_view",

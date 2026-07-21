@@ -449,6 +449,7 @@ model Event {
   fights           Fight[]
   externalIds      EventExternalId[]
   discussionThread ForumThread?
+  followers        FavoriteEvent[]
 
   @@index([date, status])
   @@index([country])
@@ -1022,6 +1023,7 @@ model User {
   communityVotes    CommunityVote[]
   favorites         FavoriteFighter[]
   promotionFollows  FavoritePromotion[]
+  eventFollows      FavoriteEvent[]
   fightPicks        FightPick[]
   reputationEvents  ReputationEvent[]
   notifications     Notification[]
@@ -1081,6 +1083,22 @@ model FavoritePromotion {
 
   @@id([userId, promotion])
   @@index([promotion])
+}
+
+/// A followed EVENT — the highest-intent follow there is: it means "remind me
+/// about this card". Distinct from following a promotion (a standing interest);
+/// this is a commitment to one date, and it's what the reminder scheduler and
+/// the Following feed key off.
+model FavoriteEvent {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, eventId])
+  @@index([eventId])
+  @@index([userId, createdAt])
 }
 
 model Account {
