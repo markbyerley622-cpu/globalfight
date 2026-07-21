@@ -5,15 +5,20 @@
 //     node --import tsx prisma/seed/boot.mts ; npm start
 //
 //  It is NON-FATAL: any problem (unreachable DB, error) is logged and it exits 0,
-//  so the app always starts. Driven solely by SEED_WORLD_MODE:
-//    • off      → do nothing (existing seed data, if any, is left alone).
-//    • demo     → seed once if the DB has no seed users; else skip (idempotent).
-//    • refresh  → wipe + regenerate once per deploy, then behave as demo.
+//  so the app always starts. Driven by the ALLOW_SEED_WORLD master switch:
+//
+//    • ALLOW_SEED_WORLD != true  → PURGE every trace of demo data, every boot.
+//      Not "stop seeding" — actively delete, so flipping the switch off is what
+//      takes a demo database to a real one. Idempotent: with nothing to remove it
+//      deletes nothing and says so.
+//    • ALLOW_SEED_WORLD = true   → seeding permitted; SEED_WORLD_MODE picks how:
+//        demo (default) → seed once if the DB has no seed users; else skip.
+//        refresh        → wipe + regenerate once per deploy, then behave as demo.
 // ════════════════════════════════════════════════════════════════════════════
 import { resolveSeedWorld, seedBanner } from "./guard.mts";
 import { generateWorld, SEED_EMAIL_DOMAIN } from "./world.mts";
 import { wipeWorld } from "./wipe.mts";
-import { readMarker, writeMarker, deployId } from "./marker.mts";
+import { readMarker, writeMarker, clearMarker, deployId } from "./marker.mts";
 import { prisma } from "../../src/lib/db.ts";
 
 async function seedUserCount(): Promise<number> {
@@ -34,7 +39,22 @@ async function generate(mode: string) {
 async function main() {
   const ctx = resolveSeedWorld();
   console.log("\n" + seedBanner(ctx) + "\n");
-  if (!ctx.enabled) return; // off — leave any existing seed data untouched
+
+  // ── Not allowed ⇒ this database must contain NO demo data. ────────────────
+  // Deleting rather than hiding is the whole point: a filtered fake account is
+  // one missed WHERE clause from a real user, and launch is when that happens.
+  if (!ctx.enabled) {
+    const existing = await seedUserCount();
+    if (existing === 0) {
+      console.log("[seed] not allowed and none present — nothing to purge.");
+      return;
+    }
+    console.log(`[seed] ALLOW_SEED_WORLD is not true but ${existing} demo users exist — purging.`);
+    const w = await wipeWorld();
+    console.log(`[seed] purged ${w.users} demo users (+${w.analyticsEvents} analytics, ${w.roomsRemoved} empty rooms, ${w.threadsRepaired} threads repaired)`);
+    clearMarker();
+    return;
+  }
 
   if (ctx.mode === "refresh") {
     const marker = readMarker();

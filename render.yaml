@@ -115,10 +115,12 @@ services:
     # drops/renames before merging, or migrate to Prisma Migrations (which apply
     # additive uniques cleanly) to restore the automatic guard.
     buildCommand: npm ci --include=dev && npx prisma db push --skip-generate --accept-data-loss && npm run build
-    # boot.mts runs first, driven by SEED_WORLD_MODE: when "demo" it seeds this
-    # deployment ONCE if it has no seed users (idempotent). It is NON-FATAL (`;`,
-    # not `&&`) so a seeding issue never stops the app from starting. When
-    # SEED_WORLD_MODE is off/unset, boot is a quick no-op.
+    # boot.mts runs first, driven by the ALLOW_SEED_WORLD master switch. When it
+    # is "true" the deployment is seeded ONCE if it has no seed users (idempotent).
+    # When it is anything else, boot PURGES every trace of demo data from this
+    # database — flipping the switch off is what turns a demo deployment into a
+    # real one. It is NON-FATAL (`;`, not `&&`) so a seeding issue never stops the
+    # app from starting, and it is safe to run on every restart.
     startCommand: node --import tsx prisma/seed/boot.mts ; npm start
     healthCheckPath: /
     envVars:
@@ -127,9 +129,19 @@ services:
         fromDatabase:
           name: globalfight-db
           property: connectionString
-      # Seed World — the SINGLE flag. Set to "demo" in the dashboard to populate this
-      # deployment with the tester community; unset/"off" = normal production. Kept
-      # sync:false so the blueprint never overwrites your dashboard choice.
+      # Seed World — the MASTER switch. "true" allows simulated people to exist in
+      # this database (and shows the transparent Demo World badge). ANY other value,
+      # including unset, means demo data is PURGED at every boot — that is how a
+      # demo deployment becomes a real one. Kept sync:false so the blueprint never
+      # overwrites your dashboard choice.
+      #
+      # LAUNCH CHECKLIST: set ALLOW_SEED_WORLD to false (or delete it) and redeploy.
+      # The next boot deletes every @seed.local account and everything it owns.
+      - key: ALLOW_SEED_WORLD
+        sync: false
+      # Optional refinement, only read when ALLOW_SEED_WORLD=true:
+      #   demo (default) → seed once if empty · refresh → rebuild once per deploy.
+      # It cannot enable seeding on its own.
       - key: SEED_WORLD_MODE
         sync: false
       # Bearer token for POST /api/admin/seed-world/reset (removes all seed data).

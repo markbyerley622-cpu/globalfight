@@ -6,8 +6,12 @@ import { SEED_EMAIL_DOMAIN } from "./world.mts";
 // reputation events, notifications, activity, forum posts/reactions, and any
 // event-discussion threads they authored (ForumThread.author onDelete: Cascade).
 //
-// Two things do NOT cascade and are handled explicitly:
+// Three things do NOT cascade and are handled explicitly:
 //   • AnalyticsEvent.userId is a bare column (no FK relation) — deleted by id.
+//   • Rooms (fight / event threads) are authored by the SYSTEM user, not a seed
+//     user, so they survive the cascade. Any room left with nothing but its
+//     auto-generated opening post is a seeding artefact and is removed; a room
+//     that real people have spoken in is kept and its counters repaired.
 //   • Denormalised thread counters can drift if seed users left replies/reactions
 //     inside a pre-existing real thread — recomputed from surviving posts.
 export async function wipeWorld(): Promise<Record<string, number>> {
@@ -24,7 +28,19 @@ export async function wipeWorld(): Promise<Record<string, number>> {
     ? await prisma.user.deleteMany({ where: { id: { in: ids } } })
     : { count: 0 };
 
-  // Recompute counters for every thread so any seed-induced drift is cleared.
+  // Rooms the seeder provisioned. A room whose seed posts have all cascaded away
+  // is left holding only its system-authored opener — an empty demo artefact.
+  // Remove those; production re-provisions a room the moment someone opens it.
+  const rooms = await prisma.forumThread.findMany({
+    where: { OR: [{ fightId: { not: null } }, { eventId: { not: null } }, { battleId: { not: null } }] },
+    select: { id: true, _count: { select: { posts: true } } },
+  });
+  const emptyRoomIds = rooms.filter((r) => r._count.posts <= 1).map((r) => r.id);
+  const roomsRemoved = emptyRoomIds.length
+    ? (await prisma.forumThread.deleteMany({ where: { id: { in: emptyRoomIds } } })).count
+    : 0;
+
+  // Recompute counters for every surviving thread so seed-induced drift is cleared.
   const threads = await prisma.forumThread.findMany({ select: { id: true } });
   let repaired = 0;
   for (const t of threads) {
@@ -34,12 +50,13 @@ export async function wipeWorld(): Promise<Record<string, number>> {
       orderBy: { createdAt: "asc" },
     });
     if (!posts.length) continue;
-    const replyCount = posts.filter((p) => p.parentId).length;
+    // Matches forum/repo::createPost — every post after the opener is a reply.
+    const replyCount = Math.max(0, posts.length - 1);
     const reactionCount = await prisma.forumReaction.count({ where: { post: { threadId: t.id } } });
     const lastPostAt = posts[posts.length - 1].createdAt;
     await prisma.forumThread.update({ where: { id: t.id }, data: { replyCount, reactionCount, lastPostAt } });
     repaired++;
   }
 
-  return { users: users.count, analyticsEvents: analytics.count, threadsRepaired: repaired };
+  return { users: users.count, analyticsEvents: analytics.count, roomsRemoved, threadsRepaired: repaired };
 }
