@@ -6,6 +6,7 @@ import { AlertTriangle, Check, CloudOff, ExternalLink, History, Loader2 } from "
 import { Row, Text, Area, Select, DateTime, Section } from "@/components/admin/fields";
 import { useAutosave } from "@/components/admin/use-autosave";
 import { AuditDrawer } from "@/components/admin/audit-drawer";
+import { ConflictPanel } from "@/components/admin/conflict-panel";
 import { SPORTS } from "@/lib/sports";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +98,8 @@ export function EventEditor({ initial, card }: { initial: EditableEvent; card: R
           </button>
         </div>
       )}
+
+      <div className="mb-4"><ConflictPanel eventId={initial.id} /></div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-4">

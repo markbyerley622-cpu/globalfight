@@ -9,6 +9,7 @@
 
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
+import { recordConflicts } from "@/lib/admin/reconcile";
 import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
@@ -177,14 +178,15 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
     // Never overwrite a field an operator owns. Without this the admin editor
     // is decorative: this runs on cron and would revert every manual correction
     // to name/date/venue/status within hours, silently.
-    const current = await prisma.event.findUnique({
-      where: { id: match.eventId },
-      select: { lockedFields: true },
-    });
-    const data = stripLocked(fill, current?.lockedFields ?? []);
+    const current = await prisma.event.findUnique({ where: { id: match.eventId } });
+    const locked = current?.lockedFields ?? [];
+    const data = stripLocked(fill, locked);
     if (Object.keys(data).length > 0) {
       await prisma.event.update({ where: { id: match.eventId }, data });
     }
+    // Whatever the lock refused is recorded for review, so the operator learns
+    // the source disagrees instead of the two systems diverging in silence.
+    await recordConflicts("Event", match.eventId, fill, locked, (current ?? {}) as Record<string, unknown>, ev._meta.source);
     eventId = match.eventId;
   } else {
     const slug = slugify(ev.name) || slugify(`${ev.name}-${ev.date.slice(0, 10)}`);
@@ -310,12 +312,13 @@ async function upsertFight(
   // Same rule as events, and it matters most here: `orderOnCard` above is
   // rebuilt from the SOURCE's index every run, so an operator's drag-and-drop
   // ordering (and any early-entered result) would be destroyed by the next cron.
-  const existing = await prisma.fight.findUnique({ where: { slug }, select: { id: true, lockedFields: true } });
+  const existing = await prisma.fight.findUnique({ where: { slug } });
   if (existing) {
     const update = stripLocked(data, existing.lockedFields);
     if (Object.keys(update).length > 0) {
       await prisma.fight.update({ where: { id: existing.id }, data: update });
     }
+    await recordConflicts("Fight", existing.id, data, existing.lockedFields, existing as unknown as Record<string, unknown>, ev._meta.source);
     return;
   }
 

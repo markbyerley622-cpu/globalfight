@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  stripLocked, withLocked, lockableEventFields, lockableFightFields,
+  stripLocked, withLocked, lockableEventFields, lockableFightFields, blockedByLock,
 } from "../provenance";
 
 // The single most safety-critical rule in the admin: an operator's edit must
@@ -47,4 +47,15 @@ test("orderOnCard is lockable — drag-and-drop depends on it", () => {
   // every run, so without this lock a reordered card reverts on the next cron.
   assert.deepEqual(lockableFightFields(["orderOnCard"]), ["orderOnCard"]);
   assert.equal("orderOnCard" in stripLocked({ orderOnCard: 5 }, ["orderOnCard"]), false);
+});
+
+test("blockedByLock reports exactly what the lock refused", () => {
+  // Preventing an overwrite silently is only half the job — the operator must
+  // be able to see that a source disagreed.
+  const blocked = blockedByLock({ venue: "Scraper Stadium", broadcaster: "New TV" }, ["venue"]);
+  assert.deepEqual(blocked, [{ field: "venue", importedValue: "Scraper Stadium" }]);
+});
+
+test("blockedByLock is empty when nothing is locked", () => {
+  assert.deepEqual(blockedByLock({ venue: "X" }, []), []);
 });

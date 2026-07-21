@@ -36,6 +36,23 @@ export function stripLocked<T extends Record<string, unknown>>(data: T, locked: 
   return out as Partial<T>;
 }
 
+/**
+ * The keys `stripLocked` removed, paired with what the importer wanted.
+ *
+ * Preventing an overwrite silently is only half the job: the operator never
+ * learns the source disagrees, and the importer stops mattering. This is what
+ * turns a blocked write into a reviewable decision.
+ */
+export function blockedByLock<T extends Record<string, unknown>>(
+  data: T, locked: readonly string[],
+): { field: string; importedValue: unknown }[] {
+  if (!locked.length) return [];
+  const lockedSet = new Set(locked);
+  return Object.entries(data)
+    .filter(([k]) => lockedSet.has(k))
+    .map(([field, importedValue]) => ({ field, importedValue }));
+}
+
 /** Union of the fields already locked and the ones this edit touches. */
 export function withLocked(existing: readonly string[], edited: readonly string[]): string[] {
   return [...new Set([...existing, ...edited])].sort();
