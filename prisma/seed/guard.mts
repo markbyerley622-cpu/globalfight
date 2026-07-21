@@ -109,7 +109,10 @@ export function assertManualSeedAllowed(): SeedWorldContext {
  * or contradictory configuration. Returns a disabled context for mode=off.
  */
 export function resolveSeedWorld(): SeedWorldContext {
-  const raw = (process.env.SEED_WORLD_MODE ?? "off").toLowerCase();
+  // DEMO_MODE=true is the simple alias: it means SEED_WORLD_MODE=demo unless the
+  // more specific SEED_WORLD_MODE is set explicitly.
+  const demoFlag = truthy(process.env.DEMO_MODE);
+  const raw = (process.env.SEED_WORLD_MODE ?? (demoFlag ? "demo" : "off")).toLowerCase();
   const mode: SeedMode = raw === "demo" || raw === "refresh" ? raw : "off";
   const { host, database } = parseDb(process.env.DATABASE_URL ?? "");
   const environment = environmentName();
