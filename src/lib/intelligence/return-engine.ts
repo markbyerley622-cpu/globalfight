@@ -115,7 +115,7 @@ export async function runReturnEngine(): Promise<{ eventsSoon: number; eventsLiv
       userId: m.userId,
       type: "EVENT_LIVE",
       title: `${e.name} is LIVE`,
-      body: "Join the discussion and make last-minute picks.",
+      body: "Picks are locked — jump into the live discussion.",
       url: `/events/${e.slug}`,
       icon: "🔴",
       dedupeKey: `event_live:${e.id}`,

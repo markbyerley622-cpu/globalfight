@@ -35,9 +35,19 @@ export async function castPick(
   confidence?: number,
 ): Promise<{ crowd: CrowdRead; myPick: MyPick }> {
   if (!isCorner(corner)) throw new Error("Invalid corner");
-  const f = await prisma.fight.findUnique({ where: { slug: fightSlug }, select: { id: true, result: true } });
+  const f = await prisma.fight.findUnique({
+    where: { slug: fightSlug },
+    select: { id: true, result: true, event: { select: { date: true } } },
+  });
   if (!f) throw new Error("Fight not found");
   if (f.result !== "SCHEDULED") throw new Error("This bout is already decided");
+  // First-bell lock: once the card has started, picks close for the whole event.
+  // Prevents picking a bout whose outcome is already known but not yet recorded
+  // (results are entered in a batch after the event) — the integrity hole that a
+  // seeded community would exploit on night one. Standard pick'em behaviour.
+  if (f.event?.date && f.event.date.getTime() <= Date.now()) {
+    throw new Error("Picks are locked — the card has started");
+  }
   const fightId = f.id;
   const conf = confidence == null ? null : Math.max(1, Math.min(5, Math.round(confidence)));
   const existing = await prisma.fightPick.findUnique({
