@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getOrCreateGeneralRoom } from "@/lib/community/rooms";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 
 /** Provision-on-open: the event's GENERAL room (card-wide talk). Created lazily,
  *  only when a reader actually reaches the section — never during the event
@@ -9,7 +10,8 @@ import { getOrCreateGeneralRoom } from "@/lib/community/rooms";
 export async function POST(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   try {
-    const event = await prisma.event.findUnique({ where: { slug }, select: { id: true, name: true, sport: true } });
+    // No discussion room is provisioned for an unpublished card.
+    const event = await prisma.event.findFirst({ where: { slug, ...PUBLIC_EVENT }, select: { id: true, name: true, sport: true } });
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
     return NextResponse.json(await getOrCreateGeneralRoom(event));
   } catch (e) {

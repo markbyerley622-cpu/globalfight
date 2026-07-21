@@ -471,9 +471,15 @@ export async function getResults(): Promise<FightEvent[]> {
   return rows.map(mapEvent);
 }
 
+/**
+ * The public event page. A DRAFT is not published, so this returns null for one
+ * and the route 404s — excluding drafts from LISTS is not enough, because the
+ * slug is guessable and an operator building a card would otherwise be
+ * publishing it the moment they typed the title.
+ */
 export async function getEvent(slug: string): Promise<FightEvent | null> {
-  const e = await prisma.event.findUnique({
-    where: { slug },
+  const e = await prisma.event.findFirst({
+    where: { slug, ...PUBLIC_EVENT },
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
   });
   return e ? mapEvent(e) : null;
