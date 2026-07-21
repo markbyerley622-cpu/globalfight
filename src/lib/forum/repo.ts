@@ -36,7 +36,7 @@ type BattleRef = { id: string; challengerId: string; opponentId: string | null; 
 type AccessRow = { visibility: string; battle: BattleRef | null };
 
 /** True when `viewerId` may read/post in this thread. */
-export function canAccessThread(t: AccessRow, viewerId?: string): boolean {
+function canAccessThread(t: AccessRow, viewerId?: string): boolean {
   if (t.visibility !== "battle") return true;
   if (!viewerId || !t.battle) return false;
   return t.battle.challengerId === viewerId || t.battle.opponentId === viewerId;

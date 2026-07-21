@@ -37,17 +37,11 @@ export interface FeedItem {
   meta?: string | null;
 }
 
-export interface FollowingSummary {
-  events: number;
-  fighters: number;
-  promotions: number;
-  get total(): number;
-}
 
 const iso = (d: Date) => d.toISOString();
 
 /** What this user follows. Three cheap indexed reads. */
-export async function getFollowGraph(userId: string) {
+async function getFollowGraph(userId: string) {
   const [events, fighters, promotions] = await Promise.all([
     prisma.favoriteEvent.findMany({ where: { userId }, select: { eventId: true } }),
     prisma.favoriteFighter.findMany({ where: { userId }, select: { fighterId: true } }),

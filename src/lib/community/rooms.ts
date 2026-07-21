@@ -72,7 +72,7 @@ type FightForRoom = {
   event: { name: string } | null;
 };
 
-export async function getOrCreateCommunityRoom(fight: FightForRoom): Promise<RoomThreadRef> {
+async function getOrCreateCommunityRoom(fight: FightForRoom): Promise<RoomThreadRef> {
   return provision(
     async () => {
       const t = await prisma.forumThread.findUnique({ where: { fightId: fight.id }, select: THREAD_REF });
@@ -124,7 +124,7 @@ export async function getOrCreateGeneralRoom(event: {
 }
 
 // ── Layer 1: the battle's private room ───────────────────────────────────────
-export async function getOrCreateBattleRoom(battle: {
+async function getOrCreateBattleRoom(battle: {
   id: string; challenger: { name: string | null; username: string | null }; opponent: { name: string | null; username: string | null } | null;
 }, fight: FightForRoom): Promise<RoomThreadRef> {
   const who = (u: { name: string | null; username: string | null } | null) => u?.name ?? u?.username ?? "Challenger";

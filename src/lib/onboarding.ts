@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { SPORTS } from "@/lib/sports";
 import { resolvePromotion, promotionBySlug } from "@/lib/promotions";
+import { ROLES, SPORT_MAX } from "@/lib/onboarding-options";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  First run.
@@ -15,19 +16,8 @@ import { resolvePromotion, promotionBySlug } from "@/lib/promotions";
 //  onboarding-specific storage and no wizard framework.
 // ════════════════════════════════════════════════════════════════════════════
 
-export const ROLES = [
-  { value: "fan", label: "Fan", blurb: "I watch and predict" },
-  { value: "fighter", label: "Fighter", blurb: "I compete" },
-  { value: "coach", label: "Coach", blurb: "I corner and train" },
-  { value: "media", label: "Media", blurb: "I cover the sport" },
-] as const;
-
-export type RoleValue = (typeof ROLES)[number]["value"];
 const ROLE_VALUES = new Set<string>(ROLES.map((r) => r.value));
 const SPORT_VALUES = new Set<string>(SPORTS.map((s) => s.value));
-
-export const SPORT_MIN = 2;
-export const SPORT_MAX = 5;
 
 export interface OnboardingPatch {
   role?: string;

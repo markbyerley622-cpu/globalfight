@@ -7,20 +7,13 @@ import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { PromotionLogo } from "@/components/promotion-logo";
 import { Flag } from "@/components/flag";
 import { SPORTS } from "@/lib/sports";
+import { ROLES, SPORT_MIN, SPORT_MAX } from "@/lib/onboarding-options";
 import { cn } from "@/lib/utils";
 
 // The first run. Four questions, each one turning into a follow, ending on a
 // Following feed that already has something in it. No wizard framework: it is a
 // step index and a state object, because that is all four screens need.
 
-const ROLES = [
-  { value: "fan", label: "Fan", blurb: "I watch and predict" },
-  { value: "fighter", label: "Fighter", blurb: "I compete" },
-  { value: "coach", label: "Coach", blurb: "I corner and train" },
-  { value: "media", label: "Media", blurb: "I cover the sport" },
-];
-const SPORT_MIN = 2;
-const SPORT_MAX = 5;
 
 interface PromotionOption { slug: string; name: string; upcoming: number }
 interface FighterOption { id: string; slug: string; name: string; sport: string; countryCode: string | null; record: string; image: string | null }

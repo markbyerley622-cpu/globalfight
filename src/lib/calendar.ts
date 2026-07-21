@@ -23,7 +23,7 @@ export interface CalendarEvent {
 const DEFAULT_DURATION = 240;
 
 /** UTC basic-format timestamp: 20260724T200000Z */
-export function icsStamp(d: Date): string {
+function icsStamp(d: Date): string {
   return `${d.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
 }
 
@@ -79,7 +79,6 @@ export function buildIcs(e: CalendarEvent, now = new Date()): string {
   return `${lines.map(fold).join("\r\n")}\r\n`;
 }
 
-const enc = encodeURIComponent;
 
 export function googleCalendarUrl(e: CalendarEvent): string {
   const params = new URLSearchParams({
@@ -108,4 +107,3 @@ export function outlookCalendarUrl(e: CalendarEvent): string {
 /** Filename-safe slug for the downloaded .ics. */
 export const icsFilename = (slug: string): string => `${slug.replace(/[^a-z0-9-]/gi, "-")}.ics`;
 
-export { enc as encodeCalendarComponent };

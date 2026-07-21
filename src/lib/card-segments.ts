@@ -24,7 +24,7 @@ export const SEGMENTS: Record<SegmentKey, SegmentMeta> = {
 export const SEGMENT_ORDER: SegmentKey[] = ["EARLY_PRELIM", "PRELIM", "MAIN"];
 
 /** The minimum a bout realistically occupies: fight time + walkouts + replay. */
-export function boutMinutes(scheduledRounds: number): number {
+function boutMinutes(scheduledRounds: number): number {
   // 5-minute rounds are the common case; 3-minute boxing rounds run shorter but
   // carry more between-round time, so this lands close for both.
   return Math.round(scheduledRounds * 5 * 0.6) + 12;
