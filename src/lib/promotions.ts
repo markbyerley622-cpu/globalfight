@@ -87,6 +87,20 @@ const ALIAS_MATCHERS: { promo: Promotion; re: RegExp }[] = PROMOTIONS.flatMap((p
   })),
 );
 
+const BY_SLUG = new Map(PROMOTIONS.map((p) => [p.slug, p]));
+
+/**
+ * Exact lookup by registry slug — for values that are ALREADY slugs (a stored
+ * follow, a URL parameter, an API payload).
+ *
+ * Do not use resolvePromotion for those: it matches free text by alias, and
+ * several slugs are deliberately not aliases ("one" would match half of all
+ * headlines), so a slug round-trip silently degrades to the fallback org.
+ */
+export function promotionBySlug(slug?: string | null): Promotion | null {
+  return BY_SLUG.get((slug ?? "").trim().toLowerCase()) ?? null;
+}
+
 /** First promotion whose alias appears as a whole word/phrase in `text`, else null. */
 function findByAlias(text: string): Promotion | null {
   for (const { promo, re } of ALIAS_MATCHERS) {

@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
     ],
   },
+  // Legacy per-bout URL → the matchup page. Handled here rather than by a
+  // Server Component calling redirect(): a dynamic page has already begun
+  // streaming by the time it redirects, so Next falls back to a 200 + meta
+  // refresh — a weak signal that leaves the old URL indexable. This is a real
+  // 308 issued before any React renders.
+  async redirects() {
+    return [{ source: "/predictions/:slug", destination: "/fights/:slug", permanent: true }];
+  },
   // `sharp` is a native Node addon (via detect-libc → child_process). Declaring it
   // external stops webpack bundling it into the Node server compile.
   serverExternalPackages: ["sharp"],

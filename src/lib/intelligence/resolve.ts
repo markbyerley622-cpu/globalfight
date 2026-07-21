@@ -4,6 +4,7 @@ import { awardReputation, pickReputation } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
 import { recordActivity } from "@/lib/activity";
 import { awardCard, rarityForFight } from "@/lib/collectibles";
+import { resolveFightBattles } from "@/lib/battles";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Combat Intelligence Engine — the resolution pipeline.
@@ -47,7 +48,9 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   const fight = await loadFight(fightId);
   if (!fight || fight.result === "SCHEDULED") return { resolved: 0 };
   if (fight.picks.length === 0) {
-    // Nothing to grade — still stamp so the due-query stops selecting it.
+    // Nothing to grade — resolve any battles (a re-run may still have open ones),
+    // then stamp so the due-query stops selecting it.
+    await resolveFightBattles(fightId, winnerCorner(fight));
     if (!fight.picksResolvedAt) await prisma.fight.update({ where: { id: fightId }, data: { picksResolvedAt: new Date() } });
     return { resolved: 0 };
   }
@@ -56,9 +59,10 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   const decisive = corner !== null; // draw / no-contest ⇒ picks voided, no payout
   const winnerFighterId = corner === "RED" ? fight.redId : corner === "BLUE" ? fight.blueId : null;
   const winnerName = corner === "RED" ? fight.red.name : corner === "BLUE" ? fight.blue.name : null;
-  // Deep-link the reward straight to the fused event page (predictions section),
-  // falling back to the bout redirect for the rare orphan fight with no event.
-  const boutUrl = fight.event ? `/events/${fight.event.slug}#predictions` : `/predictions/${fight.slug}`;
+  // Deep-link the reward straight into THIS bout's arena on the event page (the
+  // module opens itself on a #fight-<slug> hash), falling back to the bout
+  // redirect for the rare orphan fight with no event.
+  const boutUrl = fight.event ? `/events/${fight.event.slug}#fight-${fight.slug}` : `/predictions/${fight.slug}`;
   const rarity = rarityForFight(fight);
 
   // Upset factor = the share of the crowd that got this bout WRONG, read from the
@@ -123,6 +127,10 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
 
     resolved += 1;
   }
+
+  // The fight is the referee: resolve every open battle on this bout now that each
+  // side's pick is graded (winner = whoever's FightPick landed). Idempotent.
+  await resolveFightBattles(fightId, corner);
 
   await prisma.fight.update({ where: { id: fightId }, data: { picksResolvedAt: new Date() } });
   return { resolved };

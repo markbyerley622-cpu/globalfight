@@ -1,15 +1,25 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  Seed World — mode resolution.
 //
-//  SINGLE SOURCE OF TRUTH: SEED_WORLD_MODE.
-//    off | (unset)  → never seed; leave any existing seed data untouched.
-//    demo           → seed once on startup if not already seeded (idempotent).
-//    refresh        → wipe + regenerate once per deploy, then behave as demo.
+//  MASTER SWITCH: ALLOW_SEED_WORLD.
+//    true            → demo data is PERMITTED to exist in this database.
+//    anything else   → demo data is PURGED from this database at every boot.
 //
-//  No other feature flags, no host allowlist — it operates on whatever DATABASE_URL
-//  points at (so it works on Render). Seed rows are marked (users carry an
-//  @seed.local email; everything else is owned by a seed user and cascades), so the
-//  reset endpoint can remove them cleanly without ever touching real accounts.
+//  There is deliberately no way to have simulated people in the database without
+//  ALLOW_SEED_WORLD=true. "Off" does not mean "stop adding" — it means "there are
+//  none", enforced by deletion rather than by filtering at read time. Filtering
+//  would leave fake accounts one missed WHERE clause away from a real user, and a
+//  launch is exactly when that clause gets missed.
+//
+//  SEED_WORLD_MODE only refines HOW to seed once seeding is allowed:
+//    demo (default)  → seed once if the DB has no seed users; else skip.
+//    refresh         → wipe + regenerate once per deploy, then behave as demo.
+//  It cannot enable seeding on its own.
+//
+//  No host allowlist — it operates on whatever DATABASE_URL points at (so it
+//  works on Render). Seed rows are marked (users carry an @seed.local email;
+//  everything else is owned by a seed user and cascades), so cleanup is exact and
+//  never touches a real account.
 // ════════════════════════════════════════════════════════════════════════════
 
 export type SeedMode = "off" | "demo" | "refresh";
@@ -35,12 +45,22 @@ function environmentName(): string {
   return process.env.APP_ENV ?? process.env.NODE_ENV ?? "development";
 }
 
-/** Resolve the seed mode from the single SEED_WORLD_MODE flag. Never throws. */
-export function resolveSeedWorld(): SeedWorldContext {
-  const raw = (process.env.SEED_WORLD_MODE ?? "off").toLowerCase();
-  const mode: SeedMode = raw === "demo" || raw === "refresh" ? raw : "off";
-  const { host, database } = parseDb(process.env.DATABASE_URL ?? "");
-  return { mode, enabled: mode !== "off", host, database, environment: environmentName() };
+/** True only for an explicit, unambiguous opt-in. Anything else means purge. */
+export function seedWorldAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env.ALLOW_SEED_WORLD ?? "").trim().toLowerCase() === "true";
+}
+
+/**
+ * Resolve the seed context. ALLOW_SEED_WORLD decides whether demo data may exist
+ * at all; SEED_WORLD_MODE only chooses how to seed when it may. Never throws.
+ */
+export function resolveSeedWorld(env: NodeJS.ProcessEnv = process.env): SeedWorldContext {
+  const allowed = seedWorldAllowed(env);
+  const raw = (env.SEED_WORLD_MODE ?? "demo").toLowerCase();
+  // Not allowed ⇒ "off", regardless of SEED_WORLD_MODE. One switch, no back door.
+  const mode: SeedMode = !allowed ? "off" : raw === "refresh" ? "refresh" : "demo";
+  const { host, database } = parseDb(env.DATABASE_URL ?? "");
+  return { mode, enabled: allowed, host, database, environment: environmentName() };
 }
 
 /**
@@ -61,7 +81,7 @@ export function seedBanner(ctx: SeedWorldContext): string {
     `Mode: ${ctx.mode}`,
     `Environment: ${ctx.environment}`,
     `Database: ${ctx.database}@${ctx.host}`,
-    `Status: ${ctx.enabled ? "ENABLED" : "DISABLED"}`,
+    `Status: ${ctx.enabled ? "ALLOWED (demo data may exist)" : "NOT ALLOWED (demo data is purged)"}`,
     "================================",
   ].join("\n");
 }

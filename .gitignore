@@ -13,3 +13,4 @@ npm-debug.log*
 # Generated fighter photos (bg-removed) + work files
 /public/headshots/
 scripts/.photowork/
+og-preview.png

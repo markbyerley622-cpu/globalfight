@@ -38,6 +38,25 @@ export function pickReputation(opts: { upsetFactor: number; confidence: number |
   return Math.round(base * confMult) + streakBonus;
 }
 
+// ── Battle stakes ─────────────────────────────────────────────────────────────
+// Winning a Prediction Battle LAYERS onto the same reputation score — it is not a
+// separate ledger. Beating a sharper opponent, calling an upset, or beating a more
+// confident opponent are all worth more. Losing is a small, non-punishing nick.
+export const BATTLE = { BASE: 6, LOSS: 3 } as const;
+
+/** Reputation for winning one battle. */
+export function battleReputation(o: {
+  opponentAccuracy: number; // 0..100 — the loser's overall accuracy
+  winnerWasUnderdog: boolean; // the winner's corner was the crowd minority
+  opponentConfidence: number | null; // 1..5
+}): number {
+  const acc = Math.max(0, Math.min(100, o.opponentAccuracy));
+  const accBonus = Math.round((acc / 100) * 8); // beating a sharp caller: up to +8
+  const dog = o.winnerWasUnderdog ? 5 : 0; // calling the upset in a duel: +5
+  const conf = Math.max(0, (o.opponentConfidence ?? 3) - 3); // silencing a confident opponent: +0..+2
+  return BATTLE.BASE + accBonus + dog + conf;
+}
+
 /** Apply a reputation delta and record why. No-op for a zero delta. */
 export async function awardReputation(
   db: Db,

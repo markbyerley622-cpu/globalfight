@@ -130,6 +130,12 @@ export interface Fight {
   roundEnded?: number;
   timeEnded?: string;
   date: string;
+  /** Broadcast block, when a provider gave one: MAIN | PRELIM | EARLY_PRELIM. */
+  cardSegment?: string | null;
+  /** Pulled from the card (injury, weight miss, withdrawal). */
+  cancelled?: boolean;
+  /** Free-text note for a scratched or reshuffled bout. */
+  cardNote?: string | null;
   prediction?: FightPrediction;
   odds?: Odds[];
 }

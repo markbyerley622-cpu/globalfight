@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { track } from "@/lib/analytics";
+import { pairBattle } from "@/lib/battles";
 
 // ── Crowd bout predictions ──────────────────────────────────────────────────
 // The North Star mechanic: a signed-in user picks a corner (+ optional 1–5
@@ -68,6 +69,9 @@ export async function castPick(
     update: { corner, confidence: conf, method: m },
   });
   track(existing ? "prediction_changed" : "prediction_made", userId, { fight: fightSlug, corner });
+  // Prediction Battles: pair with an opposite-corner opponent (best-effort — a
+  // pairing hiccup must never break a pick).
+  try { await pairBattle(userId, fightId); } catch { /* non-fatal */ }
   return { crowd: await crowdFor(fightId), myPick: { corner, confidence: conf, method: m } };
 }
 
@@ -121,6 +125,10 @@ export async function getMyPicksForFightIds(
   }
   return out;
 }
+
+// NOTE: getOpponentsForFights (the "someone disagrees" teaser) is gone. Finding
+// an adversary is no longer a per-card suggestion — pairing is the Battle domain
+// (lib/battles.ts::pairBattle) and the adversary lives in the bout's Battle Room.
 
 /** Crowd reads for many fights at once (by fight id) — for cards/lists. */
 export async function getCrowdForFightIds(fightIds: string[]): Promise<Map<string, CrowdRead>> {

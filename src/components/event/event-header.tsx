@@ -7,13 +7,26 @@ import { Flag } from "@/components/flag";
 import { PromotionLogo } from "@/components/promotion-logo";
 import { resolvePromotion } from "@/lib/promotions";
 import { FollowButton } from "@/components/follow-button";
+import { ShareMenu } from "@/components/share-menu";
+import { AddToCalendar } from "@/components/event/add-to-calendar";
 
 /**
  * Top of the event destination. Frames the event and reflects lifecycle:
  * countdown (upcoming), live banner (live), completed marker (completed),
  * prominent status (cancelled/postponed).
+ *
+ * The action row (Follow · Add to calendar · Share) is the whole point of the
+ * header for a returning fan: it is how an event leaves the app and lands in
+ * the surfaces they already check.
  */
-export function EventHeader({ event, promotionFollowing }: { event: FightEvent; promotionFollowing?: boolean }) {
+export function EventHeader({
+  event, promotionFollowing, eventFollowing, boutCount,
+}: {
+  event: FightEvent;
+  promotionFollowing?: boolean;
+  eventFollowing?: boolean;
+  boutCount?: number;
+}) {
   const disrupted = event.status === "CANCELLED" || event.status === "POSTPONED";
   const isLive = event.status === "LIVE";
   const isCompleted = event.status === "COMPLETED";
@@ -48,6 +61,31 @@ export function EventHeader({ event, promotionFollowing }: { event: FightEvent; 
             {isLive && <span className="live-dot" aria-hidden />} {event.status}
           </Badge>
         </div>
+      </div>
+
+      {/* Event actions. Follow is first and loudest — it is the only one that
+          brings the fan back on its own. Calendar/Share are for the card that
+          matters enough to leave with them. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <FollowButton
+          kind="event"
+          slug={event.slug}
+          initialFollowing={eventFollowing}
+          size="sm"
+          label="Remind me"
+        />
+        {!isCompleted && (
+          <AddToCalendar
+            slug={event.slug}
+            name={event.name}
+            date={event.date}
+            location={[event.venue, event.city, event.country].filter(Boolean).join(", ")}
+            broadcaster={event.broadcaster}
+            bouts={boutCount}
+            size="sm"
+          />
+        )}
+        <ShareMenu path={`/events/${event.slug}`} title={event.name} />
       </div>
 
       <h1 className="mt-1.5 font-display text-xl font-bold leading-tight text-chalk sm:text-2xl">

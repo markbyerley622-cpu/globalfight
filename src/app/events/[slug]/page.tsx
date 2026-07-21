@@ -11,18 +11,21 @@ import { formatDate } from "@/lib/utils";
 import { orderFights, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
 import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
-import { isFollowingPromotion } from "@/lib/follows";
+import { isFollowingPromotion, isFollowingEvent } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
 import { getCrowdForFightIds, getMyPicksForFightIds, type CrowdRead, type MyPick } from "@/lib/picks";
+import { getRoomSummaries } from "@/lib/community/rooms";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
-import { EventDiscussion } from "@/components/event/event-discussion";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
 import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
+import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress } from "@/lib/card-segments";
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
+import { FightModule } from "@/components/fight/fight-module";
+import { EventGeneralRoom } from "@/components/event/event-general-room";
 import { WhenVisible } from "@/components/when-visible";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -45,6 +48,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const fights = orderFights(event.fights);
   const headline = fights.find((f) => f.mainEvent) ?? fights[0];
 
+  // The card as a fan watches it: broadcast blocks in run order, each bout with
+  // an estimated walkout time and where it sits in the night. `derived` is true
+  // when no provider gave us blocks — every time is then labelled an estimate.
+  const { derived: segmentsDerived, blocks } = segmentCard(fights);
+  const eventDate = new Date(event.date);
+  const boutTimes = estimateBoutTimes(blocks, eventDate);
+  const liveBoutId = currentBoutId(blocks, event.status);
+
   // Real market-implied probability per bout, from the licensed odds feed.
   const oddsList = await Promise.all(fights.map((f) => getOddsForFight(f.slug)));
   const marketBySlug = new Map<string, MarketProb | null>(
@@ -66,17 +77,25 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   // Is the viewer following this promotion? (drives the header follow button)
   const viewer = await getCurrentUser();
-  const promotionFollowing =
-    viewer && event.promotion ? await isFollowingPromotion(viewer.id, event.promotion) : false;
+  const [promotionFollowing, eventFollowing] = viewer
+    ? await Promise.all([
+        event.promotion ? isFollowingPromotion(viewer.id, event.promotion) : Promise.resolve(false),
+        isFollowingEvent(viewer.id, event.id),
+      ])
+    : [false, false];
 
   // Crowd predictions for the whole card in TWO queries (batched — no N+1): the
   // aggregate read for everyone, and this viewer's own picks. Same store and the
   // same /api/fights/[slug]/pick write BoutPick uses on /predictions — one source
   // of truth, not a parallel prediction system.
   const fightIds = fights.map((f) => f.id);
-  const [crowdByFightId, myPicksByFightId] = await Promise.all([
+  const [crowdByFightId, myPicksByFightId, roomsByFightId] = await Promise.all([
     getCrowdForFightIds(fightIds),
     viewer ? getMyPicksForFightIds(viewer.id, fightIds) : Promise.resolve(new Map<string, MyPick>()),
+    // Battle Rooms: the room counters + the viewer's battle per bout, for the WHOLE
+    // card in three queries. Nothing is provisioned and no discussion is fetched
+    // until a reader opens an arena — that work belongs to /api/fights/[slug]/room.
+    getRoomSummaries(fightIds, viewer?.id),
   ]);
 
   // Result reveal — only on a completed event, only for a viewer who made picks.
@@ -88,54 +107,95 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       ])
     : [null, 0];
 
-  // One scroll, card → predictions → discussion → coverage. The rail is
-  // navigation only; every section is always mounted below it.
+  // One scroll: card → card talk → coverage. There is no separate Predictions
+  // section — a bout's prediction, battle and discussion live inside that bout's
+  // module, because that is the scope a fan actually thinks in. "Card talk" is
+  // the event-wide room for everything that belongs to no single bout.
   const spy: SpySection[] = [
     { id: "card", label: "Fight card", badge: fights.length },
-    { id: "predictions", label: "Predictions" },
-    { id: "discussion", label: "Discussion" },
+    { id: "card-talk", label: "Card talk" },
     ...(coverage.length ? [{ id: "coverage", label: "Coverage", badge: coverage.length } satisfies SpySection] : []),
   ];
 
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>
       {/* Hero → Schedule (when) → Headline (the fight) — the top of the funnel. */}
-      <EventHeader event={event} promotionFollowing={promotionFollowing} />
+      <EventHeader
+        event={event}
+        promotionFollowing={promotionFollowing}
+        eventFollowing={eventFollowing}
+        boutCount={fights.length}
+      />
       {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
-      <EventSchedule date={event.date} status={event.status} />
+      <EventSchedule
+        date={event.date}
+        status={event.status}
+        estimated={segmentsDerived}
+        blocks={blocks.map((b) => ({
+          key: b.meta.key,
+          label: b.meta.label,
+          startsAt: new Date(eventDate.getTime() - b.meta.offsetMinutes * 60_000).toISOString(),
+          bouts: b.fights.length,
+        }))}
+      />
       {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
 
       {/* Sticky scroll-spy, then the sections continuously below it. */}
       <EventScrollSpy sections={spy} />
 
+      {/* The card IS the product surface: every bout is an independent module
+          carrying its own prediction, battle and discussion. */}
       <ScrollSection id="card" title="Fight card" seam={false}>
-        <div className="flex flex-col gap-3">
-          {fights.map((f, i) => (
-            <FightRow key={f.id} fight={f} index={i} market={marketBySlug.get(f.slug) ?? null} />
+        <div className="flex flex-col gap-10">
+          {blocks.map((block) => (
+            <section key={block.meta.key} aria-label={block.meta.label}>
+              {/* Only head a block when the card actually splits into more than
+                  one — a 5-bout show is just "the card". */}
+              {blocks.length > 1 && (
+                <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-ink-800 pb-2">
+                  <h3 className="font-display text-base font-bold text-chalk">{block.meta.label}</h3>
+                  <span className="text-[0.7rem] uppercase tracking-wider text-fog">
+                    {block.fights.length} bout{block.fights.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col gap-8">
+                {block.fights.map((f) => (
+                  <FightModule
+                    key={f.id}
+                    fightSlug={f.slug}
+                    summary={roomsByFightId.get(f.id) ?? { voices: 0, battle: null }}
+                    header={
+                      <FightRow
+                        fight={f}
+                        index={fights.indexOf(f)}
+                        market={marketBySlug.get(f.slug) ?? null}
+                        estimatedAt={boutTimes.get(f.id)?.toISOString() ?? null}
+                        estimated={segmentsDerived}
+                        progress={boutProgress(f, f.id === liveBoutId)}
+                      />
+                    }
+                    pick={
+                      <BoutPrediction
+                        fight={f}
+                        crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
+                        myPick={myPicksByFightId.get(f.id) ?? null}
+                        market={marketBySlug.get(f.slug) ?? null}
+                      />
+                    }
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </ScrollSection>
 
-      <ScrollSection id="predictions" title="Predictions · the crowd read">
-        <div className="flex flex-col gap-3">
-          {fights.map((f) => (
-            <BoutPrediction
-              key={f.id}
-              fight={f}
-              crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
-              myPick={myPicksByFightId.get(f.id) ?? null}
-              market={marketBySlug.get(f.slug) ?? null}
-            />
-          ))}
-        </div>
-      </ScrollSection>
-
-      <ScrollSection id="discussion" title="Discussion">
-        {/* Provision the thread only when the reader reaches it (as the old tab
-            did on open) — keeps the write off every page load. A quiet skeleton
-            holds the space; the reader is never told about the mechanism. */}
-        <WhenVisible placeholder={<DiscussionSkeleton />}>
-          <EventDiscussion slug={event.slug} />
+      {/* Card-wide talk. Provisioned only when the reader reaches it, so the
+          write stays off every page load. */}
+      <ScrollSection id="card-talk" title="Card talk">
+        <WhenVisible placeholder={<RoomSkeleton />}>
+          <EventGeneralRoom slug={event.slug} />
         </WhenVisible>
       </ScrollSection>
 
@@ -152,9 +212,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   );
 }
 
-/** Space-holding skeleton while the discussion mounts — no words, no spinner,
- *  no mention of loading; it simply reads as the conversation settling in. */
-function DiscussionSkeleton() {
+/** Space-holding skeleton while a room mounts — no words, no spinner, no mention
+ *  of loading; it simply reads as the conversation settling in. */
+function RoomSkeleton() {
   return (
     <div className="mx-auto max-w-3xl space-y-3" aria-hidden>
       <div className="h-11 rounded-xl bg-ink-800/50" />
@@ -194,9 +254,10 @@ function ScrollSection({
 }
 
 /**
- * One bout's prediction on the event scroll. A scheduled bout renders the real
- * crowd-pick control (BoutPick — same component and backend as /predictions); a
- * decided bout collapses to its outcome and how the crowd called it.
+ * The prediction slot inside a bout's module. A scheduled bout renders the real
+ * crowd-pick control (BoutPick — same component and backend everywhere); a decided
+ * bout collapses to its outcome and how the crowd called it. The battle and the
+ * discussion that hang off this prediction live one block below, in the arena.
  */
 function BoutPrediction({ fight, crowd, myPick, market }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null }) {
   if (fight.result === "SCHEDULED") {

@@ -1,36 +1,47 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { MapPin, Tv } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
-import { Badge } from "@/components/ui/badge";
-import { Countdown } from "@/components/countdown";
-import { SportFilter } from "@/components/sport-filter";
-import { FighterAvatar } from "@/components/fighter-avatar";
-import { getUpcomingEvents } from "@/lib/repo";
-import { SPORT_BY_SLUG } from "@/lib/sports";
-import { Flag } from "@/components/flag";
-import { PromotionLogo } from "@/components/promotion-logo";
-import { promotionLabel } from "@/lib/promotions";
+import { EventFilters } from "@/components/events/event-filters";
+import { EventCard } from "@/components/events/event-card";
 import { Pager } from "@/components/pager";
-import { getServerT } from "@/lib/i18n-server";
-import { formatDate } from "@/lib/utils";
-
-export const metadata: Metadata = {
-  title: "Events",
-  description: "Upcoming combat-sports events and fight cards — predictions, venues, broadcasters and countdowns. Filter by sport.",
-};
+import { queryEvents, getEventFacets, type EventFilters as Filters } from "@/lib/events-query";
+import { getCurrentUser } from "@/lib/auth";
+import { getFollowedEventIds } from "@/lib/follows";
+import { SPORT_BY_SLUG } from "@/lib/sports";
+import { promotionBySlug } from "@/lib/promotions";
 
 export const dynamic = "force-dynamic";
-const PER_PAGE = 5;
 
-export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ page?: string; sport?: string }> }) {
-  const { page: pageStr, sport: sportSlug } = await searchParams;
-  const sportValue = sportSlug ? SPORT_BY_SLUG[sportSlug]?.value : undefined;
-  const page = Math.max(0, Number(pageStr) - 1) || 0;
-  const allEvents = await getUpcomingEvents();
-  const all = sportValue ? allEvents.filter((e) => e.sport === sportValue) : allEvents;
-  const events = all.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
-  const t = await getServerT();
+type SP = Promise<{ page?: string; sport?: string; promotion?: string; status?: string; country?: string; when?: string }>;
+
+/** Every filter combination gets its own honest title/description, so a shared
+ *  or indexed URL describes what it actually shows. */
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const p = await searchParams;
+  const sport = p.sport ? SPORT_BY_SLUG[p.sport]?.label : null;
+  const promo = p.promotion ? promotionBySlug(p.promotion)?.name : null;
+  const status = p.status === "completed" ? "Results" : p.status === "live" ? "Live events" : "Events";
+  const bits = [promo, sport, status].filter(Boolean);
+  const title = bits.length > 1 ? bits.join(" · ") : "Events";
+  return {
+    title,
+    description: `${[promo, sport].filter(Boolean).join(" ")} combat-sports ${p.status === "completed" ? "results" : "events"} — full fight cards, venues, broadcasters, countdowns and predictions.`.replace(/\s+/g, " ").trim(),
+  };
+}
+
+export default async function EventsPage({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const filters: Filters = {
+    sport: sp.sport, promotion: sp.promotion, status: sp.status, country: sp.country, when: sp.when,
+    page: Math.max(0, Number(sp.page) - 1) || 0,
+  };
+
+  const viewer = await getCurrentUser();
+  const followed = viewer ? await getFollowedEventIds(viewer.id) : new Set<string>();
+  const [{ events, total, page, pages }, facets] = await Promise.all([
+    queryEvents(filters, followed),
+    getEventFacets(filters),
+  ]);
+
   return (
     <>
       <PageHero
@@ -38,62 +49,28 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         title="Events"
         description="Upcoming fights with predictions, full cards, venues, broadcasters and live countdowns."
       />
-      <div className="container-cr space-y-4 py-10">
-        <SportFilter />
-        {events.map((e) => {
-          return (
-            <div key={e.id} className="card-surface overflow-hidden">
-              <div className="flex flex-col gap-4 border-b border-ink-700 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <PromotionLogo promotion={e.promotion} size="sm" />
-                    <Badge tone={e.status === "ANNOUNCED" ? "neutral" : "red"}>{e.status}</Badge>
-                    <span className="text-xs text-fog">{promotionLabel(e.promotion)}</span>
-                  </div>
-                  <h2 className="mt-1.5 font-display text-2xl font-bold text-chalk">{e.name}</h2>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mist">
-                    <span>{formatDate(e.date, { weekday: "long" })}</span>
-                    {[e.venue, e.city, e.country].some(Boolean) && (
-                      <span className="flex items-center gap-1.5"><MapPin className="size-3.5 text-blood-400" />{[e.venue, e.city, e.country].filter(Boolean).join(", ")} <Flag code={e.countryCode} /></span>
-                    )}
-                    {e.broadcaster && <span className="flex items-center gap-1.5"><Tv className="size-3.5 text-blood-400" />{e.broadcaster}</span>}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-ink-700 bg-ink-950/40 px-4 py-3 text-center">
-                  <p className="mb-1 text-[0.6rem] uppercase tracking-widest text-fog">{t("First bell")}</p>
-                  <Countdown date={e.date} compact />
-                </div>
-              </div>
-              <div className="divide-y divide-ink-800">
-                {e.fights.map((f) => (
-                  <Link key={f.id} href={`/events/${e.slug}#predictions`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-ink-800/50">
-                    <span className="flex min-w-0 items-center gap-2">
-                      {f.mainEvent && <Badge tone="red">{t("Main")}</Badge>}
-                      {f.coMain && <Badge tone="neutral">{t("Co-Main")}</Badge>}
-                      <span className="flex items-center gap-2">
-                        <FighterAvatar fighter={f.red} size="sm" />
-                        <span className="font-display text-sm font-semibold text-chalk">{f.red.name}</span>
-                      </span>
-                      <span className="text-xs font-bold text-fog">vs</span>
-                      <span className="flex items-center gap-2">
-                        <FighterAvatar fighter={f.blue} size="sm" />
-                        <span className="font-display text-sm font-semibold text-chalk">{f.blue.name}</span>
-                      </span>
-                    </span>
-                    {f.weightClass && <span className="shrink-0 text-xs text-fog">{f.weightClass}</span>}
-                  </Link>
-                ))}
-              </div>
-              <Link href={`/events/${e.slug}`} className="block border-t border-ink-700 px-5 py-3 text-center font-display text-xs font-semibold uppercase tracking-wide text-blood-400 hover:bg-ink-800/50">
-                {t("Full card & previews")}
-              </Link>
-            </div>
-          );
-        })}
-        {events.length === 0 && (
-          <p className="card-surface p-10 text-center text-sm text-fog">{t("No upcoming events scheduled.")}</p>
+      <div className="container-cr space-y-5 py-8">
+        <EventFilters facets={facets} />
+
+        <p className="text-xs text-fog">
+          {total === 0 ? "No events match" : `${total.toLocaleString()} event${total === 1 ? "" : "s"}`}
+          {pages > 1 && total > 0 ? ` · page ${page + 1} of ${pages}` : ""}
+        </p>
+
+        {events.length === 0 ? (
+          <div className="card-surface p-10 text-center">
+            <p className="font-display text-base font-bold text-chalk">Nothing here</p>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-fog">
+              No events match these filters. Try a wider date window, or clear a filter above.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {events.map((e) => <EventCard key={e.id} event={e} />)}
+          </div>
         )}
-        <Pager page={page} hasNext={(page + 1) * PER_PAGE < all.length} />
+
+        <Pager page={page} hasNext={page + 1 < pages} />
       </div>
     </>
   );

@@ -18,6 +18,29 @@ import {
   type ForumAttachment,
 } from "@/lib/forum/types";
 import { publish } from "@/lib/forum/realtime";
+import { notify } from "@/lib/notifications-store";
+
+// ─── Visibility ─────────────────────────────────────────────────────────────
+// Battle rooms are ForumThreads with visibility="battle": same posts, reactions,
+// quotes, realtime and moderation, but PRIVATE to the battle's two users. They
+// must never appear in a category list, a feed, trending, or a bookmark list —
+// so every listing query is scoped to public threads, in ONE place.
+const PUBLIC_ONLY = { visibility: "public" } as const;
+
+/** Loaded alongside a thread wherever access has to be decided. */
+const ACCESS_SELECT = {
+  visibility: true,
+  battle: { select: { id: true, challengerId: true, opponentId: true, fightId: true } },
+} as const;
+type BattleRef = { id: string; challengerId: string; opponentId: string | null; fightId: string };
+type AccessRow = { visibility: string; battle: BattleRef | null };
+
+/** True when `viewerId` may read/post in this thread. */
+function canAccessThread(t: AccessRow, viewerId?: string): boolean {
+  if (t.visibility !== "battle") return true;
+  if (!viewerId || !t.battle) return false;
+  return t.battle.challengerId === viewerId || t.battle.opponentId === viewerId;
+}
 
 const slugifyThread = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "thread";
@@ -191,7 +214,7 @@ export async function getThreads(opts: {
   await ensureForumSeed();
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
   const rows = await prisma.forumThread.findMany({
-    where: opts.categorySlug ? { category: { slug: opts.categorySlug } } : undefined,
+    where: opts.categorySlug ? { ...PUBLIC_ONLY, category: { slug: opts.categorySlug } } : PUBLIC_ONLY,
     orderBy: [{ pinned: "desc" }, { lastPostAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
@@ -224,7 +247,9 @@ export async function getFeed(opts: {
   await ensureForumSeed();
   const sort = opts.sort ?? "latest";
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
-  const where: Record<string, unknown> = opts.categorySlug ? { category: { slug: opts.categorySlug } } : {};
+  const where: Record<string, unknown> = opts.categorySlug
+    ? { ...PUBLIC_ONLY, category: { slug: opts.categorySlug } }
+    : { ...PUBLIC_ONLY };
 
   // "Following" needs a signed-in viewer and their subscriptions.
   if (sort === "following") {
@@ -276,8 +301,14 @@ export async function getFeed(opts: {
 // ─── Single thread + posts ───────────────────────────────────────────────────
 
 export async function getThread(slug: string, opts?: { incrementViews?: boolean; viewerId?: string }): Promise<ForumThreadDTO | null> {
-  const t = await prisma.forumThread.findUnique({ where: { slug }, include: THREAD_INCLUDE });
+  const t = await prisma.forumThread.findUnique({
+    where: { slug },
+    include: { ...THREAD_INCLUDE, battle: { select: ACCESS_SELECT.battle.select } },
+  });
   if (!t) return null;
+  // A battle room is invisible to anyone but its two fighters — 404, not 403, so
+  // a stranger cannot even confirm the room exists.
+  if (!canAccessThread(t, opts?.viewerId)) return null;
   if (opts?.incrementViews) {
     await prisma.forumThread.update({ where: { id: t.id }, data: { views: { increment: 1 } } }).catch(() => {});
   }
@@ -288,8 +319,10 @@ export async function getThread(slug: string, opts?: { incrementViews?: boolean;
 export async function getPosts(threadSlug: string, opts: {
   cursor?: string; limit?: number; viewerId?: string;
 }): Promise<Paginated<ForumPostDTO>> {
-  const thread = await prisma.forumThread.findUnique({ where: { slug: threadSlug }, select: { id: true } });
-  if (!thread) return { items: [], nextCursor: null };
+  const thread = await prisma.forumThread.findUnique({
+    where: { slug: threadSlug }, select: { id: true, ...ACCESS_SELECT },
+  });
+  if (!thread || !canAccessThread(thread, opts.viewerId)) return { items: [], nextCursor: null };
   const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
   const rows = await prisma.forumPost.findMany({
     where: { threadId: thread.id },
@@ -321,7 +354,9 @@ function threadKindFor(role: string, requested?: string): string {
 export async function createThread(input: {
   authorId: string; categorySlug: string; title: string; content: string;
   attachments?: ForumAttachment[]; kind?: string; videoId?: string;
-  eventId?: string; fighterId?: string; promotion?: string;
+  fighterId?: string; promotion?: string;
+  /** Room links — an event's general room, a fight's arena, a battle's room. */
+  eventId?: string; fightId?: string; battleId?: string; visibility?: "public" | "battle";
 }): Promise<ForumThreadDTO> {
   await ensureForumSeed();
   const category = await prisma.forumCategory.findUnique({
@@ -340,14 +375,21 @@ export async function createThread(input: {
     data: {
       slug, title: input.title.trim(), categoryId: category.id, authorId: input.authorId, kind,
       videoId: input.videoId ?? undefined,
-      eventId: input.eventId ?? undefined,
       fighterId: input.fighterId ?? undefined,
       promotion: input.promotion ?? undefined,
+      eventId: input.eventId ?? undefined,
+      fightId: input.fightId ?? undefined,
+      battleId: input.battleId ?? undefined,
+      visibility: input.visibility ?? "public",
       posts: { create: { authorId: input.authorId, content: input.content.trim(), attachments: input.attachments ?? undefined } },
     },
     include: THREAD_INCLUDE,
   });
-  await publish({ type: "thread:new", categorySlug: category.slug, threadSlug: slug, title: thread.title });
+  // A private battle room is never announced to the category — only its two
+  // participants are told about it (via notify, from the battle domain).
+  if ((input.visibility ?? "public") === "public") {
+    await publish({ type: "thread:new", categorySlug: category.slug, threadSlug: slug, title: thread.title });
+  }
   return mapThread(thread as ThreadRow);
 }
 
@@ -372,9 +414,10 @@ export async function createPost(input: {
   attachments?: ForumAttachment[]; quotePostId?: string | null;
 }): Promise<ForumPostDTO> {
   const thread = await prisma.forumThread.findUnique({
-    where: { slug: input.threadSlug }, select: { id: true, locked: true },
+    where: { slug: input.threadSlug }, select: { id: true, locked: true, ...ACCESS_SELECT },
   });
   if (!thread) throw new Error("Thread not found.");
+  if (!canAccessThread(thread, input.authorId)) throw new Error("Thread not found.");
   if (thread.locked) throw new Error("This thread is locked.");
 
   // Snapshot the quoted post so the quote survives later edits/deletes.
@@ -405,8 +448,33 @@ export async function createPost(input: {
   await prisma.forumThread.update({
     where: { id: thread.id }, data: { replyCount: { increment: 1 }, lastPostAt: new Date() },
   });
+  if (thread.battle) await onBattleRoomMessage(thread.battle, input.authorId, post.content);
   await publish({ type: "post:new", threadSlug: input.threadSlug, postId: post.id });
   return mapPost(post as PostRow, input.authorId);
+}
+
+/**
+ * A message landed in a private battle room: keep the battle/rivalry message
+ * tallies honest and poke the rival. Best-effort — a notification hiccup must
+ * never fail the post that was already written.
+ */
+async function onBattleRoomMessage(battle: BattleRef, authorId: string, content: string): Promise<void> {
+  const rivalId = battle.challengerId === authorId ? battle.opponentId : battle.challengerId;
+  try {
+    await prisma.battle.update({ where: { id: battle.id }, data: { messageCount: { increment: 1 } } });
+    if (!rivalId) return;
+    const [x, y] = authorId < rivalId ? [authorId, rivalId] : [rivalId, authorId];
+    await prisma.rivalry.updateMany({ where: { userAId: x, userBId: y }, data: { totalMessages: { increment: 1 } } });
+    const me = await prisma.user.findUnique({ where: { id: authorId }, select: { name: true, username: true } });
+    const fight = await prisma.fight.findUnique({ where: { id: battle.fightId }, select: { slug: true, event: { select: { slug: true } } } });
+    await notify(prisma, rivalId, {
+      type: "BATTLE_REPLY",
+      title: `${me?.name ?? me?.username ?? "Your rival"} hit back`,
+      body: content.slice(0, 120),
+      url: fight?.event ? `/events/${fight.event.slug}#fight-${fight.slug}` : "/",
+      icon: "🥊",
+    });
+  } catch { /* non-fatal */ }
 }
 
 export async function editPost(input: {
@@ -514,7 +582,7 @@ export async function recordShare(threadSlug: string): Promise<{ shareCount: num
 export async function listBookmarks(userId: string, opts?: { limit?: number; cursor?: string }): Promise<Paginated<ForumThreadDTO>> {
   const limit = Math.min(Math.max(opts?.limit ?? 20, 1), 50);
   const rows = await prisma.forumBookmark.findMany({
-    where: { userId }, orderBy: { createdAt: "desc" }, take: limit + 1,
+    where: { userId, thread: PUBLIC_ONLY }, orderBy: { createdAt: "desc" }, take: limit + 1,
     ...(opts?.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
     select: { id: true, thread: { include: THREAD_INCLUDE } },
   });
