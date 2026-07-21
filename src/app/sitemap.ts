@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE } from "@/lib/config";
 import { listFighters, getArticles, getUpcomingEvents } from "@/lib/repo";
 import { WEIGHT_CLASS_LIST } from "@/lib/repo";
+import { prisma } from "@/lib/db";
 import { flags } from "@/lib/feature-flags";
 
 /**
@@ -18,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const f = flags();
 
   const staticRoutes = [
-    "", "/fighters", "/schedule", "/home", "/results", "/registry",
+    "", "/fighters", "/events", "/schedule", "/home", "/results", "/registry",
     "/forums", "/search", "/account", "/news",
     // Legal surfaces — these SHOULD be indexable.
     "/privacy", "/terms", "/cookies", "/community-guidelines", "/copyright",
@@ -32,7 +33,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: p === "" ? 1 : 0.8,
   }));
 
-  const [fighters, articles, events] = await Promise.all([listFighters(), getArticles(), getUpcomingEvents()]);
+  const [fighters, articles, events, fights] = await Promise.all([
+    listFighters(),
+    getArticles(),
+    getUpcomingEvents(),
+    // Matchup pages. "X vs Y" is the highest-intent combat-sports search there
+    // is, so every bout with an event gets an indexable URL — upcoming first,
+    // then recent history, capped so the sitemap stays within spec limits.
+    prisma.fight.findMany({
+      where: { eventId: { not: null } },
+      orderBy: { date: "desc" },
+      take: 5000,
+      select: { slug: true, date: true },
+    }).catch(() => []),
+  ]);
 
   return [
     ...staticRoutes,
@@ -47,5 +61,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...fighters.map((x) => ({ url: `${base}/fighters/${x.slug}`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.6 })),
     ...articles.map((a) => ({ url: `${base}/news/${a.slug}`, lastModified: new Date(a.publishedAt), changeFrequency: "monthly" as const, priority: 0.5 })),
     ...events.map((e) => ({ url: `${base}/schedule/${e.slug}`, lastModified: now, changeFrequency: "daily" as const, priority: 0.6 })),
+    ...fights.map((x) => ({ url: `${base}/fights/${x.slug}`, lastModified: x.date, changeFrequency: "weekly" as const, priority: 0.6 })),
   ];
 }

@@ -9,15 +9,16 @@ import type {
 // ════════════════════════════════════════════════════════════════════════════
 //  Rooms — the discussion architecture.
 //
-//  Discussion is FIGHT-scoped, not event-scoped. Every fight owns one arena
-//  with two layers:
+//  Discussion is FIGHT-scoped. Every fight owns an arena with two layers, and
+//  the event keeps ONE general room for card-wide talk that belongs to no bout:
 //
-//    Layer 1  Battle Room     private, the two paired predictors, rivalry grows
-//    Layer 2  Community Room   public, spectators, analysis, memes
+//    Event → General Room       public, the whole card ("who's watching?")
+//    Event → Fight → Battle Room     private, the two paired predictors
+//    Event → Fight → Community Room  public, spectators, analysis, memes
 //
-//  Both are ordinary ForumThreads (posts, reactions, quotes, realtime, reports)
-//  — nothing about the discussion stack is duplicated, only scoped and gated.
-//  Rooms are provisioned on FIRST OPEN, never during a page render.
+//  All three are ordinary ForumThreads (posts, reactions, quotes, realtime,
+//  reports) — nothing about the discussion stack is duplicated, only scoped and
+//  gated. Rooms are provisioned on FIRST OPEN, never during a page render.
 // ════════════════════════════════════════════════════════════════════════════
 
 const SYSTEM_EMAIL = "system@combatreviews.local";
@@ -85,6 +86,36 @@ export async function getOrCreateCommunityRoom(fight: FightForRoom): Promise<Roo
         title: `${fight.red.name} vs ${fight.blue.name}`.slice(0, 155),
         content: `Everything on **${fight.red.name} vs ${fight.blue.name}**${fight.event ? ` at ${fight.event.name}` : ""} — reads, tape, tactics, trash talk. Make your pick, then defend it.`,
         fightId: fight.id,
+        kind: "discussion",
+      });
+      return { slug: t.slug, categorySlug: t.categorySlug, locked: t.locked, replyCount: t.replyCount };
+    },
+  );
+}
+
+// ── The event's general room ─────────────────────────────────────────────────
+/**
+ * ONE room per event, for the talk that isn't about a single bout. It is
+ * deliberately the LAST room in the hierarchy: a bout's argument belongs in that
+ * bout's arena, and this exists so card-wide chatter has somewhere to go instead
+ * of drowning one.
+ */
+export async function getOrCreateGeneralRoom(event: {
+  id: string; name: string; sport: Sport;
+}): Promise<RoomThreadRef> {
+  return provision(
+    async () => {
+      const t = await prisma.forumThread.findUnique({ where: { eventId: event.id }, select: THREAD_REF });
+      return t ? asRef(t) : null;
+    },
+    async () => {
+      const author = await ensureSystemUser();
+      const t = await createThread({
+        authorId: author,
+        categorySlug: categoryForSport(event.sport),
+        title: `${event.name} — card talk`.slice(0, 155),
+        content: `The whole-card room for **${event.name}**. Watch-along, running order, walkouts, broadcast — anything that isn't about one bout. Individual fights have their own rooms on the card above.`,
+        eventId: event.id,
         kind: "discussion",
       });
       return { slug: t.slug, categorySlug: t.categorySlug, locked: t.locked, replyCount: t.replyCount };

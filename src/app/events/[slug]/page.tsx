@@ -24,6 +24,8 @@ import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { FightModule } from "@/components/fight/fight-module";
+import { EventGeneralRoom } from "@/components/event/event-general-room";
+import { WhenVisible } from "@/components/when-visible";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -92,12 +94,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       ])
     : [null, 0];
 
-  // One scroll: the card (every bout its own arena) → coverage. There is no
-  // separate Predictions or Discussion section any more — a bout's prediction,
-  // battle and discussion all live inside that bout's module, because that is
-  // the scope a fan actually thinks in.
+  // One scroll: card → card talk → coverage. There is no separate Predictions
+  // section — a bout's prediction, battle and discussion live inside that bout's
+  // module, because that is the scope a fan actually thinks in. "Card talk" is
+  // the event-wide room for everything that belongs to no single bout.
   const spy: SpySection[] = [
     { id: "card", label: "Fight card", badge: fights.length },
+    { id: "card-talk", label: "Card talk" },
     ...(coverage.length ? [{ id: "coverage", label: "Coverage", badge: coverage.length } satisfies SpySection] : []),
   ];
 
@@ -135,6 +138,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </div>
       </ScrollSection>
 
+      {/* Card-wide talk. Provisioned only when the reader reaches it, so the
+          write stays off every page load. */}
+      <ScrollSection id="card-talk" title="Card talk">
+        <WhenVisible placeholder={<RoomSkeleton />}>
+          <EventGeneralRoom slug={event.slug} />
+        </WhenVisible>
+      </ScrollSection>
+
       {coverage.length > 0 && (
         <ScrollSection id="coverage" title="Related coverage">
           <CoveragePanel articles={coverage} />
@@ -144,6 +155,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {/* Tail space so the last section can scroll clear of the sticky rail and
           the bottom tab bar — no abrupt end to the document. */}
       <div className="h-16" aria-hidden />
+    </div>
+  );
+}
+
+/** Space-holding skeleton while a room mounts — no words, no spinner, no mention
+ *  of loading; it simply reads as the conversation settling in. */
+function RoomSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-3" aria-hidden>
+      <div className="h-11 rounded-xl bg-ink-800/50" />
+      <div className="h-24 rounded-xl bg-ink-900/70 ring-1 ring-ink-800/60" />
+      <div className="ml-6 h-16 rounded-xl bg-ink-900/50 ring-1 ring-ink-800/50" />
     </div>
   );
 }

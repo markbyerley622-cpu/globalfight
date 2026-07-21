@@ -687,10 +687,11 @@ model ForumThread {
   fighterId     String?       @unique
   fighter       Fighter?      @relation(fields: [fighterId], references: [id], onDelete: SetNull)
   promotion     String?       @unique
-  /// LEGACY — pre-Battle-Rooms event-wide discussion. Discussion is now
-  /// FIGHT-scoped (see fightId below); nothing provisions or renders this link
-  /// any more. Kept only so existing event threads survive as ordinary
-  /// category threads. Do not wire new surfaces to it.
+  /// The event's GENERAL room — card-wide talk that belongs to no single bout
+  /// ("who's watching?", "card is running late"). The third room in the
+  /// hierarchy, NOT a competitor to the fight rooms:
+  ///   Event → General room
+  ///   Event → Fight → Battle room + Community room
   eventId       String?       @unique
   event         Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
 

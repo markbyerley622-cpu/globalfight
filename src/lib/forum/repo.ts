@@ -355,8 +355,8 @@ export async function createThread(input: {
   authorId: string; categorySlug: string; title: string; content: string;
   attachments?: ForumAttachment[]; kind?: string; videoId?: string;
   fighterId?: string; promotion?: string;
-  /** Room links — a fight's public arena, or a battle's private room. */
-  fightId?: string; battleId?: string; visibility?: "public" | "battle";
+  /** Room links — an event's general room, a fight's arena, a battle's room. */
+  eventId?: string; fightId?: string; battleId?: string; visibility?: "public" | "battle";
 }): Promise<ForumThreadDTO> {
   await ensureForumSeed();
   const category = await prisma.forumCategory.findUnique({
@@ -377,6 +377,7 @@ export async function createThread(input: {
       videoId: input.videoId ?? undefined,
       fighterId: input.fighterId ?? undefined,
       promotion: input.promotion ?? undefined,
+      eventId: input.eventId ?? undefined,
       fightId: input.fightId ?? undefined,
       battleId: input.battleId ?? undefined,
       visibility: input.visibility ?? "public",
