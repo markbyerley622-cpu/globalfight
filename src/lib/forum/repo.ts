@@ -522,16 +522,34 @@ export async function addReaction(input: {
   const post = await prisma.forumPost.findUnique({ where: { id: input.postId }, select: { threadId: true } });
   if (!post) throw new Error("Post not found.");
 
+  // Conflict-TOLERANT toggle. Read-then-write is a check-then-act race, and
+  // reacting is the highest-frequency write in the forum: eight concurrent
+  // reactions produced six 400s against a live database (`create` hitting
+  // @@unique([postId,userId,type]), `delete` hitting an already-deleted row).
+  // deleteMany cannot throw, and a lost create race means the reaction the
+  // caller wanted already exists.
   let reacted: boolean;
   if (existing) {
-    await prisma.forumReaction.delete({ where: { id: existing.id } });
-    await prisma.forumThread.update({ where: { id: post.threadId }, data: { reactionCount: { decrement: 1 } } }).catch(() => {});
+    await prisma.forumReaction.deleteMany({ where: { postId: input.postId, userId: input.userId, type } });
     reacted = false;
   } else {
-    await prisma.forumReaction.create({ data: { postId: input.postId, userId: input.userId, type } });
-    await prisma.forumThread.update({ where: { id: post.threadId }, data: { reactionCount: { increment: 1 } } }).catch(() => {});
+    try {
+      await prisma.forumReaction.create({ data: { postId: input.postId, userId: input.userId, type } });
+    } catch (e) {
+      if ((e as { code?: string }).code !== "P2002") throw e;
+    }
     reacted = true;
   }
+
+  // reactionCount is RECOMPUTED, not incremented. Under the races above an
+  // increment/decrement drifts permanently, and reactionCount feeds hotScore()
+  // — so drift here silently distorts what trends.
+  const reactionCount = await prisma.forumReaction.count({
+    where: { post: { threadId: post.threadId } },
+  });
+  await prisma.forumThread
+    .update({ where: { id: post.threadId }, data: { reactionCount } })
+    .catch(() => {});
 
   const all = await prisma.forumReaction.findMany({ where: { postId: input.postId }, select: { type: true, userId: true } });
   const counts: Record<string, number> = {};

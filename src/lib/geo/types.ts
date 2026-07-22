@@ -56,6 +56,8 @@ export interface MapPin {
     homeGym: { name: string; slug: string } | null;
     openToSpar: boolean;
     lookingForTraining: boolean;
+    /** Live: checked into a gym right now. Expires with the check-in. */
+    trainingAt: { gymName: string; gymSlug: string; note: string | null } | null;
   };
 
   /** Set on gym pins only. */

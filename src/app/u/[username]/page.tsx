@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Trophy, Target, Flame, Layers, Crown, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { getTrainingNowFor } from "@/lib/geo/presence";
 import { getProfileStats } from "@/lib/profile-stats";
 import { getUserCards } from "@/lib/collectibles";
 import { getUserActivity } from "@/lib/activity";
@@ -48,11 +49,15 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const u = await loadUser(username);
   if (!u?.username) notFound();
 
-  const [stats, cards, activity, rankedTotal] = await Promise.all([
+  const [stats, cards, activity, rankedTotal, trainingNow] = await Promise.all([
     getProfileStats(u.id),
     getUserCards(u.id),
     getUserActivity(u.id, 8),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
+    // Live gym check-in. Derived from CheckIn rather than a stored status
+    // field, so it cannot disagree with the check-in that produced it and it
+    // expires on its own.
+    getTrainingNowFor(u.id),
   ]);
 
   const displayName = u.name ?? `@${u.username}`;
@@ -69,6 +74,10 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
 
   // Status chips — only what's actually true, so the profile earns its respect.
   const chips: { icon: React.ReactNode; label: string; tone: "gold" | "red" | "volt" | "neutral" }[] = [];
+  // Training-now leads: it is the only chip that is true THIS MINUTE.
+  if (trainingNow) {
+    chips.push({ icon: <Flame className="size-3" />, label: `Training at ${trainingNow.gymName}`, tone: "red" });
+  }
   if (rank) chips.push({ icon: <Trophy className="size-3" />, label: `#${rank.toLocaleString()}`, tone: "gold" });
   if (percentile && percentile <= 25) chips.push({ icon: <TrendingUp className="size-3" />, label: `Top ${percentile}%`, tone: "gold" });
   if (streak >= 3) chips.push({ icon: <Flame className="size-3" />, label: `${streak}-fight streak`, tone: "red" });

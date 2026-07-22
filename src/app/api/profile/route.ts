@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { REGISTRY_ROLE_VALUES, DISCIPLINES } from "@/lib/roles";
+import { REGISTRY_ROLE_VALUES } from "@/lib/roles";
+import { SPORTS } from "@/lib/sports";
 import { countryCodeFor } from "@/lib/geo/gazetteer";
 import { resolveUserPoint } from "@/lib/geo/people";
 
@@ -10,17 +11,23 @@ import { resolveUserPoint } from "@/lib/geo/people";
 //  The profile control centre — ONE endpoint for every editable field.
 //
 //  Previously identity was spread across three places: avatar/banner at
-//  /api/profile/image, map presence at /api/me/map, and everything else
+//  /api/profile/image, map presence at its own /api/me/map, and everything else
 //  nowhere at all. A user could not change their own display name.
 //
 //  This is a PATCH of partial fields: the client sends only what changed, so
 //  the optimistic UI can save a single toggle without round-tripping the whole
 //  profile and racing another tab.
 //
+//  /api/me/map has since been DELETED: it was a second way to write the same
+//  columns, and two endpoints owning one setting is how they drift.
+//
 //  Avatar/banner stay at /api/profile/image — that is a multipart upload
 //  through the image pipeline, not a JSON field, and merging them would mean
 //  one endpoint with two content types.
 // ════════════════════════════════════════════════════════════════════════════
+
+/** Canonical sport values ("MUAY_THAI"), shared with onboarding. */
+const SPORT_VALUES = SPORTS.map((sp) => sp.value) as unknown as [string, ...string[]];
 
 /** Trim to null so "" clears a field rather than storing an empty string. */
 const optionalText = (max: number) =>
@@ -41,7 +48,13 @@ const Body = z.object({
   name: optionalText(60),
   bio: optionalText(400),
   registryRole: z.enum(REGISTRY_ROLE_VALUES as [string, ...string[]]).optional(),
-  sportPrefs: z.array(z.enum(DISCIPLINES as unknown as [string, ...string[]])).max(8).optional(),
+  // Canonical SPORT VALUES ("MUAY_THAI"), never display labels ("Muay Thai").
+  // This column is shared with onboarding, which has always stored values, and
+  // is read back as a Prisma `sport` filter. Accepting labels here put BOTH
+  // vocabularies in one column — "Muay Thai" and "MUAY_THAI" as separate
+  // entries — so every sport filter silently missed anyone who had edited their
+  // profile. Found by querying the live database.
+  sportPrefs: z.array(z.enum(SPORT_VALUES)).max(8).optional(),
   website: z
     .string()
     .trim()
@@ -105,7 +118,7 @@ export async function PATCH(req: Request) {
   }
   const d = parsed.data;
 
-  // Map city → point is resolved server-side, exactly as /api/me/map does. The
+  // Map city → point is resolved server-side. The
   // client still cannot send a coordinate for a person from anywhere in the
   // app; see the note in src/lib/geo/people.ts.
   const touchingLocation = "mapCity" in d || "mapCountry" in d || "mapVisibility" in d;

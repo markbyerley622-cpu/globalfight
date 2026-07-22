@@ -165,3 +165,45 @@ export async function getPresenceCounts(
   }
   return out;
 }
+
+// ── "Training right now" ────────────────────────────────────────────────────
+
+export interface TrainingNow {
+  gymId: string;
+  gymName: string;
+  gymSlug: string;
+  note: string | null;
+}
+
+/**
+ * Who is checked into a GYM right now, for a batch of users.
+ *
+ * One query for a whole map render rather than one per pin. Reuses CheckIn —
+ * there is no separate "status" concept to keep in sync, because a status that
+ * can disagree with the check-in that produced it is a status nobody trusts.
+ * It expires on its own for the same reason presence does.
+ */
+export async function getTrainingNow(userIds: string[]): Promise<Map<string, TrainingNow>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await prisma.checkIn.findMany({
+    where: { userId: { in: userIds }, gymId: { not: null }, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    select: {
+      userId: true, note: true,
+      gym: { select: { id: true, name: true, slug: true } },
+    },
+  });
+
+  const out = new Map<string, TrainingNow>();
+  for (const r of rows) {
+    // Most recent wins — findMany is ordered desc, so only set once per user.
+    if (!r.gym || out.has(r.userId)) continue;
+    out.set(r.userId, { gymId: r.gym.id, gymName: r.gym.name, gymSlug: r.gym.slug, note: r.note });
+  }
+  return out;
+}
+
+/** One user's live training status. Used by the public profile. */
+export async function getTrainingNowFor(userId: string): Promise<TrainingNow | null> {
+  return (await getTrainingNow([userId])).get(userId) ?? null;
+}

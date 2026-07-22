@@ -6,7 +6,8 @@ import {
   Loader2, Check, Globe, Instagram, Youtube, Facebook, AtSign, Music2,
   Dumbbell, MapPin, EyeOff, Users, CalendarDays, Globe2, ChevronRight, Pencil,
 } from "lucide-react";
-import { REGISTRY_ROLE_DEFS, DISCIPLINES, ROLE_GROUPS, rolesInGroup } from "@/lib/roles";
+import { REGISTRY_ROLE_DEFS, ROLE_GROUPS, rolesInGroup } from "@/lib/roles";
+import { SPORTS } from "@/lib/sports";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
 
@@ -207,19 +208,25 @@ export function ProfileEditor() {
       {/* ── Disciplines ── */}
       <Card title="Disciplines" subtitle="What you train or follow. Used to personalise your feed.">
         <div className="flex flex-wrap gap-1.5">
-          {DISCIPLINES.map((d) => {
-            const on = p.sportPrefs.includes(d);
+          {/* Displays the LABEL, stores the canonical VALUE — the column is
+              shared with onboarding and read back as a Prisma sport filter. */}
+          {SPORTS.map((sport) => {
+            const on = p.sportPrefs.includes(sport.value);
             return (
               <Chip
-                key={d}
+                key={sport.value}
                 size="sm"
                 tone="neutral"
                 active={on}
                 onClick={() =>
-                  save({ sportPrefs: on ? p.sportPrefs.filter((x) => x !== d) : [...p.sportPrefs, d].slice(0, 8) })
+                  save({
+                    sportPrefs: on
+                      ? p.sportPrefs.filter((x) => x !== sport.value)
+                      : [...p.sportPrefs, sport.value].slice(0, 8),
+                  })
                 }
               >
-                {d}
+                {sport.label}
               </Chip>
             );
           })}

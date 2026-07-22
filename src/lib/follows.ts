@@ -64,11 +64,25 @@ export async function toggleFollowEvent(userId: string, eventSlug: string): Prom
   if (!e) throw new Error("Event not found");
   const key = { userId_eventId: { userId, eventId: e.id } };
   const existing = await prisma.favoriteEvent.findUnique({ where: key, select: { userId: true } });
+
+  // Conflict-TOLERANT toggle. Read-then-write is a check-then-act race that a
+  // double-tap loses, and this is one of the most tapped controls in the app:
+  // six concurrent follows produced four 400s against a live database
+  // (`delete` on an already-deleted row, `create` on an existing one).
+  //
+  // deleteMany never throws when the row is gone, and the create's unique
+  // violation is swallowed because losing that race means somebody else
+  // already achieved the caller's intent. The end state is what matters.
   if (existing) {
-    await prisma.favoriteEvent.delete({ where: key });
+    await prisma.favoriteEvent.deleteMany({ where: { userId, eventId: e.id } });
     return { following: false };
   }
-  await prisma.favoriteEvent.create({ data: { userId, eventId: e.id } });
+  try {
+    await prisma.favoriteEvent.create({ data: { userId, eventId: e.id } });
+  } catch (err) {
+    if ((err as { code?: string }).code !== "P2002") throw err;
+    return { following: true }; // already following — same outcome
+  }
   track("follow_event", userId, { event: eventSlug });
   return { following: true };
 }

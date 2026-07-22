@@ -211,7 +211,19 @@ export function PinDetail({
             </dd>
           </>
         )}
-        {pin.person?.homeGym && (
+        {pin.person?.trainingAt && (
+          <>
+            <dt className="pt-px text-up"><Flame className="size-3.5" /></dt>
+            <dd className="font-semibold text-up">
+              Training now at{" "}
+              <Link href={`/gyms/${pin.person.trainingAt.gymSlug}`} className="underline-offset-2 hover:underline">
+                {pin.person.trainingAt.gymName}
+              </Link>
+              {pin.person.trainingAt.note && <span className="font-normal text-fog"> · {pin.person.trainingAt.note}</span>}
+            </dd>
+          </>
+        )}
+        {pin.person?.homeGym && !pin.person.trainingAt && (
           <>
             <dt className="pt-px text-fog"><Dumbbell className="size-3.5" /></dt>
             <dd className="text-mist">

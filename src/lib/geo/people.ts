@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { resolvePoint } from "./gazetteer";
+import { getTrainingNow } from "./presence";
 import type { MapPin, UnmappedPin } from "./types";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -125,8 +126,12 @@ export async function peoplePins(viewer: PeopleViewer | null): Promise<PeopleRes
     },
   });
 
+  // One batched presence read for the whole layer.
+  const training = await getTrainingNow(rows.map((u) => u.id));
+
   const pins: MapPin[] = [];
   for (const u of rows) {
+    const now = training.get(u.id) ?? null;
     if (u.mapLat === null || u.mapLon === null) continue; // belt and braces
     const homeGym = u.gymMemberships[0]?.gym ?? null;
     const sport = u.sportPrefs[0] ?? null;
@@ -136,7 +141,7 @@ export async function peoplePins(viewer: PeopleViewer | null): Promise<PeopleRes
       id: `u-${u.id}`,
       layer: "people",
       name: u.name ?? u.username ?? "Anonymous",
-      subtitle: [role, sport].filter(Boolean).join(" · ") || "Fan",
+      subtitle: now ? `Training at ${now.gymName}` : [role, sport].filter(Boolean).join(" · ") || "Fan",
       address: [homeGym?.name, u.mapCity].filter(Boolean).join(" · ") || u.mapCity,
       lat: u.mapLat,
       lon: u.mapLon,
@@ -146,7 +151,9 @@ export async function peoplePins(viewer: PeopleViewer | null): Promise<PeopleRes
       imageUrl: u.image,
       href: u.username ? `/u/${u.username}` : null,
       searchQuery: u.mapCity ?? "",
-      badge: u.openToSpar ? "Open to spar" : u.lookingForTraining ? "Looking to train" : null,
+      // Training-now outranks the standing flags: it is the only one that is
+      // true *this minute*, and it is what makes the map worth opening.
+      badge: now ? "Training now" : u.openToSpar ? "Open to spar" : u.lookingForTraining ? "Looking to train" : null,
       person: {
         userId: u.id,
         username: u.username,
@@ -154,6 +161,7 @@ export async function peoplePins(viewer: PeopleViewer | null): Promise<PeopleRes
         homeGym: homeGym ? { name: homeGym.name, slug: homeGym.slug } : null,
         openToSpar: u.openToSpar,
         lookingForTraining: u.lookingForTraining,
+        trainingAt: now ? { gymName: now.gymName, gymSlug: now.gymSlug, note: now.note } : null,
       },
     });
   }
