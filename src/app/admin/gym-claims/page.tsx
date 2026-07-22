@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Check, X, MessageSquare, BadgeCheck } from "lucide-react";
+import { Loader2, Check, X, MessageSquare, BadgeCheck, FileText, Copy, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Claim {
@@ -12,6 +12,10 @@ interface Claim {
   note: string | null;
   createdAt: string;
   reviewedAt: string | null;
+  evidenceUploadedAt: string | null;
+  evidenceScanStatus: string | null;
+  evidenceContentType: string | null;
+  evidenceByteSize: number | null;
   gym: { id: string; slug: string; name: string; city: string | null; country: string | null; ownerId: string | null };
   claimant: { id: string; name: string | null; username: string | null; email: string | null };
 }
@@ -124,9 +128,56 @@ export default function GymClaimsPage() {
                 </span>
               </div>
 
+              {/* Claim ID — reviewers quote this in correspondence and in the
+                  audit trail, so it has to be visible and copyable. */}
+              <div className="mt-2.5 flex items-center gap-2">
+                <code className="rounded border border-ink-800 bg-ink-950/70 px-2 py-1 font-mono text-[0.68rem] text-fog">
+                  {c.id}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(c.id)}
+                  aria-label="Copy claim ID"
+                  className="tap grid size-6 place-items-center rounded border border-ink-700 text-fog hover:text-chalk"
+                >
+                  <Copy className="size-3" />
+                </button>
+              </div>
+
               {c.evidence && (
                 <p className="mt-3 whitespace-pre-wrap rounded-xl border border-ink-800 bg-ink-950/60 p-3 text-[0.8rem] leading-relaxed text-mist">
                   {c.evidence}
+                </p>
+              )}
+
+              {/* Uploaded proof. Streamed through the private reader — there is
+                  no public URL for these bytes. */}
+              {c.evidenceUploadedAt ? (
+                <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-xl border border-ink-800 bg-ink-950/60 p-3">
+                  <FileText className="size-4 shrink-0 text-volt-400" />
+                  <span className="text-[0.76rem] text-mist">
+                    Proof attached
+                    {c.evidenceByteSize ? ` · ${Math.round(c.evidenceByteSize / 1024)} KB` : ""}
+                    {c.evidenceContentType ? ` · ${c.evidenceContentType.split("/")[1]?.toUpperCase()}` : ""}
+                  </span>
+                  {c.evidenceScanStatus && c.evidenceScanStatus !== "CLEAN" && c.evidenceScanStatus !== "SKIPPED" ? (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-gold-500/15 px-1.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-gold-300">
+                      <ShieldAlert className="size-3" /> {c.evidenceScanStatus}
+                    </span>
+                  ) : (
+                    <a
+                      href={`/api/admin/gym-claims/${c.id}/evidence`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tap ml-auto rounded-lg border border-volt-500/40 bg-volt-500/10 px-2.5 py-1.5 font-display text-[0.66rem] font-bold uppercase tracking-wide text-volt-400"
+                    >
+                      View document
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2.5 rounded-xl border border-dashed border-ink-800 px-3 py-2 text-[0.72rem] text-fog">
+                  No document attached — text evidence only.
                 </p>
               )}
               {c.note && <p className="mt-2 text-[0.72rem] text-fog">Note: {c.note}</p>}

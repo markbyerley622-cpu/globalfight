@@ -15,6 +15,10 @@ export async function GET(req: Request) {
     take: 100,
     select: {
       id: true, status: true, evidence: true, note: true, createdAt: true, reviewedAt: true,
+      // Presence + scan state only. evidenceStorageKey is NEVER selected here:
+      // it is the one value that must not reach a client, even an admin's.
+      evidenceUploadedAt: true, evidenceScanStatus: true,
+      evidenceContentType: true, evidenceByteSize: true,
       gym: { select: { id: true, slug: true, name: true, city: true, country: true, ownerId: true } },
       claimant: { select: { id: true, name: true, username: true, email: true } },
     },

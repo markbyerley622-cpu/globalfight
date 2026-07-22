@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { isAdminRole } from "@/lib/admin/guard";
+import { deleteEvidence } from "@/lib/evidence/store";
+import { APPEAL_WINDOW_DAYS, PENDING_TTL_DAYS, daysFromNow } from "@/lib/evidence/lifecycle";
 
 const Body = z.object({
   action: z.enum(["approve", "reject", "info"]),
@@ -28,7 +30,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const claim = await prisma.gymClaim.findUnique({
     where: { id },
-    select: { id: true, gymId: true, claimantId: true, status: true },
+    select: { id: true, gymId: true, claimantId: true, status: true, evidenceStorageKey: true, evidenceStorageProvider: true },
   });
   if (!claim) return NextResponse.json({ error: "No such claim." }, { status: 404 });
 
@@ -66,6 +68,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: { status: "rejected", reviewerId: user.id, reviewedAt: new Date() },
     });
   });
+
+  // A decided claim's proof has served its purpose. Approved documents go
+  // immediately; a rejection keeps its document for the appeal window rather
+  // than destroying the only thing the claimant could argue with.
+  if (claim.evidenceStorageKey) {
+    const days = action === "approve" ? 0 : action === "reject" ? APPEAL_WINDOW_DAYS : PENDING_TTL_DAYS;
+    if (days === 0) {
+      void deleteEvidence(claim.evidenceStorageKey, claim.evidenceStorageProvider).catch(() => {});
+      await prisma.gymClaim.update({
+        where: { id: claim.id },
+        data: { evidenceDeletedAt: new Date(), evidenceDeletionStatus: "DELETED", evidenceStorageKey: null },
+      });
+    } else {
+      await prisma.gymClaim.update({
+        where: { id: claim.id },
+        data: { evidenceDeleteAfter: daysFromNow(days) },
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true, status });
 }

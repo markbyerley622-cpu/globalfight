@@ -1915,6 +1915,22 @@ model GymClaim {
   evidence String?
   note     String?
 
+  // ── Uploaded proof (business licence, utility bill, signage photo) ────────
+  // Column-for-column the same shape as FighterClaim so ONE evidence pipeline
+  // (src/lib/evidence/*) serves both: private bucket, virus scan, retention
+  // deadline, audited deletion. These bytes are NEVER public and have no URL —
+  // they are streamed by an authorised reader only.
+  evidenceStorageKey      String? // opaque object key; never returned to clients
+  evidenceStorageProvider String? // "r2" | "local-private"
+  evidenceUploadedAt      DateTime?
+  evidenceDeleteAfter     DateTime? // retention deadline; cleanup job deletes past this
+  evidenceDeletedAt       DateTime?
+  evidenceDeletionStatus  String? // null | PENDING | DELETED | FAILED
+  evidenceDeletionError   String?
+  evidenceScanStatus      String? // PENDING | CLEAN | INFECTED | SKIPPED
+  evidenceContentType     String?
+  evidenceByteSize        Int?
+
   reviewerId String?
   reviewer   User?     @relation("GymClaimsReviewed", fields: [reviewerId], references: [id], onDelete: SetNull)
   reviewedAt DateTime?
@@ -1922,6 +1938,7 @@ model GymClaim {
 
   @@index([status, createdAt])
   @@index([claimantId])
+  @@index([evidenceDeleteAfter])
 }
 
 /// "I'm here." Presence, not location history — `expiresAt` is what keeps this

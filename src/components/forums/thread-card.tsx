@@ -15,9 +15,11 @@ import type { ForumThreadDTO } from "@/lib/forum/types";
  * SALUTE (middle finger) downvotes. Tap the rail to vote; on mobile, double-tap
  * anywhere on the card to Respect (with a fist burst).
  *
- * NOTE: votes are optimistic + local — there's no thread-vote endpoint yet
- * (reactions live on posts). Starting score = the real reaction count. Wire a
- * POST /api/forums/threads/[slug]/vote route to persist (see TODO below).
+ * Votes are optimistic and PERSISTED: POST /api/forums/threads/[slug]/vote
+ * writes a ForumReaction against the thread's opening post (reactions are
+ * post-scoped, and the opening post is what "reacting to a thread" means).
+ * A failed write rolls the rail back rather than leaving a vote that only
+ * exists on screen.
  */
 export function ThreadCard({
   thread, showCategory, canDelete, deleting, onDelete,
@@ -41,9 +43,22 @@ export function ThreadCard({
   const lastTap = useRef(0);
   const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const respect = () => setVote((v) => (v === 1 ? 0 : 1));
-  const salute = () => setVote((v) => (v === -1 ? 0 : -1));
-  // TODO: persist — POST /api/forums/threads/${thread.slug}/vote { dir } when the route exists.
+  /** Optimistic, then persisted. Rolls back on failure. */
+  const cast = (next: 0 | 1 | -1) => {
+    const before = vote;
+    setVote(next);
+    if (next === 0) return; // un-voting is local: addReaction toggles server-side
+    void fetch(`/api/forums/threads/${encodeURIComponent(thread.slug)}/vote`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: next === 1 ? "respect" : "disrespect" }),
+    })
+      .then((r) => { if (!r.ok) setVote(before); })
+      .catch(() => setVote(before));
+  };
+
+  const respect = () => cast(vote === 1 ? 0 : 1);
+  const salute = () => cast(vote === -1 ? 0 : -1);
 
   function showBurst() {
     setBurst(true);
@@ -57,7 +72,7 @@ export function ThreadCard({
       e.preventDefault();
       if (navTimer.current) clearTimeout(navTimer.current);
       lastTap.current = 0;
-      setVote(1);
+      cast(1);
       showBurst();
     } else {
       lastTap.current = now;
