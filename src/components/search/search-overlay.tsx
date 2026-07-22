@@ -2,19 +2,21 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass } from "lucide-react";
+import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass, Dumbbell, BadgeCheck, User } from "lucide-react";
 import { Flag } from "@/components/flag";
 
 type FighterHit = { slug: string; name: string; nickname?: string | null; countryCode?: string | null; nationality?: string | null; record: string };
 type Results = {
   fighters: FighterHit[];
   events: { slug: string; name: string; city: string | null }[];
+  gyms: { slug: string; name: string; place: string | null; verified: boolean; memberCount: number; disciplines: string[] }[];
+  people: { username: string; name: string | null; image: string | null; role: string; reputation: number }[];
   articles: { slug: string; title: string; category: string }[];
   communities: { slug: string; name: string }[];
   threads: { slug: string; categorySlug: string; title: string; categoryName: string }[];
   pages: { label: string; href: string }[];
 };
-const EMPTY: Results = { fighters: [], events: [], articles: [], communities: [], threads: [], pages: [] };
+const EMPTY: Results = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], pages: [] };
 
 export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");
@@ -49,7 +51,11 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
   if (!open) return null;
 
-  const total = res.fighters.length + res.events.length + res.articles.length + res.communities.length + res.threads.length + res.pages.length;
+  // Every result family must be counted here — a family missing from this sum
+  // renders "No results for …" ABOVE its own visible rows.
+  const total =
+    res.fighters.length + res.events.length + res.gyms.length + res.people.length +
+    res.articles.length + res.communities.length + res.threads.length + res.pages.length;
 
   const row = (key: string, href: string, icon: React.ReactNode, title: React.ReactNode, sub?: React.ReactNode) => (
     <Link key={key} href={href} onClick={onClose} className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-ink-700/70">
@@ -91,6 +97,18 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
           {res.events.length > 0 && head("Events")}
           {res.events.map((e) => row(`e-${e.slug}`, `/schedule/${e.slug}`, <CalendarDays className="size-4" />, e.name, e.city ?? undefined))}
+
+          {res.gyms.length > 0 && head("Gyms")}
+          {res.gyms.map((g) => row(`g-${g.slug}`, `/gyms/${g.slug}`,
+            <Dumbbell className="size-4 text-volt-400" />,
+            <>{g.name}{g.verified ? <BadgeCheck className="ml-1.5 inline size-3.5 align-[-2px] text-volt-400" /> : null}</>,
+            [g.place, g.disciplines.join(", "), `${g.memberCount} member${g.memberCount === 1 ? "" : "s"}`].filter(Boolean).join(" · ")))}
+
+          {res.people.length > 0 && head("People")}
+          {res.people.map((u) => row(`u-${u.username}`, `/u/${u.username}`,
+            <User className="size-4 text-gold-400" />,
+            u.name ?? u.username,
+            `@${u.username}${u.role && u.role !== "fan" ? ` · ${u.role}` : ""}`))}
 
           {res.articles.length > 0 && head("News")}
           {res.articles.map((a) => row(`a-${a.slug}`, `/news/${a.slug}`, <Newspaper className="size-4" />, a.title, a.category))}

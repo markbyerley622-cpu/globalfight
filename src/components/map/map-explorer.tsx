@@ -13,6 +13,8 @@ import { groupPins, byRelevance, describeGroup } from "./group-pins";
 import { PinDetail, PinRow } from "./pin-card";
 import { BottomSheet, type Detent } from "./bottom-sheet";
 import { LAYER_COLOR, type MapApi, type MapFocus } from "./map-canvas";
+import { Chip, ChipRow } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
 // Leaflet reads `window` at module scope, so the canvas can only ever be loaded
@@ -187,39 +189,23 @@ export function MapExplorer({ data }: { data: MapData }) {
       {/* ── Map column ── */}
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Filter chips */}
-        <div data-hscroll className="hide-scrollbar flex shrink-0 items-center gap-2 overflow-x-auto px-4 py-2.5 pr-6">
-          {FILTERS.map((f) => {
-            const count = f.id === "all"
-              ? data.pins.length + data.unmapped.length
-              : data.counts[f.id as MapLayer];
-            const active = filter === f.id;
-            const dot = f.id === "all" ? null : LAYER_COLOR[f.id as MapLayer];
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => changeFilter(f.id)}
-                aria-pressed={active}
-                className={cn(
-                  "tap flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors",
-                  active
-                    ? "border-blood-500 bg-blood-500 text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.9)]"
-                    : "border-ink-700 bg-ink-850 text-mist hover:border-ink-600 hover:text-chalk",
-                )}
-              >
-                {dot && (
-                  <span
-                    aria-hidden
-                    className="size-2 rounded-full"
-                    style={{ background: active ? "#fff" : dot, boxShadow: active ? "none" : `0 0 8px ${dot}` }}
-                  />
-                )}
-                {f.label}
-                <span className={cn("tabular-nums", active ? "text-white/70" : "text-fog")}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
+        <ChipRow className="shrink-0 px-4 py-2.5">
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.id}
+              onClick={() => changeFilter(f.id)}
+              active={filter === f.id}
+              dot={f.id === "all" ? undefined : LAYER_COLOR[f.id as MapLayer]}
+              count={
+                f.id === "all"
+                  ? data.pins.length + data.unmapped.length
+                  : data.counts[f.id as MapLayer]
+              }
+            >
+              {f.label}
+            </Chip>
+          ))}
+        </ChipRow>
 
         {/* Map surface. The sheet lives INSIDE this box on phones, Apple-Maps
             style — the map is never navigated away from, only covered. */}
@@ -378,31 +364,23 @@ function SheetDiscoveryHeader({
   hasLocation: boolean;
 }) {
   return (
-    <div data-hscroll className="hide-scrollbar flex items-center gap-1.5 overflow-x-auto">
-      {SECTIONS.map(({ id, label, icon: Icon }) => {
-        const active = section === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onSection(id)}
-            aria-pressed={active}
-            className={cn(
-              "tap inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 font-display text-[0.68rem] font-bold uppercase tracking-wide transition-colors",
-              active
-                ? "border-chalk bg-chalk text-ink-950"
-                : "border-ink-700 bg-ink-850 text-mist hover:text-chalk",
-            )}
-          >
-            <Icon className="size-3" />
-            {/* Without a granted location "Nearby" cannot mean nearby, so it
-                says what it is actually sorted by rather than lying. */}
-            {id === "nearby" && !hasLocation ? "Soonest" : label}
-          </button>
-        );
-      })}
+    <ChipRow className="gap-1.5">
+      {SECTIONS.map(({ id, label, icon: Icon }) => (
+        <Chip
+          key={id}
+          onClick={() => onSection(id)}
+          active={section === id}
+          tone="neutral"
+          size="sm"
+        >
+          <Icon className="size-3" />
+          {/* Without a granted location "Nearby" cannot mean nearby, so it
+              says what it is actually sorted by rather than lying. */}
+          {id === "nearby" && !hasLocation ? "Soonest" : label}
+        </Chip>
+      ))}
       <span className="ml-auto shrink-0 pl-2 text-[0.66rem] uppercase tracking-wider text-fog">{count}</span>
-    </div>
+    </ChipRow>
   );
 }
 
@@ -492,7 +470,7 @@ function EmptyLayer({
   const bare = layer !== null && empty.has(layer);
   const meta = MAP_LAYERS.find((l) => l.id === layer);
 
-  const copy = (() => {
+  const body = (() => {
     if (section === "live") return "Nobody is checked in anywhere right now. Check in somewhere and you'll be the first.";
     if (bare && layer === "people") {
       return signedIn
@@ -505,38 +483,21 @@ function EmptyLayer({
     return "No results for this filter. Try another layer, or zoom out to the whole world.";
   })();
 
+  const action =
+    bare && layer === "gyms"
+      ? { href: "/gyms/new", label: "Add your gym" }
+      : bare && layer === "people" && signedIn
+        ? { href: "/profile", label: "Put me on the map" }
+        : undefined;
+
   return (
-    <div className="rounded-xl border border-dashed border-ink-700 bg-ink-900/40 px-4 py-8 text-center">
-      <span
-        aria-hidden
-        className="mx-auto grid size-11 place-items-center rounded-2xl border"
-        style={{
-          borderColor: layer ? `${LAYER_COLOR[layer]}44` : undefined,
-          background: layer ? `${LAYER_COLOR[layer]}14` : undefined,
-        }}
-      >
-        <MapPinOff className="size-5" style={{ color: layer ? LAYER_COLOR[layer] : undefined }} />
-      </span>
-      <p className="mt-3 font-display text-sm font-bold uppercase tracking-wide text-chalk">
-        {section === "live" ? "Nothing live" : bare ? `No ${meta?.label.toLowerCase()} yet` : "Nothing in view"}
-      </p>
-      <p className="mx-auto mt-1.5 max-w-xs text-[0.76rem] leading-relaxed text-fog">{copy}</p>
-      {bare && layer === "gyms" && (
-        <Link
-          href="/gyms/new"
-          className="tap mt-3.5 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-white hover:bg-blood-400"
-        >
-          Add your gym
-        </Link>
-      )}
-      {bare && layer === "people" && signedIn && (
-        <Link
-          href="/profile"
-          className="tap mt-3.5 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-white hover:bg-blood-400"
-        >
-          Put me on the map
-        </Link>
-      )}
-    </div>
+    <EmptyState
+      compact
+      icon={<MapPinOff className="size-5" />}
+      accent={layer ? LAYER_COLOR[layer] : undefined}
+      title={section === "live" ? "Nothing live" : bare ? `No ${meta?.label.toLowerCase()} yet` : "Nothing in view"}
+      body={body}
+      action={action}
+    />
   );
 }

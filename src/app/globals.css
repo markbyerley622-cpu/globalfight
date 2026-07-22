@@ -137,6 +137,51 @@
     color: white;
   }
 
+  /* ── Keyboard focus ──────────────────────────────────────────────────────
+     There was no focus style anywhere in the app. Most interactive surfaces
+     here are custom <button>/<a> elements whose own `border` and `background`
+     utilities sit on top of the UA's default focus ring, so tabbing through a
+     filter row, a bottom sheet or the gym forms gave no visible position at
+     all — the app was keyboard-unusable rather than merely awkward.
+
+     `:focus-visible`, not `:focus`, so a mouse click never draws a ring. Two
+     layers: a dark inner ring so the marker stays legible on the red/blue/gold
+     accent fills as well as on ink. */
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-ink-950),
+      0 0 0 4px var(--color-blood-400);
+    border-radius: inherit;
+  }
+  /* Inputs already carry their own border treatment; keep the ring tight to it. */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-blood-400);
+  }
+
+  /* Skip link — the only way to get past the header, ticker and tab strip to
+     the content without tabbing the whole shell on every navigation. */
+  .skip-link {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 200;
+    transform: translateY(-160%);
+    transition: transform 0.18s var(--ease-out-quint);
+    background: var(--color-blood-500);
+    color: #fff;
+    font: 700 0.8rem/1 var(--font-display), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.7rem 1rem;
+    border-radius: 0.6rem;
+  }
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: var(--color-ink-900); }

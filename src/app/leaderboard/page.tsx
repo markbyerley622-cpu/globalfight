@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Trophy, Flame, Target, ShieldAlert, ArrowRight } from "lucide-react";
+import { Chip, ChipRow } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getLeaderboard, LEADER_WINDOWS, type Leader, type LeaderWindow } from "@/lib/reputation";
 import { flags } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
@@ -56,25 +58,26 @@ export default async function LeaderboardPage({
       </header>
 
       {/* ── Product switch ── */}
-      <div data-hscroll className="hide-scrollbar mb-4 flex gap-2 overflow-x-auto">
-        <Segment href="/leaderboard" label="Predictor Leaderboard" active={board === "predictors"} />
-        <Segment href="/leaderboard?board=fighters" label="Fighter Rankings" active={board === "fighters"} />
-      </div>
+      <ChipRow className="mb-4">
+        <Chip href="/leaderboard" active={board === "predictors"}>Predictor Leaderboard</Chip>
+        <Chip href="/leaderboard?board=fighters" active={board === "fighters"}>Fighter Rankings</Chip>
+      </ChipRow>
 
       {board === "predictors" ? (
         <>
           {/* ── Time window ── */}
-          <div data-hscroll className="hide-scrollbar mb-5 flex gap-2 overflow-x-auto">
+          <ChipRow className="mb-5">
             {LEADER_WINDOWS.map((w) => (
-              <Segment
+              <Chip
                 key={w.id}
                 href={w.id === "all" ? "/leaderboard" : `/leaderboard?window=${w.id}`}
-                label={w.label}
                 active={win === w.id}
-                subtle
-              />
+                tone="neutral"
+              >
+                {w.label}
+              </Chip>
             ))}
-          </div>
+          </ChipRow>
 
           {leaders.length === 0 ? (
             <EmptyBoard window={win} />
@@ -102,28 +105,6 @@ export default async function LeaderboardPage({
 }
 
 // ── Pieces ──────────────────────────────────────────────────────────────────
-
-function Segment({
-  href, label, active, subtle,
-}: { href: string; label: string; active: boolean; subtle?: boolean }) {
-  return (
-    <Link
-      href={href}
-      scroll={false}
-      aria-current={active ? "true" : undefined}
-      className={cn(
-        "tap shrink-0 whitespace-nowrap rounded-full border px-4 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors",
-        active
-          ? subtle
-            ? "border-chalk bg-chalk text-ink-950"
-            : "border-blood-500 bg-blood-500 text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.9)]"
-          : "border-ink-700 bg-ink-850 text-mist hover:border-ink-600 hover:text-chalk",
-      )}
-    >
-      {label}
-    </Link>
-  );
-}
 
 const MEDAL = ["text-gold-300", "text-mist", "text-gold-600"];
 
@@ -238,24 +219,12 @@ function LeaderLink({
 function EmptyBoard({ window: w }: { window: LeaderWindow }) {
   const label = LEADER_WINDOWS.find((x) => x.id === w)?.label.toLowerCase() ?? "this window";
   return (
-    <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 px-6 py-12 text-center">
-      <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-ink-700 bg-ink-850">
-        <Trophy className="size-5 text-gold-400" />
-      </span>
-      <p className="mt-3 font-display text-base font-bold uppercase tracking-wide text-chalk">
-        No points scored {w === "all" ? "yet" : label}
-      </p>
-      <p className="mx-auto mt-1.5 max-w-sm text-sm text-fog">
-        Reputation appears the moment fights start resolving picks. Make a call on an upcoming card and you&apos;re on
-        the board.
-      </p>
-      <Link
-        href="/events"
-        className="tap mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400"
-      >
-        Find a card to call <ArrowRight className="size-3.5" />
-      </Link>
-    </div>
+    <EmptyState
+      icon={<Trophy className="size-5 text-gold-400" />}
+      title={`No points scored ${w === "all" ? "yet" : label}`}
+      body="Reputation appears the moment fights start resolving picks. Make a call on an upcoming card and you're on the board."
+      action={{ href: "/events", label: "Find a card to call" }}
+    />
   );
 }
 
@@ -267,22 +236,20 @@ function EmptyBoard({ window: w }: { window: LeaderWindow }) {
 function FighterRankings({ enabled }: { enabled: boolean }) {
   if (!enabled) {
     return (
-      <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 px-6 py-10 text-center">
-        <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-ink-700 bg-ink-850">
-          <ShieldAlert className="size-5 text-gold-400" />
-        </span>
-        <p className="mt-3 font-display text-base font-bold uppercase tracking-wide text-chalk">
-          Fighter rankings are withdrawn
-        </p>
-        <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-fog">
-          A divisional ranking table is an editorial compilation, not a fact. Ours could not be traced to a licensed
-          source, so it is not displayed. Rankings return — divisions, P4P and champions — once a licensed source is
-          in place.
-        </p>
-        <p className="mt-3 text-[0.7rem] text-fog">
-          The predictor board above is unaffected: those points are earned on this platform.
-        </p>
-      </div>
+      <EmptyState
+        icon={<ShieldAlert className="size-5 text-gold-400" />}
+        title="Fighter rankings are withdrawn"
+        body={
+          <>
+            A divisional ranking table is an editorial compilation, not a fact. Ours could not be traced to a
+            licensed source, so it is not displayed. Rankings return — divisions, P4P and champions — once a
+            licensed source is in place.
+            <span className="mt-2 block text-[0.72rem]">
+              The predictor board above is unaffected: those points are earned on this platform.
+            </span>
+          </>
+        }
+      />
     );
   }
 

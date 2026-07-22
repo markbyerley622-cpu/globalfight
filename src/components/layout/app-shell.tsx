@@ -98,6 +98,7 @@ export function AppShell({
       {/* App-wide rotating photo backdrop — sits above the base ink, below the UI. */}
       <RotatingBackdrop />
       <AnalyticsPageviews />
+      <a href="#main" className="skip-link">Skip to content</a>
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Top bar — logo + actions row, with the Breaking ticker docked
             directly beneath inside the same header block. */}
