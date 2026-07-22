@@ -84,3 +84,96 @@ export async function getReputationLeaders(limit = 25) {
     },
   });
 }
+
+// ── Windowed leaderboards ───────────────────────────────────────────────────
+// "All time" is User.reputation, the running total. A month or a year cannot be
+// read off that column, so those windows sum the LEDGER — which is precisely
+// what the ledger is for. Same score, same rules, narrower slice of time.
+
+export type LeaderWindow = "all" | "year" | "month";
+
+export const LEADER_WINDOWS: { id: LeaderWindow; label: string }[] = [
+  { id: "all", label: "All Time" },
+  { id: "month", label: "This Month" },
+  { id: "year", label: "This Year" },
+];
+
+export interface Leader {
+  id: string;
+  name: string | null;
+  username: string | null;
+  image: string | null;
+  /** Points inside the selected window. */
+  points: number;
+  picksResolved: number;
+  picksCorrect: number;
+  bestPickStreak: number;
+  /** Whole-percent accuracy, all-time (a month of picks is too thin to rank on). */
+  accuracy: number;
+}
+
+/** Start of the current month / year, or null for all-time. */
+function windowStart(w: LeaderWindow): Date | null {
+  const now = new Date();
+  if (w === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (w === "year") return new Date(now.getFullYear(), 0, 1);
+  return null;
+}
+
+const accuracyOf = (correct: number, resolved: number) =>
+  resolved > 0 ? Math.round((correct / resolved) * 100) : 0;
+
+/**
+ * The predictor board for one time window.
+ *
+ * All-time reads the denormalised column. A window groups the ledger by user,
+ * takes the top N, then fetches those users — two indexed queries whose cost is
+ * set by the window, never by how many users exist.
+ */
+export async function getLeaderboard(w: LeaderWindow, limit = 50): Promise<Leader[]> {
+  const since = windowStart(w);
+
+  if (!since) {
+    const rows = await getReputationLeaders(limit);
+    return rows.map((u) => ({
+      id: u.id, name: u.name, username: u.username, image: u.image,
+      points: u.reputation,
+      picksResolved: u.picksResolved, picksCorrect: u.picksCorrect,
+      bestPickStreak: u.bestPickStreak,
+      accuracy: accuracyOf(u.picksCorrect, u.picksResolved),
+    }));
+  }
+
+  const grouped = await prisma.reputationEvent.groupBy({
+    by: ["userId"],
+    where: { createdAt: { gte: since } },
+    _sum: { delta: true },
+    orderBy: { _sum: { delta: "desc" } },
+    take: limit,
+  });
+  // A window can net out to zero or negative; a board of people who lost points
+  // is not a leaderboard.
+  const scored = grouped.filter((g) => (g._sum.delta ?? 0) > 0);
+  if (scored.length === 0) return [];
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: scored.map((g) => g.userId) } },
+    select: {
+      id: true, name: true, username: true, image: true,
+      picksResolved: true, picksCorrect: true, bestPickStreak: true,
+    },
+  });
+  const byId = new Map(users.map((u) => [u.id, u]));
+
+  return scored.flatMap((g) => {
+    const u = byId.get(g.userId);
+    if (!u) return []; // deleted between the two reads
+    return [{
+      id: u.id, name: u.name, username: u.username, image: u.image,
+      points: g._sum.delta ?? 0,
+      picksResolved: u.picksResolved, picksCorrect: u.picksCorrect,
+      bestPickStreak: u.bestPickStreak,
+      accuracy: accuracyOf(u.picksCorrect, u.picksResolved),
+    }];
+  });
+}

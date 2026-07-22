@@ -508,6 +508,7 @@ model Event {
   externalIds      EventExternalId[]
   discussionThread ForumThread?
   followers        FavoriteEvent[]
+  checkIns         CheckIn[]
 
   @@index([date, status])
   @@index([country])
@@ -721,9 +722,28 @@ model ForumCategory {
   avatarUrl   String?
   bannerUrl   String?
   memberCount Int               @default(0)
+
+  // ── Fight clubs ────────────────────────────────────────────────────────
+  // A fight club IS a community that happens to meet somewhere. Rather than
+  // add a parallel FightClub model with its own membership, posts and
+  // moderation — three systems to keep in sync forever — a community with
+  // coordinates is a fight club. Everything it already has (threads, members,
+  // roles, clips) comes along for free, and `kind` is the only branch.
+  /// forum | fight_club
+  kind        String            @default("forum")
+  city        String?
+  country     String?
+  countryCode String?
+  latitude    Float?
+  longitude   Float?
+  /// When they train together — "Open sparring, Saturdays 11am".
+  meetsOn     String?
+
   threads     ForumThread[]
   members     CommunityMember[]
   clips       Clip[]
+
+  @@index([kind])
 }
 
 // One row per member of a community (a ForumCategory). role carries the
@@ -1094,6 +1114,22 @@ model User {
   themePref        String    @default("dark")
   createdAt        DateTime  @default(now())
 
+  // ── Community map presence ────────────────────────────────────────────
+  // Opt-IN, and opt-in twice: a user is only ever plotted when they have both
+  // chosen a visibility other than HIDDEN and told us a city. See the
+  // MapVisibility enum for why there is no GPS column here — the point we
+  // plot is a city centre they picked, never a device position.
+  mapVisibility      MapVisibility @default(HIDDEN)
+  mapCity            String?
+  mapCountryCode     String?
+  /// Resolved from mapCity/mapCountryCode through the gazetteer at save time,
+  /// so the people layer is one indexed read instead of N lookups per render.
+  mapLat             Float?
+  mapLon             Float?
+  /// Discoverability flags — these are the map's "role" filters.
+  openToSpar         Boolean       @default(false)
+  lookingForTraining Boolean       @default(false)
+
   accounts          Account[]
   sessions          Session[]
   passwordResets    PasswordResetToken[]
@@ -1125,8 +1161,17 @@ model User {
   claimsMade        FighterClaim[]       @relation("ClaimsMade")
   claimsReviewed    FighterClaim[]       @relation("ClaimsReviewed")
   copyrightReviewed CopyrightReport[]    @relation("CopyrightReviewed")
+  gymMemberships    GymMember[]
+  gymsOwned         Gym[]                @relation("GymOwner")
+  gymClaimsMade     GymClaim[]           @relation("GymClaimsMade")
+  gymClaimsReviewed GymClaim[]           @relation("GymClaimsReviewed")
+  checkIns          CheckIn[]
+  following         UserFollow[]         @relation("Follower")
+  followers         UserFollow[]         @relation("Following")
 
   @@index([reputation])
+  // The people layer's hot path: "visible users who have a resolved point".
+  @@index([mapVisibility, mapLat])
 }
 
 /// Forgotten-password reset tokens.
@@ -1731,4 +1776,169 @@ model AnalyticsEvent {
 
   @@index([name, ts])
   @@index([userId, ts])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  COMMUNITY MAP — gyms, people, presence
+//
+//  The Location pillar started as an event map. These models turn it into a
+//  network: places people belong to, people who opt in to being seen, and a
+//  lightweight presence signal that says who is actually there right now.
+//
+//  Three rules run through all of it:
+//
+//   1. NOBODY IS ON THE MAP BY DEFAULT. MapVisibility defaults to HIDDEN and
+//      every people-layer query filters on it server-side. A UI toggle is not
+//      a privacy control.
+//   2. WE NEVER STORE A USER'S GPS POSITION. A person's map point is the
+//      CENTRE OF A CITY THEY CHOSE, resolved through the same gazetteer the
+//      events use. That is enough to find training partners and not enough to
+//      find someone's house — and it cannot leak precision we never held.
+//   3. PRESENCE EXPIRES. A check-in is a few hours of "I'm here", not a
+//      permanent location history. Expired rows stop matching every query.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Who may see a user on the map. HIDDEN is the default and the fallback for
+/// any value the server does not recognise.
+enum MapVisibility {
+  HIDDEN
+  PUBLIC
+  FOLLOWERS /// people they follow back — the "friends only" setting
+  GYM_MEMBERS /// members of a gym they belong to
+  EVENTS_ONLY /// only while checked in to an event
+}
+
+/// A training location: gym, academy, club room, boxing gym, wrestling room.
+/// First-class and claimable — the combat-sports equivalent of a Google
+/// Business Profile.
+model Gym {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+
+  logoUrl String?
+  heroUrl String?
+
+  /// Location. `latitude`/`longitude` are real columns here (unlike Event,
+  /// which is still gazetteer-resolved) because a gym IS an address — it is
+  /// the thing being looked up, and "somewhere in this city" is not good
+  /// enough to drive to. Null until geocoded; the map lists those separately
+  /// rather than guessing.
+  address     String?
+  city        String?
+  region      String?
+  country     String?
+  countryCode String?
+  latitude    Float?
+  longitude   Float?
+
+  /// What is actually taught here — drives the discipline filter.
+  disciplines String[]
+
+  website   String?
+  instagram String?
+  phone     String?
+  email     String?
+  /// Free text ("Mon–Fri 6am–9pm · Open mat Sat 11am"). Structured opening
+  /// hours are a real modelling job and this is honest until then.
+  hoursNote String?
+
+  /// Set by a reviewed GymClaim. Never by the owner directly.
+  verified   Boolean @default(false)
+  ownerId    String?
+  owner      User?   @relation("GymOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  /// Denormalised so a map pin never counts rows.
+  memberCount Int    @default(0)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members  GymMember[]
+  claims   GymClaim[]
+  checkIns CheckIn[]
+
+  @@index([countryCode])
+  @@index([latitude, longitude])
+}
+
+/// Membership. `isHome` is the one a fighter calls their home gym — at most
+/// one per user, enforced in the service layer.
+model GymMember {
+  id     String @id @default(cuid())
+  gymId  String
+  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// member | coach | owner
+  role   String @default("member")
+  isHome Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([gymId, userId])
+  @@index([userId, isHome])
+}
+
+/// Ownership claim over a gym page. Mirrors FighterClaim's shape deliberately:
+/// same review vocabulary, same admin habits, no second concept to learn.
+model GymClaim {
+  id        String @id @default(cuid())
+  gymId     String
+  gym       Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  claimantId String
+  claimant  User   @relation("GymClaimsMade", fields: [claimantId], references: [id], onDelete: Cascade)
+
+  /// pending | approved | rejected | info_requested
+  status  String  @default("pending")
+  /// How they say they can prove it (role, website email, socials).
+  evidence String?
+  note     String?
+
+  reviewerId String?
+  reviewer   User?     @relation("GymClaimsReviewed", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([claimantId])
+}
+
+/// "I'm here." Presence, not location history — `expiresAt` is what keeps this
+/// from becoming a tracking log, and every read filters on it.
+model CheckIn {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gymId   String?
+  gym     Gym?    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Optional short status ("open mat", "watching the prelims").
+  note    String?
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([gymId, expiresAt])
+  @@index([eventId, expiresAt])
+  @@index([userId, expiresAt])
+}
+
+/// The user→user social graph. Nothing in the schema modelled "I follow this
+/// person" — favourites covered fighters, promotions and events only — so
+/// "Friends Only" visibility had nothing to resolve against and the Following
+/// pillar had no people in it. One row per direction; mutual follow is both.
+model UserFollow {
+  id          String @id @default(cuid())
+  followerId  String
+  follower    User   @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User   @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
 }

@@ -143,15 +143,32 @@ export type NavItem = { label: string; href: string; children?: NavItem[]; accen
 // Hiding the nav entry is NOT the control — the routes enforce it. This is here so
 // we do not advertise a page that returns "unavailable". Restore these entries only
 // when a licensed source is in place.
+// The bottom bar carries the five product pillars (Events · Leaderboard ·
+// Following · Location · Profile). Everything that is NOT a pillar — Home, the
+// community surfaces, the registry — is reachable here, so no surface lost a
+// route when the tab bar was reduced to the pillars.
 export const PRIMARY_NAV: NavItem[] = [
+  { label: "Home", href: "/" },
+  { label: "Location", href: "/map" },
   {
     label: "Explore",
     href: "/explore",
     children: [
       { label: "Fighters", href: "/fighters" },
+      { label: "Gyms", href: "/gyms" },
       { label: "Schedule", href: "/schedule" },
       { label: "Results", href: "/results" },
       { label: "Registry", href: "/registry" },
+    ],
+  },
+  {
+    label: "Community",
+    href: "/community",
+    children: [
+      { label: "Communities", href: "/community" },
+      { label: "Forums", href: "/forums" },
+      { label: "News", href: "/news" },
+      { label: "Podcasts", href: "/podcasts" },
     ],
   },
 ];

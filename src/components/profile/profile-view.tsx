@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera } from "lucide-react";
+import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, MapPin } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
 import { ProfileSettings } from "./profile-settings";
 import { ProfileStats } from "./profile-stats";
+import { MapPresencePanel } from "./map-presence";
 
 const initials = (u: { name: string | null; username: string | null }) =>
   (u.name ?? u.username ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -122,7 +123,17 @@ export function ProfileView() {
       {/* Account shortcuts */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
         <Row href="/predictions" icon={Star} name="Predictions" desc="Your picks and results" />
+        <Row href="/gyms" icon={Dumbbell} name="Gyms" desc="Where you train, and who trains there" />
         <Row href="/account" icon={Bell} name="Notifications" desc="Fight-week reminders & breaking news" />
+      </div>
+
+      {/* Community map presence — the opt-in that puts a person on the map. */}
+      <div className="mt-5 flex items-center gap-2 px-1">
+        <MapPin className="size-4 text-fog" />
+        <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Community map</h3>
+      </div>
+      <div className="mt-3">
+        <MapPresencePanel />
       </div>
 
       {/* Settings */}

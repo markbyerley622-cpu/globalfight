@@ -366,6 +366,217 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   Location — map surface, pins, viewer beacon
+   ────────────────────────────────────────────────────────────────────
+   Leaflet ships a light-theme stylesheet built for a white basemap. Every
+   rule here either neutralises that (panes, controls, attribution) or draws
+   the pin family — red events, blue gyms, purple fight clubs — which is
+   entirely ours: Leaflet only positions a <span>, it never styles one.
+   ════════════════════════════════════════════════════════════════════ */
+
+.cr-map {
+  background: #05070a;
+  /* Leaflet's default font is inherited into the attribution; keep it ours. */
+  font-family: var(--font-sans);
+}
+
+/* Cool the basemap down and lift its contrast so red pins read as the only
+   saturated thing on screen — the reason the map feels like the app and not
+   like an embedded widget. */
+.cr-map .leaflet-tile-pane {
+  filter: saturate(0.62) contrast(1.08) brightness(0.92);
+}
+
+.cr-map .leaflet-container {
+  background: #05070a;
+}
+
+/* Attribution: required, so it stays legible and out from under the sheet.
+   Moved to the top-left in map-canvas.tsx and tucked directly beneath the
+   layer legend, sized like fine print rather than a caption. */
+.cr-map .leaflet-control-attribution {
+  background: rgba(5, 7, 10, 0.7);
+  backdrop-filter: blur(8px);
+  color: var(--color-fog);
+  border-radius: 0.4rem;
+  padding: 2px 7px;
+  font-size: 0.56rem;
+  letter-spacing: 0.01em;
+  /* Clear the legend chip that sits at the same corner. */
+  margin: 2.6rem 0 0 0.5rem;
+}
+.cr-map .leaflet-control-attribution a { color: var(--color-mist); }
+
+/* Marker hosts must not intercept the pointer outside the pin's own shape. */
+.cr-pin-wrap { background: none; border: 0; }
+
+/* ── The pin ──
+   A teardrop: a circle with one square corner, rotated 45°, with the glyph
+   counter-rotated back to upright inside it. */
+.cr-pin {
+  position: relative;
+  display: block;
+  width: 38px;
+  height: 46px;
+  cursor: pointer;
+  transition: transform 0.24s var(--ease-out-back);
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.cr-pin:hover { transform: scale(1.12); }
+.cr-pin.is-selected { transform: scale(1.24); z-index: 5; }
+
+.cr-pin__body {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--pin) 88%, #fff), var(--pin));
+  border: 1.5px solid color-mix(in srgb, var(--pin) 55%, #fff);
+  box-shadow:
+    0 6px 16px -4px rgba(0, 0, 0, 0.9),
+    0 0 18px -2px color-mix(in srgb, var(--pin) 70%, transparent);
+}
+.cr-pin__body svg {
+  width: 15px;
+  height: 15px;
+  color: #fff;
+  transform: rotate(45deg);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+
+/* Soft ground shadow so a pin sits ON the map rather than floating over it. */
+.cr-pin__stem {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 14px;
+  height: 5px;
+  margin-left: -7px;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.75), transparent);
+}
+
+/* ── People pins ──
+   A lone person renders as their own face. The teardrop's -45° rotation would
+   turn a portrait onto its corner, so the image is counter-rotated with the
+   glyph and clipped to the body's circle. */
+.cr-pin__face {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  transform: rotate(45deg) scale(1.42);
+}
+.cr-pin.is-face .cr-pin__body {
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Second-layer dot on a MIXED cluster: "there is another kind of thing here". */
+.cr-pin__mix {
+  position: absolute;
+  left: -2px;
+  top: 4px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--mix);
+  border: 1.5px solid var(--color-ink-950);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--mix) 75%, transparent);
+}
+
+/* "N here right now" — presence, in live red, always the loudest badge. */
+.cr-pin__here {
+  position: absolute;
+  bottom: 4px;
+  right: -6px;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-blood-500);
+  border: 1.5px solid var(--color-ink-950);
+  color: #fff;
+  font: 800 0.58rem/1 var(--font-display), sans-serif;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 10px -1px rgba(225, 29, 42, 0.9);
+}
+
+/* Count ring for a grouped pin (8 Vegas cards land on one coordinate). */
+.cr-pin__count {
+  position: absolute;
+  top: -4px;
+  right: -3px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-ink-950);
+  border: 1.5px solid color-mix(in srgb, var(--pin) 70%, #fff);
+  color: #fff;
+  font: 800 0.62rem/1 var(--font-display), sans-serif;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Halo: idle for the selected pin, always-on pulse for a live card. */
+.cr-pin__halo {
+  position: absolute;
+  left: 50%;
+  top: 17px;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border-radius: 999px;
+  background: var(--pin);
+  opacity: 0;
+}
+.cr-pin.is-selected .cr-pin__halo,
+.cr-pin.is-live .cr-pin__halo {
+  animation: crPinHalo 2s var(--ease-out-circ) infinite;
+}
+
+@keyframes crPinHalo {
+  0% { opacity: 0.5; transform: scale(0.6); }
+  70% { opacity: 0; transform: scale(2.1); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+
+/* ── Viewer beacon ── */
+.cr-me { position: relative; display: block; width: 22px; height: 22px; }
+.cr-me__dot {
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  background: var(--color-volt-400);
+  border: 2px solid #fff;
+  box-shadow: 0 0 12px 1px rgba(56, 189, 248, 0.9);
+}
+.cr-me__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.35);
+  animation: crPinHalo 2.4s var(--ease-out-circ) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cr-pin { transition: none; }
+  .cr-pin__halo, .cr-me__ring { animation: none; opacity: 0.18; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Predictions — premium surfaces, probability motion, micro-interactions
    ════════════════════════════════════════════════════════════════════ */
 

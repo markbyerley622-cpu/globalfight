@@ -241,6 +241,86 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
   return items.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0)).slice(0, limit);
 }
 
+// ── Rivals ──────────────────────────────────────────────────────────────────
+// The concept's "Friends" tab. There is no user→user follow graph in this
+// schema and inventing one for a tab would be the wrong order of work — but
+// Rivalry already records exactly who you actually engage with: everyone you
+// have taken a Prediction Battle against, and the head-to-head record.
+
+export interface Rival {
+  userId: string;
+  name: string | null;
+  username: string | null;
+  image: string | null;
+  /** Head-to-head from the VIEWER's side. */
+  wins: number;
+  losses: number;
+  draws: number;
+  /** Positive: you're on a run. Negative: they are. */
+  streak: number;
+  lastBattleAt: string;
+}
+
+export async function getRivals(userId: string, limit = 20): Promise<Rival[]> {
+  const rows = await prisma.rivalry.findMany({
+    where: { OR: [{ userAId: userId }, { userBId: userId }] },
+    orderBy: { lastBattleAt: "desc" },
+    take: limit,
+    select: {
+      userAId: true, userBId: true, aWins: true, bWins: true, draws: true,
+      currentStreakUserId: true, currentStreak: true, lastBattleAt: true,
+      userA: { select: { id: true, name: true, username: true, image: true } },
+      userB: { select: { id: true, name: true, username: true, image: true } },
+    },
+  });
+
+  return rows.map((r) => {
+    const viewerIsA = r.userAId === userId;
+    const them = viewerIsA ? r.userB : r.userA;
+    const streakIsMine = r.currentStreakUserId === userId;
+    return {
+      userId: them.id,
+      name: them.name,
+      username: them.username,
+      image: them.image,
+      wins: viewerIsA ? r.aWins : r.bWins,
+      losses: viewerIsA ? r.bWins : r.aWins,
+      draws: r.draws,
+      streak: r.currentStreak === 0 ? 0 : streakIsMine ? r.currentStreak : -r.currentStreak,
+      lastBattleAt: iso(r.lastBattleAt),
+    };
+  });
+}
+
+// ── Corner Men ──────────────────────────────────────────────────────────────
+/** Recent published analysis — the creator side of the Following pillar. */
+export async function getCornerMen(limit = 12): Promise<FeedItem[]> {
+  const rows = await prisma.article.findMany({
+    where: { status: "PUBLISHED", publishedAt: { not: null } },
+    orderBy: { publishedAt: "desc" },
+    take: limit,
+    select: {
+      id: true, slug: true, title: true, excerpt: true, publishedAt: true,
+      author: { select: { name: true, username: true } },
+    },
+  });
+
+  return rows.flatMap((a) =>
+    a.publishedAt
+      ? [{
+          id: `cm-${a.id}`,
+          kind: "coverage" as const,
+          at: iso(a.publishedAt),
+          title: a.title,
+          body: a.excerpt,
+          url: `/news/${a.slug}`,
+          icon: "🎙️",
+          meta: a.author?.name ?? a.author?.username ?? "Combat Reviews",
+        }]
+      : [],
+  );
+}
+
 /** Counts for the empty/summary state. */
 export async function getFollowingSummary(userId: string): Promise<{ events: number; fighters: number; promotions: number; total: number }> {
   const [events, fighters, promotions] = await Promise.all([

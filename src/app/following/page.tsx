@@ -1,34 +1,75 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Users, Building2, ArrowRight, Sparkles } from "lucide-react";
+import Image from "next/image";
+import {
+  CalendarDays, Users, Building2, ArrowRight, Sparkles, Swords, Mic, Flame,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getFollowingFeed, getFollowingSummary, type FeedItem } from "@/lib/following";
+import {
+  getFollowingFeed, getFollowingSummary, getRivals, getCornerMen,
+  type FeedItem, type Rival,
+} from "@/lib/following";
 import { timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Following",
-  description: "Everything from the events, fighters and promotions you follow — upcoming cards, results, and your battles.",
+  description:
+    "Everything from the events, fighters and promotions you follow — plus your rivals and the analysts worth reading.",
 };
 
-/**
- * The return leg. Nothing here is generic: every item comes from something the
- * user explicitly followed, or happened to them personally. The empty state is
- * treated as the most important state, because on day one it is the ONLY state.
- */
-export default async function FollowingPage() {
+// ════════════════════════════════════════════════════════════════════════════
+//  The Following pillar. Four surfaces under one tab strip:
+//
+//    Feed       everything you follow, one timeline
+//    Rivals     the people you've actually battled (the concept calls this
+//               "Friends"; this schema has no user→user follow graph, and
+//               Rivalry is the real relationship — so the tab shows the real
+//               thing rather than a stub of an invented one)
+//    Events     just the cards — fight week, filtered
+//    Corner Men analysis and shows
+//
+//  Every item still traces back to something the user asked for. This is not a
+//  generic social feed and the tabs do not make it one.
+// ════════════════════════════════════════════════════════════════════════════
+
+type Tab = "feed" | "rivals" | "events" | "corner";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "feed", label: "Feed" },
+  { id: "rivals", label: "Rivals" },
+  { id: "events", label: "Events" },
+  { id: "corner", label: "Corner Men" },
+];
+
+const EVENT_KINDS = new Set(["event_upcoming", "fight_upcoming", "result"]);
+
+export default async function FollowingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) return <SignedOut />;
 
-  const [feed, summary] = await Promise.all([
-    getFollowingFeed(user.id),
+  const sp = await searchParams;
+  const tab = (TABS.find((t) => t.id === sp.tab)?.id ?? "feed") as Tab;
+
+  const [feed, summary, rivals, corner] = await Promise.all([
+    tab === "feed" || tab === "events" ? getFollowingFeed(user.id) : Promise.resolve<FeedItem[]>([]),
     getFollowingSummary(user.id),
+    tab === "rivals" ? getRivals(user.id) : Promise.resolve<Rival[]>([]),
+    tab === "corner" ? getCornerMen() : Promise.resolve<FeedItem[]>([]),
   ]);
+
+  const items = tab === "events" ? feed.filter((i) => EVENT_KINDS.has(i.kind)) : feed;
 
   return (
     <div className="px-4 pb-16 pt-5">
       <div className="mx-auto max-w-2xl">
-        <header className="mb-5">
-          <h1 className="font-display text-2xl font-black text-chalk">Following</h1>
+        <header className="mb-4">
+          <p className="eyebrow">Stay connected</p>
+          <h1 className="mt-1.5 font-display text-2xl font-black uppercase tracking-tight text-chalk">Following</h1>
           <p className="mt-1 text-sm text-fog">
             {summary.total > 0
               ? `${summary.events} event${summary.events === 1 ? "" : "s"} · ${summary.fighters} fighter${summary.fighters === 1 ? "" : "s"} · ${summary.promotions} promotion${summary.promotions === 1 ? "" : "s"}`
@@ -36,11 +77,34 @@ export default async function FollowingPage() {
           </p>
         </header>
 
-        {feed.length === 0 ? (
-          <EmptyFeed following={summary.total > 0} />
+        <div data-hscroll className="hide-scrollbar mb-4 flex gap-2 overflow-x-auto">
+          {TABS.map((t) => (
+            <Link
+              key={t.id}
+              href={t.id === "feed" ? "/following" : `/following?tab=${t.id}`}
+              scroll={false}
+              aria-current={tab === t.id ? "true" : undefined}
+              className={cn(
+                "tap shrink-0 whitespace-nowrap rounded-full border px-4 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors",
+                tab === t.id
+                  ? "border-blood-500 bg-blood-500 text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.9)]"
+                  : "border-ink-700 bg-ink-850 text-mist hover:border-ink-600 hover:text-chalk",
+              )}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </div>
+
+        {tab === "rivals" ? (
+          <RivalsTab rivals={rivals} />
+        ) : tab === "corner" ? (
+          <CornerTab items={corner} />
+        ) : items.length === 0 ? (
+          <EmptyFeed following={summary.total > 0} eventsOnly={tab === "events"} />
         ) : (
           <ol className="flex flex-col gap-2.5">
-            {feed.map((item) => (
+            {items.map((item) => (
               <li key={item.id}>
                 <FeedRow item={item} />
               </li>
@@ -76,23 +140,153 @@ function FeedRow({ item }: { item: FeedItem }) {
   );
 }
 
+// ── Rivals ──────────────────────────────────────────────────────────────────
+
+function RivalsTab({ rivals }: { rivals: Rival[] }) {
+  if (rivals.length === 0) {
+    return (
+      <EmptyPanel
+        icon={<Swords className="size-5 text-blood-400" />}
+        title="No rivals yet"
+        body="Challenge someone to a Prediction Battle on any upcoming fight. Whoever calls it right takes the points — and the head-to-head record lives here."
+        cta={{ href: "/events", label: "Find a fight to battle on" }}
+      />
+    );
+  }
+
+  return (
+    <ol className="flex flex-col gap-2.5">
+      {rivals.map((r) => {
+        const initial = (r.name ?? r.username ?? "?").slice(0, 1).toUpperCase();
+        const body = (
+          <>
+            {r.image ? (
+              <Image src={r.image} alt="" width={40} height={40} unoptimized className="size-10 shrink-0 rounded-full object-cover" />
+            ) : (
+              <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-blood-500/15 font-display text-sm font-bold text-blood-300">
+                {initial}
+              </span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-display text-sm font-bold text-chalk">
+                {r.name ?? r.username ?? "Anonymous"}
+              </span>
+              <span className="mt-0.5 flex items-center gap-2 text-[0.7rem] text-fog">
+                <span className="tabular-nums">
+                  <span className="text-up">{r.wins}W</span> · <span className="text-down">{r.losses}L</span>
+                  {r.draws > 0 && <> · {r.draws}D</>}
+                </span>
+                <span>·</span>
+                <span>last battle {timeAgo(r.lastBattleAt)}</span>
+              </span>
+            </span>
+            {r.streak !== 0 && (
+              <span
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-display text-[0.66rem] font-bold uppercase tracking-wide",
+                  r.streak > 0 ? "bg-up/15 text-up" : "bg-down/15 text-down",
+                )}
+              >
+                <Flame className="size-3" />
+                {Math.abs(r.streak)} {r.streak > 0 ? "you" : "them"}
+              </span>
+            )}
+          </>
+        );
+        const cls = "flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 p-3.5 transition-colors hover:border-blood-500/40 hover:bg-ink-900";
+        return (
+          <li key={r.userId}>
+            {r.username ? <Link href={`/u/${r.username}`} className={cls}>{body}</Link> : <div className={cls}>{body}</div>}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// ── Corner Men ──────────────────────────────────────────────────────────────
+
+function CornerTab({ items }: { items: FeedItem[] }) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <Link
+        href="/podcasts"
+        className="group flex items-center gap-3 rounded-xl border border-ink-700 bg-gradient-to-r from-ink-850 to-ink-900 p-3.5 transition-colors hover:border-blood-500/40"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blood-500/12 text-blood-300">
+          <Mic className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-sm font-bold text-chalk">Shows &amp; podcasts</span>
+          <span className="block text-[0.72rem] text-fog">Fight-week breakdowns, interviews and weekly shows.</span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-fog transition-transform group-hover:translate-x-0.5 group-hover:text-blood-300" />
+      </Link>
+
+      {items.length === 0 ? (
+        <EmptyPanel
+          icon={<Mic className="size-5 text-blood-400" />}
+          title="No analysis published yet"
+          body="Breakdowns and interviews from the desk land here as they publish."
+          cta={{ href: "/news", label: "Browse the news desk" }}
+        />
+      ) : (
+        <>
+          <h2 className="mt-2 px-1 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">
+            Corner men insight
+          </h2>
+          <ol className="flex flex-col gap-2.5">
+            {items.map((i) => (
+              <li key={i.id}><FeedRow item={i} /></li>
+            ))}
+          </ol>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Shared states ───────────────────────────────────────────────────────────
+
+function EmptyPanel({
+  icon, title, body, cta,
+}: { icon: React.ReactNode; title: string; body: string; cta?: { href: string; label: string } }) {
+  return (
+    <div className="rounded-xl border border-dashed border-ink-700 bg-ink-900/40 px-6 py-10 text-center">
+      <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-ink-700 bg-ink-850">{icon}</span>
+      <p className="mt-3 font-display text-base font-bold uppercase tracking-wide text-chalk">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-fog">{body}</p>
+      {cta && (
+        <Link
+          href={cta.href}
+          className="tap mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400"
+        >
+          {cta.label} <ArrowRight className="size-3.5" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
 /** Following something but nothing has happened yet — a real, common state. */
-function EmptyFeed({ following }: { following: boolean }) {
+function EmptyFeed({ following, eventsOnly }: { following: boolean; eventsOnly: boolean }) {
   return (
     <div className="rounded-xl border border-ink-700 bg-ink-900/60 p-6 text-center">
       <p className="font-display text-base font-bold text-chalk">
-        {following ? "Nothing new yet" : "Your feed is empty"}
+        {eventsOnly ? "No cards coming up" : following ? "Nothing new yet" : "Your feed is empty"}
       </p>
       <p className="mx-auto mt-1.5 max-w-sm text-sm text-fog">
-        {following
-          ? "Nothing has happened on what you follow in the last few weeks. Follow a few more and this fills up fast."
-          : "Follow an event to get reminded, a fighter to know when they're booked, or a promotion to catch every card."}
+        {eventsOnly
+          ? "Nothing you follow has a card booked in the next few weeks."
+          : following
+            ? "Nothing has happened on what you follow in the last few weeks. Follow a few more and this fills up fast."
+            : "Follow an event to get reminded, a fighter to know when they're booked, or a promotion to catch every card."}
       </p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         {/* The fastest route out of an empty feed is the flow that fills it. */}
         <Cta href="/welcome" icon={<Sparkles className="size-4" />} label="Set up my feed" primary />
         <Cta href="/events" icon={<CalendarDays className="size-4" />} label="Browse events" />
-        <Cta href="/fighters" icon={<Users className="size-4" />} label="Find fighters" />
+        <Cta href="/map" icon={<Users className="size-4" />} label="Near me" />
         <Cta href="/registry" icon={<Building2 className="size-4" />} label="Promotions" />
       </div>
     </div>
