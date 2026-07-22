@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CalendarDays, Flag, Newspaper, Trophy, Swords } from "lucide-react";
 import { VideoCard } from "./video-card";
+import { FighterCard } from "./fighter-card";
 import type { FeedItem } from "@/lib/following";
 import { timeAgo, cn } from "@/lib/utils";
 
@@ -26,14 +27,14 @@ import { timeAgo, cn } from "@/lib/utils";
 //  rules — this file does not get a second opinion about playback.
 // ════════════════════════════════════════════════════════════════════════════
 
-const KIND_ICON = {
+const KIND_ICON: Record<string, typeof CalendarDays> = {
   event_upcoming: CalendarDays,
-  fight_upcoming: Swords,
+  fighter: Swords,
   result: Trophy,
   coverage: Newspaper,
   personal: Flag,
   video: Newspaper,
-} as const;
+};
 
 export function FeedCard({ item }: { item: FeedItem }) {
   if (item.kind === "video" && item.video) {
@@ -51,6 +52,10 @@ export function FeedCard({ item }: { item: FeedItem }) {
       />
     );
   }
+
+  // A followed fighter is its own card — portrait-led, with the booking folded
+  // in — not a text row about a bout.
+  if (item.kind === "fighter" && item.fighter) return <FighterCard item={item} />;
 
   // Personal items (a reply, a battle result) stay compact on purpose: they are
   // already addressed to you, and a hero image for "someone replied" would be

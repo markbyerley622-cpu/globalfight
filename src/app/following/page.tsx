@@ -45,7 +45,9 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "corner", label: "Corner Men" },
 ];
 
-const EVENT_KINDS = new Set(["event_upcoming", "fight_upcoming", "result"]);
+// Fighter bookings now live on the fighter card, so the Events tab is exactly
+// what its name says: cards.
+const EVENT_KINDS = new Set(["event_upcoming", "result"]);
 // Video rides the main Feed tab only — the Events tab is the card schedule.
 
 export default async function FollowingPage({

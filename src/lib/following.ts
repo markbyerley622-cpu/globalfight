@@ -5,6 +5,8 @@ import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { brandedHero } from "@/lib/placeholder";
 import { safeNewsCover } from "@/lib/media-safe";
 import { resolvePromotion } from "@/lib/promotions";
+import { formatSportRecord } from "@/lib/sports";
+import { safeFighterImageOrNull } from "@/lib/media-safe";
 import { SPORTS } from "@/lib/sports";
 import { recommendVideos } from "@/lib/feed/recommend";
 
@@ -25,7 +27,7 @@ import { recommendVideos } from "@/lib/feed/recommend";
 
 export type FeedKind =
   | "event_upcoming"   // a card you follow is coming
-  | "fight_upcoming"   // a fighter you follow is booked
+  | "fighter"          // a fighter you follow — booking, record, standing
   | "result"           // a card you follow finished
   | "personal"         // battle result, reply, mention — already user-targeted
   | "coverage"         // news naming a fighter/promotion you follow
@@ -49,6 +51,33 @@ export interface FeedItem {
   /** Present only on kind === "video": what the card needs to render a player
    *  without a second round trip. */
   video?: { channel: string; promotion: string | null; promotionName: string | null };
+  /** Present only on kind === "fighter". Everything the card shows, resolved
+   *  server-side and batch-loaded — never one query per card. */
+  fighter?: {
+    slug: string;
+    name: string;
+    nickname: string | null;
+    /** Formatted for the fighter's own sport (wld / belt / rank …). */
+    record: string;
+    koWins: number;
+    /** A licensed photo, or null — the card draws branded artwork instead.
+     *  Only 84 of 2,124 fighters have one, so null is the COMMON case. */
+    photo: string | null;
+    sportSlug: string | null;
+    countryCode: string | null;
+    /** Null for everyone today (the Ranking table is empty) — the card omits
+     *  the line entirely rather than rendering an empty label. */
+    rank: { rank: number; weightClass: string } | null;
+    /** Null when nothing is booked — the card says so rather than leaving a gap. */
+    next: {
+      opponent: string; date: string; eventName: string | null;
+      promotionName: string | null; accent: string | null; url: string;
+      titleFight: boolean;
+    } | null;
+    /** Whether fight alerts will actually reach them, so the card can state it
+     *  truthfully instead of implying it. */
+    notifications: boolean;
+  };
   /** Everything the card needs to be IMAGE-FIRST. Resolved server-side so a
    *  card never has to decide between a real image and generated art at render
    *  time (and never flashes from one to the other). */
@@ -102,13 +131,16 @@ async function getFollowGraph(userId: string) {
     prisma.favoriteEvent.findMany({ where: { userId }, select: { eventId: true } }),
     prisma.favoriteFighter.findMany({ where: { userId }, select: { fighterId: true } }),
     prisma.favoritePromotion.findMany({ where: { userId }, select: { promotion: true } }),
-    prisma.user.findUnique({ where: { id: userId }, select: { sportPrefs: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { sportPrefs: true, notifyFights: true } }),
   ]);
   return {
     eventIds: events.map((e) => e.eventId),
     fighterIds: fighters.map((f) => f.fighterId),
     promotions: promotions.map((p) => p.promotion),
     disciplines: [...new Set((me?.sportPrefs ?? []).map((v) => DISCIPLINE_SLUG[v]).filter(Boolean))],
+    // Read from the profile the graph already loads, so the card can say
+    // "Alerts on" truthfully rather than implying it.
+    notifyFights: me?.notifyFights ?? false,
   };
 }
 
@@ -120,7 +152,7 @@ async function getFollowGraph(userId: string) {
  * is how a fan actually experiences fight week.
  */
 export async function getFollowingFeed(userId: string, limit = 40): Promise<FeedItem[]> {
-  const { eventIds, fighterIds, promotions, disciplines } = await getFollowGraph(userId);
+  const { eventIds, fighterIds, promotions, disciplines, notifyFights } = await getFollowGraph(userId);
   const now = new Date();
   const soon = new Date(now.getTime() + 45 * 86_400_000);
   const recently = new Date(now.getTime() - 21 * 86_400_000);
@@ -139,12 +171,26 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
   // Fighters you follow, by name — used to spot an interview or a preview that
   // actually names them. Full names only: a surname `contains` across a video
   // catalog is a false-positive generator, exactly as it is for articles.
-  const followedFighters = fighterIds.length
-    ? await prisma.fighter.findMany({
-        where: { id: { in: fighterIds } },
-        select: { id: true, name: true },
-      })
-    : [];
+  // ONE query for the fighters themselves and ONE for their rankings — both
+  // keyed by the whole follow list, never per card. A feed with fifty followed
+  // fighters costs exactly the same two reads as one.
+  const [followedFighters, rankings] = fighterIds.length
+    ? await Promise.all([
+        prisma.fighter.findMany({
+          where: { id: { in: fighterIds } },
+          select: {
+            id: true, slug: true, name: true, nickname: true, sport: true,
+            wins: true, losses: true, draws: true, noContests: true, koWins: true,
+            photoUrl: true, imageUrl: true, thumbUrl: true, countryCode: true,
+          },
+        }),
+        prisma.ranking.findMany({
+          where: { fighterId: { in: fighterIds }, isPoundForPound: false },
+          orderBy: { rank: "asc" },
+          select: { fighterId: true, rank: true, weightClass: { select: { name: true } } },
+        }),
+      ])
+    : [[], []];
   const fighterNames = followedFighters.map((f) => f.name).filter((n) => n && n.length >= 6);
 
   const [upcomingEvents, results, fighterFights, personal, coverage] = await Promise.all([
@@ -191,7 +237,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
             id: true, slug: true, date: true, titleFight: true,
             red: { select: { id: true, name: true } },
             blue: { select: { id: true, name: true } },
-            event: { select: { slug: true, name: true } },
+            event: { select: { slug: true, name: true, promotion: true } },
           },
         })
       : Promise.resolve([]),
@@ -268,18 +314,70 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     });
   }
 
+  // ── Fighter cards ────────────────────────────────────────────────────────
+  // A followed fighter is a first-class feed entity, not a text row about a
+  // booking. The booking is folded INTO the card (its "Next fight" block)
+  // rather than emitted separately — two items about the same event is exactly
+  // the duplication the redesign is removing.
+  const rankByFighter = new Map(rankings.map((r) => [r.fighterId, r]));
+  const nextByFighter = new Map<string, (typeof fighterFights)[number]>();
   for (const f of fighterFights) {
-    const followed = fighterIds.includes(f.red.id) ? f.red : f.blue;
-    const opponent = followed.id === f.red.id ? f.blue : f.red;
+    for (const side of [f.red, f.blue]) {
+      if (!fighterIds.includes(side.id)) continue;
+      // fighterFights is ordered by date ascending, so the first hit is next.
+      if (!nextByFighter.has(side.id)) nextByFighter.set(side.id, f);
+    }
+  }
+
+  // Booked fighters first — a card with a date on it is worth more than a
+  // standing one — then cap, so following thirty people cannot bury the feed.
+  const fighterCards = [...followedFighters]
+    .sort((a, b) => (nextByFighter.has(b.id) ? 1 : 0) - (nextByFighter.has(a.id) ? 1 : 0))
+    .slice(0, 8);
+
+  for (const fr of fighterCards) {
+    const nf = nextByFighter.get(fr.id);
+    const opponent = nf ? (nf.red.id === fr.id ? nf.blue : nf.red) : null;
+    const promo = nf?.event ? resolvePromotion(nf.event.promotion ?? null) : null;
+    const rk = rankByFighter.get(fr.id);
+
     items.push({
-      id: `ft-${f.id}`,
-      kind: "fight_upcoming",
-      at: iso(new Date(now.getTime() + Math.max(0, f.date.getTime() - now.getTime()) / 1000 + 1)),
-      title: `${followed.name} vs ${opponent.name}`,
-      body: f.event ? `${f.event.name}${f.titleFight ? " · Title fight" : ""}` : null,
-      url: `/fights/${f.slug}`,
+      id: `fr-${fr.id}`,
+      kind: "fighter",
+      // A booked fighter sorts by how soon they fight; an unbooked one sits at
+      // the point they were followed rather than claiming the top of the feed.
+      at: nf ? iso(new Date(now.getTime() + Math.max(0, nf.date.getTime() - now.getTime()) / 1000 + 1)) : iso(recently),
+      title: fr.name,
+      body: null,
+      url: `/fighters/${fr.slug}`,
       icon: "🥊",
-      meta: whenLabel(f.date),
+      meta: nf ? whenLabel(nf.date) : null,
+      fighter: {
+        slug: fr.slug,
+        name: fr.name,
+        nickname: fr.nickname ?? null,
+        record: formatSportRecord({
+          sport: fr.sport, wins: fr.wins, losses: fr.losses,
+          draws: fr.draws, noContests: fr.noContests ?? 0,
+        }),
+        koWins: fr.koWins ?? 0,
+        photo: safeFighterImageOrNull(fr.photoUrl ?? fr.imageUrl ?? fr.thumbUrl),
+        sportSlug: String(fr.sport).toLowerCase().replace(/_/g, "-"),
+        countryCode: fr.countryCode ?? null,
+        rank: rk ? { rank: rk.rank, weightClass: rk.weightClass.name } : null,
+        next: nf && opponent
+          ? {
+              opponent: opponent.name,
+              date: iso(nf.date),
+              eventName: nf.event?.name ?? null,
+              promotionName: promo?.name ?? null,
+              accent: promo?.brand ?? null,
+              url: `/fights/${nf.slug}`,
+              titleFight: !!nf.titleFight,
+            }
+          : null,
+        notifications: notifyFights,
+      },
     });
   }
 
@@ -378,7 +476,7 @@ const MAX_RUN = 2;     // two of a kind is a pair; three is a wall
  */
 const FAMILY: Record<FeedKind, string> = {
   event_upcoming: "event",
-  fight_upcoming: "event",
+  fighter: "fighter",
   result: "event",
   coverage: "news",
   video: "video",
@@ -402,7 +500,16 @@ function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: num
       continue;
     }
     if (!pending.length) {
-      if (vi < queue.length) { out.push(queue[vi++]); lastFamily = "video"; run = 1; continue; }
+      // The timeline is exhausted. Videos may still be queued, but flushing
+      // them here is what produced a tail of five videos in a row: the feed
+      // ended in a block of the one family the density rule exists to limit.
+      // A video may only follow a non-video, so the tail stays mixed or stops.
+      if (vi < queue.length && lastFamily !== "video") {
+        out.push(queue[vi++]);
+        lastFamily = "video";
+        run = 1;
+        continue;
+      }
       break;
     }
 
@@ -422,8 +529,11 @@ function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: num
     out.push(item);
   }
 
-  // A sparse feed still shows its videos rather than dropping them.
-  if (out.length < VIDEO_EVERY && vi < queue.length) out.push(...queue.slice(vi, vi + 2));
+  // A sparse feed still shows a video rather than dropping it — but ONE, and
+  // only if the feed does not already end on one.
+  if (out.length < VIDEO_EVERY && vi < queue.length && lastFamily !== "video") {
+    out.push(queue[vi]);
+  }
   return out.slice(0, limit);
 }
 
