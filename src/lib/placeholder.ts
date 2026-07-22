@@ -91,3 +91,63 @@ export function newsPlaceholder(seed: string): string {
 
 /** Alt text that describes what the reader is actually looking at. Never a fake caption. */
 export const placeholderAlt = (name: string) => `${name} — no photograph available`;
+
+// ── Branded feed artwork ────────────────────────────────────────────────────
+//
+// The Following feed is image-first, and the data says the image is usually
+// OURS to make: 559 of 10,902 published articles carry a usable cover, and 84
+// of 2,124 fighters have a photograph. So generated artwork is not the fallback
+// path here — it IS the path, and it has to look deliberate rather than empty.
+//
+// Three things make it look deliberate: the promotion's own brand colour, a
+// discipline glyph, and the wordmark. Same seed always yields the same tile, so
+// a card does not change appearance between renders.
+
+/** Minimal, abstract discipline glyphs. Drawn, never emoji — an emoji in a
+ *  16:9 hero is the thing that made the old feed look like a database dump. */
+const GLYPH: Record<string, string> = {
+  mma: "M20 46h30M35 31v30",
+  boxing: "M28 34h14a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6z",
+  "muay-thai": "M24 54l10-22 10 22M28 46h12",
+  kickboxing: "M24 54l10-22 10 22M28 46h12",
+  "bare-knuckle": "M26 38h16v14a8 8 0 0 1-16 0z",
+  bjj: "M22 44a13 13 0 0 1 26 0 13 13 0 0 1-26 0z",
+  "no-gi-bjj": "M22 44a13 13 0 0 1 26 0 13 13 0 0 1-26 0z",
+  wrestling: "M24 52c6-10 16-10 22 0M30 36a5 5 0 1 0 10 0 5 5 0 1 0-10 0z",
+  judo: "M25 35l20 20M45 35L25 55",
+  taekwondo: "M25 35l20 20M45 35L25 55",
+};
+
+/**
+ * A 16:9 branded hero tile.
+ *
+ * @param seed     stable input (a slug) — same seed, same tile, forever
+ * @param accent   the promotion's brand colour, when there is one
+ * @param sport    discipline slug, for the glyph
+ */
+export function brandedHero(seed: string, accent?: string | null, sport?: string | null): string {
+  const hue = hueOf(seed || "combat");
+  const tint = accent && /^#[0-9a-f]{6}$/i.test(accent) ? accent : `hsl(${hue} 45% 40%)`;
+  const glyph = (sport && GLYPH[sport]) || GLYPH.mma;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 160 90" role="img">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="hsl(${hue} 20% 15%)"/>
+          <stop offset="1" stop-color="hsl(${(hue + 30) % 360} 22% 9%)"/>
+        </linearGradient>
+      </defs>
+      <rect width="160" height="90" fill="url(#bg)"/>
+      <rect width="160" height="90" fill="${tint}" opacity="0.14"/>
+      <g transform="translate(45 12) scale(0.75)" stroke="${tint}" stroke-width="3.2"
+         stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85">
+        <path d="${glyph}"/>
+      </g>
+      <rect x="0" y="86" width="160" height="4" fill="${tint}" opacity="0.5"/>
+      <text x="152" y="82" text-anchor="end"
+            font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif"
+            font-size="4.4" font-weight="700" letter-spacing="1.1"
+            fill="#ffffff" opacity="0.45">COMBAT REVIEWS</text>
+    </svg>`;
+  return svgToDataUri(svg);
+}

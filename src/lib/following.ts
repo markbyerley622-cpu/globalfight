@@ -2,6 +2,9 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
+import { brandedHero } from "@/lib/placeholder";
+import { safeNewsCover } from "@/lib/media-safe";
+import { resolvePromotion } from "@/lib/promotions";
 import { SPORTS } from "@/lib/sports";
 import { recommendVideos } from "@/lib/feed/recommend";
 
@@ -46,6 +49,23 @@ export interface FeedItem {
   /** Present only on kind === "video": what the card needs to render a player
    *  without a second round trip. */
   video?: { channel: string; promotion: string | null; promotionName: string | null };
+  /** Everything the card needs to be IMAGE-FIRST. Resolved server-side so a
+   *  card never has to decide between a real image and generated art at render
+   *  time (and never flashes from one to the other). */
+  media?: {
+    /** Always set. A licensed publisher image where one exists, otherwise our
+     *  own branded artwork — never blank, never an emoji. */
+    image: string;
+    /** True when `image` is generated, so the card can skip the watermark
+     *  overlay (the artwork already carries the wordmark). */
+    generated: boolean;
+    /** Promotion brand colour, for accents. */
+    accent?: string | null;
+    promotionSlug?: string | null;
+    promotionName?: string | null;
+    /** Secondary line under the headline: source, venue, channel. */
+    source?: string | null;
+  };
 }
 
 // A user's sportPrefs ARE their discipline follows — the same values the
@@ -57,6 +77,24 @@ const DISCIPLINE_SLUG: Record<string, string> = Object.fromEntries(
 
 
 const iso = (d: Date) => d.toISOString();
+
+/** Image-first media for an event card: its poster when one exists, otherwise
+ *  branded artwork in the promotion's own colour. Resolved here so the card
+ *  never has to choose at render time. */
+function eventMedia(e: {
+  slug: string; promotion: string | null; posterUrl?: string | null; sport?: string | null;
+}) {
+  const promo = resolvePromotion(e.promotion);
+  const sportSlug = e.sport ? String(e.sport).toLowerCase().replace(/_/g, "-") : null;
+  return {
+    image: e.posterUrl || brandedHero(e.slug, promo.brand, sportSlug),
+    generated: !e.posterUrl,
+    accent: promo.brand,
+    promotionSlug: promo.slug,
+    promotionName: promo.name,
+    source: e.promotion ?? promo.name,
+  };
+}
 
 /** What this user follows. Three cheap indexed reads. */
 async function getFollowGraph(userId: string) {
@@ -126,7 +164,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
           },
           orderBy: { date: "asc" },
           take: 20,
-          select: { id: true, slug: true, name: true, date: true, promotion: true, venue: true, city: true, _count: { select: { fights: true } } },
+          select: { id: true, slug: true, name: true, date: true, promotion: true, venue: true, city: true, posterUrl: true, sport: true, _count: { select: { fights: true } } },
         })
       : Promise.resolve([]),
 
@@ -136,7 +174,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
           where: { ...PUBLIC_EVENT, id: { in: eventIds }, date: { gte: recently, lt: now } },
           orderBy: { date: "desc" },
           take: 15,
-          select: { id: true, slug: true, name: true, date: true, promotion: true, _count: { select: { fights: true } } },
+          select: { id: true, slug: true, name: true, date: true, promotion: true, posterUrl: true, sport: true, _count: { select: { fights: true } } },
         })
       : Promise.resolve([]),
 
@@ -184,7 +222,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
           take: 10,
           // publishedAt is nullable on the model; the WHERE above guarantees a
           // value, but the type doesn't, so it's narrowed at the mapping site.
-          select: { id: true, slug: true, title: true, publishedAt: true, author: { select: { name: true } } },
+          select: { id: true, slug: true, title: true, publishedAt: true, coverImageUrl: true, category: true, author: { select: { name: true } } },
         })
       : Promise.resolve([]),
 
@@ -212,6 +250,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       url: `/events/${e.slug}`,
       icon: "📅",
       meta: [whenLabel(e.date), e.city].filter(Boolean).join(" · "),
+      media: eventMedia(e),
     });
   }
 
@@ -225,6 +264,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       url: `/events/${e.slug}`,
       icon: "🏁",
       meta: e.promotion ?? null,
+      media: eventMedia(e),
     });
   }
 
@@ -267,6 +307,14 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       url: `/news/${a.slug}`,
       icon: "📰",
       meta: a.author?.name ?? null,
+      media: {
+        // safeNewsCover keeps the deliberate legal line: a publisher image is
+        // used only when it is licensed syndication, otherwise we draw our own
+        // rather than hotlinking someone's server.
+        image: safeNewsCover(a.slug, a.coverImageUrl) || brandedHero(a.slug, null, null),
+        generated: !a.coverImageUrl,
+        source: a.author?.name ?? "News",
+      },
     });
   }
 
@@ -300,40 +348,82 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
 }
 
 /**
- * Fold video into the ranked timeline at a fixed maximum density.
+ * Fold video in, then break up runs of the same kind.
  *
- * Videos publish in bursts — a promotion drops six clips on fight-week Friday —
- * so competing purely on recency would hand a whole screen to one channel and
- * bury the articles and discussions the feed exists for. Articles and
- * discussions stay primary; video is seasoning.
+ * Recency alone produced exactly the failure the redesign is about: the news
+ * pipeline publishes hundreds of items a day and events cluster on fight week,
+ * so a pure timeline gave ten articles in a row and called it a feed. That is
+ * a database listing with an ORDER BY, not something worth opening twice a day.
  *
- * One video per VIDEO_EVERY items, newest first, and never two in a row by
- * construction because a video is only emitted on the interval boundary.
+ * Two rules, in order:
+ *   1. video enters on a fixed interval, so it seasons rather than dominates
+ *   2. no more than MAX_RUN of any one kind consecutively — when the next item
+ *      would break that, the highest-ranked item of a DIFFERENT kind is pulled
+ *      forward instead
+ *
+ * Rule 2 never drops anything and never reorders across kinds beyond the
+ * minimum needed: an item deferred for variety is the very next one placed once
+ * the run is broken, so "most recent first" still holds within each kind.
  */
 const VIDEO_EVERY = 9; // one per 9 items — inside the 8–10 the product asked for
+const MAX_RUN = 2;     // two of a kind is a pair; three is a wall
+
+/**
+ * Visual families, not FeedKinds.
+ *
+ * A reader does not distinguish an upcoming card from a result from a booked
+ * bout — those are three kinds but one look, and three of them in a row reads
+ * as "four events in a row" no matter what the enum says. The run rule has to
+ * work on what the eye groups, which is coarser than the data model.
+ */
+const FAMILY: Record<FeedKind, string> = {
+  event_upcoming: "event",
+  fight_upcoming: "event",
+  result: "event",
+  coverage: "news",
+  video: "video",
+  personal: "personal",
+};
 
 function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: number): FeedItem[] {
-  if (!videoItems.length) return ranked.slice(0, limit);
-
-  // Already ordered by the recommender (unseen first, then tier, then recency).
   const queue = videoItems;
-
+  const pending = [...ranked];
   const out: FeedItem[] = [];
   let vi = 0;
-  for (const item of ranked) {
-    out.push(item);
-    if (out.length >= limit) break;
-    // Boundary, and only once the feed has enough substance to season.
-    if (out.length % VIDEO_EVERY === 0 && vi < queue.length) {
+  let lastFamily: string | null = null;
+  let run = 0;
+
+  while (out.length < limit && (pending.length || vi < queue.length)) {
+    // Video first when the interval says so — it is the strongest visual break.
+    if (out.length && out.length % VIDEO_EVERY === 0 && vi < queue.length) {
       out.push(queue[vi++]);
+      lastFamily = "video";
+      run = 1;
+      continue;
     }
+    if (!pending.length) {
+      if (vi < queue.length) { out.push(queue[vi++]); lastFamily = "video"; run = 1; continue; }
+      break;
+    }
+
+    // Prefer the next item, unless it would extend a run past MAX_RUN.
+    let idx = 0;
+    if (lastFamily && run >= MAX_RUN) {
+      // Pull the highest-ranked item of a DIFFERENT family forward. If the pool
+      // holds nothing else — a user who follows only events genuinely has an
+      // event-only feed — the run continues rather than the feed going short.
+      const alt = pending.findIndex((it) => FAMILY[it.kind] !== lastFamily);
+      if (alt !== -1) idx = alt;
+    }
+    const [item] = pending.splice(idx, 1);
+    const family = FAMILY[item.kind];
+    run = family === lastFamily ? run + 1 : 1;
+    lastFamily = family;
+    out.push(item);
   }
 
-  // A feed with almost nothing else in it still shows its videos rather than
-  // dropping them — but at most a couple, so it never becomes a video page.
-  if (out.length < VIDEO_EVERY && vi < queue.length) {
-    out.push(...queue.slice(vi, vi + 2));
-  }
+  // A sparse feed still shows its videos rather than dropping them.
+  if (out.length < VIDEO_EVERY && vi < queue.length) out.push(...queue.slice(vi, vi + 2));
   return out.slice(0, limit);
 }
 

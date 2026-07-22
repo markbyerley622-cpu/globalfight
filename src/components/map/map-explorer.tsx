@@ -212,7 +212,14 @@ export function MapExplorer({ data }: { data: MapData }) {
         {/* data-hscroll: Location is now its own swipe section, so without this
             a horizontal PAN of the map would be read as "swipe to Gyms" and
             drag the user off the map they were reading. */}
-        <div data-hscroll className="relative mx-4 mb-4 h-[72dvh] min-h-[26rem] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)] lg:h-auto lg:min-h-0 lg:flex-1">
+        {/* Desktop height: `lg:flex-1` alone was not enough. It only fills when
+            EVERY ancestor has a definite height, and the chain above this ends
+            in an auto-height page wrapper — so flex-1 resolved to content
+            height and the map came out a few hundred pixels tall on desktop
+            while phones (which use the explicit 72dvh) looked right. The
+            viewport-relative floor makes the desktop map independent of that
+            chain; flex-1 still lets it grow when a parent does provide height. */}
+        <div data-hscroll className="relative mx-4 mb-4 h-[72dvh] min-h-[26rem] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)] lg:h-auto lg:min-h-[calc(100dvh-13rem)] lg:flex-1">
           <MapCanvas
             className="cr-map absolute inset-0"
             groups={groups}

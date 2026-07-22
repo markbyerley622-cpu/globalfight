@@ -11,7 +11,8 @@ import {
 } from "@/lib/following";
 import { timeAgo, cn } from "@/lib/utils";
 import { Chip, ChipRow } from "@/components/ui/chip";
-import { VideoCard, VideoCardProvider } from "@/components/feed/video-card";
+import { VideoCardProvider } from "@/components/feed/video-card";
+import { FeedCard } from "@/components/feed/feed-card";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = {
@@ -98,24 +99,10 @@ export default async function FollowingPage({
           // One provider around the whole list: opening a second video closes
           // the first, and nothing renders a player until it is clicked.
           <VideoCardProvider>
-            <ol className="flex flex-col gap-2.5">
+            <ol className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {items.map((item) => (
-                <li key={item.id}>
-                  {item.kind === "video" && item.video ? (
-                    <VideoCard
-                      video={{
-                        id: item.id.replace(/^vd-/, ""),
-                        title: item.title,
-                        channel: item.video.channel,
-                        publishedAt: item.at,
-                        promotion: item.video.promotion,
-                        promotionName: item.video.promotionName,
-                        reason: item.reason,
-                      }}
-                    />
-                  ) : (
-                    <FeedRow item={item} />
-                  )}
+                <li key={item.id} className={item.kind === "personal" ? "" : "md:col-span-1"}>
+                  <FeedCard item={item} />
                 </li>
               ))}
             </ol>
@@ -126,29 +113,6 @@ export default async function FollowingPage({
   );
 }
 
-function FeedRow({ item }: { item: FeedItem }) {
-  return (
-    <Link
-      href={item.url}
-      className="group flex items-start gap-3 rounded-xl border border-ink-700 bg-ink-900/60 p-3.5 transition-colors hover:border-blood-500/40 hover:bg-ink-900"
-    >
-      <span aria-hidden className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-ink-800 text-base">
-        {item.icon ?? "•"}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-display text-sm font-bold leading-snug text-chalk">{item.title}</span>
-        {item.body && <span className="mt-0.5 block line-clamp-2 text-xs text-mist">{item.body}</span>}
-        <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7rem] text-fog">
-          {item.meta && <span>{item.meta}</span>}
-          {item.kind === "personal" || item.kind === "result" || item.kind === "coverage" ? (
-            <span>{timeAgo(item.at)}</span>
-          ) : null}
-        </span>
-      </span>
-      <ArrowRight className="mt-1 size-4 shrink-0 text-fog transition-transform group-hover:translate-x-0.5 group-hover:text-blood-300" />
-    </Link>
-  );
-}
 
 // ── Rivals ──────────────────────────────────────────────────────────────────
 
@@ -245,9 +209,9 @@ function CornerTab({ items }: { items: FeedItem[] }) {
           <h2 className="mt-2 px-1 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">
             Corner men insight
           </h2>
-          <ol className="flex flex-col gap-2.5">
+          <ol className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {items.map((i) => (
-              <li key={i.id}><FeedRow item={i} /></li>
+              <li key={i.id}><FeedCard item={i} /></li>
             ))}
           </ol>
         </>
