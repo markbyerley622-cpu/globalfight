@@ -153,7 +153,12 @@ export async function videoFacets(): Promise<{ promotions: string[]; disciplines
       promotions: p.sort((a, b) => b._count._all - a._count._all).map((r) => r.promotion!).filter(Boolean),
       disciplines: d.sort((a, b) => b._count._all - a._count._all).map((r) => r.discipline!).filter(Boolean),
     };
-  } catch {
+  } catch (e) {
+    // Log it. A swallowed failure here renders "No video yet" on a catalog of
+    // 300+ videos, and an empty page is indistinguishable from a broken one —
+    // which is exactly what happened on a cold Render instance: the page said
+    // there was nothing to watch while the database held the full catalog.
+    flog.error({ op: "db.videoFacets", err: (e as Error).message }, "video facets failed");
     return { promotions: [], disciplines: [] };
   }
 }
