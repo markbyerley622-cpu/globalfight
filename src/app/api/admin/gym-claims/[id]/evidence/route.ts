@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { getEvidenceBytes } from "@/lib/evidence/store";
 import { isViewableScanStatus } from "@/lib/evidence/scan";
 import { hit, POLICY } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const isReviewer = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 /**
  * Stream a gym claim's proof document to an authorised viewer.
@@ -48,7 +47,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     },
   });
   if (!claim) return deny();
-  if (claim.claimantId !== user.id && !isReviewer(user.role)) return deny();
+  if (claim.claimantId !== user.id && !isAdminRole(user.role)) return deny();
   if (!claim.evidenceStorageKey || claim.evidenceDeletedAt) return deny();
   if (!isViewableScanStatus(claim.evidenceScanStatus)) {
     return NextResponse.json({ error: "This document is still being checked." }, { status: 409 });

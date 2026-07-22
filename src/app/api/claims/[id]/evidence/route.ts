@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin/guard";
 import { getEvidenceBytes } from "@/lib/evidence/store";
 import { isViewableScanStatus } from "@/lib/evidence/scan";
 import { hit, POLICY } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const isReviewer = (role: string) => role === "ADMIN" || role === "MODERATOR";
 
 /**
  * Stream a fighter's identity document to an authorized viewer.
@@ -59,7 +58,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   if (!claim) return deny();
 
-  const permitted = claim.claimantId === user.id || isReviewer(user.role);
+  const permitted = claim.claimantId === user.id || isAdminRole(user.role);
   if (!permitted) return deny();
 
   // Deleted (per retention policy) or never uploaded.

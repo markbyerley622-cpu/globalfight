@@ -103,4 +103,9 @@ export const POLICY = {
   voicebuild: { limit: 10, windowMs: 15 * 60_000 },
   // Abuse controls for text community actions.
   contentReport: { limit: 20, windowMs: 60 * 60_000 },
+  // Share is anonymous by design (sharing shouldn't need an account) but it
+  // increments the counter that feeds the TRENDING score — so unbounded it is a
+  // one-line script for putting any thread at the top of the forum. Bounded per
+  // IP+thread: generous for a human sharing to a few places, useless for a loop.
+  threadShare: { limit: 10, windowMs: 60 * 60_000 },
 } as const;
