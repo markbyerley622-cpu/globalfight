@@ -26,6 +26,8 @@ export const EVENTS = [
   "notification_click",
   "result_reveal_view",
   "signup",
+  // Partner-mark clicks, attributed by sponsor id + the surface it was on.
+  "sponsor_click",
 ] as const;
 export type EventName = (typeof EVENTS)[number];
 

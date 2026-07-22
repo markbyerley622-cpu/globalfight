@@ -53,71 +53,17 @@ export const SITE = {
   url: resolveSiteUrl(),
 } as const;
 
-// ── Sponsors / partners — EMPTY BY DESIGN ────────────────────────────────
+// ── Sponsors / partners ──────────────────────────────────────────────────
 //
-// These lists used to display BOX iQ, Kong Fight Tape and BATL Promotions as
-// sponsors, and DAZN, ESPN+, TNT Sports, Sky Sports, Main Event and Prime Video
-// as broadcast partners — every one of them with `href: "#"`.
+// Moved to src/lib/sponsors.ts: one source of truth, an ENFORCED date window,
+// and nullable hrefs so a partner without a confirmed destination renders as a
+// mark rather than a dead link.
 //
-// There is no agreement, contract, or permission for any of them anywhere in this
-// repository. Displaying a company's mark and calling it a partner is a false
-// representation and a trademark problem, regardless of intent. They are removed
-// rather than hidden.
-//
-// To add a REAL sponsor, every field in SponsorEntry must be supplied — including
-// an agreement reference and an approval owner. If you cannot fill those in, you do
-// not have a sponsor.
-export interface SponsorEntry {
-  /** Registered legal name of the counterparty. */
-  legalName: string;
-  /** Display name, as approved in the agreement. */
-  name: string;
-  /** Path to the mark, in the form the rights-holder approved. */
-  src: string;
-  /** Real destination. Never "#". */
-  href: string;
-  relationship: "sponsor" | "partner" | "broadcaster" | "data-provider";
-  /** Reference to the signed agreement (contract id / filename / ticket). */
-  agreementRef: string;
-  startDate: string;
-  endDate: string;
-  /** Person accountable for the claim being true. */
-  approvedBy: string;
-  boxed?: boolean;
-  small?: boolean;
-  textOnly?: boolean;
-}
-
-// Official partners — owner-supplied marks (michael@avonstowe.com). The owner
-// asserts these are real, permissioned partners and is the accountable approver.
-// TODO(owner): replace each `href` with the partner's real destination URL.
-export const SPONSORS: readonly SponsorEntry[] = [
-  {
-    legalName: "BOX iQ", name: "BOX iQ",
-    src: "/brand/partners/box-iq.png", href: "https://www.boxiq.me",
-    relationship: "partner", agreementRef: "owner-supplied-2026-07-15",
-    startDate: "2026-07-15", endDate: "2027-07-15", approvedBy: "michael@avonstowe.com",
-  },
-  {
-    legalName: "Kong Fight Tape", name: "Kong Fight Tape",
-    src: "/brand/partners/kong-fight-tape.avif", href: "/",
-    relationship: "partner", agreementRef: "owner-supplied-2026-07-15",
-    startDate: "2026-07-15", endDate: "2027-07-15", approvedBy: "michael@avonstowe.com",
-  },
-  {
-    legalName: "BATL Promotions", name: "BATL Promotions",
-    src: "/brand/partners/batl-promotions.avif", href: "https://batlboxing.com",
-    relationship: "partner", agreementRef: "owner-supplied-2026-07-15",
-    startDate: "2026-07-15", endDate: "2027-07-15", approvedBy: "michael@avonstowe.com",
-  },
-  {
-    legalName: "Combat Profile", name: "Combat Profile",
-    src: "/brand/partners/combat-profile.png", href: "/",
-    relationship: "partner", agreementRef: "owner-supplied-2026-07-15",
-    startDate: "2026-07-15", endDate: "2027-07-15", approvedBy: "michael@avonstowe.com",
-  },
-];
-export const PARTNERS: readonly SponsorEntry[] = [];
+// The bar for adding one has not moved: every field, including an agreement
+// reference and an approving owner. Displaying a company's mark and calling it
+// a partner without permission is a false representation and a trademark
+// problem, regardless of intent. If you cannot fill those fields in, you do not
+// have a sponsor.
 
 // A nav entry is either a direct link or a group with `children` rendered as a
 // dropdown (desktop) / accordion (mobile). Groups have no destination of their

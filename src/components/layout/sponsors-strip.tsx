@@ -1,13 +1,17 @@
-import Image from "next/image";
-import Link from "next/link";
-import { SPONSORS } from "@/lib/config";
+import { activeSponsors } from "@/lib/sponsors";
+import { SponsorMark } from "@/components/sponsor-mark";
 
 // Official-partners strip pinned above the bottom tab bar. A seamless
 // auto-scrolling marquee on all sizes (the base set is repeated so a -50%
 // translate lands on an identical frame — no seam). Logos are noticeably larger
 // and better spaced on desktop.
 export function SponsorsStrip() {
-  const base = [...SPONSORS, ...SPONSORS, ...SPONSORS, ...SPONSORS];
+  const sponsors = activeSponsors();
+  // Nothing live (all expired, or none configured) → render nothing rather than
+  // an empty branded strip that reads as a broken component.
+  if (sponsors.length === 0) return null;
+
+  const base = [...sponsors, ...sponsors, ...sponsors, ...sponsors];
   const track = [...base, ...base];
 
   return (
@@ -20,14 +24,13 @@ export function SponsorsStrip() {
         <div className="relative flex-1 overflow-hidden mask-fade-r">
           <div className="animate-marquee flex w-max items-center gap-8 lg:gap-16" style={{ animationDuration: "45s" }}>
             {track.map((s, i) => (
-              <Link
-                key={`${s.name}-${i}`}
-                href={s.href}
-                aria-label={s.name}
-                className="flex h-10 shrink-0 items-center overflow-hidden rounded-md opacity-90 transition-opacity hover:opacity-100 lg:h-16"
-              >
-                <Image src={s.src} alt={s.name} width={200} height={80} className={`h-10 w-auto rounded-md object-contain lg:h-16 ${s.src.includes("box-iq") ? "scale-[1.4]" : ""}`} />
-              </Link>
+              <SponsorMark
+                key={`${s.id}-${i}`}
+                sponsor={s}
+                surface="strip"
+                className="h-10 overflow-hidden lg:h-16"
+                imgClassName="h-10 rounded-md lg:h-16"
+              />
             ))}
           </div>
         </div>
