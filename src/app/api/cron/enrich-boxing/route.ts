@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { enrichBoxingFighters } from "@/services/sync/enrich-boxing-fighters";
 import { log } from "@/lib/scraper/logger";
+import { cronAuthorized } from "@/lib/scraper/cron-handler";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,17 +14,9 @@ export const maxDuration = 300;
 //
 // Auth matches the other cron routes: Vercel Cron's `Authorization: Bearer
 // <SCRAPE_CRON_SECRET>`, or an `x-cron-secret` header for manual triggers.
-function authorized(req: Request): boolean {
-  const secret = process.env.SCRAPE_CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return (
-    req.headers.get("authorization") === `Bearer ${secret}` ||
-    req.headers.get("x-cron-secret") === secret
-  );
-}
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
   const envLimit = Number(process.env.BOXING_ENRICH_LIMIT ?? 15);

@@ -240,6 +240,11 @@ services:
   # anyone is looking. Once drained an hourly run scans 0 rows (the query only
   # takes lastProfileScrapedAt null-or-stale), so this is cheap — and it stays
   # correct if ENABLE_SCRAPER is ever turned on and the roster jumps.
+  # Hourly: fighter enrichment, the return engine, and the trusted-channel video
+  # ingest. ingest-feed was MISSING from every cron service, which is why
+  # /clips rendered its empty state in production while working locally — the
+  # catalog is only ever populated by this route. Hourly matches what the
+  # YouTube RSS endpoints advertise (Cache-Control: max-age=900).
   - type: cron
     name: gf-cron-enrich
     runtime: node
@@ -247,7 +252,7 @@ services:
     schedule: "0 * * * *"
     buildCommand: "true"
     startCommand: >-
-      for p in refresh-enrich return-engine; do
+      for p in refresh-enrich return-engine ingest-feed; do
         curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
     envVars:

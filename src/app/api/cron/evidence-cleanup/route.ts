@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cleanupExpiredEvidence } from "@/lib/evidence/lifecycle";
 import { purgeStaleResetTokens } from "@/lib/auth-password-reset";
 import { log } from "@/lib/scraper/logger";
+import { cronAuthorized } from "@/lib/scraper/cron-handler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,11 +12,6 @@ export const maxDuration = 300;
  * Same authorization as the other cron routes: a Bearer secret, and in production
  * a missing secret means UNAUTHORIZED (fail closed) rather than open.
  */
-function authorized(req: Request): boolean {
-  const secret = process.env.SCRAPE_CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return req.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 /**
  * Retention sweep for identity documents. Runs daily.
@@ -29,7 +25,7 @@ function authorized(req: Request): boolean {
  * Returns counts only — never a key, never a URL, never a claimant.
  */
 export async function GET(req: Request) {
-  if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const started = Date.now();
   try {
