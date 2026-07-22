@@ -60,16 +60,20 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         const cached = await caches.match(req);
         if (cached) return cached;
-        try {
-          const res = await fetch(req);
-          if (res.ok) {
-            const cache = await caches.open(STATIC_CACHE);
-            cache.put(req, res.clone());
-          }
-          return res;
-        } catch {
-          return cached || Response.error();
+
+        const res = await fetch(req);
+
+        // The cache write MUST be kept alive by the event, and the clone must
+        // be drained by someone. Firing `cache.put(req, res.clone())` without
+        // awaiting it and without waitUntil let the worker be killed with the
+        // clone's body still buffered — which back-pressures and errors the
+        // ORIGINAL response the page is reading. Measured: 5–7 chunks per cold
+        // visit dying with ERR_FAILED under the worker and zero without it,
+        // which is a half-hydrated app for whoever loses the race.
+        if (res.ok) {
+          event.waitUntil(caches.open(STATIC_CACHE).then((c) => c.put(req, res.clone())).catch(() => {}));
         }
+        return res;
       })(),
     );
   }

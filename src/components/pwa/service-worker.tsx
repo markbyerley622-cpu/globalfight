@@ -11,9 +11,21 @@ export function ServiceWorkerRegistrar() {
     if (process.env.NODE_ENV !== "production") return;
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
+    // Was this page already under a service worker when it loaded?
+    //
+    // This is the whole difference between an UPDATE and a FIRST INSTALL, and
+    // getting it wrong is expensive: sw.js calls clients.claim() on activate,
+    // which fires controllerchange on the very first visit too. Reloading on
+    // that fired a full page reload at every new visitor, mid-load — measured
+    // at 3 main-frame navigations and 17 killed requests on 5/5 cold visits,
+    // which is a wasted round trip for everyone and a half-hydrated page for
+    // the unlucky. A first install has nothing to refresh: the page is already
+    // running the only version there is.
+    const hadController = !!navigator.serviceWorker.controller;
+
     let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (reloading) return;
+      if (!hadController || reloading) return;
       reloading = true;
       window.location.reload();
     });
