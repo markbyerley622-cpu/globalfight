@@ -11,7 +11,7 @@ import { formatDistance } from "@/lib/geo/gazetteer";
 import { directionsUrl, type MapLayer, type MapPin } from "@/lib/geo/types";
 import { LAYER_COLOR } from "./map-canvas";
 import { CheckInButton } from "./check-in-button";
-import { FollowPersonButton } from "./follow-person-button";
+import { FollowButton } from "@/components/follow-button";
 import { cn } from "@/lib/utils";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
@@ -247,10 +247,12 @@ export function PinDetail({
       {/* Actions */}
       <div className="mt-3.5 flex flex-wrap items-center gap-2">
         {pin.layer === "people" && pin.person?.username && (
-          <FollowPersonButton
-            username={pin.person.username}
+          <FollowButton
+            kind="person"
+            slug={pin.person.username}
+            name={pin.name ?? pin.person.username}
             initialFollowing={!!following}
-            signedIn={signedIn}
+            size="sm"
           />
         )}
         {isPlace && (

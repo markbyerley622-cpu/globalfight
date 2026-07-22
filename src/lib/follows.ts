@@ -9,17 +9,43 @@ import { track } from "@/lib/analytics";
 // (resolvePromotion().slug) so a follow is stable regardless of the free-text
 // promotion name on an event. These feed the personalized home rail.
 
-export async function toggleFollowFighter(userId: string, fighterSlug: string): Promise<{ following: boolean }> {
+/**
+ * Follow / unfollow a fighter.
+ *
+ * `on` is the caller's EXPLICIT intent. Pass it and the call is idempotent —
+ * two taps that both mean "follow" leave you following. Omit it and this
+ * toggles, which is what the routes did unconditionally and is a real defect
+ * under a double tap: two toggles net to a no-op while the optimistic UI shows
+ * one flip, so the button and the database end up disagreeing.
+ */
+export async function toggleFollowFighter(
+  userId: string,
+  fighterSlug: string,
+  on?: boolean,
+): Promise<{ following: boolean }> {
   const f = await prisma.fighter.findUnique({ where: { slug: fighterSlug }, select: { id: true } });
   if (!f) throw new Error("Fighter not found");
   const key = { userId_fighterId: { userId, fighterId: f.id } };
   const existing = await prisma.favoriteFighter.findUnique({ where: key, select: { userId: true } });
-  if (existing) {
-    await prisma.favoriteFighter.delete({ where: key });
+  const shouldFollow = on ?? !existing;
+  if (!shouldFollow) {
+    // deleteMany, not delete: a second tap that lands after the first already
+    // removed the row must be a no-op, not a P2025 surfaced as a 400.
+    await prisma.favoriteFighter.deleteMany({ where: { userId, fighterId: f.id } });
     return { following: false };
   }
-  await prisma.favoriteFighter.create({ data: { userId, fighterId: f.id } });
-  track("follow_fighter", userId, { fighter: fighterSlug });
+  if (existing) return { following: true }; // already there — nothing to write
+  // createMany(skipDuplicates) rather than create(): this is a check-then-act,
+  // and a double tap or a second tab can interleave between the read above and
+  // the write. create() would throw P2002 and the route would answer 400 —
+  // "could not follow" for an action that in fact succeeded a millisecond ago.
+  const { count } = await prisma.favoriteFighter.createMany({
+    data: [{ userId, fighterId: f.id }],
+    skipDuplicates: true,
+  });
+  // Only count a follow that this call actually created, so a duplicate request
+  // cannot inflate the analytics.
+  if (count > 0) track("follow_fighter", userId, { fighter: fighterSlug });
   return { following: true };
 }
 
@@ -32,16 +58,28 @@ export async function isFollowingFighter(userId: string, fighterId: string): Pro
 }
 
 /** `promotion` is any free-text promotion string; it's normalised to a registry slug. */
-export async function toggleFollowPromotion(userId: string, promotion: string): Promise<{ following: boolean }> {
+export async function toggleFollowPromotion(
+  userId: string,
+  promotion: string,
+  on?: boolean,
+): Promise<{ following: boolean }> {
   const slug = resolvePromotion(promotion).slug;
   const key = { userId_promotion: { userId, promotion: slug } };
   const existing = await prisma.favoritePromotion.findUnique({ where: key, select: { userId: true } });
-  if (existing) {
-    await prisma.favoritePromotion.delete({ where: key });
+  const shouldFollow = on ?? !existing;
+  if (!shouldFollow) {
+    // deleteMany + skipDuplicates: the same check-then-act race the event
+    // helper already documents. delete() on a row a concurrent tap removed
+    // throws P2025 and surfaces as "could not follow" for a completed action.
+    await prisma.favoritePromotion.deleteMany({ where: { userId, promotion: slug } });
     return { following: false };
   }
-  await prisma.favoritePromotion.create({ data: { userId, promotion: slug } });
-  track("follow_promotion", userId, { promotion: slug });
+  if (existing) return { following: true };
+  const { count } = await prisma.favoritePromotion.createMany({
+    data: [{ userId, promotion: slug }],
+    skipDuplicates: true,
+  });
+  if (count > 0) track("follow_promotion", userId, { promotion: slug });
   return { following: true };
 }
 
@@ -59,7 +97,7 @@ export async function isFollowingPromotion(userId: string, promotion: string): P
 // me". It is what the Following feed and the reminder scheduler key off, and it
 // is deliberately separate from following the promotion that runs it.
 
-export async function toggleFollowEvent(userId: string, eventSlug: string): Promise<{ following: boolean }> {
+export async function toggleFollowEvent(userId: string, eventSlug: string, on?: boolean): Promise<{ following: boolean }> {
   const e = await prisma.event.findUnique({ where: { slug: eventSlug }, select: { id: true } });
   if (!e) throw new Error("Event not found");
   const key = { userId_eventId: { userId, eventId: e.id } };
@@ -73,7 +111,8 @@ export async function toggleFollowEvent(userId: string, eventSlug: string): Prom
   // deleteMany never throws when the row is gone, and the create's unique
   // violation is swallowed because losing that race means somebody else
   // already achieved the caller's intent. The end state is what matters.
-  if (existing) {
+  const shouldFollow = on ?? !existing;
+  if (!shouldFollow) {
     await prisma.favoriteEvent.deleteMany({ where: { userId, eventId: e.id } });
     return { following: false };
   }

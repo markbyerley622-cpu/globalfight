@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, BellRing, Loader2 } from "lucide-react";
+import { Bell, BellRing, UserCheck, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-client";
 
@@ -11,6 +11,13 @@ const ENDPOINT = {
   fighter: "fighters",
   promotion: "promotions",
   event: "events",
+  person: "users",
+} as const;
+
+// Person follows use a different icon pair — following a human is not a bell.
+const ICONS = {
+  on: { fighter: BellRing, promotion: BellRing, event: BellRing, person: UserCheck },
+  off: { fighter: Bell, promotion: Bell, event: Bell, person: UserPlus },
 } as const;
 
 export type FollowKind = keyof typeof ENDPOINT;
@@ -27,6 +34,7 @@ export function FollowButton({
   initialFollowing = false,
   size = "md",
   label,
+  name,
   className,
 }: {
   kind: FollowKind;
@@ -35,6 +43,10 @@ export function FollowButton({
   size?: "sm" | "md";
   /** Override the resting label (e.g. "Remind me" on an event). */
   label?: string;
+  /** What is being followed, for the screen-reader label. Without it a reader
+   *  hears "Following" with no idea what — on a feed of ten fighter cards that
+   *  is ten identical buttons. */
+  name?: string;
   className?: string;
 }) {
   const { user } = useAuth();
@@ -48,7 +60,13 @@ export function FollowButton({
     const optimistic = !following;
     setFollowing(optimistic);
     try {
-      const res = await fetch(`/api/${ENDPOINT[kind]}/${encodeURIComponent(slug)}/follow`, { method: "POST" });
+      const res = await fetch(`/api/${ENDPOINT[kind]}/${encodeURIComponent(slug)}/follow`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // EXPLICIT intent, never a bare toggle: a retry, a double tap or a
+        // second tab must all mean the same thing rather than undoing it.
+        body: JSON.stringify({ follow: optimistic }),
+      });
       if (res.ok) setFollowing(!!(await res.json()).following);
       else setFollowing(!optimistic);
     } catch {
@@ -63,8 +81,16 @@ export function FollowButton({
       type="button"
       onClick={toggle}
       aria-pressed={following}
+      aria-busy={busy}
+      aria-label={name ? `${following ? "Following" : "Not following"} ${name}` : undefined}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
+        // min-h-11 = 44px: the touch target has to be reachable with a thumb,
+        // and the small variant was 26px tall.
+        "inline-flex min-h-11 items-center gap-1.5 rounded-lg border font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
+        // The in-flight state is opacity only. Swapping the icon for a spinner
+        // moved the label and made a 150ms request feel like a page load —
+        // and the update is optimistic, so there is nothing to wait for.
+        busy && "opacity-60",
         size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-2 text-sm",
         following
           ? "border-blood-500/50 bg-blood-500/15 text-blood-200"
@@ -72,13 +98,10 @@ export function FollowButton({
         className,
       )}
     >
-      {busy ? (
-        <Loader2 className={cn(size === "sm" ? "size-3.5" : "size-4", "animate-spin")} />
-      ) : following ? (
-        <BellRing className={size === "sm" ? "size-3.5" : "size-4"} />
-      ) : (
-        <Bell className={size === "sm" ? "size-3.5" : "size-4"} />
-      )}
+      {(() => {
+        const I = following ? ICONS.on[kind] : ICONS.off[kind];
+        return <I className={size === "sm" ? "size-3.5" : "size-4"} />;
+      })()}
       {following ? "Following" : label ?? "Follow"}
     </button>
   );

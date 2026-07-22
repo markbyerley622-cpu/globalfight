@@ -77,6 +77,10 @@ export interface FeedItem {
     /** Whether fight alerts will actually reach them, so the card can state it
      *  truthfully instead of implying it. */
     notifications: boolean;
+    /** A short "something changed" flag, DERIVED from the fight rows already
+     *  loaded — no poll, no new table, no extra query. Null when there is
+     *  nothing new, because a badge that is always on is not a badge. */
+    badge: string | null;
   };
   /** Everything the card needs to be IMAGE-FIRST. Resolved server-side so a
    *  card never has to decide between a real image and generated art at render
@@ -106,6 +110,24 @@ const DISCIPLINE_SLUG: Record<string, string> = Object.fromEntries(
 
 
 const iso = (d: Date) => d.toISOString();
+
+/**
+ * "Something changed" for a fighter, derived from the booking already in hand.
+ *
+ * Announced within the last week is genuinely new. Otherwise, a card inside the
+ * pick window is worth flagging because there is an action to take. Everything
+ * else gets nothing — a badge on every card is decoration, not information.
+ */
+function fighterBadge(
+  nf: { date: Date; createdAt: Date } | undefined,
+  now: Date,
+): string | null {
+  if (!nf) return null;
+  const WEEK = 7 * 86_400_000;
+  if (now.getTime() - nf.createdAt.getTime() < WEEK) return "New fight announced";
+  if (nf.date.getTime() - now.getTime() < 14 * 86_400_000) return "Prediction open";
+  return null;
+}
 
 /** Image-first media for an event card: its poster when one exists, otherwise
  *  branded artwork in the promotion's own colour. Resolved here so the card
@@ -234,7 +256,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
           orderBy: { date: "asc" },
           take: 20,
           select: {
-            id: true, slug: true, date: true, titleFight: true,
+            id: true, slug: true, date: true, titleFight: true, createdAt: true,
             red: { select: { id: true, name: true } },
             blue: { select: { id: true, name: true } },
             event: { select: { slug: true, name: true, promotion: true } },
@@ -377,6 +399,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
             }
           : null,
         notifications: notifyFights,
+        badge: fighterBadge(nf, now),
       },
     });
   }
@@ -493,7 +516,10 @@ function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: num
 
   while (out.length < limit && (pending.length || vi < queue.length)) {
     // Video first when the interval says so — it is the strongest visual break.
-    if (out.length && out.length % VIDEO_EVERY === 0 && vi < queue.length) {
+    // `lastFamily !== "video"` matters: the run-breaker below can also place a
+    // video, and without this guard a video placed there followed immediately
+    // by the interval boundary put two back to back.
+    if (out.length && out.length % VIDEO_EVERY === 0 && vi < queue.length && lastFamily !== "video") {
       out.push(queue[vi++]);
       lastFamily = "video";
       run = 1;
@@ -516,11 +542,23 @@ function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: num
     // Prefer the next item, unless it would extend a run past MAX_RUN.
     let idx = 0;
     if (lastFamily && run >= MAX_RUN) {
-      // Pull the highest-ranked item of a DIFFERENT family forward. If the pool
-      // holds nothing else — a user who follows only events genuinely has an
-      // event-only feed — the run continues rather than the feed going short.
+      // Pull the highest-ranked item of a DIFFERENT family forward.
       const alt = pending.findIndex((it) => FAMILY[it.kind] !== lastFamily);
-      if (alt !== -1) idx = alt;
+      if (alt !== -1) {
+        idx = alt;
+      } else if (vi < queue.length && lastFamily !== "video") {
+        // The timeline has nothing else, but a VIDEO is still queued — and a
+        // queued video is a different family. Not checking here is how six
+        // consecutive news items shipped while a video sat unused two lines
+        // later: the run-breaker only ever looked at `pending`.
+        out.push(queue[vi++]);
+        lastFamily = "video";
+        run = 1;
+        continue;
+      }
+      // Nothing of another family anywhere: a user who follows only events
+      // genuinely has an event feed, and the run continues rather than the
+      // feed going short.
     }
     const [item] = pending.splice(idx, 1);
     const family = FAMILY[item.kind];

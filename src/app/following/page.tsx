@@ -12,6 +12,7 @@ import {
 import { timeAgo, cn } from "@/lib/utils";
 import { Chip, ChipRow } from "@/components/ui/chip";
 import { VideoCardProvider } from "@/components/feed/video-card";
+import { AlertsProvider } from "@/components/feed/alerts-toggle";
 import { FeedCard } from "@/components/feed/feed-card";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -70,6 +71,11 @@ export default async function FollowingPage({
 
   const items = tab === "events" ? feed.filter((i) => EVENT_KINDS.has(i.kind)) : feed;
 
+  // notifyFights, read off the feed the page already built rather than fetched
+  // again — the fighter cards were rendered from the same value, so the toggle
+  // and the cards cannot start out disagreeing.
+  const alertsOn = feed.find((i) => i.fighter)?.fighter?.notifications ?? false;
+
   return (
     <div className="px-4 pb-16 pt-5">
       <div className="mx-auto max-w-2xl">
@@ -100,6 +106,7 @@ export default async function FollowingPage({
         ) : (
           // One provider around the whole list: opening a second video closes
           // the first, and nothing renders a player until it is clicked.
+          <AlertsProvider initial={alertsOn} signedIn>
           <VideoCardProvider>
             <ol className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {items.map((item) => (
@@ -109,6 +116,7 @@ export default async function FollowingPage({
               ))}
             </ol>
           </VideoCardProvider>
+          </AlertsProvider>
         )}
       </div>
     </div>

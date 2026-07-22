@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, BellOff, CalendarDays, Check, Swords } from "lucide-react";
+import { CalendarDays, Sparkles, Swords } from "lucide-react";
 import { Flag } from "@/components/flag";
 import { brandedHero } from "@/lib/placeholder";
+import { FollowButton } from "@/components/follow-button";
+import { AlertsToggle } from "./alerts-toggle";
 import type { FeedItem } from "@/lib/following";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -57,6 +59,13 @@ export function FighterCard({ item }: { item: FeedItem }) {
           />
           <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/25 to-transparent" />
 
+          {f.badge && (
+            <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-blood-500 px-2 py-1 font-display text-[0.58rem] font-bold uppercase tracking-wide text-white shadow-lg">
+              <Sparkles className="size-2.5" />
+              {f.badge}
+            </span>
+          )}
+
           {f.rank && (
             <span className="absolute left-3 top-3 rounded-md bg-blood-500/90 px-2 py-1 font-display text-[0.62rem] font-bold uppercase tracking-wide text-white">
               #{f.rank.rank} {f.rank.weightClass}
@@ -103,20 +112,13 @@ export function FighterCard({ item }: { item: FeedItem }) {
           <p className="text-[0.78rem] text-fog">No fight announced</p>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-md bg-up/12 px-2 py-1 font-display text-[0.6rem] font-bold uppercase tracking-wide text-up">
-            <Check className="size-3" /> Following
-          </span>
-          <span
-            className={
-              f.notifications
-                ? "inline-flex items-center gap-1 rounded-md bg-blood-500/12 px-2 py-1 font-display text-[0.6rem] font-bold uppercase tracking-wide text-blood-300"
-                : "inline-flex items-center gap-1 rounded-md bg-ink-800 px-2 py-1 font-display text-[0.6rem] font-bold uppercase tracking-wide text-fog"
-            }
-          >
-            {f.notifications ? <Bell className="size-3" /> : <BellOff className="size-3" />}
-            {f.notifications ? "Alerts on" : "Alerts off"}
-          </span>
+        {/* Real controls, not status pills. The card is where you manage this
+            relationship, so neither of these navigates anywhere. FollowButton is
+            the SAME component the fighter profile and event cards use — one
+            optimistic implementation, one endpoint. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <FollowButton kind="fighter" slug={f.slug} name={f.name} initialFollowing size="sm" />
+          <AlertsToggle />
         </div>
       </div>
     </div>
