@@ -56,7 +56,7 @@ function esc(s: string): string {
   );
 }
 
-function pinHtml(group: PinGroup, selected: boolean): string {
+function pinHtml(group: PinGroup, selected: boolean, index = 0): string {
   const color = LAYER_COLOR[group.layer];
   const count = group.pins.length;
   const live = group.pins.some((p) => p.status === "LIVE");
@@ -74,8 +74,11 @@ function pinHtml(group: PinGroup, selected: boolean): string {
       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[group.layer]}</svg>`;
 
+  // Stagger capped at 10 — beyond that the last pin would arrive noticeably
+  // after the user has already started reading the map.
+  const delay = Math.min(index, 10) * 28;
   return `
-    <span class="cr-pin${selected ? " is-selected" : ""}${live ? " is-live" : ""}${solo?.layer === "people" ? " is-face" : ""}" style="--pin:${color}">
+    <span class="cr-pin cr-pin--enter${selected ? " is-selected" : ""}${live ? " is-live" : ""}${solo?.layer === "people" ? " is-face" : ""}" style="--pin:${color};--enter-delay:${delay}ms">
       <span class="cr-pin__halo"></span>
       <span class="cr-pin__body">${face}</span>
       ${second ? `<span class="cr-pin__mix" style="--mix:${LAYER_COLOR[second]}"></span>` : ""}
@@ -171,6 +174,21 @@ export default function MapCanvas({
         // on hover would trap the page scroll, so zoom is by control, pinch, or
         // double-click — never by scrolling past it.
         scrollWheelZoom: false,
+        // ── Touch / PWA zoom ──
+        // Installed as a PWA the page itself is pinch-zoomable, so a pinch that
+        // starts on the map would zoom the whole APP and leave the map behind —
+        // the classic "zooming is buggy" symptom. touchZoom claims the gesture
+        // and `touch-action: none` on the container (globals.css) stops the
+        // browser handling it as well, so exactly one thing responds.
+        touchZoom: true,
+        tapHold: false,
+        // Fractional steps: a pinch resolves to what the fingers actually did
+        // rather than jumping a whole level and overshooting.
+        zoomSnap: 0.25,
+        zoomDelta: 0.5,
+        // Without this a pinch past the limit rubber-bands and snaps back,
+        // which reads as the map fighting you.
+        bounceAtZoomLimits: false,
         // Keep the viewport on the world rather than letting it drift into grey.
         maxBounds: [[-85, -220], [85, 220]],
         maxBoundsViscosity: 0.7,
@@ -230,11 +248,12 @@ export default function MapCanvas({
       if (cancelled || !layer) return;
       layer.clearLayers();
 
+      let index = 0;
       for (const g of groups) {
         const selected = anchorPinId !== null && g.pins.some((p) => p.id === anchorPinId);
         const marker: Marker = L.marker([g.lat, g.lon], {
           icon: L.divIcon({
-            html: pinHtml(g, selected),
+            html: pinHtml(g, selected, index++),
             className: "cr-pin-wrap",
             iconSize: [38, 46],
             iconAnchor: [19, 44],

@@ -14,6 +14,7 @@ import { AccountMenu } from "./account-menu";
 import { RotatingBackdrop } from "./rotating-backdrop";
 import { LanguageSwitcher } from "./language-switcher";
 import { PillarNav } from "./pillar-nav";
+import { OnlineCount } from "./online-count";
 
 /**
  * App-wide shell: a 100dvh flex frame with a fixed top bar (logo · search ·
@@ -110,6 +111,7 @@ export function AppShell({
                 Location was only reachable from the burger on a laptop. */}
             <PillarNav className="ml-3 hidden lg:flex" />
             <div className="ml-auto flex items-center gap-2">
+              <OnlineCount />
               <Link
                 href="/fighters"
                 aria-label="Search fighters"

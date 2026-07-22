@@ -35,7 +35,14 @@
   /* ── Text ── */
   --color-chalk: #f5f7fa;
   --color-mist: #9aa4b2;
-  --color-fog: #5b6573;
+  /* Was #5b6573, which measured 2.98:1 on ink-800 and 3.29:1 on ink-900 —
+     below the 4.5:1 WCAG AA floor for small text. `fog` carries most of the
+     secondary copy in the app (counts, meta lines, hints), so that was an
+     app-wide contrast failure that axe happened to surface on the leaderboard.
+     #788495 is the MINIMUM value that clears AA on every surface fog sits on
+     (worst case 4.64:1 on ink-800) while staying clearly dimmer than `mist`,
+     so the type hierarchy is unchanged. One token, no component edits. */
+  --color-fog: #788495;
 
   /* ── Semantic ── */
   --color-up: #22c55e;
@@ -423,6 +430,23 @@
   background: #05070a;
   /* Leaflet's default font is inherited into the attribution; keep it ours. */
   font-family: var(--font-sans);
+  /* PWA pinch-zoom. Installed to the home screen the PAGE is pinch-zoomable
+     too, so without this a pinch starting on the map zooms the whole app and
+     drags the map along with it — the "zooming is buggy" symptom. Handing the
+     gesture entirely to Leaflet (touchZoom is enabled in map-canvas.tsx) means
+     exactly one thing reacts to two fingers. `pan-x pan-y` is deliberately NOT
+     used: it would let the browser keep the pan and fight Leaflet's drag. */
+  touch-action: none;
+  -ms-touch-action: none;
+  /* iOS: stop the long-press callout and the blue tap flash on markers. */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Leaflet's own zoom animation, slowed slightly and eased so flying to a
+   location settles instead of snapping. */
+.cr-map .leaflet-zoom-anim .leaflet-zoom-animated {
+  transition: transform 0.32s var(--ease-out-quint);
 }
 
 /* Cool the basemap down and lift its contrast so red pins read as the only
@@ -469,6 +493,19 @@
   will-change: transform;
 }
 .cr-pin:hover { transform: scale(1.12); }
+
+/* Pins arrive rather than appear. Re-running on every filter change is the
+   point: pressing a layer chip visibly re-forms the field instead of swapping
+   one static set for another. Staggered by --enter-delay (capped in
+   map-canvas.tsx so the last pin is never late enough to notice). */
+.cr-pin--enter {
+  animation: crPinIn 0.34s var(--ease-out-back) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+@keyframes crPinIn {
+  from { opacity: 0; transform: scale(0.4) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
 .cr-pin.is-selected { transform: scale(1.24); z-index: 5; }
 
 .cr-pin__body {
@@ -619,6 +656,10 @@
 @media (prefers-reduced-motion: reduce) {
   .cr-pin { transition: none; }
   .cr-pin__halo, .cr-me__ring { animation: none; opacity: 0.18; }
+  /* Pins still need to END visible — disabling the animation without resetting
+     `both` would leave them stuck at opacity 0. */
+  .cr-pin--enter { animation: none; opacity: 1; transform: none; }
+  .cr-map .leaflet-zoom-anim .leaflet-zoom-animated { transition: none; }
 }
 
 /* ════════════════════════════════════════════════════════════════════
