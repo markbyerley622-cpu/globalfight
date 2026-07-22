@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPresence } from "@/lib/geo/presence";
 import { CheckInButton } from "@/components/map/check-in-button";
 import { GymMembershipButtons } from "@/components/map/gym-membership";
+import { GymPublicGallery } from "@/components/map/gym-public-gallery";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ async function loadGym(slug: string) {
       disciplines: true, verified: true, memberCount: true, ownerId: true, countryCode: true,
       photos: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
+        select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true, alt: true, credit: true },
       },
       members: {
         orderBy: [{ role: "asc" }, { createdAt: "asc" }],
@@ -206,88 +207,9 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         {/* Gallery */}
         {gym.photos.length > 0 && (
           <Section title="Photos">
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {gym.photos.map((ph) => (
-                <a
-                  key={ph.id}
-                  href={ph.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative aspect-square overflow-hidden rounded-xl border border-ink-700 bg-ink-850"
-                >
-                  <Image
-                    src={ph.thumbUrl}
-                    alt={ph.caption ?? `${gym.name} photo`}
-                    fill
-                    unoptimized
-                    loading="lazy"
-                    sizes="(max-width: 640px) 33vw, 160px"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </a>
-              ))}
-            </div>
+            <GymPublicGallery photos={gym.photos} gymName={gym.name} />
           </Section>
         )}
-
-        {/* Who's here now */}
-        {presence.sample.length > 0 && (
-          <Section title={`Training now · ${presence.count}`}>
-            <div className="flex flex-wrap gap-2">
-              {presence.sample.map((p) => (
-                <PersonChip
-                  key={p.id}
-                  name={p.name ?? p.username ?? "Someone"}
-                  username={p.username}
-                  image={p.image}
-                  note={p.role === "coach" ? "Coach" : p.note}
-                  live
-                />
-              ))}
-              {presence.count > presence.sample.length && (
-                <span className="grid h-9 place-items-center rounded-full border border-ink-700 bg-ink-850 px-3 text-[0.72rem] font-semibold text-fog">
-                  +{presence.count - presence.sample.length} more
-                </span>
-              )}
-            </div>
-          </Section>
-        )}
-
-        {coaches.length > 0 && (
-          <Section title="Coaches">
-            <div className="flex flex-wrap gap-2">
-              {coaches.map((m) => (
-                <PersonChip
-                  key={m.user.id}
-                  name={m.user.name ?? m.user.username ?? "Coach"}
-                  username={m.user.username}
-                  image={m.user.image}
-                  note={m.role === "owner" ? "Head coach" : "Coach"}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        <Section title={`Members · ${gym.memberCount}`}>
-          {gym.members.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-ink-700 px-4 py-6 text-center text-sm text-fog">
-              Nobody has joined yet. Be the first — it puts this gym on your profile and on the map.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {gym.members.map((m) => (
-                <PersonChip
-                  key={m.user.id}
-                  name={m.user.name ?? m.user.username ?? "Member"}
-                  username={m.user.username}
-                  image={m.user.image}
-                  note={m.isHome ? "Home gym" : null}
-                />
-              ))}
-            </div>
-          )}
-        </Section>
 
         {nearby.length > 0 && (
           <Section title={`More gyms ${gym.city ? `in ${gym.city}` : "nearby"}`}>

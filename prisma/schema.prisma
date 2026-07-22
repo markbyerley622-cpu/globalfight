@@ -1974,12 +1974,23 @@ model GymPhoto {
   thumbUrl String
   width    Int    @default(0)
   height   Int    @default(0)
+  /// Shown under the image in the viewer.
   caption  String?
+  /// Screen-reader description. Distinct from caption on purpose: a caption is
+  /// editorial ("Saturday open mat"), alt text describes what is IN the frame
+  /// for someone who cannot see it. Using one for both fails whichever reader
+  /// you did not have in mind.
+  alt      String?
+  /// Photo credit, when a gym is publishing someone else's work.
+  credit   String?
+  takenAt  DateTime?
+
   /// Manual ordering; ties break on createdAt.
   sortOrder Int   @default(0)
 
   uploadedById String?
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([gymId, sortOrder])
 }

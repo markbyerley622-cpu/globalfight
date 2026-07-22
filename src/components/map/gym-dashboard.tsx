@@ -48,7 +48,10 @@ export interface GymDashboardData {
 
 export function GymDashboard({ data }: { data: GymDashboardData }) {
   const [tab, setTab] = useState<Tab>("overview");
-  const { gym, photos, members, ownerId } = data;
+  const { photos, members, ownerId } = data;
+  // Setting a gallery photo as cover writes the gym's heroUrl, so the
+  // dashboard's own copy has to follow or Overview keeps showing the old one.
+  const [gym, setGym] = useState(data.gym);
 
   const coaches = members.filter((m) => m.role === "coach" || m.role === "owner").length;
 
@@ -66,7 +69,7 @@ export function GymDashboard({ data }: { data: GymDashboardData }) {
       {tab === "overview" && (
         <Overview data={data} coaches={coaches} onGo={setTab} />
       )}
-      {tab === "profile" && <GymManageForm gym={gym} photos={photos} />}
+      {tab === "profile" && <GymManageForm gym={gym} />}
       {tab === "members" && (
         <Panel title="Roster" subtitle="Promote coaches, remove people who've moved on.">
           <GymMembersManager slug={gym.slug} initial={members} ownerId={ownerId} />
@@ -74,7 +77,12 @@ export function GymDashboard({ data }: { data: GymDashboardData }) {
       )}
       {tab === "photos" && (
         <Panel title="Gallery" subtitle="Photos appear on your public page and in search.">
-          <GymGalleryManager slug={gym.slug} initial={photos} />
+          <GymGalleryManager
+            slug={gym.slug}
+            initial={photos}
+            coverUrl={gym.heroUrl}
+            onCoverChange={(url) => setGym((c) => ({ ...c, heroUrl: url }))}
+          />
         </Panel>
       )}
       {tab === "analytics" && <Analytics data={data} />}

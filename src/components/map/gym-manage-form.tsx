@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Loader2, Check, Globe, Instagram, Phone, Mail, Clock, MapPin, Youtube, Facebook, Music2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { ImageUpload } from "@/components/ui/image-upload";
-import { GymGalleryManager, type GymPhoto } from "./gym-gallery-manager";
 import { cn } from "@/lib/utils";
 
 const DISCIPLINE_OPTIONS = [
@@ -41,7 +40,7 @@ const inputClass =
 /** Same save model as the profile editor: toggles are optimistic, text commits
  *  on blur. Deliberately the same, so managing a gym feels like editing a
  *  profile rather than a different application. */
-export function GymManageForm({ gym, photos }: { gym: ManagedGym; photos: GymPhoto[] }) {
+export function GymManageForm({ gym }: { gym: ManagedGym }) {
   const [g, setG] = useState(gym);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
@@ -249,10 +248,6 @@ export function GymManageForm({ gym, photos }: { gym: ManagedGym; photos: GymPho
             onRemoved={() => setG((c) => ({ ...c, heroUrl: null }))}
           />
         </div>
-      </Card>
-
-      <Card title="Gallery" subtitle="Show the mats, the ring, the team. Photos appear on your public page.">
-        <GymGalleryManager slug={gym.slug} initial={photos} />
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-3">

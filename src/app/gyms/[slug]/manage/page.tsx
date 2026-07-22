@@ -37,7 +37,10 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
     prisma.gymPhoto.findMany({
       where: { gymId: gym.id },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
+      select: {
+        id: true, url: true, thumbUrl: true, width: true, height: true,
+        caption: true, alt: true, credit: true, takenAt: true, sortOrder: true,
+      },
     }),
     prisma.gymMember.findMany({
       where: { gymId: gym.id },
@@ -54,6 +57,9 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
       where: { gymId: gym.id, status: { in: ["pending", "info_requested"] }, claimantId: { not: gym.ownerId ?? "" } },
     }),
   ]);
+
+  // takenAt is a Date across the RSC boundary; the client type is a string.
+  const galleryPhotos = photos.map((p) => ({ ...p, takenAt: p.takenAt?.toISOString() ?? null }));
 
   const members = roster.map((m) => ({
     id: m.id,
@@ -82,7 +88,7 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
 
       <div className="mt-5">
         <GymDashboard
-          data={{ gym, photos, members, ownerId: gym.ownerId, presentNow, checkInsWeek, pendingClaims }}
+          data={{ gym, photos: galleryPhotos, members, ownerId: gym.ownerId, presentNow, checkInsWeek, pendingClaims }}
         />
       </div>
     </div>
