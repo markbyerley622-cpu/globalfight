@@ -1664,6 +1664,11 @@ model Notification {
   @@unique([userId, dedupeKey])
   @@index([userId, readAt])
   @@index([userId, createdAt])
+  // The scheduler looks rows up by dedupeKey ALONE (which of this batch already
+  // existed?), and the composite above cannot serve that — its leading column is
+  // userId. Measured as a Seq Scan: harmless at 500 rows, a full table scan per
+  // event per cron tick once this table has a year of history in it.
+  @@index([dedupeKey])
 }
 
 enum ActivityType {

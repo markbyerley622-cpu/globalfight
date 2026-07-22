@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next";
 
-// PWA manifest — makes Combat Register installable to the home screen so the
+// PWA manifest — makes Combat Reviews installable to the home screen so the
 // reels feed opens full-screen (standalone), which the reels overlay already
 // detects and adapts to.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Combat Register",
-    short_name: "Combat",
+    // The canonical product name. This is what a person sees under the icon on
+    // their home screen forever after they install, so it is not the place to
+    // leave the old working title.
+    name: "Combat Reviews",
+    short_name: "Combat Reviews",
     description: "Today's best fights across every discipline — an endless combat-sports reel.",
     start_url: "/",
     display: "standalone",
