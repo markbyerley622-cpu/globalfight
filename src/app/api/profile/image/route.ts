@@ -3,14 +3,12 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { processAndStoreContentImage } from "@/lib/images/store";
+import { readImageUpload, isDecodeError } from "@/lib/images/upload-policy";
 import { log } from "@/lib/scraper/logger";
 import { refuseIfUgcMediaDisabled } from "@/lib/ugc-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 
 // POST /api/profile/image  (multipart: file, kind=avatar|banner)
 // Processes the image to WebP and stores it on the best configured backend
@@ -28,13 +26,16 @@ export async function POST(req: Request) {
   try { form = await req.formData(); } catch { return NextResponse.json({ error: "Invalid upload." }, { status: 400 }); }
 
   const kind = form.get("kind") === "banner" ? "banner" : "avatar";
-  const file = form.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "No file provided." }, { status: 400 });
-  if (!ALLOWED.includes(file.type)) return NextResponse.json({ error: "Use a JPG, PNG or WebP image." }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: "Image must be under 8 MB." }, { status: 400 });
+
+  // Shared policy, not a second copy. This route hand-rolled its own limits and
+  // allow-list, which had drifted: it accepted a ZERO-BYTE file and had no
+  // magic-byte check, so a corrupt upload reached sharp and 500'd. Both
+  // measured against a live production build.
+  const read = await readImageUpload(form);
+  if (!read.ok) return read.response;
 
   try {
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = read.value.buffer;
     // Unique id per upload busts any CDN/browser cache of the previous image.
     const { url } = await processAndStoreContentImage("profiles", `${userId}/${kind}-${randomUUID()}`, buffer);
     await prisma.user.update({
@@ -43,6 +44,10 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, url, kind });
   } catch (e) {
+    // A corrupt or truncated image is the CALLER's problem, not a server fault.
+    if (isDecodeError(e)) {
+      return NextResponse.json({ error: "That image is corrupt or unreadable." }, { status: 415 });
+    }
     log.warn({ userId, kind, err: (e as Error).message }, "profile:image-upload-failed");
     return NextResponse.json({ error: "Could not save the image. Please try again." }, { status: 500 });
   }

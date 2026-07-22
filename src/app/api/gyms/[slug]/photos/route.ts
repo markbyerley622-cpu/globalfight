@@ -3,7 +3,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { processAndStoreContentImage, deleteStored } from "@/lib/images/store";
-import { readImageUpload } from "@/lib/images/upload-policy";
+import { readImageUpload, isDecodeError } from "@/lib/images/upload-policy";
 import { authoriseGymEdit } from "@/lib/geo/gym-auth";
 import { refuseIfUgcMediaDisabled } from "@/lib/ugc-guard";
 import { log } from "@/lib/scraper/logger";
@@ -100,6 +100,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
     return NextResponse.json({ ok: true, photo }, { status: 201 });
   } catch (e) {
+    // A corrupt or truncated image is the CALLER's problem, not a server fault.
+    if (isDecodeError(e)) {
+      return NextResponse.json({ error: "That image is corrupt or unreadable." }, { status: 415 });
+    }
     log.warn({ gymId: gym.id, err: (e as Error).message }, "gym:photo-upload-failed");
     return NextResponse.json({ error: "Could not save the photo. Please try again." }, { status: 500 });
   }

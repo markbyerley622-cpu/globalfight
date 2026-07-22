@@ -9,8 +9,9 @@ import {
   getFollowingFeed, getFollowingSummary, getRivals, getCornerMen,
   type FeedItem, type Rival,
 } from "@/lib/following";
-import { timeAgo } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { timeAgo, cn } from "@/lib/utils";
+import { Chip, ChipRow } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = {
   title: "Following",
@@ -77,24 +78,13 @@ export default async function FollowingPage({
           </p>
         </header>
 
-        <div data-hscroll className="hide-scrollbar mb-4 flex gap-2 overflow-x-auto">
+        <ChipRow className="mb-4">
           {TABS.map((t) => (
-            <Link
-              key={t.id}
-              href={t.id === "feed" ? "/following" : `/following?tab=${t.id}`}
-              scroll={false}
-              aria-current={tab === t.id ? "true" : undefined}
-              className={cn(
-                "tap shrink-0 whitespace-nowrap rounded-full border px-4 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors",
-                tab === t.id
-                  ? "border-blood-500 bg-blood-500 text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.9)]"
-                  : "border-ink-700 bg-ink-850 text-mist hover:border-ink-600 hover:text-chalk",
-              )}
-            >
+            <Chip key={t.id} href={t.id === "feed" ? "/following" : `/following?tab=${t.id}`} active={tab === t.id}>
               {t.label}
-            </Link>
+            </Chip>
           ))}
-        </div>
+        </ChipRow>
 
         {tab === "rivals" ? (
           <RivalsTab rivals={rivals} />
@@ -145,11 +135,11 @@ function FeedRow({ item }: { item: FeedItem }) {
 function RivalsTab({ rivals }: { rivals: Rival[] }) {
   if (rivals.length === 0) {
     return (
-      <EmptyPanel
+      <EmptyState
         icon={<Swords className="size-5 text-blood-400" />}
         title="No rivals yet"
         body="Challenge someone to a Prediction Battle on any upcoming fight. Whoever calls it right takes the points — and the head-to-head record lives here."
-        cta={{ href: "/events", label: "Find a fight to battle on" }}
+        action={{ href: "/events", label: "Find a fight to battle on" }}
       />
     );
   }
@@ -224,11 +214,11 @@ function CornerTab({ items }: { items: FeedItem[] }) {
       </Link>
 
       {items.length === 0 ? (
-        <EmptyPanel
+        <EmptyState
           icon={<Mic className="size-5 text-blood-400" />}
           title="No analysis published yet"
           body="Breakdowns and interviews from the desk land here as they publish."
-          cta={{ href: "/news", label: "Browse the news desk" }}
+          action={{ href: "/news", label: "Browse the news desk" }}
         />
       ) : (
         <>
@@ -247,26 +237,6 @@ function CornerTab({ items }: { items: FeedItem[] }) {
 }
 
 // ── Shared states ───────────────────────────────────────────────────────────
-
-function EmptyPanel({
-  icon, title, body, cta,
-}: { icon: React.ReactNode; title: string; body: string; cta?: { href: string; label: string } }) {
-  return (
-    <div className="rounded-xl border border-dashed border-ink-700 bg-ink-900/40 px-6 py-10 text-center">
-      <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-ink-700 bg-ink-850">{icon}</span>
-      <p className="mt-3 font-display text-base font-bold uppercase tracking-wide text-chalk">{title}</p>
-      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-fog">{body}</p>
-      {cta && (
-        <Link
-          href={cta.href}
-          className="tap mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400"
-        >
-          {cta.label} <ArrowRight className="size-3.5" />
-        </Link>
-      )}
-    </div>
-  );
-}
 
 /** Following something but nothing has happened yet — a real, common state. */
 function EmptyFeed({ following, eventsOnly }: { following: boolean; eventsOnly: boolean }) {

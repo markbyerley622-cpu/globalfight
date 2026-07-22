@@ -70,6 +70,17 @@ export async function readImageUpload(
   return { ok: true, value: { file, buffer } };
 }
 
+/**
+ * A file can pass every signature check and still be undecodable — a real PNG
+ * header followed by garbage, or a truncated upload. sharp throws on those, and
+ * an unhandled throw is a 500 for what is really a bad request. Callers wrap
+ * their processing in this so the user gets "that image is corrupt".
+ */
+export function isDecodeError(e: unknown): boolean {
+  const m = (e as Error)?.message ?? "";
+  return /unsupported image format|Input buffer|premature end|corrupt|VipsJpeg|VipsPng|bad seek|Input file/i.test(m);
+}
+
 /** JPEG / PNG / WebP / AVIF signatures. */
 function looksLikeImage(b: Buffer): boolean {
   if (b.length < 12) return false;
