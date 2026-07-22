@@ -29,12 +29,8 @@ export async function purgeProfanity(): Promise<number> {
     removed += badPosts.length;
   }
 
-  const clips = await prisma.clip.findMany({ select: { id: true, title: true } });
-  const badClips = clips.filter((c) => RE.test(c.title)).map((c) => c.id);
-  if (badClips.length) {
-    await prisma.clip.updateMany({ where: { id: { in: badClips } }, data: { status: "removed" } });
-    removed += badClips.length;
-  }
+  // Clips are gone: video now comes only from allow-listed channels, so there
+  // is no user-submitted video title left for this sweep to moderate.
 
   return removed;
 }

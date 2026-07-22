@@ -741,7 +741,6 @@ model ForumCategory {
 
   threads     ForumThread[]
   members     CommunityMember[]
-  clips       Clip[]
 
   @@index([kind])
 }
@@ -970,43 +969,7 @@ model CopyrightReport {
 
 // A user-uploaded fight clip. Stored as a native video file (R2/blob), so it
 // autoplays reliably on mobile (unlike YouTube embeds). Rated by the community.
-model Clip {
-  id          String         @id @default(cuid())
-  authorId    String
-  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  title       String
-  videoUrl    String // public URL of the stored MP4/webm
-  posterUrl   String? // optional thumbnail/first-frame
-  topic       String? // mma | boxing | … (community/topic tag)
-  communityId String?
-  community   ForumCategory? @relation(fields: [communityId], references: [id], onDelete: SetNull)
-  durationSec Int?
-  status      String         @default("ready") // ready | removed
-  // Denormalised rating aggregates for fast sorting (avg = ratingSum/ratingCount).
-  ratingSum   Int            @default(0)
-  ratingCount Int            @default(0)
-  createdAt   DateTime       @default(now())
 
-  ratings ClipRating[]
-
-  @@index([createdAt])
-  @@index([communityId])
-  @@index([status, createdAt])
-}
-
-// One rating per user per clip (1–5). Upserted; aggregates kept on Clip.
-model ClipRating {
-  id        String   @id @default(cuid())
-  clipId    String
-  clip      Clip     @relation(fields: [clipId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  value     Int // 1..5
-  createdAt DateTime @default(now())
-
-  @@unique([clipId, userId])
-  @@index([userId])
-}
 
 // ─── Community Predictions (native to Combat Register) ───────────────────
 // Distinct from the live external market feed (Polymarket/Kalshi, which is
@@ -1177,8 +1140,6 @@ model User {
   bookmarks         ForumBookmark[]
   reports           ForumReport[]
   communities       CommunityMember[]
-  clips             Clip[]
-  clipRatings       ClipRating[]
   communityVotes    CommunityVote[]
   favorites         FavoriteFighter[]
   promotionFollows  FavoritePromotion[]
@@ -1536,12 +1497,31 @@ model FeedVideo {
   viewCount   Int?
   topic       String?
   tags        String[]
+  /// Promotion slug from lib/promotions ("ufc", "bkfc"…), or null for
+  /// independent media. Stamped from the trusted channel entry, never guessed
+  /// from the payload — it is what FavoritePromotion rows are keyed by, so a
+  /// wrong value here means notifying the wrong followers.
+  promotion   String?
+  /// Discipline slug matching SPORT_PILLS ("mma", "boxing", "muay-thai"…), so
+  /// a video filters by the same vocabulary as ?sport= everywhere else.
+  discipline  String?
   addedAt     DateTime  @default(now())
 
   discussions ForumThread[]
 
   @@index([addedAt])
   @@index([topic])
+  @@index([promotion, publishedAt])
+  @@index([discipline, publishedAt])
+}
+
+/// Cross-instance job leases — see src/lib/job-lease.ts. Replaces session-scoped
+/// pg_advisory_lock, which leaked across Prisma's connection pool and wedged
+/// feed ingestion after a single run. Rows are disposable: an expired lease is
+/// simply claimable again.
+model JobLease {
+  name      String   @id
+  expiresAt DateTime
 }
 
 model FeedView {

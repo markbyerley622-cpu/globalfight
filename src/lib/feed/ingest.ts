@@ -1,72 +1,73 @@
 // Ingestion: pulls channel RSS, tags videos, upserts new ones into the catalog.
 // Runs only via the cron route (/api/cron/ingest-feed) plus a one-time warmup on
-// cold start — never on a recurring per-instance interval. A Postgres advisory
-// lock ensures exactly one instance ingests at a time (no cross-instance storm).
-import { prisma } from "@/lib/db";
+// cold start — never on a recurring per-instance interval. A JobLease ensures
+// exactly one instance ingests at a time (no cross-instance storm).
 import { fetchRss } from "./rss";
 import { deriveTags } from "./tags";
 import { filterFeed } from "./filter";
-import { dbEnabled } from "./repo";
 import { flog } from "./log";
 import * as store from "./store";
 import * as users from "./users";
+import { notifyNewVideos } from "./notify";
+import { withLease } from "@/lib/job-lease";
 
-// Arbitrary but stable key for pg_advisory_lock across all instances.
-const LOCK_KEY = 4210001;
 let running = false;
 let lastRun = 0;
 let started = false;
 
-export interface IngestResult { added?: number; total?: number; channelsOk?: number; channelsTotal?: number; skipped?: boolean; error?: string; }
+// How long one ingest may hold the lease. Comfortably longer than a real run
+// (~3s for twenty feeds) and short enough that a hard crash self-heals within
+// one cron tick.
+const LEASE_MS = 5 * 60 * 1000;
 
-// Cross-instance mutual exclusion. In mock mode (no DB) the per-process guard is
-// sufficient. If the lock query errors (DB unreachable) we decline to ingest —
-// there's nowhere to persist anyway.
-async function acquireLock(): Promise<boolean> {
-  if (!dbEnabled()) return true;
-  try {
-    const rows = await prisma.$queryRawUnsafe<Array<{ locked: boolean }>>(
-      `SELECT pg_try_advisory_lock(${LOCK_KEY}) AS locked`,
-    );
-    return rows?.[0]?.locked === true;
-  } catch (e) {
-    flog.error({ op: "ingest.lock", err: (e as Error).message }, "advisory lock failed");
-    return false;
-  }
-}
-async function releaseLock(): Promise<void> {
-  if (!dbEnabled()) return;
-  try { await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${LOCK_KEY})`); } catch { /* best effort */ }
+export interface IngestResult {
+  added?: number; notified?: number; total?: number;
+  channelsOk?: number; channelsTotal?: number; skipped?: boolean; error?: string;
 }
 
-// Single-flight per process + advisory lock across processes.
+// Single-flight per process + a lease across processes.
 export async function ingestOnce(): Promise<IngestResult> {
   if (running) { flog.info({ op: "ingest", status: "skipped", reason: "running" }, "ingest already running (this instance)"); return { skipped: true }; }
   running = true;
-  const gotLock = await acquireLock();
-  if (!gotLock) {
+  try {
+    const result = await withLease("feed_ingest", LEASE_MS, () => ingestUnlocked());
+    if (result === null) {
+      flog.info({ op: "ingest", status: "skipped", reason: "lease" }, "another instance holds the ingest lease");
+      return { skipped: true };
+    }
+    return result;
+  } finally {
     running = false;
-    flog.info({ op: "ingest", status: "skipped", reason: "lock" }, "another instance holds the ingest lock");
-    return { skipped: true };
   }
+}
+
+async function ingestUnlocked(): Promise<IngestResult> {
   const now = Date.now();
   try {
     const { videos, channelsOk, channelsTotal } = await fetchRss();
     const kept = filterFeed(videos, {}).map((v) => ({ ...v, tags: v.tags || deriveTags(v) }));
+    const before = new Set(store.all().map((v) => v.id));
     const added = store.upsert(kept, now);
+
+    // Notify only about what THIS run actually introduced. store.upsert returns
+    // a count, so the genuinely-new set is recovered by diffing against the ids
+    // held before the write — a re-ingest of the same feed notifies nobody.
+    let notified = 0;
+    if (added > 0) {
+      const fresh = kept.filter((v) => !before.has(v.id));
+      notified = await notifyNewVideos(fresh).catch(() => 0);
+    }
+
     lastRun = now;
     const durationMs = Date.now() - now;
     flog.info(
-      { op: "ingest", status: "succeeded", channelsOk, channelsTotal, added, total: store.size(), durationMs },
+      { op: "ingest", status: "succeeded", channelsOk, channelsTotal, added, notified, total: store.size(), durationMs },
       "feed ingest complete",
     );
-    return { added, total: store.size(), channelsOk, channelsTotal };
+    return { added, notified, total: store.size(), channelsOk, channelsTotal };
   } catch (e) {
     flog.error({ op: "ingest", status: "failed", durationMs: Date.now() - now, err: (e as Error).message }, "feed ingest failed");
     return { error: (e as Error).message };
-  } finally {
-    running = false;
-    await releaseLock();
   }
 }
 

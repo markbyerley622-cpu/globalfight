@@ -13,6 +13,10 @@ export interface FeedVideo {
   durationSeconds?: number; // used by mock data
   topic?: FeedTopic | null;
   tags?: string[];
+  /** Promotion slug from lib/promotions, or null for independent media. */
+  promotion?: string | null;
+  /** Discipline slug matching SPORT_PILLS. */
+  discipline?: string | null;
   addedAt?: number; // when it entered the catalog
 }
 

@@ -22,6 +22,7 @@ import { SITE } from "@/lib/config";
 import { SPORT_LABEL, formatSportRecord } from "@/lib/sports";
 import { Flag } from "@/components/flag";
 import { ageFrom, koPercentage, formatRecord, formatDate } from "@/lib/utils";
+import { embedUrl } from "@/lib/feed/channels";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -313,7 +314,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                   const yt = youTubeId(v.url);
                   return yt ? (
                     <div key={v.id} className="aspect-video overflow-hidden rounded-lg">
-                      <iframe className="size-full" src={`https://www.youtube.com/embed/${yt}`} title={v.caption ?? "video"} allowFullScreen loading="lazy" />
+                      <iframe className="size-full" src={embedUrl(yt) ?? undefined} title={v.caption ?? "video"} allowFullScreen loading="lazy" />
                     </div>
                   ) : (
                     <a key={v.id} href={v.url} target="_blank" rel="noopener noreferrer" className="flex aspect-video items-center justify-center rounded-lg border border-ink-700 bg-ink-950/40 text-sm text-mist hover:text-chalk">{v.caption ?? "Watch video"}</a>

@@ -6,6 +6,7 @@ import { ExternalLink, Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import type { ForumAttachment } from "@/lib/forum/embeds";
+import { embedUrl } from "@/lib/feed/channels";
 
 // ─── External embed script loader ─────────────────────────────────────────
 // Instagram / X / TikTok render via each platform's official embed script. We
@@ -137,7 +138,7 @@ export function AttachmentGrid({ attachments }: { attachments: ForumAttachment[]
       {youtube.map((a, i) => (
         <div key={`yt${i}`} className="relative overflow-hidden rounded-card border border-ink-700" style={{ aspectRatio: "16 / 9" }}>
           <iframe
-            src={`https://www.youtube.com/embed/${a.videoId}`}
+            src={embedUrl(a.videoId) ?? undefined}
             title="YouTube video"
             loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

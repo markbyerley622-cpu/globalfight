@@ -23,6 +23,8 @@ export async function dbHydrateCatalog(max = 8000): Promise<FeedVideo[]> {
       viewCount: r.viewCount ?? undefined,
       topic: (r.topic as FeedTopic | null) ?? null,
       tags: r.tags,
+      promotion: r.promotion,
+      discipline: r.discipline,
       addedAt: r.addedAt.getTime(),
     }));
   } catch (e) {
@@ -40,6 +42,7 @@ export function dbPersistVideos(videos: FeedVideo[], now: number): void {
         description: v.description ?? null,
         publishedAt: v.publishedAt ? new Date(v.publishedAt) : null,
         viewCount: v.viewCount ?? null, topic: v.topic ?? null, tags: v.tags ?? [],
+        promotion: v.promotion ?? null, discipline: v.discipline ?? null,
         addedAt: new Date(now),
       })),
       skipDuplicates: true,
@@ -91,4 +94,66 @@ export function dbPersistInterest(key: string, tag: string, amount: number): voi
   void prisma.feedInterest
     .upsert({ where: { key_tag: { key, tag } }, create: { key, tag, weight: amount }, update: { weight: { increment: amount } } })
     .catch(() => {});
+}
+
+// ---- browse ----
+// The /clips grid asks a different question from the personalised reel: "what
+// is NEWEST from this promotion / discipline". That is a straight indexed
+// Postgres read, not a ranking problem, so it deliberately does not go through
+// the in-memory engine — which exists to personalise an endless reel and needs
+// the catalog hydrated before it can answer anything.
+
+export interface BrowseFilter {
+  promotion?: string | null;
+  discipline?: string | null;
+  limit?: number;
+}
+
+export async function listRecentVideos(f: BrowseFilter = {}): Promise<FeedVideo[]> {
+  if (USE_MOCK_DATA) return [];
+  try {
+    const rows = await prisma.feedVideo.findMany({
+      where: {
+        ...(f.promotion ? { promotion: f.promotion } : {}),
+        ...(f.discipline ? { discipline: f.discipline } : {}),
+      },
+      orderBy: [{ publishedAt: "desc" }, { addedAt: "desc" }],
+      take: Math.min(Math.max(f.limit ?? 48, 1), 96),
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      channel: r.channel,
+      channelId: r.channelId ?? undefined,
+      description: r.description ?? undefined,
+      publishedAt: r.publishedAt ? r.publishedAt.toISOString() : "",
+      viewCount: r.viewCount ?? undefined,
+      topic: (r.topic as FeedTopic | null) ?? null,
+      tags: r.tags,
+      promotion: r.promotion,
+      discipline: r.discipline,
+      addedAt: r.addedAt.getTime(),
+    }));
+  } catch (e) {
+    flog.error({ op: "db.listRecentVideos", err: (e as Error).message }, "browse query failed");
+    return [];
+  }
+}
+
+/** Which promotions/disciplines actually have video right now — so the filter
+ *  bar only ever offers a chip that returns something. */
+export async function videoFacets(): Promise<{ promotions: string[]; disciplines: string[] }> {
+  if (USE_MOCK_DATA) return { promotions: [], disciplines: [] };
+  try {
+    const [p, d] = await Promise.all([
+      prisma.feedVideo.groupBy({ by: ["promotion"], where: { promotion: { not: null } }, _count: { _all: true } }),
+      prisma.feedVideo.groupBy({ by: ["discipline"], where: { discipline: { not: null } }, _count: { _all: true } }),
+    ]);
+    return {
+      promotions: p.sort((a, b) => b._count._all - a._count._all).map((r) => r.promotion!).filter(Boolean),
+      disciplines: d.sort((a, b) => b._count._all - a._count._all).map((r) => r.discipline!).filter(Boolean),
+    };
+  } catch {
+    return { promotions: [], disciplines: [] };
+  }
 }

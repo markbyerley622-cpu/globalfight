@@ -1,6 +1,7 @@
-// Parse YouTube channel RSS (zero quota) into normalized videos.
-import { CHANNELS, channelUrl, type FeedChannel } from "./channels";
-import type { FeedVideo, FeedTopic } from "./types";
+// Parse YouTube channel RSS (zero quota, no API key) into normalized videos.
+import { activeChannels, channelUrl, type TrustedChannel } from "./channels";
+import type { FeedVideo } from "./types";
+import { flog } from "./log";
 
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -13,7 +14,12 @@ function decodeEntities(str = ""): string {
 }
 const pick = (s: string, re: RegExp): string => { const m = re.exec(s); return m ? m[1] : ""; };
 
-function parseFeed(xml: string, topic: FeedTopic): FeedVideo[] {
+// Descriptions render as TEXT, never HTML — but tags are stripped on the way IN
+// as well. The safe thing to store is the thing that cannot be mistaken for
+// markup later by a surface that forgets.
+const stripTags = (s: string): string => s.replace(/<[^>]*>/g, "");
+
+function parseFeed(xml: string, c: TrustedChannel): FeedVideo[] {
   const out: FeedVideo[] = [];
   const blocks = xml.split("<entry>").slice(1);
   for (const b of blocks) {
@@ -22,12 +28,15 @@ function parseFeed(xml: string, topic: FeedTopic): FeedVideo[] {
     out.push({
       id,
       title: decodeEntities(pick(b, /<title>([\s\S]*?)<\/title>/)),
-      channel: decodeEntities(pick(b, /<name>([^<]+)<\/name>/)),
-      channelId: pick(b, /<yt:channelId>([^<]+)<\/yt:channelId>/) || undefined,
-      description: decodeEntities(pick(b, /<media:description>([\s\S]*?)<\/media:description>/)).slice(0, 300),
+      channel: decodeEntities(pick(b, /<name>([^<]+)<\/name>/)) || c.name,
+      // Taken from the TRUSTED entry, not from the payload: a feed body must not
+      // be able to claim its videos belong to a different channel.
+      channelId: c.channelId,
+      description: stripTags(decodeEntities(pick(b, /<media:description>([\s\S]*?)<\/media:description>/))).slice(0, 300),
       publishedAt: pick(b, /<published>([^<]+)<\/published>/),
       viewCount: Number(pick(b, /<media:statistics\s+views="(\d+)"/)) || undefined,
-      topic,
+      promotion: c.promotion,
+      discipline: c.discipline,
     });
   }
   return out;
@@ -35,19 +44,30 @@ function parseFeed(xml: string, topic: FeedTopic): FeedVideo[] {
 
 export interface RssResult { videos: FeedVideo[]; channelsOk: number; channelsTotal: number; }
 
-// One channel, with an 8s timeout and a single retry — never let one slow or
-// hung feed stall the whole ingest (Promise.allSettled isolates the rest).
-async function fetchChannel(c: FeedChannel): Promise<FeedVideo[]> {
+/**
+ * One channel, with an 8s timeout and a single retry — one slow feed must never
+ * stall the ingest (Promise.allSettled isolates the rest).
+ *
+ * NO CONDITIONAL GET. It was built here and then removed, because YouTube's RSS
+ * server does not support it: the response carries no ETag and no Last-Modified,
+ * and a request sent with either If-None-Match or If-Modified-Since is answered
+ * 200 with a full body every time — measured against the live endpoint. All it
+ * advertises is `Cache-Control: max-age=900`, and the ingest cron runs hourly,
+ * so there is no repeat fetch inside that window to save. Keeping the machinery
+ * would have meant a table, two queries per channel and a "notModified" counter
+ * that could only ever report zero.
+ */
+async function fetchChannel(c: TrustedChannel): Promise<FeedVideo[]> {
   const url = channelUrl(c);
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetch(url, {
-        headers: { "user-agent": "CombatRegister/1.0" },
+        headers: { "user-agent": "CombatReviews/1.0 (+https://globalfight.onrender.com)" },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
-      if (!res.ok) throw new Error(`RSS ${res.status} ${url}`);
-      return parseFeed(await res.text(), c.topic);
+      if (!res.ok) throw new Error(`RSS ${res.status} ${c.handle}`);
+      return parseFeed(await res.text(), c);
     } catch (e) {
       lastErr = e;
     }
@@ -56,12 +76,20 @@ async function fetchChannel(c: FeedChannel): Promise<FeedVideo[]> {
 }
 
 export async function fetchRss(): Promise<RssResult> {
-  const results = await Promise.allSettled(CHANNELS.map(fetchChannel));
+  const channels = activeChannels();
+  const results = await Promise.allSettled(channels.map(fetchChannel));
   const videos: FeedVideo[] = [];
   let ok = 0;
-  for (const r of results) {
-    if (r.status === "fulfilled") { videos.push(...r.value); ok++; }
-    else console.error("[feed/rss]", (r.reason as Error).message);
-  }
-  return { videos, channelsOk: ok, channelsTotal: CHANNELS.length };
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      videos.push(...r.value);
+      ok++;
+    } else {
+      flog.error(
+        { op: "rss.channel", channel: channels[i].handle, err: (r.reason as Error).message },
+        "channel feed failed",
+      );
+    }
+  });
+  return { videos, channelsOk: ok, channelsTotal: channels.length };
 }

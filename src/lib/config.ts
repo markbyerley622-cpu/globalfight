@@ -117,6 +117,10 @@ export const PRIMARY_NAV: NavItem[] = [
       { label: "Podcasts", href: "/podcasts" },
     ],
   },
+  // Watch is reachable from the primary nav rather than the pillar bar: the
+  // five pillars are fixed by design and a bottom bar that grows a sixth tab
+  // stops being a pillar bar. /clips had no entry point at all before this.
+  { label: "Watch", href: "/clips" },
 ];
 
 // Every href here MUST resolve. `/about` and `/data` were linked and did not

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-client";
 import { ThreadDiscussion } from "@/components/forums/thread-discussion";
 import { suggestedCommunitySlug } from "@/lib/community/topics";
 import type { FeedVideo } from "./client";
+import { embedUrl } from "@/lib/feed/channels";
 
 interface Discussion {
   slug: string;
@@ -107,7 +108,7 @@ export function DiscussionSheet({ video, onClose }: { video: FeedVideo; onClose:
           <div className="relative mx-auto aspect-video w-full max-w-2xl">
             <iframe
               className="absolute inset-0 size-full"
-              src={`https://www.youtube.com/embed/${video.id}?playsinline=1&rel=0&modestbranding=1`}
+              src={embedUrl(video.id) ? `${embedUrl(video.id)}?playsinline=1&rel=0&modestbranding=1` : undefined}
               title={video.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen

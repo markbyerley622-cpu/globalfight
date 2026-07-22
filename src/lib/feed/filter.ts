@@ -29,11 +29,29 @@ const NOISE: Record<string, string[]> = {
 
 const hay = (v: FeedVideo) => `${v.title} ${v.description || ""} ${v.channel || ""}`.toLowerCase();
 
+// A trusted channel's declared discipline, expressed in the legacy topic
+// vocabulary. Only used as a FALLBACK: keyword classification still wins, so a
+// Muay Thai bout on ONE's channel is still tagged muaythai rather than being
+// flattened to the channel default.
+const TOPIC_FOR_DISCIPLINE: Record<string, FeedTopic> = {
+  mma: "ufc",
+  boxing: "boxing",
+  "muay-thai": "muaythai",
+  kickboxing: "kickboxing",
+  bjj: "bjj",
+  wrestling: "bjj",
+  "bare-knuckle": "ufc",
+};
+
 export function classify(video: FeedVideo): FeedTopic | null {
   if (video.topic && TOPIC_IDS.has(video.topic)) return video.topic;
   const text = hay(video);
   for (const t of TOPICS) if (t.match.some((k) => text.includes(k))) return t.id;
-  return null;
+  // Nothing matched the text — but if an ALLOW-LISTED channel published it we
+  // already know the discipline, and dropping an official promotion upload
+  // because its title lacked a keyword is how the catalog goes quiet on the
+  // exact days it should be loudest.
+  return (video.discipline && TOPIC_FOR_DISCIPLINE[video.discipline]) || null;
 }
 
 export function isFight(video: FeedVideo): boolean {
