@@ -6,6 +6,7 @@ import { ChevronLeft, Heart, Clock, Bookmark, Play, Trash2, Plus, X, FolderPlus 
 import { cn } from "@/lib/utils";
 import { cleanTitle } from "./client";
 import { TOPIC_LABEL } from "@/lib/feed/tags";
+import { embedUrl } from "@/lib/feed/channels";
 import {
   fetchLibrary, fetchCollection, createCollection, deleteCollection, unsaveVideo,
   type CollectionMeta, type LibraryItem,
@@ -152,7 +153,7 @@ export function LibraryView() {
               <button onClick={() => setPlaying(null)} aria-label="Close" className="flex size-9 items-center justify-center rounded-full border border-ink-700 bg-ink-850 text-chalk"><X className="size-5" /></button>
             </div>
             <div className="aspect-video w-full overflow-hidden rounded-card border border-ink-700 bg-black">
-              <iframe src={`https://www.youtube-nocookie.com/embed/${playing.videoId}?autoplay=1&rel=0`} className="size-full" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              <iframe src={embedUrl(playing.videoId) ? `${embedUrl(playing.videoId)}?autoplay=1&rel=0` : undefined} className="size-full" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
           </div>
         </div>

@@ -19,7 +19,10 @@ import { isFollowingFighter } from "@/lib/follows";
 import { FollowButton } from "@/components/follow-button";
 import { getFighterPublicProfile } from "@/lib/fighters/profile";
 import { SITE } from "@/lib/config";
-import { SPORT_LABEL, formatSportRecord } from "@/lib/sports";
+import { SPORT_LABEL, formatSportRecord, SPORTS } from "@/lib/sports";
+import { recommendVideos } from "@/lib/feed/recommend";
+import { VideoRail } from "@/components/feed/video-rail";
+import { VideoCard, VideoCardProvider } from "@/components/feed/video-card";
 import { Flag } from "@/components/flag";
 import { ageFrom, koPercentage, formatRecord, formatDate } from "@/lib/utils";
 import { embedUrl } from "@/lib/feed/channels";
@@ -60,6 +63,18 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
   const age = ageFrom(fighter.birthDate);
   const ko = koPercentage(fighter.koWins, fighter.wins);
   const sportLabel = SPORT_LABEL[profile.sport] ?? profile.sport;
+
+  // Contextual video, from what this page ALREADY knows: the fighter's name,
+  // their discipline, and the promotions they have actually fought for. One
+  // query — see lib/feed/recommend.
+  const fighterVideos = await recommendVideos({
+    fighterNames: [profile.name],
+    disciplines: [SPORTS.find((sp) => sp.value === profile.sport)?.slug ?? ""].filter(Boolean),
+    // No promotion context: the Fight type carries no promotion, and adding a
+    // query to fetch one would buy a weaker signal than the two above.
+    viewerId: currentUser?.id ?? null,
+    limit: 4,
+  });
 
   const socialIcon: Record<string, typeof Globe> = { instagram: Instagram, twitter: Twitter, web: Globe, website: Globe };
   const allSocials = [
@@ -309,18 +324,35 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
           {profile.videos.length > 0 && (
             <div className="card-surface p-6">
               <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-fog">Videos</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {profile.videos.map((v) => {
-                  const yt = youTubeId(v.url);
-                  return yt ? (
-                    <div key={v.id} className="aspect-video overflow-hidden rounded-lg">
-                      <iframe className="size-full" src={embedUrl(yt) ?? undefined} title={v.caption ?? "video"} allowFullScreen loading="lazy" />
-                    </div>
-                  ) : (
-                    <a key={v.id} href={v.url} target="_blank" rel="noopener noreferrer" className="flex aspect-video items-center justify-center rounded-lg border border-ink-700 bg-ink-950/40 text-sm text-mist hover:text-chalk">{v.caption ?? "Watch video"}</a>
-                  );
-                })}
-              </div>
+              {/* Curated videos now use the SHARED card. They used to mount one
+                  iframe each on page load — a third-party document per video,
+                  before anyone asked to watch. Thumbnail until clicked, and one
+                  player at a time, exactly like every other video surface. */}
+              <VideoCardProvider>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {profile.videos.map((v) => {
+                    const yt = youTubeId(v.url);
+                    return yt ? (
+                      <VideoCard
+                        key={v.id}
+                        video={{ id: yt, title: v.caption ?? profile.name, channel: profile.name }}
+                      />
+                    ) : (
+                      <a key={v.id} href={v.url} target="_blank" rel="noopener noreferrer" className="flex aspect-video items-center justify-center rounded-lg border border-ink-700 bg-ink-950/40 text-sm text-mist hover:text-chalk">{v.caption ?? "Watch video"}</a>
+                    );
+                  })}
+                </div>
+              </VideoCardProvider>
+            </div>
+          )}
+
+          {fighterVideos.length > 0 && (
+            <div className="card-surface p-6">
+              <VideoRail
+                videos={fighterVideos}
+                title={`Watch · ${profile.name}`}
+                moreHref="/clips"
+              />
             </div>
           )}
 

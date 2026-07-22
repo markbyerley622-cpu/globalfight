@@ -4,6 +4,7 @@ import type { HomeData } from "@/lib/home/recommendations";
 import type { FightEvent } from "@/lib/types";
 import { DiscoveryEventCard } from "@/components/events/discovery-event-card";
 import { TrackClick } from "@/components/analytics-track";
+import { VideoRail } from "@/components/feed/video-rail";
 
 /**
  * Renders the intent-ranked home sections from the recommendation service.
@@ -28,6 +29,9 @@ export function PersonalizedHome({ data }: { data: HomeData }) {
       {data.trending.length > 0 && (
         <Rail icon={TrendingUp} title={data.personalized ? "More upcoming" : "Upcoming"} events={data.trending} />
       )}
+      {/* Last, and already density-clamped by the service — the home rails are
+          event-led, and video is the garnish rather than the meal. */}
+      <VideoRail videos={data.videos} title="Watch" moreHref="/clips" />
     </div>
   );
 }

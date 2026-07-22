@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/category-icon";
 import { getArticle, getArticles } from "@/lib/repo";
 import { SITE } from "@/lib/config";
+import { recommendVideos, disciplineFromCategory } from "@/lib/feed/recommend";
+import { VideoRail } from "@/components/feed/video-rail";
+import { PROMOTIONS } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
 
 // News links go straight to the original article (see the redirect below); this
@@ -32,6 +35,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   // Straight to the original article whenever we have its URL.
   if (article.sourceUrl) redirect(article.sourceUrl);
   const related = (await getArticles()).filter((a) => a.id !== article.id).slice(0, 3);
+
+  // Video for this story, from what the article already carries: its category
+  // (a sport name) and any promotion named in the headline. NOTE: every article
+  // currently in the database has a sourceUrl and is redirected off-site above,
+  // so this only renders for CMS-authored pieces — see the audit note in the
+  // commit. It is wired now so the first hand-written article gets it free.
+  const articleVideos = await recommendVideos({
+    disciplines: [disciplineFromCategory(article.category)].filter((x): x is string => !!x),
+    promotions: PROMOTIONS.filter((pr) =>
+      pr.aliases.some((a) => a.length >= 5 && article.title.toLowerCase().includes(a)),
+    ).map((pr) => pr.slug),
+    limit: 4,
+  });
 
   const jsonLd = {
     "@context": "https://schema.org", "@type": "NewsArticle",
@@ -72,6 +88,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       </article>
 
       <div className="container-cr max-w-3xl border-t border-ink-800 py-8">
+<VideoRail videos={articleVideos} title="Watch related" moreHref="/clips" />
         <h2 className="mb-4 font-display text-lg font-bold uppercase text-chalk">Related</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           {related.map((a) => (

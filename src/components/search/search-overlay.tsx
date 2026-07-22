@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass, Dumbbell, BadgeCheck, User } from "lucide-react";
+import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass, Dumbbell, BadgeCheck, User, Play } from "lucide-react";
 import { Flag } from "@/components/flag";
 
 type FighterHit = { slug: string; name: string; nickname?: string | null; countryCode?: string | null; nationality?: string | null; record: string };
@@ -12,11 +12,12 @@ type Results = {
   gyms: { slug: string; name: string; place: string | null; verified: boolean; memberCount: number; disciplines: string[] }[];
   people: { username: string; name: string | null; image: string | null; role: string; reputation: number }[];
   articles: { slug: string; title: string; category: string }[];
+  videos: { id: string; title: string; channel: string; promotion: string | null; reason: string }[];
   communities: { slug: string; name: string }[];
   threads: { slug: string; categorySlug: string; title: string; categoryName: string }[];
   pages: { label: string; href: string }[];
 };
-const EMPTY: Results = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], pages: [] };
+const EMPTY: Results = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], videos: [], pages: [] };
 
 export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");
@@ -55,7 +56,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   // renders "No results for …" ABOVE its own visible rows.
   const total =
     res.fighters.length + res.events.length + res.gyms.length + res.people.length +
-    res.articles.length + res.communities.length + res.threads.length + res.pages.length;
+    res.articles.length + res.videos.length + res.communities.length + res.threads.length + res.pages.length;
 
   const row = (key: string, href: string, icon: React.ReactNode, title: React.ReactNode, sub?: React.ReactNode) => (
     <Link key={key} href={href} onClick={onClose} className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-ink-700/70">
@@ -112,6 +113,13 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
           {res.articles.length > 0 && head("News")}
           {res.articles.map((a) => row(`a-${a.slug}`, `/news/${a.slug}`, <Newspaper className="size-4" />, a.title, a.category))}
+
+          {/* Video links to the Watch page filtered by that video's promotion —
+              search must not become a fourth place that mounts a player. */}
+          {res.videos.length > 0 && head("Videos")}
+          {res.videos.map((v) =>
+            row(`v-${v.id}`, v.promotion ? `/clips?promotion=${v.promotion}` : "/clips", <Play className="size-4" />, v.title, v.channel),
+          )}
 
           {res.communities.length > 0 && head("Communities")}
           {res.communities.map((c) => row(`c-${c.slug}`, `/community/${c.slug}`, <Users className="size-4" />, c.name))}

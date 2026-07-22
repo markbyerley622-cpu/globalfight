@@ -3,6 +3,7 @@ import { searchFighters, getUpcomingEvents, getResults, getArticles } from "@/li
 import { getCommunities } from "@/lib/community/repo";
 import { getThreads } from "@/lib/forum/repo";
 import { prisma } from "@/lib/db";
+import { recommendVideos } from "@/lib/feed/recommend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,14 +35,14 @@ const PAGES = [
 // people who have chosen a public username, and nothing about where they are.
 export async function GET(req: Request) {
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim();
-  const empty = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], pages: [] };
+  const empty = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], videos: [], pages: [] };
   if (!q) return NextResponse.json(empty);
 
   const ql = q.toLowerCase();
   const has = (s?: string | null) => (s ?? "").toLowerCase().includes(ql);
   const contains = { contains: q, mode: "insensitive" as const };
 
-  const [fighters, upcoming, results, articles, communities, threadsPage, gyms, people] = await Promise.all([
+  const [fighters, upcoming, results, articles, communities, threadsPage, gyms, people, videos] = await Promise.all([
     searchFighters(q).catch(() => []),
     getUpcomingEvents().catch(() => []),
     getResults().catch(() => []),
@@ -71,6 +72,10 @@ export async function GET(req: Request) {
         select: { username: true, name: true, image: true, registryRole: true, reputation: true },
       })
       .catch(() => []),
+    // Video results come from the SAME recommender every other surface uses, so
+    // a search for a fighter ranks an interview above a generic promotion clip
+    // by the same rules — not a second, subtly different matcher.
+    recommendVideos({ text: q, fighterNames: [q], limit: 5 }).catch(() => []),
   ]);
 
   const events = [...upcoming, ...results]
@@ -102,6 +107,10 @@ export async function GET(req: Request) {
       .map((c) => ({ slug: c.slug, name: c.name })),
     threads: (threadsPage.items ?? []).filter((t) => has(t.title) || has(t.categoryName)).slice(0, 5)
       .map((t) => ({ slug: t.slug, categorySlug: t.categorySlug, title: t.title, categoryName: t.categoryName })),
+    videos: videos.map((v) => ({
+      id: v.id, title: v.title, channel: v.channel,
+      promotion: v.promotion, reason: v.reason,
+    })),
     pages: PAGES.filter((p) => has(p.label)).slice(0, 5),
   });
 }

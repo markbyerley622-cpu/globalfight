@@ -9,6 +9,8 @@ import { safeNewsCover } from "@/lib/media-safe";
 import type { Article, Fight } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { orderFights, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
+import { recommendVideos } from "@/lib/feed/recommend";
+import { VideoRail } from "@/components/feed/video-rail";
 import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowingPromotion, isFollowingEvent } from "@/lib/follows";
@@ -71,6 +73,22 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const coveragePool = await getEventCoverage(coverageTerms(event.promotion, fights, event.name), 30);
   const coverage = rankCoverage(coveragePool, 8);
 
+  // Video for THIS card, windowed hard around the event date.
+  //
+  // Without the window a promotion-slug match would happily put last year's
+  // Embedded on next month's card — the promotion is right and the event is
+  // not, which is exactly the failure the product called out. Fight-week video
+  // lands in the ~3 weeks before a card; afterwards the same window keeps the
+  // highlights and post-fight reaction attached to the card they belong to.
+  const eventVideos = await recommendVideos({
+    promotions: [resolvePromotion(event.promotion).slug],
+    fighterNames: fights.flatMap((f) => [f.red.name, f.blue.name]),
+    publishedAfter: new Date(eventDate.getTime() - 21 * 86_400_000),
+    publishedBefore: new Date(eventDate.getTime() + 10 * 86_400_000),
+    viewerId: (await getCurrentUser())?.id ?? null,
+    limit: 4,
+  });
+
   // Promotion personality: every event uses the SAME layout, but its promotion's
   // brand colour flows through the hero/schedule/main-event accents via --accent.
   const accent = resolvePromotion(event.promotion).brand;
@@ -114,7 +132,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const spy: SpySection[] = [
     { id: "card", label: "Fight card", badge: fights.length },
     { id: "card-talk", label: "Card talk" },
-    ...(coverage.length ? [{ id: "coverage", label: "Coverage", badge: coverage.length } satisfies SpySection] : []),
+    ...(coverage.length || eventVideos.length
+      ? [{ id: "coverage", label: "Coverage", badge: coverage.length + eventVideos.length } satisfies SpySection]
+      : []),
   ];
 
   return (
@@ -201,6 +221,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
       {coverage.length > 0 && (
         <ScrollSection id="coverage" title="Related coverage">
+          {/* Video sits INSIDE the coverage section rather than claiming a
+              scroll-spy section of its own: it is the same job as the articles
+              below it — what else there is to consume about this card. */}
+          <VideoRail videos={eventVideos} title="Watch" moreHref="/clips" />
           <CoveragePanel articles={coverage} />
         </ScrollSection>
       )}
