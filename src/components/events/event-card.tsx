@@ -111,7 +111,7 @@ export function EventCard({ event }: { event: EventCardData }) {
 
         {/* Act without opening the event. Same components as the event page. */}
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-800 pt-3">
-          <FollowButton kind="event" slug={event.slug} initialFollowing={event.following} size="sm" label="Remind me" />
+          <FollowButton kind="event" slug={event.slug} name={event.name} initialFollowing={event.following} size="sm" label="Remind me" />
           {!isDone && !isOff && (
             <AddToCalendar
               slug={event.slug}

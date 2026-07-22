@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, BellRing, UserCheck, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-client";
+import { broadcastFollowChange } from "@/components/layout/follow-sync";
 
 // Entity kind → its follow endpoint. Adding a followable thing is one line here,
 // never a new component.
@@ -23,10 +25,28 @@ const ICONS = {
 export type FollowKind = keyof typeof ENDPOINT;
 
 /**
- * Reusable follow toggle for a fighter, promotion or event. Optimistic, backed
- * by /api/{fighters|promotions|events}/{slug}/follow. Signed-out users are sent
- * to /account. One component, used on fighter profiles, event headers, event
- * cards and anywhere else an entity can be followed — no per-surface variants.
+ * Reusable follow toggle for a fighter, promotion, event or person. Optimistic,
+ * backed by /api/{fighters|promotions|events|users}/{slug}/follow. Signed-out
+ * users are sent to /account. One component, used on fighter profiles, event
+ * headers, event cards, map pins and feed cards — no per-surface variants.
+ *
+ * ── HOW THE REST OF THE APP STAYS IN SYNC ────────────────────────────────
+ * There is no client cache in this codebase — no React Query, no SWR, no
+ * store — and this deliberately does not introduce one. Postgres is the single
+ * source of truth and every surface that shows follow state (the Following
+ * header counts, the feed itself, the recommendation rails, the related-video
+ * rail, the empty state) is a SERVER component derived from it.
+ *
+ * So the invalidation primitive is router.refresh(), which this codebase
+ * already uses for exactly this job in the avatar uploader, the forum thread
+ * and the locale switcher: it re-runs the server components in place, without
+ * a page reload, preserving scroll and client state. One mutation, one
+ * refresh, every dependent surface re-derived — and nothing to go stale,
+ * because there is no second copy of the truth.
+ *
+ * The refresh fires only AFTER the server confirms. Refreshing optimistically
+ * would re-render from a database that had not been written yet and visually
+ * undo the flip the user just made.
  */
 export function FollowButton({
   kind,
@@ -50,8 +70,15 @@ export function FollowButton({
   className?: string;
 }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [following, setFollowing] = useState(initialFollowing);
   const [busy, setBusy] = useState(false);
+
+  // useState ignores later prop values, so after a router.refresh() the button
+  // would keep its own copy forever. Re-sync when the server sends a different
+  // answer — this is what stops the one piece of client state from drifting
+  // away from the source of truth it was seeded from.
+  useEffect(() => { setFollowing(initialFollowing); }, [initialFollowing]);
 
   async function toggle() {
     if (!user) { window.location.href = "/account"; return; }
@@ -67,8 +94,20 @@ export function FollowButton({
         // second tab must all mean the same thing rather than undoing it.
         body: JSON.stringify({ follow: optimistic }),
       });
-      if (res.ok) setFollowing(!!(await res.json()).following);
-      else setFollowing(!optimistic);
+      if (res.ok) {
+        setFollowing(!!(await res.json()).following);
+        // Re-derive every server-rendered surface: header counts, the feed,
+        // the rails, the empty state. Not awaited — the button is already
+        // correct and the user must not wait on a re-render.
+        router.refresh();
+        // Tell OTHER TABS to re-derive. The listener lives in AppShell, not
+        // here: a tab showing a feed with no fighter cards has no FollowButton
+        // mounted, so a listener in this component would simply not exist in
+        // the tab that most needs telling.
+        broadcastFollowChange();
+      } else {
+        setFollowing(!optimistic);
+      }
     } catch {
       setFollowing(!optimistic);
     } finally {

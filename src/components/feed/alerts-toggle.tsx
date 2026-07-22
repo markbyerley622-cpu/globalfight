@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,11 @@ export function AlertsProvider({
 }) {
   const [on, setOn] = useState(initial);
   const [busy, setBusy] = useState(false);
+
+  // Same reason as FollowButton: useState ignores later props, so without this
+  // a router.refresh() elsewhere would leave the toggle showing a stale value
+  // it captured on first mount.
+  useEffect(() => { setOn(initial); }, [initial]);
 
   const toggle = useCallback(() => {
     if (!signedIn) { window.location.href = "/account"; return; }

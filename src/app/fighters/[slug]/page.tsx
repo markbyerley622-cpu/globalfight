@@ -160,7 +160,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
               </p>
               {profile.tagline && <p className="mt-1 text-sm italic text-fog">{profile.tagline}</p>}
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                {!isOwner && <FollowButton kind="fighter" slug={slug} initialFollowing={following_} />}
+                {!isOwner && <FollowButton kind="fighter" slug={slug} name={profile.name} initialFollowing={following_} />}
                 <ClaimProfileButton slug={slug} ownerId={profile.ownerId} />
               </div>
             </div>

@@ -55,7 +55,7 @@ export function EventHeader({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isRealOrg && (
-            <FollowButton kind="promotion" slug={event.promotion!} initialFollowing={promotionFollowing} size="sm" />
+            <FollowButton kind="promotion" slug={event.promotion!} name={event.promotion!} initialFollowing={promotionFollowing} size="sm" />
           )}
           <Badge tone={badgeTone}>
             {isLive && <span className="live-dot" aria-hidden />} {event.status}
@@ -70,6 +70,7 @@ export function EventHeader({
         <FollowButton
           kind="event"
           slug={event.slug}
+          name={event.name}
           initialFollowing={eventFollowing}
           size="sm"
           label="Remind me"

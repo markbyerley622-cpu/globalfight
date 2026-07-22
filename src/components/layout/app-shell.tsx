@@ -10,6 +10,7 @@ import { BottomTabBar } from "./bottom-tab-bar";
 import { SectionTabs, activeSection, sectionIndex } from "./section-tabs";
 import { SponsorsStrip } from "./sponsors-strip";
 import { NavSheet } from "./nav-sheet";
+import { FollowSync } from "./follow-sync";
 import { AccountMenu } from "./account-menu";
 import { RotatingBackdrop } from "./rotating-backdrop";
 import { LanguageSwitcher } from "./language-switcher";
@@ -146,6 +147,8 @@ export function AppShell({
       </div>
 
       <NavSheet open={navOpen} onClose={() => setNavOpen(false)} />
+      {/* Always mounted: keeps other tabs in step after a follow. */}
+      <FollowSync />
     </div>
   );
 }
