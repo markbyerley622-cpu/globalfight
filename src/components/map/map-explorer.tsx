@@ -209,7 +209,10 @@ export function MapExplorer({ data }: { data: MapData }) {
 
         {/* Map surface. The sheet lives INSIDE this box on phones, Apple-Maps
             style — the map is never navigated away from, only covered. */}
-        <div className="relative mx-4 mb-4 h-[72dvh] min-h-[26rem] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)] lg:h-auto lg:min-h-0 lg:flex-1">
+        {/* data-hscroll: Location is now its own swipe section, so without this
+            a horizontal PAN of the map would be read as "swipe to Gyms" and
+            drag the user off the map they were reading. */}
+        <div data-hscroll className="relative mx-4 mb-4 h-[72dvh] min-h-[26rem] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)] lg:h-auto lg:min-h-0 lg:flex-1">
           <MapCanvas
             className="cr-map absolute inset-0"
             groups={groups}

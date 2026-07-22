@@ -1853,6 +1853,9 @@ model Gym {
 
   website   String?
   instagram String?
+  facebook  String?
+  youtube   String?
+  tiktok    String?
   phone     String?
   email     String?
   /// Free text ("Mon–Fri 6am–9pm · Open mat Sat 11am"). Structured opening
@@ -1873,6 +1876,7 @@ model Gym {
   members  GymMember[]
   claims   GymClaim[]
   checkIns CheckIn[]
+  photos   GymPhoto[]
 
   @@index([countryCode])
   @@index([latitude, longitude])
@@ -1956,4 +1960,26 @@ model UserFollow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+/// A gallery image on a gym page. Stores BOTH the full and thumb URLs the image
+/// pipeline returns, plus the intrinsic dimensions — a gallery that renders
+/// without width/height reflows the whole page as each image lands.
+model GymPhoto {
+  id      String @id @default(cuid())
+  gymId   String
+  gym     Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  url      String
+  thumbUrl String
+  width    Int    @default(0)
+  height   Int    @default(0)
+  caption  String?
+  /// Manual ordering; ties break on createdAt.
+  sortOrder Int   @default(0)
+
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([gymId, sortOrder])
 }

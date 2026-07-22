@@ -13,6 +13,7 @@ import { NavSheet } from "./nav-sheet";
 import { AccountMenu } from "./account-menu";
 import { RotatingBackdrop } from "./rotating-backdrop";
 import { LanguageSwitcher } from "./language-switcher";
+import { PillarNav } from "./pillar-nav";
 
 /**
  * App-wide shell: a 100dvh flex frame with a fixed top bar (logo · search ·
@@ -105,6 +106,9 @@ export function AppShell({
         <header className="z-40 shrink-0 border-b border-ink-800 bg-ink-950/90 backdrop-blur-xl">
           <div className="flex items-center gap-3 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
             <Logo sizeClass="h-9 lg:h-10" showWordmark={false} />
+            {/* Desktop pillars — the bottom bar is lg:hidden, so without this
+                Location was only reachable from the burger on a laptop. */}
+            <PillarNav className="ml-3 hidden lg:flex" />
             <div className="ml-auto flex items-center gap-2">
               <Link
                 href="/fighters"

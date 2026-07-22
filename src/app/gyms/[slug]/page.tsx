@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
-  MapPin, Globe, Phone, Instagram, Clock, BadgeCheck, Users, Flame, ShieldQuestion, Settings,
+  MapPin, Globe, Phone, Instagram, Clock, BadgeCheck, Users, Flame, ShieldQuestion, Settings, Facebook, Youtube,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -20,8 +20,13 @@ async function loadGym(slug: string) {
     select: {
       id: true, slug: true, name: true, description: true,
       logoUrl: true, heroUrl: true, address: true, city: true, region: true, country: true,
-      website: true, instagram: true, phone: true, hoursNote: true,
+      website: true, instagram: true, facebook: true, youtube: true, tiktok: true,
+      phone: true, hoursNote: true,
       disciplines: true, verified: true, memberCount: true, ownerId: true,
+      photos: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
+      },
       members: {
         orderBy: [{ role: "asc" }, { createdAt: "asc" }],
         take: 24,
@@ -166,7 +171,46 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
               <dd className="text-mist">{gym.phone}</dd>
             </>
           )}
+          {gym.facebook && (
+            <>
+              <dt className="pt-0.5 text-fog"><Facebook className="size-4" /></dt>
+              <dd className="text-mist">{gym.facebook}</dd>
+            </>
+          )}
+          {gym.youtube && (
+            <>
+              <dt className="pt-0.5 text-fog"><Youtube className="size-4" /></dt>
+              <dd className="text-mist">{gym.youtube}</dd>
+            </>
+          )}
         </dl>
+
+        {/* Gallery */}
+        {gym.photos.length > 0 && (
+          <Section title="Photos">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {gym.photos.map((ph) => (
+                <a
+                  key={ph.id}
+                  href={ph.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative aspect-square overflow-hidden rounded-xl border border-ink-700 bg-ink-850"
+                >
+                  <Image
+                    src={ph.thumbUrl}
+                    alt={ph.caption ?? `${gym.name} photo`}
+                    fill
+                    unoptimized
+                    loading="lazy"
+                    sizes="(max-width: 640px) 33vw, 160px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Who's here now */}
         {presence.sample.length > 0 && (

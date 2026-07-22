@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { isAdminRole } from "@/lib/admin/guard";
 import { countryCodeFor } from "@/lib/geo/gazetteer";
+import { authoriseGymEdit } from "@/lib/geo/gym-auth";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Gym page management — the capability an approved claim grants.
@@ -33,31 +32,20 @@ const Body = z.object({
     .nullable()
     .optional(),
   instagram: optionalText(80),
+  facebook: optionalText(80),
+  youtube: optionalText(80),
+  tiktok: optionalText(80),
   phone: optionalText(40),
   email: optionalText(120),
   hoursNote: optionalText(160),
   disciplines: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
 });
 
-async function authorise(slug: string) {
-  const user = await getCurrentUser();
-  if (!user) return { error: NextResponse.json({ error: "Sign in." }, { status: 401 }) };
-  const gym = await prisma.gym.findUnique({
-    where: { slug },
-    select: { id: true, ownerId: true, city: true, country: true, countryCode: true },
-  });
-  if (!gym) return { error: NextResponse.json({ error: "No such gym." }, { status: 404 }) };
-  if (gym.ownerId !== user.id && !isAdminRole(user.role)) {
-    return { error: NextResponse.json({ error: "You don't manage this gym." }, { status: 403 }) };
-  }
-  return { gym, user };
-}
-
 export async function PATCH(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const auth = await authorise(slug);
-  if ("error" in auth) return auth.error;
-  const { gym } = auth;
+  const auth = await authoriseGymEdit(slug);
+  if (!auth.ok) return auth.response;
+  const { gym } = auth.value;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -68,9 +56,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
   // Moving a gym between cities must move its pin too, or the map keeps
   // pointing at the old town.
   const movingCity = d.city !== undefined || d.country !== undefined;
-  const countryCode = movingCity
-    ? countryCodeFor(d.country !== undefined ? d.country : gym.country)
-    : undefined;
+  let countryCode: string | null | undefined;
+  if (movingCity) {
+    // The shared authoriser returns identity only, so the current country is
+    // read here rather than widening that helper for one caller.
+    const current = await prisma.gym.findUnique({ where: { id: gym.id }, select: { country: true } });
+    countryCode = countryCodeFor(d.country !== undefined ? d.country : current?.country ?? null);
+  }
 
   const updated = await prisma.gym.update({
     where: { id: gym.id },
@@ -83,6 +75,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
       countryCode,
       website: d.website,
       instagram: d.instagram,
+      facebook: d.facebook,
+      youtube: d.youtube,
+      tiktok: d.tiktok,
       phone: d.phone,
       email: d.email,
       hoursNote: d.hoursNote,
@@ -90,7 +85,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
     },
     select: {
       slug: true, name: true, description: true, address: true, city: true, country: true,
-      website: true, instagram: true, phone: true, email: true, hoursNote: true,
+      website: true, instagram: true, facebook: true, youtube: true, tiktok: true,
+      phone: true, email: true, hoursNote: true,
       disciplines: true, verified: true, memberCount: true, logoUrl: true, heroUrl: true,
     },
   });

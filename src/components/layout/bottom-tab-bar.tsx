@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, BarChart3, Users, MapPin, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { PILLARS } from "./pillars";
 
 /**
  * The five product pillars: Events · Leaderboard · Following · Location · Profile.
@@ -14,21 +14,6 @@ import { useT } from "@/lib/i18n";
  * neither is a pillar, and a bottom bar that changes shape between pages is the
  * fastest way to make an app feel unfinished.
  */
-const EVENTS_MATCH = (p: string) =>
-  p.startsWith("/events") || p.startsWith("/schedule") || p.startsWith("/results");
-const LEADERBOARD_MATCH = (p: string) =>
-  p.startsWith("/leaderboard") || p.startsWith("/rankings") || p.startsWith("/p4p") || p.startsWith("/champions");
-const FOLLOWING_MATCH = (p: string) => p.startsWith("/following");
-const LOCATION_MATCH = (p: string) => p.startsWith("/map");
-const PROFILE_MATCH = (p: string) => p.startsWith("/profile") || p.startsWith("/account") || p.startsWith("/u/");
-
-const TABS: { href: string; label: string; icon: typeof User; match: (p: string) => boolean }[] = [
-  { href: "/events", label: "Events", icon: CalendarDays, match: EVENTS_MATCH },
-  { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, match: LEADERBOARD_MATCH },
-  { href: "/following", label: "Following", icon: Users, match: FOLLOWING_MATCH },
-  { href: "/map", label: "Location", icon: MapPin, match: LOCATION_MATCH },
-  { href: "/profile", label: "Profile", icon: User, match: PROFILE_MATCH },
-];
 
 export function BottomTabBar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -43,7 +28,7 @@ export function BottomTabBar({ className }: { className?: string }) {
         className,
       )}
     >
-      {TABS.map(({ href, label, icon: Icon, match }) => {
+      {PILLARS.map(({ href, label, icon: Icon, match }) => {
         const active = match(pathname);
         return (
           <Link

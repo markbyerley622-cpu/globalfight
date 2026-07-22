@@ -2,8 +2,10 @@
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Check, Globe, Instagram, Phone, Mail, Clock, MapPin, Image as ImageIcon } from "lucide-react";
+import { Loader2, Check, Globe, Instagram, Phone, Mail, Clock, MapPin, Youtube, Facebook, Music2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { GymGalleryManager, type GymPhoto } from "./gym-gallery-manager";
 import { cn } from "@/lib/utils";
 
 const DISCIPLINE_OPTIONS = [
@@ -28,6 +30,9 @@ export interface ManagedGym {
   memberCount: number;
   logoUrl: string | null;
   heroUrl: string | null;
+  facebook: string | null;
+  youtube: string | null;
+  tiktok: string | null;
 }
 
 const inputClass =
@@ -36,7 +41,7 @@ const inputClass =
 /** Same save model as the profile editor: toggles are optimistic, text commits
  *  on blur. Deliberately the same, so managing a gym feels like editing a
  *  profile rather than a different application. */
-export function GymManageForm({ gym }: { gym: ManagedGym }) {
+export function GymManageForm({ gym, photos }: { gym: ManagedGym; photos: GymPhoto[] }) {
   const [g, setG] = useState(gym);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
@@ -183,32 +188,71 @@ export function GymManageForm({ gym }: { gym: ManagedGym }) {
             />
           </Field>
         </div>
-        <Field label="Email">
-          <Text
-            icon={<Mail className="size-4" />}
-            defaultValue={g.email ?? ""}
-            maxLength={120}
-            onCommit={(v) => v !== (g.email ?? "") && save({ email: v || null }, false)}
-          />
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Facebook">
+            <Text
+              icon={<Facebook className="size-4" />}
+              defaultValue={g.facebook ?? ""}
+              maxLength={80}
+              onCommit={(v) => v !== (g.facebook ?? "") && save({ facebook: v || null }, false)}
+            />
+          </Field>
+          <Field label="YouTube">
+            <Text
+              icon={<Youtube className="size-4" />}
+              defaultValue={g.youtube ?? ""}
+              maxLength={80}
+              onCommit={(v) => v !== (g.youtube ?? "") && save({ youtube: v || null }, false)}
+            />
+          </Field>
+          <Field label="TikTok">
+            <Text
+              icon={<Music2 className="size-4" />}
+              defaultValue={g.tiktok ?? ""}
+              maxLength={80}
+              onCommit={(v) => v !== (g.tiktok ?? "") && save({ tiktok: v || null }, false)}
+            />
+          </Field>
+          <Field label="Email">
+            <Text
+              icon={<Mail className="size-4" />}
+              defaultValue={g.email ?? ""}
+              maxLength={120}
+              onCommit={(v) => v !== (g.email ?? "") && save({ email: v || null }, false)}
+            />
+          </Field>
+        </div>
       </Card>
 
-      {/* Photos are a real gap, stated rather than faked. The upload pipeline
-          exists (src/lib/images/store.ts) but is wired to user avatars and
-          fighter media, not gym assets — that is a route, not a redesign. */}
-      <Card title="Photos">
-        <div className="rounded-xl border border-dashed border-ink-700 px-4 py-6 text-center">
-          <span className="mx-auto grid size-10 place-items-center rounded-xl border border-ink-700 bg-ink-850 text-fog">
-            <ImageIcon className="size-4" />
-          </span>
-          <p className="mt-2.5 font-display text-[0.78rem] font-bold uppercase tracking-wide text-chalk">
-            Logo &amp; hero image
-          </p>
-          <p className="mx-auto mt-1 max-w-xs text-[0.72rem] leading-relaxed text-fog">
-            Gym image uploads aren&apos;t wired yet. Everything else on this page is live — text changes save as you
-            type.
-          </p>
+      <Card title="Logo &amp; hero" subtitle="The logo is your mark on cards and the map. The hero is the banner at the top of your page.">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+          <ImageUpload
+            label="Logo"
+            hint="Square"
+            aspect="square"
+            value={g.logoUrl}
+            endpoint={`/api/gyms/${encodeURIComponent(gym.slug)}/image`}
+            extraFields={{ kind: "logo" }}
+            deleteEndpoint={`/api/gyms/${encodeURIComponent(gym.slug)}/image?kind=logo`}
+            onUploaded={(url) => setG((c) => ({ ...c, logoUrl: url }))}
+            onRemoved={() => setG((c) => ({ ...c, logoUrl: null }))}
+          />
+          <ImageUpload
+            className="min-w-0 flex-1"
+            label="Hero image"
+            hint="Wide · 16:7"
+            value={g.heroUrl}
+            endpoint={`/api/gyms/${encodeURIComponent(gym.slug)}/image`}
+            extraFields={{ kind: "hero" }}
+            deleteEndpoint={`/api/gyms/${encodeURIComponent(gym.slug)}/image?kind=hero`}
+            onUploaded={(url) => setG((c) => ({ ...c, heroUrl: url }))}
+            onRemoved={() => setG((c) => ({ ...c, heroUrl: null }))}
+          />
         </div>
+      </Card>
+
+      <Card title="Gallery" subtitle="Show the mats, the ring, the team. Photos appear on your public page.">
+        <GymGalleryManager slug={gym.slug} initial={photos} />
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-3">

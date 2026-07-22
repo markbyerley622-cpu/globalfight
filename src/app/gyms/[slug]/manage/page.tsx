@@ -23,13 +23,20 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
     where: { slug },
     select: {
       id: true, slug: true, name: true, description: true, address: true, city: true, country: true,
-      website: true, instagram: true, phone: true, email: true, hoursNote: true,
+      website: true, instagram: true, facebook: true, youtube: true, tiktok: true,
+      phone: true, email: true, hoursNote: true,
       disciplines: true, verified: true, memberCount: true, ownerId: true,
       logoUrl: true, heroUrl: true,
     },
   });
   if (!gym) notFound();
   if (gym.ownerId !== user.id && !isAdminRole(user.role)) notFound();
+
+  const photos = await prisma.gymPhoto.findMany({
+    where: { gymId: gym.id },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
+  });
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-16 pt-5 lg:max-w-3xl">
@@ -49,7 +56,7 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
       </p>
 
       <div className="mt-5">
-        <GymManageForm gym={gym} />
+        <GymManageForm gym={gym} photos={photos} />
       </div>
     </div>
   );
