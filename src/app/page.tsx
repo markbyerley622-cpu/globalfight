@@ -3,6 +3,7 @@ import { getUpcomingEvents } from "@/lib/repo";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { EventTimeline } from "@/components/events/event-timeline";
 import { SITE } from "@/lib/config";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   // Spelled out rather than relying on the root layout's title template:
@@ -24,7 +25,17 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const sportName = entry?.label ?? "All";
 
   const all = await getUpcomingEvents();
-  const events = entry ? all.filter((e) => e.sport === entry.value) : all;
+  const filtered = entry ? all.filter((e) => e.sport === entry.value) : all;
+
+  // The landing page shows the NEXT events, not every event.
+  //
+  // Rendering the unbounded list put 137 cards and 993KB of HTML into the first
+  // document a visitor ever loads — four to six times every other page in the
+  // app, and a wall rather than a landing. /events is already the full,
+  // filterable list, so the overflow has somewhere better to live.
+  const LANDING_LIMIT = 30;
+  const events = filtered.slice(0, LANDING_LIMIT);
+  const overflow = filtered.length - events.length;
 
   return (
     <div className="container-cr px-4 py-5">
@@ -37,6 +48,17 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </p>
       </div>
       <EventTimeline events={events} sportName={sportName} />
+
+      {overflow > 0 && (
+        <div className="mt-6 text-center">
+          <Link
+            href={entry ? `/events?sport=${entry.slug}` : "/events"}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-ink-700 px-4 py-2.5 font-display text-xs font-semibold uppercase tracking-wide text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300"
+          >
+            See all {filtered.length} {sportName === "All" ? "events" : `${sportName} events`}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

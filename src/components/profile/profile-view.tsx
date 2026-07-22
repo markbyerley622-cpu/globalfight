@@ -36,9 +36,20 @@ export function ProfileView() {
   }
 
   if (loading) {
+    // The loading state must occupy roughly what replaces it.
+    //
+    // This was a single centred row about 216px tall; the resolved profile is
+    // ~400px+. The swap moved everything below it and measured CLS 0.694 on
+    // /profile against ≤0.006 on every other page — five times Google's "poor"
+    // threshold, and the worst number in the app by two orders of magnitude.
+    // Reserving the height costs nothing and removes the whole shift.
     return (
-      <div className="flex items-center justify-center gap-2 py-24 text-mist">
-        <Loader2 className="size-5 animate-spin" /> {t("Loading…")}
+      <div className="mx-auto w-full max-w-2xl px-4 pb-8 lg:max-w-3xl" aria-busy="true">
+        <div className="min-h-[26rem] rounded-3xl border border-ink-800 bg-ink-900/40">
+          <div className="flex items-center justify-center gap-2 py-24 text-mist">
+            <Loader2 className="size-5 animate-spin" /> {t("Loading…")}
+          </div>
+        </div>
       </div>
     );
   }
