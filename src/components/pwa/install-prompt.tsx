@@ -54,7 +54,7 @@ export function InstallPrompt() {
         <Download className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-display text-sm font-bold text-chalk">Install Combat Register</p>
+        <p className="font-display text-sm font-bold text-chalk">Install Combat Reviews</p>
         <p className="text-xs text-fog">Add to your home screen — full-screen, one tap.</p>
       </div>
       <button

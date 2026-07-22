@@ -13,7 +13,7 @@ export function ComingSoon({ points }: { points: string[] }) {
           Coming soon
         </h2>
         <p className="mt-2 text-sm text-mist">
-          We&apos;re building this out as part of the Combat Register platform. Here&apos;s what to expect:
+          We&apos;re building this out as part of the Combat Reviews platform. Here&apos;s what to expect:
         </p>
         <ul className="mt-5 grid gap-3">
           {points.map((p) => (

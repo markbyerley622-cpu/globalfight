@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 export default function TermsPage() {
   const legal = legalIdentity();
   return (
-    <LegalPage title="Terms of Use" intro="The rules for using Combat Register.">
+    <LegalPage title="Terms of Use" intro="The rules for using Combat Reviews.">
       <H2>Who we are</H2>
-      <p>Combat Register is operated by {legal.entityName}, {legal.entityAddress}. These terms are governed by the law of {legal.jurisdiction}.</p>
+      <p>Combat Reviews is operated by {legal.entityName}, {legal.entityAddress}. These terms are governed by the law of {legal.jurisdiction}.</p>
 
       <H2>Your account</H2>
       <ul className="list-disc space-y-1 pl-5">
@@ -35,7 +35,7 @@ export default function TermsPage() {
 
       <H2>What we provide, and what we do not</H2>
       <ul className="list-disc space-y-1 pl-5">
-        <li>Combat Register is an information and community platform. It is provided as-is.</li>
+        <li>Combat Reviews is an information and community platform. It is provided as-is.</li>
         <li>Fighter records and event data are compiled from public sources and may be wrong or out of date. Do not rely on them for anything that matters.</li>
         <li>
           <b>We do not facilitate betting or wagering of any kind</b>, we are not a bookmaker or a

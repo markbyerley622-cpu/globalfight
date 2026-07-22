@@ -251,8 +251,8 @@ function ShareButton({ market, community, favLabel, favPct }: { market: Predicti
   async function onShare() {
     const d = marketDivergence(market, community);
     const text = d
-      ? `${market.title} — Fight Pulse: fans ${d.commPct}% vs market ${d.marketPct}% on ${d.label} (${d.delta >= 0 ? "+" : "−"}${Math.abs(d.delta)}%). Combat Register.`
-      : `${market.title} — the market has ${favLabel} at ${favPct}%. What's your call? Combat Register.`;
+      ? `${market.title} — Fight Pulse: fans ${d.commPct}% vs market ${d.marketPct}% on ${d.label} (${d.delta >= 0 ? "+" : "−"}${Math.abs(d.delta)}%). Combat Reviews.`
+      : `${market.title} — the market has ${favLabel} at ${favPct}%. What's your call? Combat Reviews.`;
     const url = market.sourceUrl ?? (typeof window !== "undefined" ? `${window.location.origin}/predictions` : "");
     const r = await sharePrediction(market.title, text, url);
     if (r === "copied") { setCopied(true); setTimeout(() => setCopied(false), 1600); }

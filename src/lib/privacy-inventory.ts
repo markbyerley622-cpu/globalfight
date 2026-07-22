@@ -181,14 +181,14 @@ export const COOKIES: CookieEntry[] = [
     name: "cr_session",
     category: "strictly-necessary",
     purpose: "Keeps you signed in. httpOnly, so JavaScript cannot read it; Secure in production; SameSite=Lax.",
-    provider: "Combat Register (first-party)",
+    provider: "Combat Reviews (first-party)",
     retention: "30 days, or until you sign out.",
   },
   {
     name: "locale",
     category: "preferences",
     purpose: "Remembers your chosen language.",
-    provider: "Combat Register (first-party)",
+    provider: "Combat Reviews (first-party)",
     retention: "Until you change or clear it.",
   },
 ];

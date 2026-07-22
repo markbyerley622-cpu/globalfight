@@ -81,7 +81,7 @@ export default function AccountPage() {
         <PageHero
           eyebrow="Members"
           title={`Welcome${user.name ? `, ${user.name.split(" ")[0]}` : ""}`}
-          description="Your Combat Register account. Manage your profile, follows and registry claims."
+          description="Your Combat Reviews account. Manage your profile, follows and registry claims."
         />
         <div className="container-cr grid gap-6 py-10 lg:grid-cols-[1fr_1.4fr]">
           <div className="card-surface p-6">
@@ -140,7 +140,7 @@ export default function AccountPage() {
       <PageHero
         eyebrow="Join the registry"
         title={isSignup ? "Create your account" : "Welcome back"}
-        description="Join the Combat Register community — follow fighters, predict fights and discuss. Fighters can verify and claim their profile once you're in."
+        description="Join the Combat Reviews community — follow fighters, predict fights and discuss. Fighters can verify and claim their profile once you're in."
       />
       <div className="container-cr grid gap-8 py-10 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="card-surface p-5 sm:p-8">

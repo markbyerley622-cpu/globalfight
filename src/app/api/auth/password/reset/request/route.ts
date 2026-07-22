@@ -75,9 +75,9 @@ export async function POST(req: Request) {
       const raw = await issueResetToken(user.id, ip);
       await sendEmail({
         to: email,
-        subject: "Reset your Combat Register password",
+        subject: "Reset your Combat Reviews password",
         text:
-          `Someone asked to reset the password for your Combat Register account.\n\n` +
+          `Someone asked to reset the password for your Combat Reviews account.\n\n` +
           `Reset it here (this link works once and expires in ${RESET_TTL_MINUTES} minutes):\n\n` +
           `${resetUrl(raw)}\n\n` +
           `If this wasn't you, you can ignore this email — your password hasn't changed.\n`,

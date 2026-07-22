@@ -19,7 +19,7 @@ export default function ResponsibleGamblingPage() {
     <LegalPage title="Responsible Gambling" intro="Where we stand on betting and prediction markets.">
       <H2>We do not facilitate betting</H2>
       <p>
-        Combat Register is an information and community platform. <b>We are not a bookmaker, we are
+        Combat Reviews is an information and community platform. <b>We are not a bookmaker, we are
         not a trading venue, and we do not take or place bets.</b>
       </p>
 
@@ -56,7 +56,7 @@ export default function ResponsibleGamblingPage() {
 
       <H2>Age</H2>
       <p>
-        You must be 18 or over to view betting or prediction-market content anywhere. Combat Register
+        You must be 18 or over to view betting or prediction-market content anywhere. Combat Reviews
         requires you to be at least 16 to hold an account, and does not show market content at all.
       </p>
     </LegalPage>

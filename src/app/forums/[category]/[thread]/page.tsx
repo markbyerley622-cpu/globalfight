@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ thread: string }> }): Promise<Metadata> {
   const { thread } = await params;
   const t = await getThread(thread);
-  return t ? { title: t.title, description: `${t.title} — ${t.categoryName} discussion on Combat Register.` } : {};
+  return t ? { title: t.title, description: `${t.title} — ${t.categoryName} discussion on Combat Reviews.` } : {};
 }
 
 export default async function ThreadPage({ params }: { params: Promise<{ category: string; thread: string }> }) {

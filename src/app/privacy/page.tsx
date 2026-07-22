@@ -22,7 +22,7 @@ export default function PrivacyPage() {
     >
       <p>
         This notice explains how {legal.entityName} handles your personal data when you use
-        Combat Register. We are the data controller. If you have a question or want to exercise
+        Combat Reviews. We are the data controller. If you have a question or want to exercise
         any of your rights, contact <b>{legal.privacyEmail}</b>.
       </p>
 
@@ -151,7 +151,7 @@ export default function PrivacyPage() {
 
       <H2>Children</H2>
       <p>
-        Combat Register is not intended for children. You must be at least 16 to hold an account. We
+        Combat Reviews is not intended for children. You must be at least 16 to hold an account. We
         do not knowingly collect identity documents, voice recordings or media from children — if
         you believe we have, tell us at {legal.privacyEmail} and we will delete it.
       </p>

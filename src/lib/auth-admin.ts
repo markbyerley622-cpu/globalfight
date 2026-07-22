@@ -156,7 +156,7 @@ export async function bootstrapAdmin(
   const created = await prisma.user.create({
     data: {
       email: config.email,
-      name: "Combat Register Admin",
+      name: "Combat Reviews Admin",
       username: await freeUsername("admin"),
       passwordHash,
       role: "ADMIN",

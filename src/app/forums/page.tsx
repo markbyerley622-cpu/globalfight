@@ -8,7 +8,7 @@ import { getForumCategories } from "@/lib/forum/repo";
 
 export const metadata: Metadata = {
   title: "Community Forums",
-  description: "Join the Combat Register community — discuss MMA, boxing, Muay Thai, BJJ and every combat sport. Posts persist in PostgreSQL and update in realtime.",
+  description: "Join the Combat Reviews community — discuss MMA, boxing, Muay Thai, BJJ and every combat sport. Posts persist in PostgreSQL and update in realtime.",
 };
 
 export const dynamic = "force-dynamic"; // forum content is live, never statically cached

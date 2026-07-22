@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!f) return {};
   const sportLabel = SPORT_LABEL[f.sport] ?? f.sport;
   const title = `${f.name}${f.nickname ? ` "${f.nickname}"` : ""} — ${sportLabel} profile`;
-  const description = `${f.name}: ${formatSportRecord(f)} · ${sportLabel} · ${f.nationality ?? ""}. ${f.tagline ?? "Official profile, record, achievements, gallery and contact on Combat Register."}`.trim();
+  const description = `${f.name}: ${formatSportRecord(f)} · ${sportLabel} · ${f.nationality ?? ""}. ${f.tagline ?? "Official profile, record, achievements, gallery and contact on Combat Reviews."}`.trim();
   const image = f.imageUrl ?? f.heroImageUrl ?? "/cr-logo.png";
   return {
     title, description,
@@ -128,7 +128,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
         <div className="absolute inset-0 vignette" />
         {/* Brandmark */}
         <div className="pointer-events-none absolute right-4 top-4 opacity-40 sm:right-8 sm:top-6">
-          <Image src="/cr-logo.png" alt="Combat Register" width={120} height={80} className="h-7 w-auto sm:h-9" />
+          <Image src="/cr-logo.png" alt="Combat Reviews" width={120} height={80} className="h-7 w-auto sm:h-9" />
         </div>
         <div className="container-cr relative py-12 lg:py-16">
           <div className="flex flex-col items-center gap-6 text-center lg:flex-row lg:items-end lg:text-left">

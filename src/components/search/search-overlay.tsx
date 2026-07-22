@@ -131,7 +131,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           {res.pages.map((p) => row(`p-${p.href}-${p.label}`, p.href, <Compass className="size-4" />, p.label))}
         </div>
         <div className="flex items-center justify-between border-t border-ink-700 px-4 py-2 text-[0.7rem] text-fog">
-          <span>Search across Combat Register</span>
+          <span>Search across Combat Reviews</span>
           <span><kbd className="rounded border border-ink-600 px-1.5 py-0.5">ESC</kbd> to close</span>
         </div>
       </div>

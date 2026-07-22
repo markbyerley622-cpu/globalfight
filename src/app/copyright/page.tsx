@@ -11,7 +11,7 @@ export default function CopyrightPage() {
   return (
     <LegalPage
       title="Copyright & Takedown"
-      intro="How to tell us that content on Combat Register infringes your rights."
+      intro="How to tell us that content on Combat Reviews infringes your rights."
     >
       <H2>Our position</H2>
       <p>

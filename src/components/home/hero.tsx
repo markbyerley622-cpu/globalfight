@@ -181,7 +181,7 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
                 <div className="absolute inset-0 bg-grid opacity-15" />
                 <div className="absolute -right-10 -top-10 size-48 rounded-full bg-blood-700/20 blur-3xl" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/cr-logo.png" alt="Combat Register" className="absolute right-5 top-5 h-9 w-auto opacity-60" />
+                <img src="/cr-logo.png" alt="Combat Reviews" className="absolute right-5 top-5 h-9 w-auto opacity-60" />
                 <span className="relative inline-flex items-center gap-2 rounded-lg bg-ink-950/60 px-3 py-1.5 font-display text-xs font-bold uppercase tracking-wide text-chalk backdrop-blur">
                   <Newspaper className="size-4 text-blood-400" /> Breaking
                 </span>

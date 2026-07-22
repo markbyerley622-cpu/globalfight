@@ -20,7 +20,7 @@ export default async function NewsPage() {
 
   return (
     <>
-      <PageHero eyebrow="The Wire" title="News & Analysis" description="Breaking stories, fight announcements, and deep analysis from the Combat Register desk." />
+      <PageHero eyebrow="The Wire" title="News & Analysis" description="Breaking stories, fight announcements, and deep analysis from the Combat Reviews desk." />
       <div className="container-cr py-10">
         <NewsFeed articles={items} />
       </div>

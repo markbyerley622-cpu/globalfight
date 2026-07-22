@@ -33,7 +33,7 @@ export function Logo({
 
   if (href === null) return <span className={cn("inline-flex", className)}>{mark}</span>;
   return (
-    <Link href={href} className={cn("inline-flex items-center", className)} aria-label="Combat Register home">
+    <Link href={href} className={cn("inline-flex items-center", className)} aria-label="Combat Reviews home">
       {mark}
     </Link>
   );

@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { getUpcomingEvents } from "@/lib/repo";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { EventTimeline } from "@/components/events/event-timeline";
+import { SITE } from "@/lib/config";
 
 export const metadata: Metadata = {
-  title: "Events",
+  // Spelled out rather than relying on the root layout's title template:
+  // Next applies that template to CHILD segments only, and this page shares the
+  // root segment with the layout that defines it — so the homepage tab was the
+  // one place in the app carrying no brand at all.
+  title: `Events · ${SITE.name}`,
   description:
     "Every combat-sports event — MMA, boxing, Muay Thai, kickboxing, BJJ and more. Follow a card end to end: matchups, predictions and community in one place.",
   alternates: { canonical: "/" },

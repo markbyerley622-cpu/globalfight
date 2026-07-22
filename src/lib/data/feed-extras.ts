@@ -8,7 +8,7 @@ export const PREDICTION_MARKETS = [
 ];
 
 export const PODCAST_SHOWS = [
-  { id: "cr-show", title: "The Combat Register Show", sub: "Weekly fight-week breakdown" },
+  { id: "cr-show", title: "The Combat Reviews Show", sub: "Weekly fight-week breakdown" },
   { id: "rounds", title: "Rounds & Reasons", sub: "Boxing · Post-fight analysis" },
   { id: "ground-game", title: "Ground Game", sub: "MMA · Grappling & matchmaking" },
 ];

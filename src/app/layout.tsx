@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 // Shown when someone drops a link in WhatsApp/X/Slack/iMessage. This is the
 // whole pitch in the two lines a preview card actually renders, so it stays
 // concrete ("upcoming", "what people think") rather than describing a schema.
-const OG_TITLE = "Combat Register — every combat sport, one place";
+const OG_TITLE = `${SITE.name} — every combat sport, one place`;
 const OG_DESCRIPTION =
   "Upcoming fights, results and fighter records across boxing, MMA, Muay Thai, " +
   "kickboxing, BJJ and bare-knuckle — and what the fans think of them. " +
@@ -50,7 +50,7 @@ const OG_IMAGE = {
   url: "/og-default.png",
   width: 1200,
   height: 630,
-  alt: "Combat Register — every combat sport, one place. See what's upcoming, see what people think.",
+  alt: `${SITE.name} — every combat sport, one place. See what's upcoming, see what people think.`,
 };
 
 export const metadata: Metadata = {
@@ -58,7 +58,9 @@ export const metadata: Metadata = {
   title: { default: `${SITE.name} — ${SITE.tagline}`, template: `%s · ${SITE.name}` },
   description: SITE.description,
   applicationName: SITE.name,
-  appleWebApp: { capable: true, title: "Combat", statusBarStyle: "black-translucent" },
+  // The iOS home-screen label. "Combat" was a truncation of the OLD name and
+  // is the string that sits under the icon forever after an install.
+  appleWebApp: { capable: true, title: SITE.name, statusBarStyle: "black-translucent" },
   keywords: [
     "boxing", "rankings", "pound for pound", "fight predictions",
     "champions", "combat sports", "fight schedule", "boxing news", "P4P",

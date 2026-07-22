@@ -27,7 +27,7 @@ export async function NewsSection() {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-ink-950/20" />
             <div className="absolute inset-0 bg-grid opacity-20" />
-            <Image src="/cr-logo.png" alt="Combat Register" width={90} height={60} className="absolute right-5 top-5 h-7 w-auto opacity-50" />
+            <Image src="/cr-logo.png" alt="Combat Reviews" width={90} height={60} className="absolute right-5 top-5 h-7 w-auto opacity-50" />
             <CategoryIcon name={featured.category} className="absolute right-6 bottom-6 size-20 text-white/[0.06]" />
             <div className="relative">
               <Badge tone="red"><Zap className="size-3" />{featured.category}</Badge>

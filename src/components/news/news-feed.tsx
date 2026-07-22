@@ -106,7 +106,7 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
                 <div className="absolute inset-0 bg-cover bg-center opacity-70 transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${safeNewsCover(lead.slug, lead.coverImageUrl)})` }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-ink-950/20" />
                 <div className="absolute inset-0 bg-grid opacity-15" />
-                <Image src="/cr-logo.png" alt="Combat Register" width={100} height={66} className="absolute right-6 top-6 h-8 w-auto opacity-50" />
+                <Image src="/cr-logo.png" alt="Combat Reviews" width={100} height={66} className="absolute right-6 top-6 h-8 w-auto opacity-50" />
                 <div className="relative max-w-2xl">
                   <Badge tone="red">{lead.category}</Badge>
                   <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-chalk group-hover:text-blood-300 sm:text-4xl">{lead.title}</h2>

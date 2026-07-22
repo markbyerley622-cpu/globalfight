@@ -45,7 +45,7 @@ export function resolveSiteUrl(fallback: string = DEFAULT_SITE_URL): string {
 }
 
 export const SITE = {
-  name: "Combat Register",
+  name: "Combat Reviews",
   tagline: "The Registry of Combat Sports",
   pitch: "Every fighter, gym, promoter and official — one source-backed network.",
   description:

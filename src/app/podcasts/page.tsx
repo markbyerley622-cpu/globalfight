@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // Editorial placeholder shows until a real podcast feed/ingestion is wired up.
 const SHOWS = [
-  { title: "The Combat Register Show", host: "Combat Register", ep: "Weekly fight-week breakdown", sport: "All Sports" },
+  { title: "The Combat Reviews Show", host: "Combat Reviews", ep: "Weekly fight-week breakdown", sport: "All Sports" },
   { title: "Rounds & Reasons", host: "Boxing desk", ep: "Post-fight analysis & scorecards", sport: "Boxing" },
   { title: "Ground Game", host: "MMA desk", ep: "Grappling exchanges & matchmaking", sport: "MMA" },
   { title: "The Clinch", host: "Muay Thai desk", ep: "Technique deep-dives", sport: "Muay Thai" },

@@ -73,7 +73,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           {article.coverImageUrl && <Image src={article.coverImageUrl} alt="" fill className="object-cover object-center opacity-70" sizes="100vw" priority />}
           <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/55 to-transparent" />
           <div className="absolute inset-0 bg-grid opacity-15" />
-          <Image src="/cr-logo.png" alt="Combat Register" width={120} height={80} className="absolute bottom-4 right-4 h-8 w-auto opacity-55" />
+          <Image src="/cr-logo.png" alt="Combat Reviews" width={120} height={80} className="absolute bottom-4 right-4 h-8 w-auto opacity-55" />
           <CategoryIcon name={article.category} className="relative size-20 text-white/10" />
         </div>
 
@@ -81,7 +81,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           <p className="text-lg text-chalk">{article.excerpt}</p>
           <p>{article.content}</p>
           <p>
-            This article is part of the Combat Register editorial coverage. In production, full rich-text content is
+            This article is part of the Combat Reviews editorial coverage. In production, full rich-text content is
             authored in the CMS with embedded fight cards, pull quotes, and related-fighter modules.
           </p>
         </div>

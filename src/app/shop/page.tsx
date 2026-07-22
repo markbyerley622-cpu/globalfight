@@ -4,7 +4,7 @@ import { PageHero } from "@/components/page-hero";
 
 export const metadata: Metadata = {
   title: "Shop",
-  description: "Combat Register shop — badges, banners and profile flair earned from predictions. Coming soon.",
+  description: "Combat Reviews shop — badges, banners and profile flair earned from predictions. Coming soon.",
   alternates: { canonical: "/shop" },
 };
 
