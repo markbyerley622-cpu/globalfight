@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { resolvePoint } from "./gazetteer";
 import { getTrainingNow } from "./presence";
 import type { MapPin, UnmappedPin } from "./types";
+import { notify } from "@/lib/notifications-store";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The People layer — and its privacy gate.
@@ -174,15 +175,38 @@ export async function peoplePins(viewer: PeopleViewer | null): Promise<PeopleRes
 /** Follow / unfollow. Idempotent in both directions. */
 export async function setFollow(followerId: string, followingId: string, on: boolean): Promise<void> {
   if (followerId === followingId) return; // following yourself is not a feature
-  if (on) {
-    await prisma.userFollow.upsert({
-      where: { followerId_followingId: { followerId, followingId } },
-      create: { followerId, followingId },
-      update: {},
-    });
-  } else {
+  if (!on) {
     await prisma.userFollow.deleteMany({ where: { followerId, followingId } });
+    return;
   }
+
+  await prisma.userFollow.upsert({
+    where: { followerId_followingId: { followerId, followingId } },
+    create: { followerId, followingId },
+    update: {},
+  });
+
+  // Tell them. FOLLOW has been in the NotificationType enum with no producer,
+  // so until now gaining a follower was completely silent — and a follow is the
+  // single strongest reason a person comes back to look at who.
+  //
+  // Keyed once-ever per follower: unfollow/refollow re-creates the edge but
+  // cannot re-send the notification, which is what stops it being a way to
+  // buzz someone repeatedly. Best-effort — the follow itself is already saved.
+  try {
+    const me = await prisma.user.findUnique({
+      where: { id: followerId },
+      select: { name: true, username: true },
+    });
+    await notify(prisma, followingId, {
+      type: "FOLLOW",
+      title: `${me?.name ?? me?.username ?? "Someone"} followed you`,
+      body: me?.username ? "Tap to see their profile." : undefined,
+      url: me?.username ? `/u/${me.username}` : "/following",
+      icon: "👤",
+      dedupeKey: `follow:${followerId}`,
+    });
+  } catch { /* non-fatal */ }
 }
 
 export async function getFollowCounts(userId: string) {

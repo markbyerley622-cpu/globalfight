@@ -113,6 +113,10 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
           body: `+${rep} reputation · ${user.pickStreak}-pick streak${winnerFighterId ? ` · ${rarity.toLowerCase()} card earned` : ""}`,
           url: boutUrl,
           icon: "✅",
+          // One card = one lit phone. The device replaces the previous bout's
+          // push instead of stacking twelve; all twelve rows still land in the
+          // in-app list, where re-reading them is the point.
+          tag: fight.eventId ? `picks:${fight.eventId}` : undefined,
         });
       } else {
         await notify(tx, pick.userId, {
@@ -121,6 +125,7 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
           body: `Your pick didn't land — streak reset.`,
           url: boutUrl,
           icon: "❌",
+          tag: fight.eventId ? `picks:${fight.eventId}` : undefined,
         });
       }
     });
@@ -133,7 +138,68 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   await resolveFightBattles(fightId, corner);
 
   await prisma.fight.update({ where: { id: fightId }, data: { picksResolvedAt: new Date() } });
+
+  // If that was the last graded bout on the card, close the loop with one
+  // scoreline. Best-effort: the payouts above are the real work.
+  if (fight.eventId) await notifyCardSummary(fight.eventId).catch(() => {});
+
   return { resolved };
+}
+
+/**
+ * "You went 7 of 12 on UFC 300" — sent once, when the final bout with picks on
+ * a card has been graded.
+ *
+ * The per-fight notifications above are the live drip and stay: people want to
+ * know the moment their pick lands. But a card is the unit people actually keep
+ * score in, and a twelve-bout night otherwise ends with twelve fragments and no
+ * total. This is the one that says how the night went.
+ *
+ * Void bouts are excluded, exactly as they are from the user's own
+ * picksResolved counter — a no-contest is not a miss, and a scoreline that
+ * disagrees with the profile page is worse than no scoreline.
+ */
+async function notifyCardSummary(eventId: string): Promise<void> {
+  // Anything still ungraded means the card isn't done. Cheap, indexed, and the
+  // guard that makes this run exactly once per event.
+  const pending = await prisma.fight.count({
+    where: { eventId, picksResolvedAt: null, picks: { some: {} } },
+  });
+  if (pending > 0) return;
+
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { slug: true, name: true } });
+  if (!event) return;
+
+  const scored = { fight: { eventId, result: "WIN" as const } };
+  const [totals, hits] = await Promise.all([
+    prisma.fightPick.groupBy({ by: ["userId"], where: { ...scored, correct: { not: null } }, _count: { _all: true } }),
+    prisma.fightPick.groupBy({ by: ["userId"], where: { ...scored, correct: true }, _count: { _all: true } }),
+  ]);
+  const hitBy = new Map(hits.map((h) => [h.userId, h._count._all]));
+
+  await Promise.all(
+    totals
+      // One graded bout is not a card. That person already got the result
+      // itself; repeating it as a "summary" is the same news twice.
+      .filter((t) => t._count._all >= 2)
+      .map((t) => {
+        const got = hitBy.get(t.userId) ?? 0;
+        const perfect = got === t._count._all;
+        return notify(prisma, t.userId, {
+          type: "PICK_RESULT",
+          title: `${got} of ${t._count._all} on ${event.name}`,
+          body: perfect
+            ? "A perfect card. Every single call landed."
+            : got === 0
+              ? "Rough night. New card, clean slate."
+              : `${event.name} is in the books — see how the room did.`,
+          url: `/events/${event.slug}`,
+          icon: perfect ? "🏆" : "📊",
+          dedupeKey: `card_summary:${eventId}`,
+          tag: `picks:${eventId}`,
+        });
+      }),
+  );
 }
 
 /** Grade every decided bout that still has ungraded picks. Cron entrypoint. */

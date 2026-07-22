@@ -13,18 +13,39 @@ type Db = Prisma.TransactionClient;
 export async function notify(
   db: Db,
   userId: string,
-  input: { type: NotificationType; title: string; body?: string; url?: string; icon?: string },
+  input: {
+    type: NotificationType;
+    title: string;
+    body?: string;
+    url?: string;
+    icon?: string;
+    /** Once-ever key, e.g. `follow:<followerId>`. The (userId, dedupeKey)
+     *  unique makes a repeat a no-op — and a no-op sends no push, so an
+     *  unfollow/refollow loop cannot be used to buzz someone's phone.
+     *  Omit for genuinely repeatable notifications (a reply, a pick result). */
+    dedupeKey?: string;
+    /** Collapses on the DEVICE: a later push with the same tag replaces the
+     *  earlier one. A twelve-bout card should light the phone once, not twelve
+     *  times, while all twelve rows still land in the in-app list. */
+    tag?: string;
+  },
 ): Promise<void> {
-  await db.notification.create({
-    data: {
+  // createMany(skipDuplicates) rather than create(): it is the only write that
+  // is safe to repeat. Postgres treats NULLs as distinct, so rows without a
+  // dedupeKey are unaffected and still insert every time.
+  const { count } = await db.notification.createMany({
+    data: [{
       userId,
       type: input.type,
       title: input.title,
       body: input.body ?? null,
       url: input.url ?? null,
       icon: input.icon ?? null,
-    },
+      dedupeKey: input.dedupeKey ?? null,
+    }],
+    skipDuplicates: true,
   });
+  if (count === 0) return; // already delivered — do not push a second time
 
   // Push is fire-and-forget and deliberately NOT awaited: `db` here is often a
   // transaction client, and blocking a transaction on a third-party HTTP call
@@ -35,6 +56,7 @@ export async function notify(
     body: input.body ?? null,
     url: input.url ?? null,
     icon: input.icon ?? null,
+    tag: input.tag,
   }).catch(() => {});
 }
 

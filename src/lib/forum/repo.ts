@@ -18,6 +18,7 @@ import {
   type ForumAttachment,
 } from "@/lib/forum/types";
 import { publish } from "@/lib/forum/realtime";
+import { extractMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notifications-store";
 
 // ─── Visibility ─────────────────────────────────────────────────────────────
@@ -498,11 +499,27 @@ async function notifyReplyTargets(
       ? await prisma.forumPost.findMany({ where: { id: { in: ids } }, select: { id: true, authorId: true } })
       : [];
 
-    // Ordered by specificity: a quote is more directed than a thread reply, so
-    // the quoted person gets the quote wording and is then excluded from the
-    // generic one.
+    // Ordered by specificity, most-directed first. Someone replied to, quoted
+    // AND named gets ONE notification with the most specific wording — three
+    // pings for one post is how a category gets muted.
     const targets = new Map<string, { title: string; icon: string }>();
+
+    // @mentions. Usernames are stored lower-case but people type them however
+    // they like, so match on the lowered form; `in` on the raw list would
+    // silently drop "@KaylaBrooks".
+    const named = extractMentions(content);
+    if (named.length) {
+      const mentioned = await prisma.user.findMany({
+        where: { username: { in: named } },
+        select: { id: true, username: true },
+      });
+      for (const u of mentioned) {
+        if (u.id !== author.id) targets.set(u.id, { title: `${who} mentioned you`, icon: "@" });
+      }
+    }
+
     for (const p of posts) {
+      if (targets.has(p.authorId)) continue;
       if (p.authorId !== author.id) {
         targets.set(p.authorId, { title: `${who} quoted you`, icon: "❝" });
       }
