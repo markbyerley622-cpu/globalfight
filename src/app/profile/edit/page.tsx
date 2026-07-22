@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ProfileEditor } from "@/components/profile/profile-editor";
 import { MyClaims } from "@/components/profile/my-claims";
+import { NotificationSettings } from "@/components/profile/notification-settings";
 
 export const metadata: Metadata = {
   title: "Edit profile",
@@ -30,6 +31,10 @@ export default function EditProfilePage() {
 
       <div className="mt-5">
         <ProfileEditor />
+      </div>
+
+      <div className="mt-4">
+        <NotificationSettings />
       </div>
 
       <div className="mt-4">

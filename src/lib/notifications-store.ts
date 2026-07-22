@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma, NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { pushToUsers } from "@/lib/push/send";
 
 // ── Notifications (personal, stored) ────────────────────────────────────────
 // The single user-targeted notification engine. Distinct from
@@ -24,6 +25,17 @@ export async function notify(
       icon: input.icon ?? null,
     },
   });
+
+  // Push is fire-and-forget and deliberately NOT awaited: `db` here is often a
+  // transaction client, and blocking a transaction on a third-party HTTP call
+  // would hold a row lock for the length of someone's network. The stored row
+  // is the source of truth; push is a nudge toward it.
+  void pushToUsers([userId], input.type, {
+    title: input.title,
+    body: input.body ?? null,
+    url: input.url ?? null,
+    icon: input.icon ?? null,
+  }).catch(() => {});
 }
 
 export async function listNotifications(userId: string, limit = 30) {

@@ -75,3 +75,47 @@ self.addEventListener("fetch", (event) => {
   }
   // Everything else falls through to the network (no caching of dynamic HTML/data).
 });
+
+// ── Web Push ───────────────────────────────────────────────────────────────
+// The server sends a JSON payload written by src/lib/push/send.ts. Everything
+// here is defensive: a push that throws inside the worker is swallowed by the
+// browser and the user simply never sees the notification, so every field has
+// a fallback and the whole handler is wrapped.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+
+  const title = data.title || "Combat Reviews";
+  const url = data.url || "/";
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || undefined,
+      icon: "/icon.png",
+      badge: "/icon.png",
+      // `tag` collapses replacements: an event going live should update the
+      // existing card, not stack a tenth one on the lock screen.
+      tag: data.tag || undefined,
+      renotify: !!data.tag,
+      // The click target has to survive into notificationclick — the event
+      // there carries only the notification, not the original payload.
+      data: { url },
+    }),
+  );
+});
+
+// Focus an existing tab rather than opening a duplicate: a user who already has
+// the app open should be taken to the content, not given a second window.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ("focus" in c) { c.navigate(target); return c.focus(); }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
+});

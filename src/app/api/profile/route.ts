@@ -77,6 +77,15 @@ const Body = z.object({
   mapCountry: optionalText(80),
   openToSpar: z.boolean().optional(),
   lookingForTraining: z.boolean().optional(),
+  // Notification preferences live here rather than on their own endpoint: they
+  // are facts about a person, edited on the same screen as everything else.
+  notifyFights: z.boolean().optional(),
+  notifyPredictions: z.boolean().optional(),
+  notifySocial: z.boolean().optional(),
+  notifyGym: z.boolean().optional(),
+  quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),
+  quietHoursEnd: z.number().int().min(0).max(23).nullable().optional(),
+  timezone: z.string().max(64).nullable().optional(),
 });
 
 const SELECT = {
@@ -86,6 +95,8 @@ const SELECT = {
   weightClassPref: true, yearsTraining: true,
   mapVisibility: true, mapCity: true, mapCountryCode: true, mapLat: true, mapLon: true,
   openToSpar: true, lookingForTraining: true,
+  notifyFights: true, notifyPredictions: true, notifySocial: true, notifyGym: true,
+  quietHoursStart: true, quietHoursEnd: true, timezone: true,
 } as const;
 
 export async function GET() {
@@ -159,6 +170,13 @@ export async function PATCH(req: Request) {
       yearsTraining: d.yearsTraining,
       openToSpar: d.openToSpar,
       lookingForTraining: d.lookingForTraining,
+      notifyFights: d.notifyFights,
+      notifyPredictions: d.notifyPredictions,
+      notifySocial: d.notifySocial,
+      notifyGym: d.notifyGym,
+      quietHoursStart: d.quietHoursStart,
+      quietHoursEnd: d.quietHoursEnd,
+      timezone: d.timezone,
       ...location,
     },
     select: SELECT,

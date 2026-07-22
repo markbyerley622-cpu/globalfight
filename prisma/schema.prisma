@@ -1130,6 +1130,26 @@ model User {
   openToSpar         Boolean       @default(false)
   lookingForTraining Boolean       @default(false)
 
+  // ── Notification preferences ──────────────────────────────────────────
+  // Categories rather than one switch per notification TYPE: a user thinks
+  // "stop telling me about fights", not "disable FIGHT_ANNOUNCED and
+  // EVENT_LIVE". Types map onto these in src/lib/push/policy.ts, so adding a
+  // NotificationType never requires a migration.
+  //
+  // Defaults are ON for everything a user opted into by following something,
+  // because the notification is the thing they asked for. Push still requires
+  // an explicit browser permission on top — see PushSubscription.
+  notifyFights      Boolean @default(true)  // reminders, going live, card changes
+  notifyPredictions Boolean @default(true)  // lock deadlines, results, rank moves
+  notifySocial      Boolean @default(true)  // replies, mentions, follows, battles
+  notifyGym         Boolean @default(true)  // check-ins, membership, verification
+  /// Local hours [start, end) during which push is withheld. Null = always on.
+  /// Stored as plain hours + an IANA zone rather than UTC instants: "no pings
+  /// before 8am" has to survive the user travelling.
+  quietHoursStart Int?
+  quietHoursEnd   Int?
+  timezone        String?
+
   // ── Public identity ───────────────────────────────────────────────────
   // Flat columns rather than a UserSocial join table (the shape Fighter uses):
   // a fixed set of five known platforms is read on every profile render, so a
@@ -1183,6 +1203,7 @@ model User {
   checkIns          CheckIn[]
   following         UserFollow[]         @relation("Follower")
   followers         UserFollow[]         @relation("Following")
+  pushSubscriptions PushSubscription[]
 
   @@index([reputation])
   // The people layer's hot path: "visible users who have a resolved point".
@@ -2010,4 +2031,30 @@ model GymPhoto {
   updatedAt    DateTime @updatedAt
 
   @@index([gymId, sortOrder])
+}
+
+/// A browser's Web Push endpoint. One row per DEVICE, not per user — a person
+/// with a phone and a laptop gets both, and revoking one must not silence the
+/// other.
+///
+/// `endpoint` is unique: re-subscribing the same browser updates the keys
+/// rather than accumulating dead rows. `failedCount` lets delivery prune
+/// endpoints the push service has permanently rejected (410/404) instead of
+/// retrying them forever.
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint String @unique
+  /// Client public key + auth secret from the browser's subscription.
+  p256dh   String
+  auth     String
+
+  userAgent   String?
+  failedCount Int      @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
 }
