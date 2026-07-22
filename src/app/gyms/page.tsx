@@ -4,6 +4,9 @@ import Image from "next/image";
 import { BadgeCheck, Users, Plus, MapPin } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getPresenceCounts } from "@/lib/geo/presence";
+import { Chip, ChipRow } from "@/components/ui/chip";
+import { EmptyState } from "@/components/ui/empty-state";
+import { DISCIPLINES } from "@/lib/roles";
 
 export const metadata: Metadata = {
   title: "Gyms",
@@ -16,21 +19,35 @@ export const dynamic = "force-dynamic";
 export default async function GymsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; d?: string; v?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, d, v } = await searchParams;
   const query = q?.trim() ?? "";
+  const discipline = DISCIPLINES.includes(d as never) ? d! : "";
+  const verifiedOnly = v === "1";
+  const qs = (next: Record<string, string>) => {
+    const p = new URLSearchParams();
+    const merged = { q: query, d: discipline, v: verifiedOnly ? "1" : "", ...next };
+    for (const [k, val] of Object.entries(merged)) if (val) p.set(k, val);
+    const str = p.toString();
+    return str ? `/gyms?${str}` : "/gyms";
+  };
 
   const gyms = await prisma.gym.findMany({
-    where: query
-      ? {
-          OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { city: { contains: query, mode: "insensitive" } },
-            { disciplines: { has: query } },
-          ],
-        }
-      : undefined,
+    where: {
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query, mode: "insensitive" } },
+              { city: { contains: query, mode: "insensitive" } },
+              { country: { contains: query, mode: "insensitive" } },
+              { disciplines: { has: query } },
+            ],
+          }
+        : {}),
+      ...(discipline ? { disciplines: { has: discipline } } : {}),
+      ...(verifiedOnly ? { verified: true } : {}),
+    },
     orderBy: [{ verified: "desc" }, { memberCount: "desc" }, { name: "asc" }],
     take: 60,
     select: {
@@ -67,23 +84,26 @@ export default async function GymsPage({
         />
       </form>
 
+      <ChipRow className="mb-4">
+        <Chip href={qs({ v: verifiedOnly ? "" : "1" })} active={verifiedOnly} size="sm">Verified</Chip>
+        {DISCIPLINES.map((x) => (
+          <Chip key={x} href={qs({ d: discipline === x ? "" : x })} active={discipline === x} tone="neutral" size="sm">
+            {x}
+          </Chip>
+        ))}
+      </ChipRow>
+
       {gyms.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-ink-700 bg-ink-900/40 px-6 py-12 text-center">
-          <p className="font-display text-base font-bold uppercase tracking-wide text-chalk">
-            {query ? "No gyms match that" : "No gyms yet"}
-          </p>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm text-fog">
-            {query
-              ? "Try a different name or city — or add it if it's missing."
-              : "Add the gym you train at. It appears on the map for everyone nearby, and on your profile."}
-          </p>
-          <Link
-            href="/gyms/new"
-            className="tap mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-white hover:bg-blood-400"
-          >
-            <Plus className="size-3.5" /> Add a gym
-          </Link>
-        </div>
+        <EmptyState
+          icon={<MapPin className="size-5" />}
+          title={query || discipline || verifiedOnly ? "No gyms match that" : "No gyms yet"}
+          body={
+            query || discipline || verifiedOnly
+              ? "Try a different name, city or discipline — or add it if it's missing."
+              : "Add the gym you train at. It appears on the map for everyone nearby, and on your profile."
+          }
+          action={{ href: "/gyms/new", label: "Add a gym" }}
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {gyms.map((g) => {

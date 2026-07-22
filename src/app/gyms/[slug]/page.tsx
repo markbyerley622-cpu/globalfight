@@ -22,7 +22,7 @@ async function loadGym(slug: string) {
       logoUrl: true, heroUrl: true, address: true, city: true, region: true, country: true,
       website: true, instagram: true, facebook: true, youtube: true, tiktok: true,
       phone: true, hoursNote: true,
-      disciplines: true, verified: true, memberCount: true, ownerId: true,
+      disciplines: true, verified: true, memberCount: true, ownerId: true, countryCode: true,
       photos: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
@@ -63,6 +63,24 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
 
   const user = await getCurrentUser().catch(() => null);
   const presence = await getPresence({ gymId: gym.id }, user?.id);
+
+  // Nearby = same city first, then same country. Cheap, indexed, and honest:
+  // we do not have street coordinates for most gyms, so "nearby" means the
+  // place people would actually consider as an alternative.
+  const nearby = gym.city || gym.countryCode
+    ? await prisma.gym.findMany({
+        where: {
+          id: { not: gym.id },
+          OR: [
+            ...(gym.city ? [{ city: { equals: gym.city, mode: "insensitive" as const } }] : []),
+            ...(gym.countryCode ? [{ countryCode: gym.countryCode }] : []),
+          ],
+        },
+        orderBy: [{ verified: "desc" }, { memberCount: "desc" }],
+        take: 6,
+        select: { slug: true, name: true, city: true, logoUrl: true, verified: true, memberCount: true, disciplines: true },
+      })
+    : [];
   const mine = user ? gym.members.find((m) => m.user.id === user.id) : undefined;
 
   const place = [gym.address, gym.city, gym.region, gym.country].filter(Boolean).join(", ");
@@ -270,6 +288,41 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
             </div>
           )}
         </Section>
+
+        {nearby.length > 0 && (
+          <Section title={`More gyms ${gym.city ? `in ${gym.city}` : "nearby"}`}>
+            <ul className="flex flex-col gap-2">
+              {nearby.map((n) => (
+                <li key={n.slug}>
+                  <Link
+                    href={`/gyms/${n.slug}`}
+                    className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 p-3 transition-colors hover:border-volt-500/40"
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-volt-500/25 bg-volt-500/10">
+                      {n.logoUrl ? (
+                        <Image src={n.logoUrl} alt="" width={36} height={36} unoptimized className="size-full object-cover" />
+                      ) : (
+                        <span className="font-display text-[0.7rem] font-black text-volt-400">
+                          {n.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-display text-sm font-bold text-chalk">{n.name}</span>
+                        {n.verified && <BadgeCheck className="size-3.5 shrink-0 text-volt-400" />}
+                      </span>
+                      <span className="block truncate text-[0.7rem] text-fog">
+                        {[n.city, n.disciplines.slice(0, 2).join(", ")].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[0.68rem] tabular-nums text-fog">{n.memberCount}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
 
         {/* Owner shortcut — replaces the claim prompt entirely for the owner. */}
         {gym.ownerId && user && gym.ownerId === user.id && (

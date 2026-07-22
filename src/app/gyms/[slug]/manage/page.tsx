@@ -5,7 +5,7 @@ import { ChevronLeft, BadgeCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { isAdminRole } from "@/lib/admin/guard";
-import { GymManageForm } from "@/components/map/gym-manage-form";
+import { GymDashboard } from "@/components/map/gym-dashboard";
 
 export const metadata: Metadata = { title: "Manage gym", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -32,11 +32,36 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
   if (!gym) notFound();
   if (gym.ownerId !== user.id && !isAdminRole(user.role)) notFound();
 
-  const photos = await prisma.gymPhoto.findMany({
-    where: { gymId: gym.id },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
-  });
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+  const [photos, roster, presentNow, checkInsWeek, pendingClaims] = await Promise.all([
+    prisma.gymPhoto.findMany({
+      where: { gymId: gym.id },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, url: true, thumbUrl: true, width: true, height: true, caption: true },
+    }),
+    prisma.gymMember.findMany({
+      where: { gymId: gym.id },
+      orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true, role: true, isHome: true, createdAt: true,
+        user: { select: { id: true, name: true, username: true, image: true, registryRole: true, reputation: true } },
+      },
+    }),
+    prisma.checkIn.count({ where: { gymId: gym.id, expiresAt: { gt: new Date() } } }),
+    prisma.checkIn.count({ where: { gymId: gym.id, createdAt: { gte: weekAgo } } }),
+    // Claims by anyone OTHER than the current owner still sitting in review.
+    prisma.gymClaim.count({
+      where: { gymId: gym.id, status: { in: ["pending", "info_requested"] }, claimantId: { not: gym.ownerId ?? "" } },
+    }),
+  ]);
+
+  const members = roster.map((m) => ({
+    id: m.id,
+    role: m.role,
+    isHome: m.isHome,
+    joinedAt: m.createdAt.toISOString(),
+    user: m.user,
+  }));
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-16 pt-5 lg:max-w-3xl">
@@ -52,11 +77,13 @@ export default async function ManageGymPage({ params }: { params: Promise<{ slug
         {gym.verified && <BadgeCheck className="size-5 text-volt-400" />}
       </h1>
       <p className="mt-1 text-sm text-fog">
-        You manage {gym.name}. Changes are live immediately and save as you go.
+        You manage {gym.name}. Everything here is live — changes save as you go.
       </p>
 
       <div className="mt-5">
-        <GymManageForm gym={gym} photos={photos} />
+        <GymDashboard
+          data={{ gym, photos, members, ownerId: gym.ownerId, presentNow, checkInsWeek, pendingClaims }}
+        />
       </div>
     </div>
   );
