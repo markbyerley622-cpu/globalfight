@@ -5,7 +5,7 @@ import {
   validateEvidence, stripMetadata, putEvidence, MAX_EVIDENCE_BYTES,
   type AcceptedMime,
 } from "@/lib/evidence/store";
-import { scanEvidence } from "@/lib/evidence/scan";
+import { scanBytes } from "@/lib/evidence/scan";
 import { PENDING_TTL_DAYS, daysFromNow } from "@/lib/evidence/lifecycle";
 import { hit, POLICY } from "@/lib/rate-limit";
 import { log } from "@/lib/scraper/logger";
@@ -73,8 +73,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     // Strip EXIF before it is stored: a photo of a shopfront otherwise carries
     // the GPS coordinates of whoever took it.
     const cleaned = await stripMetadata(raw, check.mime as AcceptedMime);
-    const scan = await scanEvidence(claim.id, cleaned);
+    // scanBytes, NOT scanEvidence: the latter persists onto FighterClaim and
+    // would fail on a GymClaim id. The verdict is recorded below, on the row
+    // this route actually owns.
+    const scan = await scanBytes(cleaned);
     if (scan === "INFECTED") {
+      // Nothing has been stored yet — the scan runs before putEvidence — so
+      // refusing here leaves no object to clean up.
       return NextResponse.json({ error: "That file failed a security scan." }, { status: 422 });
     }
 

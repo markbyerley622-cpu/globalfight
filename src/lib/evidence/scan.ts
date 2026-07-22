@@ -48,19 +48,32 @@ async function externalScan(body: Buffer): Promise<boolean | null> {
 }
 
 /**
- * Scan a stored document and record the outcome on the claim. An INFECTED result
- * deletes the object immediately — we do not keep known-bad bytes around, and a
- * reviewer must never be handed them.
+ * The scan VERDICT for a buffer, with no database writes.
+ *
+ * Split out because scanEvidence() below persists onto FighterClaim
+ * specifically — passing it a GymClaim id made `prisma.fighterClaim.update()`
+ * fail with "no record found", 500ing every gym-claim evidence upload. Callers
+ * that own a different entity take the verdict and record it themselves.
  */
-export async function scanEvidence(claimId: string, body: Buffer): Promise<ScanStatus> {
+export async function scanBytes(body: Buffer): Promise<ScanStatus> {
   // Structural re-check. These are the checks that actually hold: a file whose
   // signature isn't one of our four formats, or that carries script markers, is
   // rejected regardless of what any AV says.
   const structurallyBad = sniffMime(body) === null || looksLikePolyglot(body);
-
   const infected = structurallyBad ? true : await externalScan(body);
+  if (infected === true) return "INFECTED";
+  return infected === false ? "CLEAN" : "SKIPPED";
+}
 
-  if (infected === true) {
+/**
+ * Scan a FIGHTER claim's document and record the outcome on that claim. An
+ * INFECTED result deletes the object immediately — we do not keep known-bad
+ * bytes around, and a reviewer must never be handed them.
+ */
+export async function scanEvidence(claimId: string, body: Buffer): Promise<ScanStatus> {
+  const verdict = await scanBytes(body);
+
+  if (verdict === "INFECTED") {
     await prisma.fighterClaim.update({
       where: { id: claimId },
       data: { evidenceScanStatus: "INFECTED" },
@@ -73,9 +86,8 @@ export async function scanEvidence(claimId: string, body: Buffer): Promise<ScanS
     return "INFECTED";
   }
 
-  const status: ScanStatus = infected === false ? "CLEAN" : "SKIPPED";
-  await prisma.fighterClaim.update({ where: { id: claimId }, data: { evidenceScanStatus: status } });
-  return status;
+  await prisma.fighterClaim.update({ where: { id: claimId }, data: { evidenceScanStatus: verdict } });
+  return verdict;
 }
 
 /**
