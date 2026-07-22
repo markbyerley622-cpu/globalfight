@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { notify } from "@/lib/notifications-store";
 
 // ── Reputation ──────────────────────────────────────────────────────────────
 // ONE score, many sources. `User.reputation` is the running total; every change
@@ -69,7 +70,45 @@ export async function awardReputation(
   await db.reputationEvent.create({
     data: { userId, delta, reason, refType: ref?.type ?? null, refId: ref?.id ?? null },
   });
-  await db.user.update({ where: { id: userId }, data: { reputation: { increment: delta } } });
+  const after = await db.user.update({
+    where: { id: userId },
+    data: { reputation: { increment: delta } },
+    select: { reputation: true },
+  });
+  await notifyRepMilestone(db, userId, after.reputation - delta, after.reputation);
+}
+
+// ── Milestones ──────────────────────────────────────────────────────────────
+// REP_MILESTONE has been in the NotificationType enum with no producer since it
+// was written. It is the one notification that is purely good news, so it is
+// worth getting right: told the moment it happens (not on the next cron), and
+// exactly once per threshold for the life of the account.
+
+const REP_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10_000] as const;
+
+/**
+ * Announce any threshold crossed by this award.
+ *
+ * Keyed rep:<threshold>, so a score that dips below a line and climbs back over
+ * it does NOT re-announce — a milestone you can farm by losing points first is
+ * not a milestone. Only upward crossings qualify; a penalty is never news.
+ */
+async function notifyRepMilestone(db: Db, userId: string, before: number, after: number): Promise<void> {
+  if (after <= before) return;
+  const crossed = REP_MILESTONES.filter((m) => before < m && after >= m);
+  if (!crossed.length) return;
+
+  // Award the highest line crossed. A single huge payout that clears two
+  // thresholds is one achievement, not two notifications.
+  const top = crossed[crossed.length - 1];
+  await notify(db, userId, {
+    type: "REP_MILESTONE",
+    title: `${top.toLocaleString()} reputation`,
+    body: "Your calls are paying off. See where that puts you on the board.",
+    url: "/leaderboard",
+    icon: "⭐",
+    dedupeKey: `rep:${top}`,
+  });
 }
 
 /** Reputation leaderboard — highest first. */
