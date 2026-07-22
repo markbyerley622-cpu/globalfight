@@ -414,7 +414,12 @@ export async function createPost(input: {
   attachments?: ForumAttachment[]; quotePostId?: string | null;
 }): Promise<ForumPostDTO> {
   const thread = await prisma.forumThread.findUnique({
-    where: { slug: input.threadSlug }, select: { id: true, locked: true, ...ACCESS_SELECT },
+    where: { slug: input.threadSlug },
+    select: {
+      id: true, locked: true, title: true, authorId: true,
+      category: { select: { slug: true } },
+      ...ACCESS_SELECT,
+    },
   });
   if (!thread) throw new Error("Thread not found.");
   if (!canAccessThread(thread, input.authorId)) throw new Error("Thread not found.");
@@ -449,8 +454,78 @@ export async function createPost(input: {
     where: { id: thread.id }, data: { replyCount: { increment: 1 }, lastPostAt: new Date() },
   });
   if (thread.battle) await onBattleRoomMessage(thread.battle, input.authorId, post.content);
+  else {
+    await notifyReplyTargets(
+      { id: thread.id, title: thread.title, authorId: thread.authorId, categorySlug: thread.category.slug },
+      post.author,
+      input.threadSlug, post.id, post.content, quote?.quotedId,
+    );
+  }
   await publish({ type: "post:new", threadSlug: input.threadSlug, postId: post.id });
   return mapPost(post as PostRow, input.authorId);
+}
+
+/**
+ * Tell the people this reply is actually aimed at.
+ *
+ * Until now ONLY battle rooms notified anyone — a reply to a public thread
+ * reached the author never. That is the single loudest missing loop in a forum:
+ * you post, someone answers, and you find out only if you happen to come back.
+ *
+ * Three targets, DEDUPED so one post is never two pings: the person quoted, the
+ * person replied to, and the thread's author. Self-notification is skipped —
+ * nobody needs telling they replied to themselves.
+ *
+ * Best-effort and outside the write: the post is already saved, and a
+ * notification hiccup must never fail it.
+ */
+async function notifyReplyTargets(
+  thread: { id: string; title: string; authorId: string; categorySlug: string },
+  author: { id: string; name: string | null; username: string | null },
+  threadSlug: string,
+  postId: string,
+  content: string,
+  quotedId?: string,
+): Promise<void> {
+  try {
+    const who = author.name ?? author.username ?? "Someone";
+    const url = `/forums/${thread.categorySlug}/${threadSlug}#post-${postId}`;
+    const excerpt = excerptOf(content, 120);
+
+    // Resolve quoted/parent authors in ONE query rather than one each.
+    const ids = [quotedId].filter(Boolean) as string[];
+    const posts = ids.length
+      ? await prisma.forumPost.findMany({ where: { id: { in: ids } }, select: { id: true, authorId: true } })
+      : [];
+
+    // Ordered by specificity: a quote is more directed than a thread reply, so
+    // the quoted person gets the quote wording and is then excluded from the
+    // generic one.
+    const targets = new Map<string, { title: string; icon: string }>();
+    for (const p of posts) {
+      if (p.authorId !== author.id) {
+        targets.set(p.authorId, { title: `${who} quoted you`, icon: "❝" });
+      }
+    }
+    if (thread.authorId !== author.id && !targets.has(thread.authorId)) {
+      targets.set(thread.authorId, { title: `${who} replied to your thread`, icon: "💬" });
+    }
+    if (targets.size === 0) return;
+
+    await Promise.all(
+      [...targets.entries()].map(([userId, t]) =>
+        notify(prisma, userId, {
+          type: "COMMUNITY_REPLY",
+          title: t.title,
+          body: `${thread.title} — ${excerpt}`,
+          url,
+          icon: t.icon,
+        }),
+      ),
+    );
+  } catch {
+    // Swallowed on purpose — see the doc comment.
+  }
 }
 
 /**

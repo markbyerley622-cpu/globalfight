@@ -62,9 +62,48 @@ async function audienceFor(event: { id: string; promotion: string | null }): Pro
 }
 
 type NewNotif = {
-  userId: string; type: "FIGHT_ANNOUNCED" | "EVENT_LIVE"; title: string; body: string;
+  userId: string; type: "FIGHT_ANNOUNCED" | "EVENT_LIVE" | "PICK_RESULT"; title: string; body: string;
   url: string; icon: string; dedupeKey: string;
 };
+
+// ── Prediction deadlines ───────────────────────────────────────────────────
+// Picks lock at FIRST BELL for the whole card (see lib/picks.ts), so the
+// deadline is simply the event date — there is no separate per-fight lock to
+// track.
+//
+// Two windows, not three. A 15-minute warning was specified but is not
+// deliverable: this engine runs on a cron, and a reminder that can fire up to a
+// tick late is worse than none — it would tell people to hurry after picks had
+// already closed. 24h gives time to research, 1h is the "last call". Each
+// window carries its own dedupeKey so a user gets each at most once, ever.
+const DEADLINE_WINDOWS = [
+  { key: "24h", hours: 24, title: "Picks close tomorrow", icon: "⏳" },
+  { key: "1h", hours: 1, title: "Last call — picks close in an hour", icon: "⏰" },
+] as const;
+
+/**
+ * Users who follow an event and have NOT picked a single bout on it.
+ *
+ * Anyone who has already picked is deliberately excluded: the notification's
+ * entire job is "you have not done this yet", and sending it to someone who has
+ * is the fastest way to get the category muted.
+ *
+ * Two queries per event regardless of audience size — the follower list and the
+ * set of ids that already picked — then a set difference in memory. No per-user
+ * lookup.
+ */
+async function unpickedFollowers(eventId: string): Promise<string[]> {
+  const [followers, picked] = await Promise.all([
+    prisma.favoriteEvent.findMany({ where: { eventId }, select: { userId: true } }),
+    prisma.fightPick.findMany({
+      where: { fight: { eventId } },
+      select: { userId: true },
+      distinct: ["userId"],
+    }),
+  ]);
+  const done = new Set(picked.map((p) => p.userId));
+  return followers.map((f) => f.userId).filter((id) => !done.has(id));
+}
 
 function soonBody(m: AudienceMember): string {
   const bits: string[] = [];
@@ -122,6 +161,39 @@ export async function runReturnEngine(): Promise<{ eventsSoon: number; eventsLiv
       dedupeKey: `event_live:${e.id}`,
     })));
   }
+
+  // ── Prediction deadlines ──
+  // Each window is its own query rather than one wide scan: the ranges are
+  // narrow and indexed on Event.date, so this stays cheap as the card list grows.
+  let deadlines = 0;
+  for (const w of DEADLINE_WINDOWS) {
+    const from = new Date(now.getTime() + (w.hours - 1) * HOUR);
+    const to = new Date(now.getTime() + w.hours * HOUR);
+    const closing = await prisma.event.findMany({
+      where: { status: { in: ["SCHEDULED", "ANNOUNCED"] }, date: { gte: from, lte: to } },
+      select: { id: true, slug: true, name: true },
+    });
+
+    for (const e of closing) {
+      const users = await unpickedFollowers(e.id);
+      if (!users.length) continue;
+      deadlines += await emit(
+        users.map((userId) => ({
+          userId,
+          // PICK_RESULT maps to the "predictions" push category, which is
+          // exactly the switch a user expects to control pick deadlines.
+          type: "PICK_RESULT" as const,
+          title: w.title,
+          body: `${e.name} — you haven't made a pick yet.`,
+          // Straight to the card, which is where the picks are.
+          url: `/events/${e.slug}`,
+          icon: w.icon,
+          dedupeKey: `picks_closing:${e.id}:${w.key}`,
+        })),
+      );
+    }
+  }
+  sent += deadlines;
 
   return { eventsSoon: soonEvents.length, eventsLive: liveEvents.length, sent };
 }
