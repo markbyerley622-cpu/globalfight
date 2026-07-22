@@ -59,6 +59,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const read = await readImageUpload(form);
   if (!read.ok) return read.response;
 
+  // Next free slot. Deleting the middle photo of three leaves sortOrder 0 and
+  // 2, so the old `count` (2) collided with an existing row — verified against
+  // a live database.
+  //
+  // Residual, accepted: two SIMULTANEOUS uploads both read the same max and
+  // land on the same slot. Left as-is deliberately — unlike the membership
+  // race this throws no error and loses no data: every read orders by
+  // [sortOrder, createdAt], so the gallery is still deterministic, any reorder
+  // rewrites 0..n-1 and heals it, and the shipped uploader posts sequentially
+  // by design. Closing it would mean a unique index plus retry for a cosmetic
+  // tie.
+  const last = await prisma.gymPhoto.findFirst({
+    where: { gymId: gym.id },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  const nextSlot = (last?.sortOrder ?? -1) + 1;
+
   try {
     const stored = await processAndStoreContentImage("gyms", `${gym.id}/photo-${randomUUID()}`, read.value.buffer);
     const caption = (form.get("caption") as string | null)?.trim().slice(0, 120) || null;
@@ -74,7 +92,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         width: stored.width,
         height: stored.height,
         caption,
-        sortOrder: count,
+        sortOrder: nextSlot,
         uploadedById: userId,
       },
       select: PHOTO_SELECT,

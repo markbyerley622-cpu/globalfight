@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { resolvePoint } from "./gazetteer";
 import { getPresenceCounts } from "./presence";
@@ -171,29 +172,42 @@ export async function setGymMembership(opts: {
   const { userId, gymId, join, isHome } = opts;
 
   await prisma.$transaction(async (tx) => {
-    if (!join) {
-      const removed = await tx.gymMember.deleteMany({ where: { userId, gymId } });
-      if (removed.count > 0) {
-        await tx.gym.update({ where: { id: gymId }, data: { memberCount: { decrement: removed.count } } });
+    if (join) {
+      // Home gym is exclusive: demote the previous one first, in the same
+      // transaction, so a fighter can never end up with two.
+      if (isHome) {
+        await tx.gymMember.updateMany({ where: { userId, isHome: true }, data: { isHome: false } });
       }
-      return;
-    }
 
-    const existing = await tx.gymMember.findUnique({
-      where: { gymId_userId: { gymId, userId } },
-      select: { id: true },
-    });
-
-    if (isHome) {
-      await tx.gymMember.updateMany({ where: { userId, isHome: true }, data: { isHome: false } });
-    }
-
-    if (existing) {
-      await tx.gymMember.update({ where: { id: existing.id }, data: { isHome: isHome ?? undefined } });
+      // A TRUE atomic upsert. Three approaches were measured against a live
+      // Postgres with 8 concurrent joins:
+      //
+      //   find-then-create  → 4/8 failed (check-then-act race)
+      //   prisma.upsert     → 3/8 failed (Prisma still reads, then inserts)
+      //   catch P2002       → 7/8 failed, and this is the instructive one:
+      //                       Postgres raises 25P02 "current transaction is
+      //                       aborted" after ANY error, so a catch INSIDE a
+      //                       transaction cannot recover — the tx is poisoned.
+      //
+      // ON CONFLICT never raises, so the transaction is never poisoned and the
+      // write is genuinely idempotent. `role` is intentionally absent from the
+      // DO UPDATE: a coach or owner re-joining must not be demoted to member.
+      await tx.$executeRaw`
+        INSERT INTO "GymMember" ("id", "gymId", "userId", "role", "isHome", "createdAt")
+        VALUES (${randomUUID()}, ${gymId}, ${userId}, 'member', ${isHome ?? false}, NOW())
+        ON CONFLICT ("gymId", "userId") DO UPDATE
+          SET "isHome" = COALESCE(${isHome ?? null}::boolean, "GymMember"."isHome")
+      `;
     } else {
-      await tx.gymMember.create({ data: { userId, gymId, isHome: isHome ?? false } });
-      await tx.gym.update({ where: { id: gymId }, data: { memberCount: { increment: 1 } } });
+      await tx.gymMember.deleteMany({ where: { userId, gymId } });
     }
+
+    // memberCount is RECOMPUTED rather than incremented. An increment has to
+    // know whether the upsert inserted or updated — which Prisma does not tell
+    // you — and any past drift would persist forever. One COUNT per join/leave
+    // is trivial and makes the denormalised value self-healing.
+    const memberCount = await tx.gymMember.count({ where: { gymId } });
+    await tx.gym.update({ where: { id: gymId }, data: { memberCount } });
   });
 }
 

@@ -69,6 +69,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
   });
 
+  // Approving a claim hands someone control of a business page and sets
+  // `verified`. Fighter-claim decisions are audited; this one was not, so the
+  // single most consequential admin action in the gym stack left no trace.
+  // Inside no transaction on purpose: a failed audit write must not roll back
+  // a completed decision.
+  await prisma.auditLog
+    .create({
+      data: {
+        actorId: user.id,
+        action: `gym-claim.${status}`,
+        entity: "GymClaim",
+        entityId: claim.id,
+        meta: { gymId: claim.gymId, claimantId: claim.claimantId, hadEvidence: !!claim.evidenceStorageKey },
+      },
+    })
+    .catch(() => {});
+
   // A decided claim's proof has served its purpose. Approved documents go
   // immediately; a rejection keeps its document for the appeal window rather
   // than destroying the only thing the claimant could argue with.
