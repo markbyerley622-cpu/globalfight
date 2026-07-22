@@ -3,12 +3,12 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, MapPin } from "lucide-react";
+import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, Pencil } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
 import { ProfileSettings } from "./profile-settings";
 import { ProfileStats } from "./profile-stats";
-import { MapPresencePanel } from "./map-presence";
+import { EditProfileLink } from "./profile-editor";
 
 const initials = (u: { name: string | null; username: string | null }) =>
   (u.name ?? u.username ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -114,7 +114,7 @@ export function ProfileView() {
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <span className="rounded-lg border border-blood-500/25 bg-blood-500/12 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-blood-300">{role}</span>
         {user.username && <span className="text-[0.8rem] text-fog">@{user.username}</span>}
-        <span className="text-[0.8rem] text-fog">· Combat Register member</span>
+        <EditProfileLink />
       </div>
 
       {/* Identity: reputation, accuracy, streak, collection, activity */}
@@ -123,18 +123,12 @@ export function ProfileView() {
       {/* Account shortcuts */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
         <Row href="/predictions" icon={Star} name="Predictions" desc="Your picks and results" />
+        <Row href="/profile/edit" icon={Pencil} name="Edit profile" desc="Role, disciplines, links, map presence" />
         <Row href="/gyms" icon={Dumbbell} name="Gyms" desc="Where you train, and who trains there" />
         <Row href="/account" icon={Bell} name="Notifications" desc="Fight-week reminders & breaking news" />
       </div>
 
-      {/* Community map presence — the opt-in that puts a person on the map. */}
-      <div className="mt-5 flex items-center gap-2 px-1">
-        <MapPin className="size-4 text-fog" />
-        <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Community map</h3>
-      </div>
-      <div className="mt-3">
-        <MapPresencePanel />
-      </div>
+
 
       {/* Settings */}
       <div className="mt-5 flex items-center gap-2 px-1">

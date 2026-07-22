@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
-  MapPin, Globe, Phone, Instagram, Clock, BadgeCheck, Users, Flame, ShieldQuestion,
+  MapPin, Globe, Phone, Instagram, Clock, BadgeCheck, Users, Flame, ShieldQuestion, Settings,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -226,6 +226,24 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
             </div>
           )}
         </Section>
+
+        {/* Owner shortcut — replaces the claim prompt entirely for the owner. */}
+        {gym.ownerId && user && gym.ownerId === user.id && (
+          <Link
+            href={`/gyms/${gym.slug}/manage`}
+            className="mt-6 flex items-center gap-3 rounded-2xl border border-up/30 bg-up/8 px-4 py-3.5 transition-colors hover:border-up/50"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-up/15 text-up">
+              <Settings className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-sm font-bold text-chalk">You manage this gym</span>
+              <span className="block text-[0.72rem] leading-relaxed text-fog">
+                Edit details, disciplines, hours and contact info.
+              </span>
+            </span>
+          </Link>
+        )}
 
         {/* Claim */}
         {!gym.ownerId && (

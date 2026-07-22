@@ -13,15 +13,8 @@ import { track } from "@/lib/analytics-client";
 import { AGE_STATEMENT, MINIMUM_AGE } from "@/lib/age-policy";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { cn } from "@/lib/utils";
+import { ROLE_GROUPS, rolesInGroup, roleLabel } from "@/lib/roles";
 import { FighterProfilePanel } from "@/components/fighters/fighter-profile-panel";
-
-// Account types shown at signup. Kept intentionally short — fighters/champions
-// still verify by claiming their registry profile after signing up.
-const ROLES = [
-  { key: "fan", label: "Fan", desc: "Follow fighters, predict & discuss" },
-  { key: "fighter", label: "Fighter", desc: "Claim your record & profile" },
-  { key: "world_champion", label: "World Champion", desc: "Verified titleholder profile" },
-] as const;
 
 const FEATURES = [
   { icon: Heart, t: "Favorite fighters", d: "Follow your favorites and get their fight alerts." },
@@ -82,7 +75,7 @@ export default function AccountPage() {
 
   // ── Logged-in dashboard ──────────────────────────────────────────────
   if (!loading && user) {
-    const roleLabel = ROLES.find((r) => r.key === user.registryRole)?.label ?? "Fan";
+    const roleName = roleLabel(user.registryRole);
     return (
       <>
         <PageHero
@@ -102,7 +95,7 @@ export default function AccountPage() {
               </div>
             </div>
             <dl className="mt-6 space-y-3 text-sm">
-              <div className="flex items-center justify-between"><dt className="text-fog">Registry role</dt><dd className="font-semibold text-chalk">{roleLabel}</dd></div>
+              <div className="flex items-center justify-between"><dt className="text-fog">Registry role</dt><dd className="font-semibold text-chalk">{roleName}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-fog">Username</dt><dd className="font-semibold text-chalk">@{user.username}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-fog">Reputation</dt><dd className="font-semibold text-chalk">{user.reputation}</dd></div>
             </dl>
@@ -182,29 +175,49 @@ export default function AccountPage() {
             {isSignup && (
               <>
                 <div>
-                  <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-fog">I&rsquo;m joining as…</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {ROLES.map((r) => {
-                      const on = role === r.key;
-                      return (
-                        <button
-                          key={r.key}
-                          type="button"
-                          onClick={() => setRole(r.key)}
-                          title={r.desc}
-                          className={cn(
-                            "flex flex-col items-start gap-1 rounded-lg border p-2.5 text-left transition-colors",
-                            on ? "border-blood-500/60 bg-blood-500/10" : "border-ink-700 bg-ink-950/40 hover:border-ink-600",
-                          )}
-                        >
-                          <span className="flex w-full items-center justify-between">
-                            <span className="font-display text-xs font-bold text-chalk">{r.label}</span>
-                            {on && <Check className="size-3.5 shrink-0 text-blood-400" />}
-                          </span>
-                          <span className="text-[0.62rem] leading-tight text-fog">{r.desc}</span>
-                        </button>
-                      );
-                    })}
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-fog">
+                    I&rsquo;m joining as…
+                  </span>
+                  <p className="mb-2.5 text-[0.68rem] leading-relaxed text-fog">
+                    Everyone in combat sports has a place here. Pick the closest — you can change it any time from
+                    your profile.
+                  </p>
+                  <div className="space-y-3">
+                    {ROLE_GROUPS.map((g) => (
+                      <div key={g.id}>
+                        <span className="mb-1.5 block font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-fog">
+                          {g.label}
+                        </span>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {rolesInGroup(g.id).map((r) => {
+                            const on = role === r.value;
+                            return (
+                              <button
+                                key={r.value}
+                                type="button"
+                                onClick={() => setRole(r.value)}
+                                aria-pressed={on}
+                                title={r.blurb}
+                                className={cn(
+                                  "tap flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors",
+                                  on
+                                    ? "border-blood-500/60 bg-blood-500/10"
+                                    : "border-ink-700 bg-ink-950/40 hover:border-ink-600",
+                                )}
+                              >
+                                <span className="flex w-full items-center justify-between gap-1">
+                                  <span className="font-display text-[0.72rem] font-bold leading-tight text-chalk">
+                                    {r.label}
+                                  </span>
+                                  {on && <Check className="size-3.5 shrink-0 text-blood-400" />}
+                                </span>
+                                <span className="text-[0.6rem] leading-tight text-fog">{r.blurb}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <Field icon={User} label="Username" type="text" placeholder="Choose a username" value={name} onChange={setName} autoComplete="username" />

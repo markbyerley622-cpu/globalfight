@@ -17,6 +17,7 @@
 // ════════════════════════════════════════════════════════════════════════
 
 import "server-only";
+import { REGISTRY_ROLE_VALUES } from "@/lib/roles";
 import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
@@ -31,10 +32,10 @@ const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 // placeholder, or weak. There is no production fallback by design.
 const secret = new TextEncoder().encode(resolveAuthSecret());
 
-export const REGISTRY_ROLES = [
-  "fan", "fighter", "world_champion", "coach", "gym", "promoter", "manager", "official", "media", "ring_girl", "medic",
-] as const;
-export type RegistryRole = (typeof REGISTRY_ROLES)[number];
+// Derived, never re-declared — see src/lib/roles.ts for why this list existed
+// in three places with three different contents.
+export const REGISTRY_ROLES = REGISTRY_ROLE_VALUES;
+export type RegistryRole = string;
 
 export interface SessionUser {
   id: string;

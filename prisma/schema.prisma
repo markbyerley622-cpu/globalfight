@@ -1130,6 +1130,21 @@ model User {
   openToSpar         Boolean       @default(false)
   lookingForTraining Boolean       @default(false)
 
+  // ── Public identity ───────────────────────────────────────────────────
+  // Flat columns rather than a UserSocial join table (the shape Fighter uses):
+  // a fixed set of five known platforms is read on every profile render, so a
+  // join would cost a round trip to model nothing extra. Fighter's table earns
+  // its keep because a fighter's links are editorially curated and open-ended.
+  website     String?
+  instagram   String?
+  twitter     String?
+  youtube     String?
+  tiktok      String?
+  facebook    String?
+  /// Fighters only, and self-declared — never presented as a verified record.
+  weightClassPref String?
+  yearsTraining   Int?
+
   accounts          Account[]
   sessions          Session[]
   passwordResets    PasswordResetToken[]
