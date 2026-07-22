@@ -11,6 +11,7 @@ import {
 } from "@/lib/following";
 import { timeAgo, cn } from "@/lib/utils";
 import { Chip, ChipRow } from "@/components/ui/chip";
+import { VideoCard, VideoCardProvider } from "@/components/feed/video-card";
 import { EmptyState } from "@/components/ui/empty-state";
 
 export const metadata: Metadata = {
@@ -44,6 +45,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const EVENT_KINDS = new Set(["event_upcoming", "fight_upcoming", "result"]);
+// Video rides the main Feed tab only — the Events tab is the card schedule.
 
 export default async function FollowingPage({
   searchParams,
@@ -93,13 +95,31 @@ export default async function FollowingPage({
         ) : items.length === 0 ? (
           <EmptyFeed following={summary.total > 0} eventsOnly={tab === "events"} />
         ) : (
-          <ol className="flex flex-col gap-2.5">
-            {items.map((item) => (
-              <li key={item.id}>
-                <FeedRow item={item} />
-              </li>
-            ))}
-          </ol>
+          // One provider around the whole list: opening a second video closes
+          // the first, and nothing renders a player until it is clicked.
+          <VideoCardProvider>
+            <ol className="flex flex-col gap-2.5">
+              {items.map((item) => (
+                <li key={item.id}>
+                  {item.kind === "video" && item.video ? (
+                    <VideoCard
+                      video={{
+                        id: item.id.replace(/^vd-/, ""),
+                        title: item.title,
+                        channel: item.video.channel,
+                        publishedAt: item.at,
+                        promotion: item.video.promotion,
+                        promotionName: item.video.promotionName,
+                        reason: item.reason,
+                      }}
+                    />
+                  ) : (
+                    <FeedRow item={item} />
+                  )}
+                </li>
+              ))}
+            </ol>
+          </VideoCardProvider>
         )}
       </div>
     </div>

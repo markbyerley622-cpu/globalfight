@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
+import { SPORTS } from "@/lib/sports";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -23,7 +24,8 @@ export type FeedKind =
   | "fight_upcoming"   // a fighter you follow is booked
   | "result"           // a card you follow finished
   | "personal"         // battle result, reply, mention — already user-targeted
-  | "coverage";        // news naming a fighter/promotion you follow
+  | "coverage"         // news naming a fighter/promotion you follow
+  | "video";           // an upload from a channel your follows map to
 
 export interface FeedItem {
   id: string;
@@ -36,22 +38,38 @@ export interface FeedItem {
   icon?: string | null;
   /** Small context line: promotion, venue, "in 3 days". */
   meta?: string | null;
+  /** Why this is on YOUR feed — "Because you follow UFC". Only set for items
+   *  that are recommended rather than directly subscribed, because a card you
+   *  explicitly followed does not need explaining. */
+  reason?: string | null;
+  /** Present only on kind === "video": what the card needs to render a player
+   *  without a second round trip. */
+  video?: { channel: string; promotion: string | null; promotionName: string | null };
 }
+
+// A user's sportPrefs ARE their discipline follows — the same values the
+// onboarding writes and the ?sport= pills read. There is deliberately no
+// "video preferences" anywhere: following Boxing is the whole opt-in.
+const DISCIPLINE_SLUG: Record<string, string> = Object.fromEntries(
+  SPORTS.map((s) => [s.value, s.slug]),
+);
 
 
 const iso = (d: Date) => d.toISOString();
 
 /** What this user follows. Three cheap indexed reads. */
 async function getFollowGraph(userId: string) {
-  const [events, fighters, promotions] = await Promise.all([
+  const [events, fighters, promotions, me] = await Promise.all([
     prisma.favoriteEvent.findMany({ where: { userId }, select: { eventId: true } }),
     prisma.favoriteFighter.findMany({ where: { userId }, select: { fighterId: true } }),
     prisma.favoritePromotion.findMany({ where: { userId }, select: { promotion: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { sportPrefs: true } }),
   ]);
   return {
     eventIds: events.map((e) => e.eventId),
     fighterIds: fighters.map((f) => f.fighterId),
     promotions: promotions.map((p) => p.promotion),
+    disciplines: [...new Set((me?.sportPrefs ?? []).map((v) => DISCIPLINE_SLUG[v]).filter(Boolean))],
   };
 }
 
@@ -63,7 +81,7 @@ async function getFollowGraph(userId: string) {
  * is how a fan actually experiences fight week.
  */
 export async function getFollowingFeed(userId: string, limit = 40): Promise<FeedItem[]> {
-  const { eventIds, fighterIds, promotions } = await getFollowGraph(userId);
+  const { eventIds, fighterIds, promotions, disciplines } = await getFollowGraph(userId);
   const now = new Date();
   const soon = new Date(now.getTime() + 45 * 86_400_000);
   const recently = new Date(now.getTime() - 21 * 86_400_000);
@@ -79,7 +97,18 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     ),
   ];
 
-  const [upcomingEvents, results, fighterFights, personal, coverage] = await Promise.all([
+  // Fighters you follow, by name — used to spot an interview or a preview that
+  // actually names them. Full names only: a surname `contains` across a video
+  // catalog is a false-positive generator, exactly as it is for articles.
+  const followedFighters = fighterIds.length
+    ? await prisma.fighter.findMany({
+        where: { id: { in: fighterIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const fighterNames = followedFighters.map((f) => f.name).filter((n) => n && n.length >= 6);
+
+  const [upcomingEvents, results, fighterFights, personal, coverage, videos, suppressed] = await Promise.all([
     // Cards you follow directly, or run by a promotion you follow.
     followsSomething
       ? prisma.event.findMany({
@@ -157,6 +186,38 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
           select: { id: true, slug: true, title: true, publishedAt: true, author: { select: { name: true } } },
         })
       : Promise.resolve([]),
+
+    // ── Video ────────────────────────────────────────────────────────────
+    // ONE query for every reason a video could be relevant, OR'd together and
+    // index-backed on (promotion, publishedAt) / (discipline, publishedAt).
+    // Never one query per followed thing, and never a query per rendered card.
+    (promotions.length || disciplines.length || fighterNames.length)
+      ? prisma.feedVideo.findMany({
+          where: {
+            publishedAt: { gte: recently },
+            OR: [
+              ...(promotions.length ? [{ promotion: { in: promotions } }] : []),
+              ...(disciplines.length ? [{ discipline: { in: disciplines } }] : []),
+              ...fighterNames.map((n) => ({ title: { contains: n, mode: "insensitive" as const } })),
+            ],
+          },
+          orderBy: { publishedAt: "desc" },
+          take: 30,
+          select: {
+            id: true, title: true, channel: true, channelId: true,
+            publishedAt: true, promotion: true, discipline: true,
+          },
+        })
+      : Promise.resolve([]),
+
+    // What this user has already seen or muted. Reuses the feed's existing
+    // per-user state tables rather than inventing a second seen/hidden store —
+    // keyed by user id, the same key /api/feed uses when signed in.
+    Promise.all([
+      prisma.feedView.findMany({ where: { key: userId }, select: { videoId: true } }),
+      prisma.feedNotInterested.findMany({ where: { key: userId }, select: { videoId: true } }),
+      prisma.feedHiddenChannel.findMany({ where: { key: userId }, select: { channelId: true } }),
+    ]),
   ]);
 
   const items: FeedItem[] = [];
@@ -238,7 +299,94 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     });
   }
 
-  return items.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0)).slice(0, limit);
+  // ── Video items ──────────────────────────────────────────────────────────
+  const [seenRows, notInterested, hiddenChannels] = suppressed;
+  const seen = new Set(seenRows.map((r) => r.videoId));
+  const muted = new Set(notInterested.map((r) => r.videoId));
+  const mutedChannels = new Set(hiddenChannels.map((r) => r.channelId));
+
+  const videoItems: FeedItem[] = [];
+  for (const v of videos) {
+    if (!v.publishedAt) continue;
+    if (muted.has(v.id)) continue;                                  // "not interested"
+    if (v.channelId && mutedChannels.has(v.channelId)) continue;     // muted channel
+
+    // Every video must be able to say why it is here. Most specific wins: a
+    // named fighter beats the promotion, which beats the discipline. If none of
+    // them apply the video is dropped rather than shown unexplained — that is
+    // the difference between a recommendation and noise.
+    const named = fighterNames.find((n) => v.title.toLowerCase().includes(n.toLowerCase()));
+    const promoName = v.promotion ? promotionBySlug(v.promotion)?.name ?? null : null;
+    let reason: string | null = null;
+    if (named) reason = `Because you follow ${named}`;
+    else if (v.promotion && promotions.includes(v.promotion)) reason = `Following ${promoName ?? v.promotion}`;
+    else if (v.discipline && disciplines.includes(v.discipline)) {
+      reason = `Recommended from ${SPORTS.find((sp) => sp.slug === v.discipline)?.label ?? v.discipline}`;
+    }
+    if (!reason) continue;
+
+    videoItems.push({
+      id: `vd-${v.id}`,
+      kind: "video",
+      at: iso(v.publishedAt),
+      title: v.title,
+      body: null,
+      url: `/clips${v.promotion ? `?promotion=${v.promotion}` : ""}`,
+      icon: "▶️",
+      meta: null,
+      reason,
+      video: { channel: v.channel, promotion: v.promotion, promotionName: promoName },
+      // Already-watched sinks rather than disappearing: a video you started and
+      // left is still a reasonable thing to find again, just not at the top.
+      ...(seen.has(v.id) ? { seen: true } : {}),
+    } as FeedItem & { seen?: boolean });
+  }
+
+  const ranked = items.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0));
+  return interleaveVideos(ranked, videoItems, limit);
+}
+
+/**
+ * Fold video into the ranked timeline at a fixed maximum density.
+ *
+ * Videos publish in bursts — a promotion drops six clips on fight-week Friday —
+ * so competing purely on recency would hand a whole screen to one channel and
+ * bury the articles and discussions the feed exists for. Articles and
+ * discussions stay primary; video is seasoning.
+ *
+ * One video per VIDEO_EVERY items, newest first, and never two in a row by
+ * construction because a video is only emitted on the interval boundary.
+ */
+const VIDEO_EVERY = 9; // one per 9 items — inside the 8–10 the product asked for
+
+function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: number): FeedItem[] {
+  if (!videoItems.length) return ranked.slice(0, limit);
+
+  // Unseen first, then newest — so a burst of six shows its best one.
+  const queue = [...videoItems].sort((a, b) => {
+    const sa = (a as FeedItem & { seen?: boolean }).seen ? 1 : 0;
+    const sb = (b as FeedItem & { seen?: boolean }).seen ? 1 : 0;
+    if (sa !== sb) return sa - sb;
+    return a.at < b.at ? 1 : -1;
+  });
+
+  const out: FeedItem[] = [];
+  let vi = 0;
+  for (const item of ranked) {
+    out.push(item);
+    if (out.length >= limit) break;
+    // Boundary, and only once the feed has enough substance to season.
+    if (out.length % VIDEO_EVERY === 0 && vi < queue.length) {
+      out.push(queue[vi++]);
+    }
+  }
+
+  // A feed with almost nothing else in it still shows its videos rather than
+  // dropping them — but at most a couple, so it never becomes a video page.
+  if (out.length < VIDEO_EVERY && vi < queue.length) {
+    out.push(...queue.slice(vi, vi + 2));
+  }
+  return out.slice(0, limit);
 }
 
 // ── Rivals ──────────────────────────────────────────────────────────────────
