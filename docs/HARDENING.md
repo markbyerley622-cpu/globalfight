@@ -3,10 +3,11 @@
 Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
 Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
 
-**Readiness: 68 → ~91 / 100** (Waves 0–2 complete; Wave 3 in progress). The gap to
-95 is: integration tests on the resolve/auth paths (needs a test Postgres), the
-repo-boundary migration (45 call sites), a full 44px touch-target QA pass, and
-Wave 4/5 ops hardening (see AUDIT.md §18–20).
+**Readiness: 68 → ~93 / 100** (Waves 0–4 headless-safe work complete; final review
+done). The gap to 95 is evidence that can only be produced with tooling absent
+here: integration tests (need a test Postgres), browser/Lighthouse a11y + smoke
+test (incl. the Next 15.5 upgrade), plus the sharp vuln (breaking bump) and the
+repo-boundary migration. Full Launch Candidate report: `docs/LAUNCH-CANDIDATE.md`.
 
 Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
 BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
@@ -214,6 +215,25 @@ Score movement: **88 → ~91.**
 | Touch targets (close buttons) | `72abd77` | Sheet 36→44px, map 28→36px | TSC·BUILD |
 
 **Touch-target note.** Only the two egregiously-small close buttons were resized; a full 44px sweep of header icons + confidence stars needs a browser QA pass (no headless Lighthouse here) and remains open.
+
+## Wave 4 — Operations & Security (headless-safe items complete)
+
+Score movement: **91 → ~93.**
+
+| Item | Commit | Effect |
+|---|---|---|
+| `/api/health` liveness+readiness | `dbe35e3` | DB-connectivity probe (200/503) for platform health checks |
+| Rate-limit forum reports | `8be42e9` | wired `POLICY.contentReport`; mod-queue flood closed (API M1) |
+| pino secret redaction + stale-disable | `60df1a4` | credential leak safety net (API I1); bracket-notation for hyphen keys |
+| Image-proxy redirect revalidation | `b4f0941` | SSRF: re-validate every hop, 3-hop cap, shared deadline (API M3) |
+| Dead-code sweep | `3a11ec0` | unused-vars 12 → 0 (imports, dead components, args) |
+| **Critical dep patch** | `e54c9eb` | **Next 15.1.4 → 15.5.21 (clears a CRITICAL RCE) + undici**; verified tsc/test/build |
+
+**Dependency audit residue (need breaking bumps + QA — not forced):** `sharp`
+(high — image-pipeline upgrade), `postcss` (moderate — transitive under Next).
+The pino redact bug (`*.set-cookie` invalid path) was caught by the build gate
+and fixed before commit — evidence the "never continue on failing validation"
+rule is working.
 
 ## Outstanding actions for the operator
 - **On next deploy:** confirm `prisma db push` applies the `Fight` FK change (Cascade → Restrict, Fix 3) and the new hot-path indexes (W1-3).
