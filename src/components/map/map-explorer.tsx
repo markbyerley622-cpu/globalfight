@@ -421,7 +421,7 @@ function SheetSelectionHeader({
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="tap grid size-7 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-850 text-mist hover:text-chalk"
+        className="tap grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-850 text-mist hover:text-chalk"
       >
         <X className="size-3.5" />
       </button>

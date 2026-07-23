@@ -101,7 +101,7 @@ export function Sheet({
             <button
               onClick={onClose}
               aria-label="Close"
-              className="flex size-9 items-center justify-center rounded-xl border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
+              className="flex size-11 items-center justify-center rounded-xl border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
             >
               <X className="size-4" />
             </button>
