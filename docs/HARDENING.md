@@ -1,0 +1,118 @@
+# GlobalFight — Hardening Log
+
+Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
+Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
+
+**Readiness: 68 → ~78 / 100** (Wave 0). The remaining gap to 95 is Waves 1–5
+(tests + CI are the biggest single lift; see AUDIT.md §18–20).
+
+Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
+BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
+
+---
+
+## Wave 0 — Production Blockers (in progress)
+
+Score movement this wave: **68 → ~78**. Six of seven identified P0 blockers landed;
+two items were re-triaged (one done differently, two deferred with rationale below).
+
+| # | Fix | Commit | Verify | Status |
+|---|---|---|---|---|
+| 1 | Escape JSON-LD (stored XSS) | `5b1b694` | TSC·LINT·RUNTIME·BUILD | ✅ done |
+| 2 | Security headers + CSP (Report-Only) | `ec4b34f` | BUILD | ✅ done |
+| 3 | Fight corners `onDelete: Restrict` | `17adab4` | prisma validate·BUILD | ✅ done (needs `db push`) |
+| 5 | Signup rate-limit + de-enumeration | `33dfccd` | TSC·LINT·BUILD | ✅ done |
+| 6 | Route + global error boundaries | `65a1f3c` | TSC·LINT·BUILD | ✅ done |
+| 7 | Redis cache (node-redis v4) | `3d166de` | TSC·LINT·RUNTIME·BUILD | ✅ done |
+| 4 | `persist.ts` atomicity | — | — | ⏭ deferred → Wave 1 |
+| 7b | Drop `--accept-data-loss` | — | — | ⏭ deferred → Wave 1 |
+
+---
+
+### Fix 1 — Stored XSS via unescaped JSON-LD  ·  commit `5b1b694`
+**Problem.** User-controlled fields rendered into `application/ld+json` `<script>` blocks could break out and inject markup. (Audit: Security H-1.)
+**Root cause.** `JSON.stringify` does not escape `<`, `>`, `&`, or U+2028/U+2029. A fighter name set via `/api/fighters/onboard` (length-checked only) reaches `fighters/[slug]/page.tsx:110`; article author reaches `news/[slug]/page.tsx:61`. No CSP as backstop.
+**Files changed.** `+src/components/seo/json-ld.tsx` (shared `<JsonLd>`), `src/app/fighters/[slug]/page.tsx`, `src/app/news/[slug]/page.tsx`.
+**Why this solution.** One escaping choke-point both pages route through; `\u`-escaping keeps valid, losslessly-parsing JSON (vs. stripping characters or a heavy sanitizer).
+**Alternatives considered.** DOMPurify (overkill, wrong tool for JSON-LD); removing JSON-LD (loses SEO). Rejected.
+**Risks.** None functional — output round-trips identically. Depends on future authors using `<JsonLd>` not hand-rolled scripts (noted in the component).
+**Validation.** RUNTIME check proved no raw `<`/`</script>` in output and lossless round-trip; TSC/LINT/BUILD clean. Only 2 pre-existing (unrelated) lint warnings remain in the fighter page — swept in Wave 1.
+**Performance impact.** Negligible (one regex pass over a small string).
+**Security impact.** Closes the stored-XSS sink. CSP (Fix 2) adds defense-in-depth.
+**Rollback.** Revert the commit; no data/schema change.
+
+### Fix 2 — Security headers + CSP (Report-Only)  ·  commit `ec4b34f`
+**Problem.** Zero security response headers (no CSP/HSTS/X-Frame-Options/nosniff). (Audit: Security H-2.)
+**Root cause.** `next.config.ts` had no `headers()`, no `middleware.ts`.
+**Files changed.** `next.config.ts` (`async headers()`).
+**Why this solution.** Enforce the unambiguously-safe headers now; ship CSP **Report-Only** first because a strict enforced CSP on Next needs per-request nonces and can white-screen the app. Observe reports, then enforce (Wave 1).
+**Alternatives considered.** Enforced CSP with `'unsafe-inline'` (weak, false security); nonce middleware now (larger change, higher risk for Wave 0). Deferred the nonce work.
+**Risks.** Report-Only CSP cannot break rendering. HSTS is ignored by browsers on http/localhost, safe in dev. `Permissions-Policy` keeps `geolocation=(self)` because `/map` uses `navigator.geolocation`.
+**Validation.** BUILD exit 0; config accepted.
+**Performance impact.** None (static response headers).
+**Security impact.** Clickjacking (frame-ancestors/X-Frame-Options), MIME-sniffing, referrer leakage, transport downgrade all addressed; CSP telemetry begins.
+**Rollback.** Revert the commit.
+
+### Fix 3 — Fight corners `onDelete: Restrict`  ·  commit `17adab4`
+**Problem.** Deleting one fighter cascaded away every shared bout, corrupting the opponent's record and cascading into picks/battles/odds. (Audit: Database HIGH.)
+**Root cause.** `schema.prisma:526-528` set `onDelete: Cascade` on both `Fight.red`/`blue`.
+**Files changed.** `prisma/schema.prisma`.
+**Why this solution.** `redId`/`blueId` are non-null, so `SetNull` is impossible; `Restrict` makes the DB refuse a fighter delete until the bout FKs are re-pointed — exactly the safety a future merge needs. Zero `fighter.delete` call sites, so nothing breaks today.
+**Alternatives considered.** Application-layer guard only (weaker — doesn't protect Prisma Studio / manual deletes). Rejected.
+**Risks.** Takes effect only on next `prisma db push` (a non-destructive FK alter). Until then prod retains Cascade. **Action:** verify the alter on the next deploy.
+**Validation.** `prisma validate` ✅; BUILD ✅. Confirmed the other `Cascade` relations are on owned child rows (aliases/titles/rankings) where cascade is correct.
+**Performance impact.** None.
+**Security/data impact.** Removes an irreversible data-loss path.
+**Rollback.** Revert; re-push.
+
+### Fix 5 — Signup rate-limit + de-enumeration  ·  commit `33dfccd`
+**Problem.** `/api/auth/signup` had no throttle: bcrypt(12) CPU-exhaustion DoS + membership enumeration via the 409 oracle at speed. (Audit: API H1/H2, Security M-1.)
+**Root cause.** Signup was the only credential route missing a `hit()` gate.
+**Files changed.** `src/lib/rate-limit/index.ts` (`POLICY.signup` 8/h), `src/app/api/auth/signup/route.ts` (IP gate before any bcrypt/DB work; pin `runtime=nodejs`).
+**Why this solution.** Per-IP gate before the expensive path kills both the DoS and the high-speed oracle, mirroring `login`. Kept the informative 409 (standard UX); full de-enumeration needs the email-confirm flow — folded into Wave 1 (Security M-2).
+**Alternatives considered.** Generic "check your inbox" response now — requires an email provider that may be unset (would 503). Deferred.
+**Risks.** Legitimate users behind shared NAT share the 8/h budget — generous for humans, and the window is 1h.
+**Validation.** TSC/LINT/BUILD clean.
+**Performance impact.** Adds one rate-limit lookup; removes a DoS lever.
+**Security impact.** Closes the DoS and bounds enumeration to 8/h/IP.
+**Rollback.** Revert both files.
+
+### Fix 6 — Error boundaries  ·  commit `65a1f3c`
+**Problem.** No error boundaries; any fault on a `force-dynamic` route showed Next's raw/blank error screen with no recovery. (Audit: UX H1.)
+**Root cause.** No `app/error.tsx` / `app/global-error.tsx`.
+**Files changed.** `+src/app/error.tsx`, `+src/app/global-error.tsx`.
+**Why this solution.** Segment boundary (branded, logs `digest`, `reset()`), plus a self-contained global boundary with inlined styles for a root-layout crash (can't assume CSS is present).
+**Alternatives considered.** Per-segment boundaries for `/map`, `/events` — good Wave-1 refinement, not required for the baseline.
+**Risks.** None (purely additive).
+**Validation.** TSC/LINT/BUILD clean; both compiled as client components.
+**Performance impact.** None on the happy path.
+**Security impact.** Stops raw error/stack disclosure on unhandled faults.
+**Rollback.** Delete the two files.
+
+### Fix 7 — Redis cache connects (node-redis v4)  ·  commit `3d166de`
+**Problem.** The distributed cache never engaged; at >1 instance each process would serve a divergent cache with no cross-instance invalidation. (Audit: Architecture H1.)
+**Root cause.** `cache.ts` dynamically imported `ioredis` (not installed) → always caught to null → silent per-process `Map` fallback. Even the call shape was ioredis-specific.
+**Files changed.** `src/lib/cache.ts`.
+**Why this solution.** Rewrite `getRedis()` against the installed `redis` v4 (`createClient`/`{EX}`), memoize one connection, normalize to a small adapter so `cached()`/`invalidate()` stay unchanged, and **log loudly** when `REDIS_URL` is set but Redis is unreachable so the fallback can never be silent again.
+**Alternatives considered.** `npm i ioredis` to match the old code — adds a dep for a package already covered by `redis`. Rejected.
+**Risks.** Locally `REDIS_URL` is unset → unchanged Map behavior (safe). In prod it now actually connects; a bad `REDIS_URL` degrades to Map + logs (does not 500).
+**Validation.** RUNTIME (`createClient` reachable via dynamic import), TSC/LINT/BUILD clean.
+**Performance impact.** Enables real cross-instance caching once `REDIS_URL` is set; no regression when unset.
+**Security impact.** None.
+**Rollback.** Revert the commit.
+
+---
+
+## Deferred with rationale (moved to Wave 1)
+
+### Fix 4 — `persist.ts` atomicity (deferred)
+The per-fight `try/catch` at `persist.ts:216` is deliberate — one bad bout must not drop the card. A naive `$transaction` wrap would either kill that resilience or hit the "aborted-transaction poisoning" documented in `geo/gyms.ts`, and it collides with the additive-table `try/catch` guards. **Correct fix (Wave 1):** a *per-fight* transaction (corners + fight + external-id atomic) that keeps card-level resilience, designed around the additive-table guards. Not a smallest-safe-change; deferred rather than risk regressing live ingest.
+
+### Fix 7b — Drop `--accept-data-loss` (deferred)
+`render.yaml:105-116` documents the flag as owner-approved and load-bearing: Prisma false-flags *additive* unique constraints as data-loss and aborts without it, which blocked a real deploy. Yanking it re-breaks that deploy. **Correct fix (Wave 1):** migrate to `prisma migrate deploy` (applies additive uniques cleanly and restores the automatic destructive-change guard), then remove the flag.
+
+---
+
+## Outstanding actions for the operator
+- **On next deploy:** confirm `prisma db push` applies the `Fight` FK change from Cascade → Restrict (Fix 3).
+- **Wave 1 candidate (CSP):** review `Content-Security-Policy-Report-Only` violation reports, add a nonce middleware, then flip to enforced.
