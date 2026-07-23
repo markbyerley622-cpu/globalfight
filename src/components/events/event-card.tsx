@@ -10,6 +10,7 @@ import { ShareMenu } from "@/components/share-menu";
 import { AddToCalendar } from "@/components/event/add-to-calendar";
 import { resolvePromotion } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
+import { pickEventArtwork } from "@/lib/event-artwork";
 import type { EventCard as EventCardData } from "@/lib/events-query";
 
 /**
@@ -36,23 +37,10 @@ export function EventCard({ event }: { event: EventCardData }) {
       className="card-surface group relative overflow-hidden transition-colors hover:border-blood-500/40"
       style={{ "--accent": accent } as React.CSSProperties}
     >
-      {/* Poster, or the promotion's colour. Never an empty grey box. */}
+      {/* Meaningful visual context, in priority order: event hero → poster →
+          the two fighters facing each other → promotion colour. Never an empty box. */}
       <div className="relative h-28 overflow-hidden sm:h-32">
-        {event.posterUrl ? (
-          <Image
-            src={event.posterUrl}
-            alt=""
-            fill
-            className="object-cover object-top transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, 640px"
-            unoptimized
-          />
-        ) : (
-          <div
-            className="size-full"
-            style={{ background: `radial-gradient(120% 140% at 20% 0%, color-mix(in srgb, ${accent} 45%, transparent), transparent 70%)` }}
-          />
-        )}
+        <EventArtworkBackground event={event} accent={accent} />
         <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-transparent" />
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
@@ -133,5 +121,73 @@ export function EventCard({ event }: { event: EventCardData }) {
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * The card's background image, chosen deterministically (lib/event-artwork). When
+ * no event artwork exists we compose the two main-event fighters facing centre —
+ * the most commonly-available imagery — so a card is almost never a bare gradient.
+ */
+function EventArtworkBackground({ event, accent }: { event: EventCardData; accent: string }) {
+  const art = pickEventArtwork(event);
+  const brand = (
+    <div
+      className="size-full"
+      style={{ background: `radial-gradient(120% 140% at 20% 0%, color-mix(in srgb, ${accent} 45%, transparent), transparent 70%)` }}
+    />
+  );
+
+  if (art.kind === "hero" || art.kind === "poster") {
+    return (
+      <Image
+        src={art.src}
+        alt=""
+        fill
+        className={`object-cover transition-transform duration-300 group-hover:scale-105 ${art.kind === "poster" ? "object-top" : "object-center"}`}
+        sizes="(max-width: 640px) 100vw, 640px"
+        unoptimized
+      />
+    );
+  }
+
+  if (art.kind === "fighters") {
+    return (
+      <div className="absolute inset-0 flex bg-ink-950">
+        {/* Red corner on the left; blue mirrored so the two face centre. */}
+        <FighterHalf src={art.red} side="left" accent={accent} brand={brand} />
+        <div className="z-10 w-px shrink-0 bg-gradient-to-b from-transparent via-blood-500/40 to-transparent" />
+        <FighterHalf src={art.blue} side="right" accent={accent} brand={brand} />
+      </div>
+    );
+  }
+
+  return brand;
+}
+
+function FighterHalf({
+  src, side, accent, brand,
+}: { src: string | null; side: "left" | "right"; accent: string; brand: React.ReactNode }) {
+  if (!src) {
+    return (
+      <div
+        className="relative w-1/2 overflow-hidden"
+        style={{ background: `linear-gradient(${side === "left" ? "105deg" : "255deg"}, color-mix(in srgb, ${accent} 35%, transparent), transparent 75%)` }}
+      >
+        {brand}
+      </div>
+    );
+  }
+  return (
+    <div className="relative w-1/2 overflow-hidden">
+      <Image
+        src={src}
+        alt=""
+        fill
+        className={`object-cover object-top transition-transform duration-300 group-hover:scale-105 ${side === "right" ? "scale-x-[-1]" : ""}`}
+        sizes="(max-width: 640px) 50vw, 320px"
+        unoptimized
+      />
+    </div>
   );
 }
