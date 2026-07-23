@@ -8,6 +8,7 @@ import { Ticker } from "@/components/layout/ticker";
 import { AppShell } from "@/components/layout/app-shell";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-client";
+import { getCurrentUser } from "@/lib/auth";
 import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
@@ -84,7 +85,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Resolve the session ONCE on the server (cache-deduped) and hand it to the
+  // client AuthProvider, so the first paint already knows the user — no
+  // /api/auth/me round-trip on load and no loading→resolved flash (the profile
+  // CLS root cause). This reads cookies(), so the tree renders dynamically —
+  // an accepted trade-off (the header is personalized on every page anyway).
+  const initialUser = await getCurrentUser();
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh bg-ink-950 antialiased">
@@ -95,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorkerRegistrar />
         <DemoWorldBanner />
         <I18nProvider>
-          <AuthProvider>
+          <AuthProvider initialUser={initialUser}>
             <AppShell ticker={<Ticker />} footer={<Footer demoMode={isDemoMode()} />}>
               {children}
             </AppShell>
