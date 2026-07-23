@@ -3,9 +3,9 @@
 Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
 Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
 
-**Readiness: 68 → ~85 / 100** (Wave 0 complete; Wave 1 nearly complete). The
-remaining gap to 95 is the repo-boundary migration, integration tests, and
-Waves 2–5 (see AUDIT.md §18–20).
+**Readiness: 68 → ~88 / 100** (Wave 0 complete; Wave 1 nearly complete; Wave 2 in
+progress). The remaining gap to 95 is the repo-boundary migration, integration
+tests, remaining UX/a11y polish, and Waves 3–5 (see AUDIT.md §18–20).
 
 Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
 BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
@@ -173,6 +173,33 @@ being lifted first.
 **Validation.** `prisma validate` ✅; BUILD ✅.
 **Remaining risk.** Additive; take effect only on next `prisma db push`. `FighterAlias @@unique` (data-dependent — may fail if dupes exist) and the fighter-name pg_trgm GIN (needs raw SQL) are deferred to the migrations work.
 **Rollback.** Revert; re-push.
+
+## Wave 2 — Performance & UX (in progress)
+
+Score movement: **85 → ~88.** Every change measured against the `next build`
+route table (baseline captured before any edit).
+
+| Item | Commit | Before → After | Verify |
+|---|---|---|---|
+| Lazy-load Reels overlay | `a797c18` | `/home` First Load **164 → 143 kB** (−21 kB) | TSC·LINT·BUILD |
+| Memoize AuthProvider + seed-ready | `d8b8a6d` | fewer useAuth re-renders; provider ready for server-seed | TSC·LINT·TEST·BUILD |
+| Parallelize event-page reads | `b312dc4` | odds+coverage+video: 3-hop waterfall → 1 `Promise.all` | TSC·LINT·BUILD |
+| Mount NotificationBell (signed-in) | `e88912e` | dead feature → live; retention loop closed | TSC·LINT·BUILD |
+
+### W2-1 — Lazy-load Reels overlay · `a797c18`
+**Objective.** Cut Home first-load JS. **Baseline.** `/home` 164 kB First Load / 15.1 kB route. **Impl.** `dynamic(ssr:false)` + mount only while `open` (overlay renders null when closed anyway). **After.** 143 kB / 7.38 kB — **−21 kB (−13%)**, chunk loads on tap. **Note.** Other audit-named heavies (`PredictionsMarkets`/`ProfileEditor`/`ThreadDiscussion`) are route MAIN CONTENT, not modals — `ssr:false` there adds a flash for no first-load win, so left alone. **Rollback.** Revert.
+
+### W2-2 — AuthProvider memoize + seed-ready · `d8b8a6d`
+**Objective.** Stop app-wide re-renders + prepare to kill the auth round-trip/CLS. **Impl.** `useMemo` the context value; add optional `initialUser` (seed → skip mount fetch), backward-compatible fallback when omitted. **Constraint.** Actually wiring the layout to pass `initialUser` reads `cookies()` in the root layout → forces the whole tree dynamic (de-optimizes ~10 static pages incl. `/fighters`, `/rankings/[slug]`). **Flagged as a decision below** — not done unilaterally. **Rollback.** Revert.
+
+### W2-3 — Event-page read parallelization · `b312dc4`
+**Objective.** Remove a render-blocking waterfall on the 2nd-largest route. **Impl.** odds/coverage/video were awaited sequentially though independent → one `Promise.all`; hoisted the cache-deduped `getCurrentUser`. Latency = slowest read, not the sum. No behaviour change. **Rollback.** Revert.
+
+### W2-4 — Mount NotificationBell · `e88912e`
+**Objective.** Finish a built-but-unmounted feature (Phase 4). **Impl.** Render `<NotificationBell/>` in the header gated on a resolved `user`. Closes the retention loop onboarding's auto-follow feeds. **Rollback.** Remove the two lines.
+
+### Deferred decision — server-seed auth (static→dynamic)
+Wiring `initialUser` from the root layout is the real fix for the per-navigation `/api/auth/me` round-trip and profile CLS (Audit H2), but it converts ~10 currently-static pages to dynamic rendering (they read `cookies()` via the layout). On an always-on Render server the cost is modest, but `/fighters`, `/rankings/[slug]`, `/forums/[category]` benefit from static generation for anonymous/SEO traffic. **Recommendation:** accept it (the app is ~90% dynamic already and every page's header is personalized anyway) — but it changes rendering strategy, so confirm before I wire it.
 
 ## Outstanding actions for the operator
 - **On next deploy:** confirm `prisma db push` applies the `Fight` FK change (Cascade → Restrict, Fix 3) and the new hot-path indexes (W1-3).
