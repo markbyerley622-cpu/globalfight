@@ -3,9 +3,10 @@
 Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
 Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
 
-**Readiness: 68 → ~88 / 100** (Wave 0 complete; Wave 1 nearly complete; Wave 2 in
-progress). The remaining gap to 95 is the repo-boundary migration, integration
-tests, remaining UX/a11y polish, and Waves 3–5 (see AUDIT.md §18–20).
+**Readiness: 68 → ~91 / 100** (Waves 0–2 complete; Wave 3 in progress). The gap to
+95 is: integration tests on the resolve/auth paths (needs a test Postgres), the
+repo-boundary migration (45 call sites), a full 44px touch-target QA pass, and
+Wave 4/5 ops hardening (see AUDIT.md §18–20).
 
 Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
 BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
@@ -198,8 +199,21 @@ route table (baseline captured before any edit).
 ### W2-4 — Mount NotificationBell · `e88912e`
 **Objective.** Finish a built-but-unmounted feature (Phase 4). **Impl.** Render `<NotificationBell/>` in the header gated on a resolved `user`. Closes the retention loop onboarding's auto-follow feeds. **Rollback.** Remove the two lines.
 
-### Deferred decision — server-seed auth (static→dynamic)
-Wiring `initialUser` from the root layout is the real fix for the per-navigation `/api/auth/me` round-trip and profile CLS (Audit H2), but it converts ~10 currently-static pages to dynamic rendering (they read `cookies()` via the layout). On an always-on Render server the cost is modest, but `/fighters`, `/rankings/[slug]`, `/forums/[category]` benefit from static generation for anonymous/SEO traffic. **Recommendation:** accept it (the app is ~90% dynamic already and every page's header is personalized anyway) — but it changes rendering strategy, so confirm before I wire it.
+### W2-5 — Server-seed auth (APPROVED, wired) · `3f7b106`
+**Objective.** Kill the per-navigation `/api/auth/me` round-trip + profile CLS (Audit H2). **Impl.** Root layout is now `async`, resolves `getCurrentUser()` (cache-deduped) and passes `initialUser` to `AuthProvider`; the on-mount fetch is gone and auth-dependent header/menus SSR with the real user. **Trade-off (approved).** Reads `cookies()` → tree renders dynamically; build still 58/58, no hydration regression (client `useState(initialUser)` matches SSR). **Rollback.** Revert (provider fallback restores the mount fetch).
+
+## Wave 3 — Product polish (in progress)
+
+Score movement: **88 → ~91.**
+
+| Item | Commit | Effect | Verify |
+|---|---|---|---|
+| Sheet focus-trap + scroll-lock + aria | `b918926` | keyboard/SR can't escape modal; bg locked; dialog named | TSC·LINT·BUILD |
+| Profile→Notifications route | `f5efe5e` | dead-end (`/account`) → `/profile/edit` | TSC·BUILD |
+| Loading skeletons (landing + events) | `3b3054c` | entry routes get Suspense fallback | TSC·LINT·BUILD |
+| Touch targets (close buttons) | `72abd77` | Sheet 36→44px, map 28→36px | TSC·BUILD |
+
+**Touch-target note.** Only the two egregiously-small close buttons were resized; a full 44px sweep of header icons + confidence stars needs a browser QA pass (no headless Lighthouse here) and remains open.
 
 ## Outstanding actions for the operator
 - **On next deploy:** confirm `prisma db push` applies the `Fight` FK change (Cascade → Restrict, Fix 3) and the new hot-path indexes (W1-3).
