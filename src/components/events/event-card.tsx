@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Swords, Tv } from "lucide-react";
+import { MapPin, Swords, Tv, Ticket } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/countdown";
 import { Flag } from "@/components/flag";
@@ -82,11 +83,6 @@ export function EventCard({ event }: { event: EventCardData }) {
               <span className="truncate">{location}</span> <Flag code={event.countryCode} />
             </span>
           )}
-          {event.broadcaster && (
-            <span className="inline-flex min-w-0 items-center gap-1 text-fog">
-              <Tv className="size-3.5 text-blood-400" /><span className="truncate">{event.broadcaster}</span>
-            </span>
-          )}
         </div>
 
         {event.venue && <p className="mt-1 truncate text-xs text-fog">{event.venue}</p>}
@@ -95,6 +91,15 @@ export function EventCard({ event }: { event: EventCardData }) {
           <p className="mt-2.5 flex items-center gap-2 text-[0.65rem] uppercase tracking-wider text-fog">
             First bell <Countdown date={event.date} compact />
           </p>
+        )}
+
+        {/* WATCH + ATTEND — two of the six questions, as first-class actions
+            (never hidden in a menu). "TBA" when the provider/vendor is unknown. */}
+        {!isDone && !isOff && (
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <ActionPill icon={Tv} label="Watch" value={event.broadcaster} href={event.eventUrl} />
+            <ActionPill icon={Ticket} label="Tickets" value={event.ticketUrl ? "Buy" : null} href={event.ticketUrl} accent />
+          </div>
         )}
 
         {/* Act without opening the event. Same components as the event page. */}
@@ -124,6 +129,41 @@ export function EventCard({ event }: { event: EventCardData }) {
       </div>
     </article>
   );
+}
+
+/**
+ * A "Watch" or "Tickets" pill. When a destination URL exists it becomes an
+ * external link (accent-styled); otherwise it shows the value or a muted "TBA"
+ * so the six-question card never simply omits how to watch / attend.
+ */
+function ActionPill({
+  icon: Icon, label, value, href, accent = false,
+}: { icon: LucideIcon; label: string; value: string | null; href: string | null; accent?: boolean }) {
+  const shown = value ?? "TBA";
+  const isTba = !value && !href;
+  const body = (
+    <>
+      <Icon className={`size-3.5 shrink-0 ${isTba ? "text-fog" : "text-blood-400"}`} />
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className="text-[0.55rem] font-semibold uppercase tracking-wider text-fog">{label}</span>
+        <span className={`truncate text-xs font-semibold ${isTba ? "text-fog" : "text-chalk"}`}>{shown}</span>
+      </span>
+    </>
+  );
+  const base = "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors";
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${base} ${accent ? "border-blood-500/50 bg-blood-500/10 hover:border-blood-500 hover:bg-blood-500/20" : "border-ink-700 bg-ink-950/40 hover:border-ink-600"}`}
+      >
+        {body}
+      </a>
+    );
+  }
+  return <span className={`${base} border-ink-800 bg-ink-950/30`}>{body}</span>;
 }
 
 /**
