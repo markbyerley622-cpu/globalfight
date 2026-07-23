@@ -27,6 +27,7 @@ import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress } from "@/l
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { FightModule } from "@/components/fight/fight-module";
+import { CollapsibleFights } from "@/components/event/collapsible-fights";
 import { EventGeneralRoom } from "@/components/event/event-general-room";
 import { WhenVisible } from "@/components/when-visible";
 
@@ -163,21 +164,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {/* The card IS the product surface: every bout is an independent module
           carrying its own prediction, battle and discussion. */}
       <ScrollSection id="card" title="Fight card" seam={false}>
-        <div className="flex flex-col gap-10">
-          {blocks.map((block) => (
-            <section key={block.meta.key} aria-label={block.meta.label}>
-              {/* Only head a block when the card actually splits into more than
-                  one — a 5-bout show is just "the card". */}
-              {blocks.length > 1 && (
-                <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-ink-800 pb-2">
-                  <h3 className="font-display text-base font-bold text-chalk">{block.meta.label}</h3>
-                  <span className="text-[0.7rem] uppercase tracking-wider text-fog">
-                    {block.fights.length} bout{block.fights.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-              )}
-              <div className="flex flex-col gap-8">
-                {block.fights.map((f) => (
+        {/* Compressed: the top bouts (main event + co-main + one) render; the
+            rest tuck behind a "View N more predictions" toggle so a reader reaches
+            the card talk + coverage without scrolling past every bout. */}
+        <CollapsibleFights initialVisible={3}>
+          {blocks.flatMap((block) => block.fights).map((f) => (
                   <FightModule
                     key={f.id}
                     fightSlug={f.slug}
@@ -201,11 +192,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                       />
                     }
                   />
-                ))}
-              </div>
-            </section>
           ))}
-        </div>
+        </CollapsibleFights>
       </ScrollSection>
 
       {/* Card-wide talk. Provisioned only when the reader reaches it, so the

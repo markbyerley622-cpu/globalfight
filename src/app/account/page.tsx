@@ -13,7 +13,7 @@ import { track } from "@/lib/analytics-client";
 import { AGE_STATEMENT, MINIMUM_AGE } from "@/lib/age-policy";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { cn } from "@/lib/utils";
-import { ROLE_GROUPS, rolesInGroup, roleLabel } from "@/lib/roles";
+import { REGISTRY_ROLE_DEFS, roleLabel } from "@/lib/roles";
 import { FighterProfilePanel } from "@/components/fighters/fighter-profile-panel";
 
 const FEATURES = [
@@ -175,49 +175,37 @@ export default function AccountPage() {
             {isSignup && (
               <>
                 <div>
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-fog">
-                    I&rsquo;m joining as…
+                  <span className="mb-2 flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-fog">I&rsquo;m joining as…</span>
+                    <span className="text-[0.6rem] text-fog">change anytime</span>
                   </span>
-                  <p className="mb-2.5 text-[0.68rem] leading-relaxed text-fog">
-                    Everyone in combat sports has a place here. Pick the closest — you can change it any time from
-                    your profile.
-                  </p>
-                  <div className="space-y-3">
-                    {ROLE_GROUPS.map((g) => (
-                      <div key={g.id}>
-                        <span className="mb-1.5 block font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-fog">
-                          {g.label}
-                        </span>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {rolesInGroup(g.id).map((r) => {
-                            const on = role === r.value;
-                            return (
-                              <button
-                                key={r.value}
-                                type="button"
-                                onClick={() => setRole(r.value)}
-                                aria-pressed={on}
-                                title={r.blurb}
-                                className={cn(
-                                  "tap flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors",
-                                  on
-                                    ? "border-blood-500/60 bg-blood-500/10"
-                                    : "border-ink-700 bg-ink-950/40 hover:border-ink-600",
-                                )}
-                              >
-                                <span className="flex w-full items-center justify-between gap-1">
-                                  <span className="font-display text-[0.72rem] font-bold leading-tight text-chalk">
-                                    {r.label}
-                                  </span>
-                                  {on && <Check className="size-3.5 shrink-0 text-blood-400" />}
-                                </span>
-                                <span className="text-[0.6rem] leading-tight text-fog">{r.blurb}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                  {/* One compact grid — every role visible without scrolling through
+                      four stacked groups. Selected card lifts + shows a check. */}
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                    {REGISTRY_ROLE_DEFS.map((r) => {
+                      const on = role === r.value;
+                      return (
+                        <button
+                          key={r.value}
+                          type="button"
+                          onClick={() => setRole(r.value)}
+                          aria-pressed={on}
+                          title={r.blurb}
+                          className={cn(
+                            "tap flex flex-col items-start gap-0.5 rounded-lg border px-2 py-1.5 text-left transition-all",
+                            on
+                              ? "border-blood-500/60 bg-blood-500/10 scale-[1.02]"
+                              : "border-ink-700 bg-ink-950/40 hover:border-ink-600",
+                          )}
+                        >
+                          <span className="flex w-full items-center justify-between gap-1">
+                            <span className="font-display text-[0.72rem] font-bold leading-tight text-chalk">{r.label}</span>
+                            {on && <Check className="size-3.5 shrink-0 text-blood-400" />}
+                          </span>
+                          <span className="line-clamp-1 text-[0.58rem] leading-tight text-fog">{r.blurb}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <Field icon={User} label="Username" type="text" placeholder="Choose a username" value={name} onChange={setName} autoComplete="username" />
