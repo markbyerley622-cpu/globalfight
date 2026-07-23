@@ -14,3 +14,14 @@ npm-debug.log*
 /public/headshots/
 scripts/.photowork/
 og-preview.png
+
+# RC-1 / Playwright E2E + Lighthouse outputs (evidence, not source)
+/test/e2e/.artifacts/
+/test/e2e/.auth/
+/test/e2e/report/
+/test/e2e/screenshots/
+/test/e2e/results.json
+/test/e2e/chromium-results.json
+/test/lighthouse/reports/
+/playwright-report/
+/test-results/

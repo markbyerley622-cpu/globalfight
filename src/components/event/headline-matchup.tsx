@@ -62,7 +62,7 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
   );
 }
 
-function Corner({ fighter, side, alignEnd }: { fighter: Fight["red"]; side: "red" | "blue"; alignEnd?: boolean }) {
+function Corner({ fighter, alignEnd }: { fighter: Fight["red"]; side: "red" | "blue"; alignEnd?: boolean }) {
   return (
     <div className={cn("flex flex-1 flex-col gap-2", alignEnd ? "items-end text-right" : "items-start text-left")}>
       <FighterAvatar fighter={fighter} size="lg" />

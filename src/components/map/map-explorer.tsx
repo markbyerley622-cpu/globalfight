@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -116,6 +116,22 @@ export function MapExplorer({ data }: { data: MapData }) {
     setZoom(z);
   }, []);
 
+  // Deep link: /map?lat=..&lon=..&z=.. flies straight to a location — this is how
+  // an event's venue opens INSIDE the app map (event-header) instead of bouncing
+  // out to Google Maps. Parsed once on mount; APPLIED in onReady (below), because
+  // the map instance mounts after this component and a focus set before the map
+  // exists is dropped by the canvas. Malformed params are ignored.
+  const pendingFocus = useRef<{ lat: number; lon: number; zoom: number } | null>(null);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const lat = parseFloat(p.get("lat") ?? "");
+    const lon = parseFloat(p.get("lon") ?? "");
+    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      const z = parseInt(p.get("z") ?? "", 10);
+      pendingFocus.current = { lat, lon, zoom: Number.isFinite(z) ? Math.min(Math.max(z, 2), 18) : 8 };
+    }
+  }, []);
+
   /**
    * Marker tap. A multi-pin cluster keeps the CURRENT zoom: zooming in would
    * split the cluster apart, the anchor would resolve to a group of one, and
@@ -227,7 +243,12 @@ export function MapExplorer({ data }: { data: MapData }) {
             onSelect={selectGroup}
             me={me}
             focus={focus}
-            onReady={(api) => { apiRef.current = api; }}
+            onReady={(api) => {
+              apiRef.current = api;
+              // Apply a pending deep-link now that the map exists (one-shot).
+              const f = pendingFocus.current;
+              if (f) { pendingFocus.current = null; flyTo(f.lat, f.lon, f.zoom); }
+            }}
             onZoomChange={setZoom}
           />
 
@@ -421,7 +442,7 @@ function SheetSelectionHeader({
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="tap grid size-7 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-850 text-mist hover:text-chalk"
+        className="tap grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-850 text-mist hover:text-chalk"
       >
         <X className="size-3.5" />
       </button>

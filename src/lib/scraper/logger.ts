@@ -2,7 +2,6 @@
 // ingestible by Datadog/Logtail/etc.); falls back to console if pino is absent.
 let pino: typeof import("pino").default | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   pino = require("pino");
 } catch {
   pino = null;
@@ -30,6 +29,33 @@ function consoleLogger(base: Fields = {}): Logger {
   };
 }
 
+// Redact anything that could carry a credential or PII if a future caller logs
+// an object containing one. Nothing does today (the scraper logs only URLs), but
+// this is the safety net so it can never leak by accident.
+// Keys with special characters (hyphens) MUST use bracket notation in pino,
+// e.g. *["set-cookie"] — a bare *.set-cookie is an invalid redact path and
+// throws at logger construction.
+const REDACT = [
+  "authorization",
+  "*.authorization",
+  "headers.authorization",
+  "headers.cookie",
+  "*.cookie",
+  '*["set-cookie"]',
+  "password",
+  "*.password",
+  "apiKey",
+  "*.apiKey",
+  "token",
+  "*.token",
+  "*.apiSportsKey",
+  '*["x-rapidapi-key"]',
+];
+
 export const log: Logger = pino
-  ? (pino({ level: process.env.LOG_LEVEL ?? "info", base: { svc: "scraper" } }) as unknown as Logger)
+  ? (pino({
+      level: process.env.LOG_LEVEL ?? "info",
+      base: { svc: "scraper" },
+      redact: { paths: REDACT, censor: "[redacted]" },
+    }) as unknown as Logger)
   : consoleLogger({ svc: "scraper" });

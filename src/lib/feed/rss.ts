@@ -2,16 +2,14 @@
 import { activeChannels, channelUrl, type TrustedChannel } from "./channels";
 import type { FeedVideo } from "./types";
 import { flog } from "./log";
+// Shared, tested entity normalizer. The old inline decoder here had the same
+// single-pass bug as news/ingest (double-encoded entities survived) AND used
+// String.fromCharCode, which mangles astral code points — e.g. `&#128293;` (🔥)
+// in a video title. decodeHtmlEntities/normalizeText fix both.
+import { decodeHtmlEntities, normalizeText } from "@/lib/text/entities";
 
 const FETCH_TIMEOUT_MS = 8000;
 
-function decodeEntities(str = ""): string {
-  return String(str)
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
-}
 const pick = (s: string, re: RegExp): string => { const m = re.exec(s); return m ? m[1] : ""; };
 
 // Descriptions render as TEXT, never HTML — but tags are stripped on the way IN
@@ -27,12 +25,12 @@ function parseFeed(xml: string, c: TrustedChannel): FeedVideo[] {
     if (!id) continue;
     out.push({
       id,
-      title: decodeEntities(pick(b, /<title>([\s\S]*?)<\/title>/)),
-      channel: decodeEntities(pick(b, /<name>([^<]+)<\/name>/)) || c.name,
+      title: normalizeText(pick(b, /<title>([\s\S]*?)<\/title>/)),
+      channel: normalizeText(pick(b, /<name>([^<]+)<\/name>/)) || c.name,
       // Taken from the TRUSTED entry, not from the payload: a feed body must not
       // be able to claim its videos belong to a different channel.
       channelId: c.channelId,
-      description: stripTags(decodeEntities(pick(b, /<media:description>([\s\S]*?)<\/media:description>/))).slice(0, 300),
+      description: normalizeText(stripTags(decodeHtmlEntities(pick(b, /<media:description>([\s\S]*?)<\/media:description>/)))).slice(0, 300),
       publishedAt: pick(b, /<published>([^<]+)<\/published>/),
       viewCount: Number(pick(b, /<media:statistics\s+views="(\d+)"/)) || undefined,
       promotion: c.promotion,

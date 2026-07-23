@@ -9,6 +9,7 @@
 
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
+import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
@@ -236,33 +237,38 @@ async function linkEventExternalId(eventId: string, ev: NormalizedEvent): Promis
   }
 }
 
-/** Ensure a fighter row exists for a fight-stub corner; returns its id. */
-async function ensureCornerFighter(
+/**
+ * Resolve a fight-stub corner to an existing fighter, or PLAN a creation. This
+ * is the read-heavy dedupe step (a `contains` scan), so it runs OUTSIDE the
+ * fight transaction to keep that transaction short.
+ */
+type CornerPlan = { id: string; create: false } | { slug: string; name: string; create: true };
+async function planCorner(
   sport: Sport,
   source: string,
   name: string,
   externalId: string | undefined,
-): Promise<string | null> {
+): Promise<CornerPlan | null> {
   if (!name?.trim()) return null;
   const match = await resolveFighter({ source, externalId, name, sport });
-  if (match.fighterId) return match.fighterId;
+  if (match.fighterId) return { id: match.fighterId, create: false };
   const slug = slugify(name);
   if (!slug) return null;
-  const row = await prisma.fighter.upsert({
-    where: { slug },
-    update: {},
-    create: { slug, sport, name },
-  });
-  if (externalId) {
-    try {
-      await prisma.fighterExternalId.upsert({
-        where: { source_externalId: { source, externalId } },
-        update: { fighterId: row.id },
-        create: { fighterId: row.id, source, externalId, confidence: 0.8 },
-      });
-    } catch { /* not migrated */ }
-  }
-  return row.id;
+  return { slug, name, create: true };
+}
+
+/** Best-effort provenance link. Kept OUTSIDE the fight transaction: this touches
+ *  an additive table that may not be migrated, and inside a transaction that
+ *  error would abort (poison) the whole write. */
+async function linkCornerExternalId(source: string, externalId: string | undefined, fighterId: string): Promise<void> {
+  if (!externalId) return;
+  try {
+    await prisma.fighterExternalId.upsert({
+      where: { source_externalId: { source, externalId } },
+      update: { fighterId },
+      create: { fighterId, source, externalId, confidence: 0.8 },
+    });
+  } catch { /* additive table not migrated yet */ }
 }
 
 async function upsertFight(
@@ -272,9 +278,11 @@ async function upsertFight(
   stub: NormalizedFightStub,
   index: number,
 ): Promise<void> {
-  const redId = await ensureCornerFighter(sport, ev._meta.source, stub.redName, stub.redExternalId);
-  const blueId = await ensureCornerFighter(sport, ev._meta.source, stub.blueName, stub.blueExternalId);
-  if (!redId || !blueId) return;
+  const source = ev._meta.source;
+  // Reads (dedupe scans) happen here, before the transaction opens.
+  const redPlan = await planCorner(sport, source, stub.redName, stub.redExternalId);
+  const bluePlan = await planCorner(sport, source, stub.blueName, stub.blueExternalId);
+  if (!redPlan || !bluePlan) return;
 
   let weightClassId: string | undefined;
   if (stub.weightClass) {
@@ -285,60 +293,85 @@ async function upsertFight(
     weightClassId = wc?.id;
   }
 
-  let winnerId: string | undefined;
-  if (stub.winnerExternalId) {
-    if (stub.winnerExternalId === stub.redExternalId) winnerId = redId;
-    else if (stub.winnerExternalId === stub.blueExternalId) winnerId = blueId;
-  }
-
   const slug = slugify(`${ev.name}-${stub.redName}-vs-${stub.blueName}`);
   const date = new Date(ev.date);
 
-  const data = defined({
-    eventId,
-    redId, blueId,
-    weightClassId,
-    scheduledRounds: stub.scheduledRounds,
-    titleFight: stub.titleFight,
-    mainEvent: stub.mainEvent,
-    orderOnCard: stub.mainEvent ? 0 : index + 1,
-    result: stub.result,
-    method: stub.method,
-    roundEnded: stub.roundEnded,
-    winnerId,
-    date,
-  });
+  // Atomic core: any corner fighters that must be created land together with the
+  // fight, or not at all — a mid-write failure never leaves orphan corner
+  // fighters created for a bout that didn't persist. Only fast writes are inside;
+  // the slow dedupe reads (above) and additive provenance (below) stay outside.
+  const outcome = await prisma.$transaction(async (tx) => {
+    const redId = redPlan.create
+      ? (await tx.fighter.upsert({ where: { slug: redPlan.slug }, update: {}, create: { slug: redPlan.slug, sport, name: redPlan.name } })).id
+      : redPlan.id;
+    const blueId = bluePlan.create
+      ? (await tx.fighter.upsert({ where: { slug: bluePlan.slug }, update: {}, create: { slug: bluePlan.slug, sport, name: bluePlan.name } })).id
+      : bluePlan.id;
 
-  // Same rule as events, and it matters most here: `orderOnCard` above is
-  // rebuilt from the SOURCE's index every run, so an operator's drag-and-drop
-  // ordering (and any early-entered result) would be destroyed by the next cron.
-  const existing = await prisma.fight.findUnique({ where: { slug } });
-  if (existing) {
-    const update = stripLocked(data, existing.lockedFields);
-    if (Object.keys(update).length > 0) {
-      await prisma.fight.update({ where: { id: existing.id }, data: update });
+    let winnerId: string | undefined;
+    if (stub.winnerExternalId) {
+      if (stub.winnerExternalId === stub.redExternalId) winnerId = redId;
+      else if (stub.winnerExternalId === stub.blueExternalId) winnerId = blueId;
     }
-    await recordConflicts("Fight", existing.id, data, existing.lockedFields, existing as unknown as Record<string, unknown>, ev._meta.source);
-    return;
-  }
 
-  await prisma.fight.upsert({
-    where: { slug },
-    update: data,
-    create: {
-      slug,
+    const data = defined({
       eventId,
       redId, blueId,
-      weightClassId: weightClassId ?? null,
-      scheduledRounds: stub.scheduledRounds ?? 12,
-      titleFight: stub.titleFight ?? false,
-      mainEvent: stub.mainEvent ?? false,
+      weightClassId,
+      scheduledRounds: stub.scheduledRounds,
+      titleFight: stub.titleFight,
+      mainEvent: stub.mainEvent,
       orderOnCard: stub.mainEvent ? 0 : index + 1,
-      result: stub.result ?? "SCHEDULED",
-      method: stub.method ?? null,
-      roundEnded: stub.roundEnded ?? null,
-      winnerId: winnerId ?? null,
+      result: stub.result,
+      method: stub.method,
+      roundEnded: stub.roundEnded,
+      winnerId,
       date,
-    },
+    });
+
+    // Same rule as events, and it matters most here: `orderOnCard` above is
+    // rebuilt from the SOURCE's index every run, so an operator's drag-and-drop
+    // ordering (and any early-entered result) would be destroyed by the next cron.
+    const existing = await tx.fight.findUnique({ where: { slug } });
+    if (existing) {
+      // Two guards, in order: (1) never let a later sync un-decide a bout back to
+      // SCHEDULED (result integrity); (2) never overwrite operator-locked fields.
+      const guarded = preventResultDowngrade(existing.result, data);
+      const update = stripLocked(guarded, existing.lockedFields);
+      if (Object.keys(update).length > 0) {
+        await tx.fight.update({ where: { id: existing.id }, data: update });
+      }
+      return { fightId: existing.id, existing, data, redId, blueId };
+    }
+
+    const created = await tx.fight.upsert({
+      where: { slug },
+      update: data,
+      create: {
+        slug,
+        eventId,
+        redId, blueId,
+        weightClassId: weightClassId ?? null,
+        scheduledRounds: stub.scheduledRounds ?? 12,
+        titleFight: stub.titleFight ?? false,
+        mainEvent: stub.mainEvent ?? false,
+        orderOnCard: stub.mainEvent ? 0 : index + 1,
+        result: stub.result ?? "SCHEDULED",
+        method: stub.method ?? null,
+        roundEnded: stub.roundEnded ?? null,
+        winnerId: winnerId ?? null,
+        date,
+      },
+    });
+    return { fightId: created.id, existing: null, data, redId, blueId };
   });
+
+  // Best-effort provenance, OUTSIDE the transaction. Link only corners we just
+  // created, matching the prior behaviour (matched fighters keep their existing
+  // provenance from the fighters-entity sync path).
+  if (redPlan.create) await linkCornerExternalId(source, stub.redExternalId, outcome.redId);
+  if (bluePlan.create) await linkCornerExternalId(source, stub.blueExternalId, outcome.blueId);
+  if (outcome.existing) {
+    await recordConflicts("Fight", outcome.fightId, outcome.data, outcome.existing.lockedFields, outcome.existing as unknown as Record<string, unknown>, source);
+  }
 }

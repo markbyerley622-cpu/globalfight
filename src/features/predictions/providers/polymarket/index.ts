@@ -16,7 +16,6 @@ import { fetchJson } from "@/features/predictions/providers/http";
 import { plog } from "@/features/predictions/logger";
 import {
   normalizeEvents,
-  tokenIds,
   type GammaEvent,
   type GammaMarket,
 } from "./normalize";

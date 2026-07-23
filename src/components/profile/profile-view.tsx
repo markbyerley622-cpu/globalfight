@@ -136,7 +136,7 @@ export function ProfileView() {
         <Row href="/predictions" icon={Star} name="Predictions" desc="Your picks and results" />
         <Row href="/profile/edit" icon={Pencil} name="Edit profile" desc="Role, disciplines, links, map presence" />
         <Row href="/gyms" icon={Dumbbell} name="Gyms" desc="Where you train, and who trains there" />
-        <Row href="/account" icon={Bell} name="Notifications" desc="Fight-week reminders & breaking news" />
+        <Row href="/profile/edit" icon={Bell} name="Notifications" desc="Fight-week reminders & breaking news" />
       </div>
 
 

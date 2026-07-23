@@ -514,6 +514,9 @@ model Event {
   @@index([country])
   @@index([promotion])
   @@index([promotionId])
+  // Country filter + facet group in events-query.ts filter on countryCode; the
+  // existing @@index([country]) is the wrong column for those queries.
+  @@index([countryCode])
 }
 
 model Fight {
@@ -522,10 +525,15 @@ model Fight {
   eventId String?
   event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
+  // Restrict, NOT Cascade: a Fight is shared history between two fighters, so
+  // deleting one corner must never silently erase the bout (which would also
+  // wipe it from the opponent's record and cascade into picks/battles/odds).
+  // A merge/cleanup must re-point redId/blueId first; the DB refuses the delete
+  // until it does. There are no fighter.delete call sites today.
   redId  String
-  red    Fighter @relation("RedCorner", fields: [redId], references: [id], onDelete: Cascade)
+  red    Fighter @relation("RedCorner", fields: [redId], references: [id], onDelete: Restrict)
   blueId String
-  blue   Fighter @relation("BlueCorner", fields: [blueId], references: [id], onDelete: Cascade)
+  blue   Fighter @relation("BlueCorner", fields: [blueId], references: [id], onDelete: Restrict)
 
   weightClassId String?
   weightClass   WeightClass? @relation(fields: [weightClassId], references: [id], onDelete: SetNull)
@@ -585,6 +593,11 @@ model Fight {
   @@index([redId])
   @@index([blueId])
   @@index([eventId, orderOnCard])
+  // resolveDuePicks cron: WHERE result != SCHEDULED AND picksResolvedAt IS NULL.
+  // The [date, result] index is date-leading and cannot serve this predicate.
+  @@index([result, picksResolvedAt])
+  // return-engine cron: recently-created fights in a 48h window.
+  @@index([createdAt])
 }
 
 /// A signed-in user's pick on a single bout — the crowd-prediction primitive and
@@ -609,6 +622,9 @@ model FightPick {
 
   @@id([userId, fightId])
   @@index([fightId, corner])
+  // WAPU (weekly-active-predicting-users), the North-Star metric: metrics.ts
+  // scans picks by updatedAt window with distinct userId — full scan without this.
+  @@index([updatedAt])
 }
 
 // ─── Predictions ────────────────────────────────────────────────────────
@@ -823,6 +839,9 @@ model ForumThread {
   @@index([videoId])
   @@index([createdAt])
   @@index([visibility, lastPostAt])
+  // Forum feed "most-discussed" / "most-liked" order by these counters.
+  @@index([replyCount])
+  @@index([reactionCount])
 }
 
 model ForumPost {
@@ -1169,6 +1188,8 @@ model User {
   @@index([reputation])
   // The people layer's hot path: "visible users who have a resolved point".
   @@index([mapVisibility, mapLat])
+  // Retention cohorts (D1/D7/D30) in metrics.ts scan users by createdAt window.
+  @@index([createdAt])
 }
 
 /// Forgotten-password reset tokens.

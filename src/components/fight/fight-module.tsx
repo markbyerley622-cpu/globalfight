@@ -46,10 +46,10 @@ export function FightModule({
 
   const battle = summary.battle;
   const battleLabel =
-    battle?.state === "ACTIVE" ? `vs ${battle.opponentName ?? "your rival"}`
-    : battle?.state === "RESOLVED" ? "Battle settled"
-    : battle?.state === "WAITING" ? "Waiting for a rival"
-    : "Start a battle";
+    battle?.state === "ACTIVE" ? `Challenge · vs ${battle.opponentName ?? "your rival"}`
+    : battle?.state === "RESOLVED" ? "Challenge settled"
+    : battle?.state === "WAITING" ? "Challenge sent · waiting for a rival"
+    : "Challenge a rival";
 
   return (
     <div id={anchor} ref={ref} className="scroll-mt-16">

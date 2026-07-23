@@ -53,13 +53,13 @@ export default async function LeaderboardPage({
           Leaderboard
         </h1>
         <p className="mt-1 max-w-xl text-sm text-fog">
-          Top predictors ranked by accuracy, points and consistency — plus the official fighter rankings.
+          Points earned from correct predictions in the CombatReviews Challenge — skill, not betting — plus the official fighter rankings.
         </p>
       </header>
 
       {/* ── Product switch ── */}
       <ChipRow className="mb-4">
-        <Chip href="/leaderboard" active={board === "predictors"}>Predictor Leaderboard</Chip>
+        <Chip href="/leaderboard" active={board === "predictors"}>Challenge Ranking</Chip>
         <Chip href="/leaderboard?board=fighters" active={board === "fighters"}>Fighter Rankings</Chip>
       </ChipRow>
 

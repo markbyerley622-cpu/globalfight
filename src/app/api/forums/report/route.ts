@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { createReport } from "@/lib/forum/repo";
+import { hit, POLICY } from "@/lib/rate-limit";
 
 const REASONS = ["spam", "harassment", "off_topic", "misinformation", "other"];
 
@@ -8,6 +9,16 @@ const REASONS = ["spam", "harassment", "off_topic", "misinformation", "other"];
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to report." }, { status: 401 });
+
+  // Bound reports per user so the moderation queue can't be flooded against a
+  // target. The POLICY.contentReport limit existed but was never wired here.
+  const gate = await hit(`report:${user.id}`, POLICY.contentReport.limit, POLICY.contentReport.windowMs);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Too many reports. Try again later." },
+      { status: 429, headers: { "retry-after": String(gate.retryAfter) } },
+    );
+  }
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }

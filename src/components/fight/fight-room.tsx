@@ -87,8 +87,8 @@ export function FightRoom({ fightSlug }: { fightSlug: string }) {
           active={active === "battle"}
           onClick={() => setLayer("battle")}
           icon={<Swords className="size-3.5" />}
-          label="Battle"
-          hint={battle?.opponent ? `vs ${battle.opponent.name.split(" ")[0]}` : battle ? "waiting" : "open one"}
+          label="Challenge"
+          hint={battle?.opponent ? `vs ${battle.opponent.name.split(" ")[0]}` : battle ? "invite sent" : "invite a rival"}
         />
         <LayerTab
           active={active === "community"}

@@ -11,6 +11,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"src/lib/**/__tests__/**/*.test.ts\"",
+    "test:integration": "node --conditions=react-server --test-concurrency=1 --import tsx --test \"test/integration/**/*.integration.test.ts\"",
     "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
@@ -27,27 +28,26 @@
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "hls.js": "^1.6.16",
     "jose": "^6.2.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.469.0",
-    "motion": "^11.15.0",
-    "next": "15.1.4",
-    "next-themes": "^0.4.4",
+    "next": "^15.5.21",
     "p-queue": "^8.0.1",
     "p-retry": "^6.2.1",
     "pg": "^8.21.0",
     "pino": "^9.5.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "sharp": "^0.33.5",
+    "sharp": "^0.35.3",
     "tailwind-merge": "^2.6.0",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^16.2.10",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/leaflet": "^1.9.21",
@@ -56,9 +56,11 @@
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "@types/web-push": "^3.6.4",
+    "chrome-launcher": "^1.2.1",
     "eslint": "^10.7.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
+    "lighthouse": "^12.8.2",
     "prisma": "^6.2.1",
     "server-only": "^0.0.1",
     "tailwindcss": "^4.0.0",
@@ -68,5 +70,9 @@
   },
   "optionalDependencies": {
     "redis": "^4.7.0"
+  },
+  "overrides": {
+    "sharp": "^0.35.3",
+    "postcss": "^8.5.22"
   }
 }

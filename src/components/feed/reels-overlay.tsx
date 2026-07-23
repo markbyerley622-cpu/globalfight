@@ -15,25 +15,6 @@ import { SaveSheet } from "./save-sheet";
 import { DiscussionSheet } from "./discussion-sheet";
 import { fetchLibrary } from "./library-client";
 
-/* Branded reaction glyphs (filled silhouettes) */
-function Fist({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <rect x="7" y="14" width="10" height="8.5" rx="3" /><rect x="4.6" y="8" width="14.8" height="9" rx="4.2" />
-      <circle cx="7.8" cy="8.4" r="2.3" /><circle cx="12" cy="7.9" r="2.5" /><circle cx="16.2" cy="8.4" r="2.3" />
-      <rect x="3" y="10.4" width="4.6" height="6" rx="2.3" />
-    </svg>
-  );
-}
-function Finger({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <rect x="9.7" y="2" width="4.6" height="12.5" rx="2.3" /><rect x="4.8" y="11" width="14.4" height="9.5" rx="4.2" />
-      <circle cx="7.4" cy="12" r="2.1" /><circle cx="16.6" cy="12" r="2.1" /><rect x="3" y="13.6" width="4.4" height="5.8" rx="2.2" />
-    </svg>
-  );
-}
-
 const REELS_ENDPOINT = "/api/feed/reels";
 const MAX_ITEMS = 600;
 

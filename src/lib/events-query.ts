@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
+import { safeFighterImageOrNull } from "@/lib/media-safe";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Event discovery.
@@ -43,8 +44,18 @@ export interface EventCard {
   countryCode: string | null;
   broadcaster: string | null;
   posterUrl: string | null;
+  heroUrl: string | null;
+  eventUrl: string | null;
+  ticketUrl: string | null;
   boutCount: number;
-  mainEvent: { red: string; blue: string; titleFight: boolean } | null;
+  mainEvent: {
+    red: string;
+    blue: string;
+    titleFight: boolean;
+    /** Media-safe fighter image URLs (or null) for the composed card background. */
+    redImage: string | null;
+    blueImage: string | null;
+  } | null;
   following: boolean;
 }
 
@@ -95,15 +106,25 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
   return where;
 }
 
+const FIGHTER_CARD_SELECT = { name: true, imageUrl: true, thumbUrl: true, countryCode: true } as const;
+
 const CARD_SELECT = {
   id: true, slug: true, name: true, date: true, status: true, promotion: true,
-  venue: true, city: true, country: true, countryCode: true, broadcaster: true, posterUrl: true,
+  venue: true, city: true, country: true, countryCode: true, broadcaster: true,
+  // Both artwork shapes + the action URLs a card surfaces (watch / tickets).
+  posterUrl: true, heroUrl: true, eventUrl: true, ticketUrl: true,
   _count: { select: { fights: true } },
-  // The headline bout only — a card shows the marquee, not the undercard.
+  // The headline bout only — a card shows the marquee, not the undercard. Fighter
+  // photos are pulled so the card can compose a "fighter vs fighter" background
+  // when the promotion supplied no event artwork (see lib/event-artwork).
   fights: {
     where: { mainEvent: true },
     take: 1,
-    select: { titleFight: true, red: { select: { name: true } }, blue: { select: { name: true } } },
+    select: {
+      titleFight: true,
+      red: { select: FIGHTER_CARD_SELECT },
+      blue: { select: FIGHTER_CARD_SELECT },
+    },
   },
 } as const;
 
@@ -139,9 +160,16 @@ export async function queryEvents(
         id: e.id, slug: e.slug, name: e.name, date: e.date.toISOString(), status: e.status,
         promotion: e.promotion, promotionName: resolvePromotion(e.promotion).name,
         venue: e.venue, city: e.city, country: e.country, countryCode: e.countryCode,
-        broadcaster: e.broadcaster, posterUrl: e.posterUrl,
+        broadcaster: e.broadcaster,
+        posterUrl: e.posterUrl, heroUrl: e.heroUrl, eventUrl: e.eventUrl, ticketUrl: e.ticketUrl,
         boutCount: e._count.fights,
-        mainEvent: m ? { red: m.red.name, blue: m.blue.name, titleFight: m.titleFight } : null,
+        mainEvent: m
+          ? {
+              red: m.red.name, blue: m.blue.name, titleFight: m.titleFight,
+              redImage: safeFighterImageOrNull(m.red.imageUrl ?? m.red.thumbUrl),
+              blueImage: safeFighterImageOrNull(m.blue.imageUrl ?? m.blue.thumbUrl),
+            }
+          : null,
         following: followedIds.has(e.id),
       };
     }),

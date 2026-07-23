@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,8 +25,7 @@ import { recommendVideos } from "@/lib/feed/recommend";
 import { VideoRail } from "@/components/feed/video-rail";
 import { VideoCard, VideoCardProvider } from "@/components/feed/video-card";
 import { Flag } from "@/components/flag";
-import { ageFrom, koPercentage, formatRecord, formatDate } from "@/lib/utils";
-import { embedUrl } from "@/lib/feed/channels";
+import { ageFrom, koPercentage, formatDate } from "@/lib/utils";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -107,7 +107,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
 
       {/* Hero — branded banner: dark themed base + the fighter's photo as
           intentional blurred/darkened ambiance + brand glows + CR logo mark. */}

@@ -13,26 +13,59 @@
 type Entry = { value: unknown; expires: number };
 const memory = new Map<string, Entry>();
 
-// Lazy Redis — only require the client if a URL is configured. (Add `ioredis`
-// to dependencies when going live; kept optional here so install stays light.)
-let redis: { get(k: string): Promise<string | null>; set(k: string, v: string, mode: string, ttl: number): Promise<unknown>; del(k: string): Promise<unknown> } | null = null;
+// Lazy Redis — loaded only when REDIS_URL is set, using node-redis v4 (the
+// `redis` package that is actually a dependency; the previous code imported
+// `ioredis`, which is NOT installed, so it silently fell back to the Map on
+// every call and the distributed cache never engaged). A single connection is
+// memoized for the process; on any failure we log ONCE and fall back to the
+// in-process Map, so a Redis outage degrades performance but never 500s a page.
+type RedisAdapter = {
+  get(k: string): Promise<string | null>;
+  set(k: string, v: string, ttlSeconds: number): Promise<unknown>;
+  del(k: string): Promise<unknown>;
+};
 
-async function getRedis() {
-  if (redis || !process.env.REDIS_URL) return redis;
+let redis: RedisAdapter | null = null;
+let redisInit: Promise<RedisAdapter | null> | null = null;
+
+async function connectRedis(): Promise<RedisAdapter | null> {
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
   try {
-    // Non-literal specifier: keeps TS/bundler from requiring `ioredis` at
-    // build time. Add `ioredis` to dependencies when enabling Redis in prod.
-    const pkg = "ioredis";
-    const mod = (await import(/* webpackIgnore: true */ pkg).catch(() => null)) as
-      | { default: new (url: string) => NonNullable<typeof redis> }
-      | null;
-    if (!mod) return null;
-    const Redis = mod.default;
-    redis = new Redis(process.env.REDIS_URL);
-  } catch {
-    redis = null;
+    // Non-literal specifier + webpackIgnore keep node-redis out of the client/
+    // edge bundle; it is required only in the Node server runtime.
+    const pkg = "redis";
+    const mod = await import(/* webpackIgnore: true */ pkg);
+    const client = mod.createClient({ url });
+    client.on("error", (e: unknown) => {
+      console.error("[cache] redis client error:", (e as Error)?.message ?? e);
+    });
+    await client.connect();
+    console.info("[cache] Redis connected — hot reads served from Redis.");
+    redis = {
+      get: (k) => client.get(k),
+      set: (k, v, ttl) => client.set(k, v, { EX: ttl }),
+      del: (k) => client.del(k),
+    };
+    return redis;
+  } catch (e) {
+    // The single most important line: make the silent fallback VISIBLE, because
+    // at >1 instance each process would otherwise serve its own divergent Map
+    // with no cross-instance invalidation and no warning.
+    console.error(
+      "[cache] REDIS_URL is set but Redis is unavailable — falling back to the " +
+        "in-process cache, which is NOT shared across instances:",
+      (e as Error)?.message ?? e,
+    );
+    return null;
   }
-  return redis;
+}
+
+async function getRedis(): Promise<RedisAdapter | null> {
+  if (redis) return redis;
+  if (!process.env.REDIS_URL) return null;
+  if (!redisInit) redisInit = connectRedis();
+  return redisInit;
 }
 
 export const CACHE_TTL = {
@@ -48,7 +81,7 @@ export async function cached<T>(key: string, ttlSeconds: number, loader: () => P
     const hit = await r.get(key);
     if (hit) return JSON.parse(hit) as T;
     const value = await loader();
-    await r.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    await r.set(key, JSON.stringify(value), ttlSeconds);
     return value;
   }
 
