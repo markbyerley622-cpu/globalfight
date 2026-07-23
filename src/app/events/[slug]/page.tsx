@@ -58,43 +58,40 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const boutTimes = estimateBoutTimes(blocks, eventDate);
   const liveBoutId = currentBoutId(blocks, event.status);
 
-  // Real market-implied probability per bout, from the licensed odds feed.
-  const oddsList = await Promise.all(fights.map((f) => getOddsForFight(f.slug)));
+  // Resolve the viewer once up front (cache-deduped) and reuse it below.
+  const viewer = await getCurrentUser();
+
+  // These three reads are independent of one another, so run them concurrently
+  // instead of in a waterfall — page latency becomes the slowest single read,
+  // not their sum.
+  //  - odds: real market-implied probability per bout, from the licensed feed.
+  //  - coverage: articles naming a fighter on this card or the promotion, pulled
+  //    wide from the WHOLE news table (not just the recent 60) then ranked toward
+  //    high-value stories; no match → empty panel, never the generic firehose.
+  //  - video: highlights/embedded for THIS card, windowed hard around the date so
+  //    a promotion-slug match can't attach last year's video to next month's card.
+  const [oddsList, coveragePool, eventVideos] = await Promise.all([
+    Promise.all(fights.map((f) => getOddsForFight(f.slug))),
+    getEventCoverage(coverageTerms(event.promotion, fights, event.name), 30),
+    recommendVideos({
+      promotions: [resolvePromotion(event.promotion).slug],
+      fighterNames: fights.flatMap((f) => [f.red.name, f.blue.name]),
+      publishedAfter: new Date(eventDate.getTime() - 21 * 86_400_000),
+      publishedBefore: new Date(eventDate.getTime() + 10 * 86_400_000),
+      viewerId: viewer?.id ?? null,
+      limit: 4,
+    }),
+  ]);
   const marketBySlug = new Map<string, MarketProb | null>(
     fights.map((f, i) => [f.slug, marketProbability(oddsList[i])]),
   );
-
-  // Coverage: articles that name a fighter on this card or the promotion,
-  // queried across the WHOLE news table (not just the recent 60) so a
-  // promotion's stories surface instead of the generic MMA firehose. No match
-  // → empty panel, never unrelated news.
-  // Pull a wide pool, then rank toward high-value stories (press conference,
-  // weigh-ins, faceoffs, fighter updates, predictions) and drop duplicates.
-  const coveragePool = await getEventCoverage(coverageTerms(event.promotion, fights, event.name), 30);
   const coverage = rankCoverage(coveragePool, 8);
-
-  // Video for THIS card, windowed hard around the event date.
-  //
-  // Without the window a promotion-slug match would happily put last year's
-  // Embedded on next month's card — the promotion is right and the event is
-  // not, which is exactly the failure the product called out. Fight-week video
-  // lands in the ~3 weeks before a card; afterwards the same window keeps the
-  // highlights and post-fight reaction attached to the card they belong to.
-  const eventVideos = await recommendVideos({
-    promotions: [resolvePromotion(event.promotion).slug],
-    fighterNames: fights.flatMap((f) => [f.red.name, f.blue.name]),
-    publishedAfter: new Date(eventDate.getTime() - 21 * 86_400_000),
-    publishedBefore: new Date(eventDate.getTime() + 10 * 86_400_000),
-    viewerId: (await getCurrentUser())?.id ?? null,
-    limit: 4,
-  });
 
   // Promotion personality: every event uses the SAME layout, but its promotion's
   // brand colour flows through the hero/schedule/main-event accents via --accent.
   const accent = resolvePromotion(event.promotion).brand;
 
   // Is the viewer following this promotion? (drives the header follow button)
-  const viewer = await getCurrentUser();
   const [promotionFollowing, eventFollowing] = viewer
     ? await Promise.all([
         event.promotion ? isFollowingPromotion(viewer.id, event.promotion) : Promise.resolve(false),
