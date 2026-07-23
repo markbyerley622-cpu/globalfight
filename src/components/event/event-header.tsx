@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { CalendarDays, MapPin, Radio, Building } from "lucide-react";
+import { CalendarDays, MapPin, Radio, Building, Ticket } from "lucide-react";
+import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import type { FightEvent } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { mapsUrl } from "@/lib/event-format";
@@ -40,6 +41,10 @@ export function EventHeader({
   // "Directions" fallback rather than being the primary experience.
   const point = resolvePoint(event);
   const inAppMap = point ? `/map?lat=${point.lat.toFixed(5)}&lon=${point.lon.toFixed(5)}&z=8` : null;
+  // Where to watch / attend, resolved per-promotion (lib/events/providers) so the
+  // detail page matches the card instead of hiding this behind a missing field.
+  const watch = resolveWatch(event.promotion, event.broadcaster, null);
+  const tickets = resolveTickets(event.promotion, null);
   // Resolve to the canonical org so we show a real name (never a raw "Various")
   // and only offer "follow" when it's an actual promotion, not the neutral mark.
   const org = resolvePromotion(event.promotion);
@@ -151,9 +156,20 @@ export function EventHeader({
             )}
           </Meta>
         )}
-        {event.broadcaster && (
-          <Meta icon={<Radio className="size-4" />} label="Broadcast" className="col-span-2">
-            {event.broadcaster}
+        {watch && (
+          <Meta icon={<Radio className="size-4" />} label="Watch">
+            {watch.url ? (
+              <a href={watch.url} target="_blank" rel="noopener noreferrer" className="text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400">
+                {watch.label} ↗
+              </a>
+            ) : watch.label}
+          </Meta>
+        )}
+        {tickets && (
+          <Meta icon={<Ticket className="size-4" />} label="Tickets">
+            <a href={tickets.url} target="_blank" rel="noopener noreferrer" className="text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400">
+              {tickets.label === "Buy" ? "Buy tickets" : tickets.label} ↗
+            </a>
           </Meta>
         )}
       </dl>
