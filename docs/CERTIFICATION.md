@@ -2,6 +2,8 @@
 
 **Date:** 2026-07-23 · **Branch:** `harden/wave0-production-blockers` (36 commits, not pushed) · **Evidence basis:** local integration tests + runtime smoke test against a disposable Postgres 16 (Docker). Companion docs: `AUDIT.md`, `HARDENING.md`, `MIGRATIONS.md`, `LAUNCH-CANDIDATE.md`.
 
+> **UPDATE 2026-07-24 — the browser-only gap below is now CLOSED.** See **`docs/RC-1-CERTIFICATION.md`** for the full Release Candidate pass: Playwright E2E across Chromium/Firefox/WebKit (84 checks), Lighthouse (a11y 96–100, best-practices 96–100), and axe-core — all against a production build. That pass also cleared the two HIGH `sharp` CVEs referenced in §9 and fixed two browser-only CSP issues. The §5 "E2E not run" and §12 browser-evidence risks are superseded there.
+
 ---
 
 ## 1. Executive Summary
