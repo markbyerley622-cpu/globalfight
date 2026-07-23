@@ -522,10 +522,15 @@ model Fight {
   eventId String?
   event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
+  // Restrict, NOT Cascade: a Fight is shared history between two fighters, so
+  // deleting one corner must never silently erase the bout (which would also
+  // wipe it from the opponent's record and cascade into picks/battles/odds).
+  // A merge/cleanup must re-point redId/blueId first; the DB refuses the delete
+  // until it does. There are no fighter.delete call sites today.
   redId  String
-  red    Fighter @relation("RedCorner", fields: [redId], references: [id], onDelete: Cascade)
+  red    Fighter @relation("RedCorner", fields: [redId], references: [id], onDelete: Restrict)
   blueId String
-  blue   Fighter @relation("BlueCorner", fields: [blueId], references: [id], onDelete: Cascade)
+  blue   Fighter @relation("BlueCorner", fields: [blueId], references: [id], onDelete: Restrict)
 
   weightClassId String?
   weightClass   WeightClass? @relation(fields: [weightClassId], references: [id], onDelete: SetNull)
