@@ -98,7 +98,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "motion"],
+    optimizePackageImports: ["lucide-react"],
   },
 };
 
