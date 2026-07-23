@@ -3,8 +3,9 @@
 Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
 Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
 
-**Readiness: 68 → ~82 / 100** (Wave 0 complete; Wave 1 in progress). The remaining
-gap to 95 is the rest of Waves 1–5 (see AUDIT.md §18–20).
+**Readiness: 68 → ~85 / 100** (Wave 0 complete; Wave 1 nearly complete). The
+remaining gap to 95 is the repo-boundary migration, integration tests, and
+Waves 2–5 (see AUDIT.md §18–20).
 
 Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
 BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
@@ -123,9 +124,31 @@ being lifted first.
 | Extract pure scoring core + 18 tests | `8f72dca` | TSC·LINT·TEST(67)·BUILD | ✅ done |
 | CI gate (typecheck+lint+test+build) | `b937675` | YAML valid; runs verified npm scripts | ✅ done |
 | Hot-path indexes | `715e9e9` | prisma validate·BUILD | ✅ done (needs `db push`) |
-| `persist.ts` per-fight transaction | — | — | ⏭ next (designed, not yet built) |
-| Repo-boundary ESLint rule + migrate 45 call sites | — | — | ⏭ pending |
-| Prisma Migrations adoption | — | — | ⏸ **needs operator decision** |
+| `persist.ts` per-fight transaction | `d9cb090` | TSC·LINT·TEST·BUILD | ✅ done |
+| Remove dead deps (motion/hls.js/next-themes) | `271a696` | TSC·BUILD | ✅ done |
+| Prisma Migrations baseline (local prep) | `b93d6f1` | prisma validate; baseline reflects schema | ✅ prepared — **deploy needs operator** (docs/MIGRATIONS.md) |
+| Repo-boundary ESLint rule + migrate 45 call sites | — | — | ⏭ pending (large; incremental) |
+| Integration tests (resolve fan-out, auth) | — | — | ⏭ pending (needs test DB) |
+
+### W1-4 — Per-fight persistence transaction · `d9cb090`
+**Finding.** `upsertFight` wrote corner fighters + the fight as separate statements → a mid-write failure could orphan corner fighters. (Audit: Database HIGH; Wave-0 deferred.)
+**Solution.** Resolve corners (slow dedupe reads) OUTSIDE the tx; wrap create-missing-corners + fight upsert in one `$transaction`; keep additive provenance (external-id/conflicts) OUTSIDE so a missing-table error can't poison the tx. Per-fight `try/catch` resilience preserved; provenance-link behaviour unchanged.
+**Validation.** TSC 0, LINT 0, TEST 67/67, BUILD 0.
+**Remaining risk.** Interactive-tx wall-clock includes only fast writes now; no behaviour change to graded data. Fan-out still integration-untested (needs test DB).
+**Rollback.** Revert the commit.
+
+### W1-5 — Remove dead dependencies · `271a696`
+**Finding.** `motion`, `hls.js`, `next-themes` installed, zero imports. (Audit: Code-Quality L1 / Arch H4.)
+**Solution.** `npm rm` all three; drop stale `motion` from `optimizePackageImports`. Re-verified zero `src` imports first.
+**Validation.** TSC 0, BUILD 0 (58/58).
+**Rollback.** `npm i` them back.
+
+### W1-6 — Prisma Migrations baseline (local prep only) · `b93d6f1`
+**Finding.** `db push --accept-data-loss` on every prod deploy, no history. (Audit: Database §7 / Code-Quality M1.) Flagged as needing an operator decision.
+**Solution (local only, nothing deployed).** Generated `prisma/migrations/0_init` (full current schema, verified to include the Wave 0/1 changes) + lock file; wrote `docs/MIGRATIONS.md` with the exact manual adoption steps (backup → final `db push` → `migrate resolve --applied 0_init` → switch `render.yaml` to `migrate deploy`). `render.yaml` intentionally **unchanged**.
+**Validation.** `prisma validate` ✅; baseline confirmed to emit `ON DELETE RESTRICT` + the new indexes. Full apply-and-diff needs a Postgres shadow DB (Docker daemon not running here) — baseline is faithful by construction (`migrate diff` from the schema).
+**Remaining risk.** Adoption is a live-DB operation left for the operator; steps + rollback documented.
+**Rollback.** Delete `prisma/migrations/` — inert until `migrate deploy` is run.
 
 ### W1-1 — Extract & test the pick-scoring core · `8f72dca`
 **Finding.** Zero tests on the money path (picks/resolution/scoring). (Audit: Code-Quality H2.)
