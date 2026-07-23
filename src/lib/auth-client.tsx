@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 
 export interface AuthUser {
   id: string;
@@ -46,9 +46,21 @@ async function postJson(url: string, body: unknown) {
   return data;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode;
+  /** When the root layout resolves the session server-side and passes it in
+   *  (even as null), the first client paint already knows the user — no
+   *  /api/auth/me round-trip and no loading→resolved flash. When omitted
+   *  (undefined), we fall back to the on-mount fetch so behaviour is unchanged.
+   *  refresh() re-syncs on demand after a mutation regardless. */
+  initialUser?: AuthUser | null;
+}) {
+  const seeded = initialUser !== undefined;
+  const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
+  const [loading, setLoading] = useState(!seeded);
 
   const refresh = useCallback(async () => {
     try {
@@ -62,7 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // Only fetch on mount when the server did NOT seed us (unchanged legacy path).
+  useEffect(() => {
+    if (!seeded) refresh();
+  }, [seeded, refresh]);
 
   const signup = useCallback(async (input: SignupInput) => {
     const data = await postJson("/api/auth/signup", input);
@@ -93,11 +108,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await postJson("/api/auth/password", { currentPassword, newPassword });
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, refresh, updateAccount, changePassword }}>
-      {children}
-    </AuthContext.Provider>
+  // Memoized so useAuth() consumers don't re-render on every provider render —
+  // the callbacks are already useCallback-stable, so this changes only when the
+  // user or loading actually changes.
+  const value = useMemo<AuthValue>(
+    () => ({ user, loading, signup, login, logout, refresh, updateAccount, changePassword }),
+    [user, loading, signup, login, logout, refresh, updateAccount, changePassword],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthValue {
