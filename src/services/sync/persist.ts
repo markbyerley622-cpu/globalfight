@@ -9,6 +9,7 @@
 
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
+import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
@@ -333,7 +334,10 @@ async function upsertFight(
     // ordering (and any early-entered result) would be destroyed by the next cron.
     const existing = await tx.fight.findUnique({ where: { slug } });
     if (existing) {
-      const update = stripLocked(data, existing.lockedFields);
+      // Two guards, in order: (1) never let a later sync un-decide a bout back to
+      // SCHEDULED (result integrity); (2) never overwrite operator-locked fields.
+      const guarded = preventResultDowngrade(existing.result, data);
+      const update = stripLocked(guarded, existing.lockedFields);
       if (Object.keys(update).length > 0) {
         await tx.fight.update({ where: { id: existing.id }, data: update });
       }
