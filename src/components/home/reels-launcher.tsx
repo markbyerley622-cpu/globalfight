@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Film } from "lucide-react";
-import { ReelsOverlay } from "@/components/feed/reels-overlay";
+
+// The overlay is a large client component (IntersectionObserver, touch/keyboard
+// wiring, video logic) that renders nothing until opened. Load its chunk lazily
+// and mount it only while open, so it stays out of the Home first-load bundle.
+const ReelsOverlay = dynamic(
+  () => import("@/components/feed/reels-overlay").then((m) => m.ReelsOverlay),
+  { ssr: false },
+);
 
 /**
  * First-class Reels entry point for the Home landing. Reuses the existing
@@ -51,7 +59,7 @@ export function ReelsLauncher() {
         <Film className="size-4" /> Reels
       </button>
 
-      <ReelsOverlay open={open} onClose={() => setOpen(false)} query={{ sort: "smart" }} />
+      {open && <ReelsOverlay open={open} onClose={() => setOpen(false)} query={{ sort: "smart" }} />}
     </>
   );
 }
