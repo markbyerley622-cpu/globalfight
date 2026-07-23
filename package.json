@@ -11,6 +11,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"src/lib/**/__tests__/**/*.test.ts\"",
+    "test:integration": "node --conditions=react-server --test-concurrency=1 --import tsx --test \"test/integration/**/*.integration.test.ts\"",
     "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
