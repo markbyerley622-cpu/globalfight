@@ -7,6 +7,7 @@
 
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
+import { decodeHtmlEntities, normalizeText } from "@/lib/text/entities";
 
 // Honest identification. This ran every 15 minutes in production disguised as
 // Chrome; a spoofed UA on a scheduled bot is not a grey area.
@@ -185,26 +186,14 @@ export const FEEDS: { source: string; category: string; url: string }[] = [
 // Drop pro-wrestling and other non-combat-sport noise.
 const EXCLUDE = /\b(wwe|aew|nxt|wrestlemania|smackdown|raw\b|njpw|impact wrestling|danhausen|nwo|wcw|tna|cmll|progress wrestling|wrestletalk|wrestlezone)\b/i;
 
-// Decode HTML entities so ESCAPED markup (Google News wraps its <description> as
-// &lt;a href=&quot;…&quot;&gt;) becomes real tags we can strip — otherwise the raw
-// `a href="…"` link text leaks into excerpts. Decode BEFORE stripping tags.
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&apos;/gi, "'")
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&amp;/gi, "&"); // last, so &amp;lt; doesn't double-decode
-}
-
+// Decode HTML entities (to a fixpoint — Google News DOUBLE-encodes) so ESCAPED
+// markup (`&lt;a href=&quot;…&quot;&gt;`) becomes real tags we can strip, and so
+// no entity residue is ever stored. Then remove the tags and normalize. The
+// entity decoder lives in one shared, tested module — see src/lib/text/entities.ts.
 const strip = (s: string) =>
-  decodeEntities(s.replace(/<!\[CDATA\[|\]\]>/g, ""))
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  normalizeText(
+    decodeHtmlEntities(s.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/<[^>]+>/g, " "),
+  );
 
 const tag = (xml: string, name: string) => {
   const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i"));
@@ -246,7 +235,7 @@ function ogImageFrom(html: string, pageUrl: string): string | null {
     // Decode entities first — publishers HTML-escape the & in image query
     // strings (…?quality=90&amp;strip=all), which would otherwise truncate the
     // proxied URL's params.
-    const abs = new URL(decodeEntities(m[1].trim()), pageUrl).toString();  // resolve relative/protocol-relative
+    const abs = new URL(decodeHtmlEntities(m[1].trim()), pageUrl).toString();  // resolve relative/protocol-relative
     return abs.startsWith("https://") ? abs : null;                        // proxy only accepts https
   } catch {
     return null;

@@ -246,8 +246,124 @@ The pino redact bug (`*.set-cookie` invalid path) was caught by the build gate
 and fixed before commit — evidence the "never continue on failing validation"
 rule is working.
 
+## Wave 5 — RC-1 browser certification (2026-07-24)
+
+Closes the browser-only evidence gap the earlier waves flagged: Playwright E2E
+(Chromium + Firefox + WebKit + mobile), Lighthouse, and axe-core against a
+**production `next start`** on the disposable seeded Postgres. This wave also
+surfaced and fixed real issues that only a browser reveals.
+
+Verification legend unchanged. All fixes verified TSC 0 / LINT 0 / BUILD 0 and
+re-run green in the E2E suite.
+
+| # | Fix | File(s) | Verify | Status |
+|---|---|---|---|---|
+| RC-1 | Drop `upgrade-insecure-requests` from the **Report-Only** CSP | `next.config.ts` | BUILD·E2E | ✅ done |
+| RC-2 | Add `flagcdn.com` to CSP `img-src` (country flags were CSP-violating) | `next.config.ts` | BUILD·E2E (flags render) | ✅ done |
+| RC-3 | Upgrade `sharp` 0.33.5 → **0.35.3** + `overrides` to dedupe Next's nested copy (clears 2 HIGH libvips CVEs) | `package.json` | AUDIT(0 high)·smoke·BUILD | ✅ done |
+
+### RC-1 — `upgrade-insecure-requests` in a Report-Only CSP
+**Finding (browser console, every page).** Chromium logs *"The Content Security
+Policy directive 'upgrade-insecure-requests' is ignored when delivered in a
+report-only policy."* The directive is a no-op in Report-Only mode and produced a
+console error on every navigation.
+**Fix.** Removed it from the Report-Only policy (HSTS already forces HTTPS
+domain-wide). Left a comment to restore it when the CSP is flipped to enforced.
+**Rollback.** Re-add the directive.
+
+### RC-2 — CSP `img-src` blocked the country flags
+**Finding (Report-Only violation, all browsers).** `src/components/flag.tsx`
+renders flags via `next/image unoptimized`, i.e. a **direct** browser request to
+`https://flagcdn.com`. That host was absent from `img-src`, so **every flag would
+be blocked the moment the CSP is enforced.** Exactly what Report-Only is for.
+**Fix.** Added `https://flagcdn.com` to `img-src`. Verified flags render (incl.
+mobile). **Note:** a broader img-src audit is still required before enforcement —
+see the pre-enforcement item below.
+**Rollback.** Remove the host.
+
+### RC-3 — `sharp` HIGH CVEs
+**Finding.** `sharp` <0.35 carried 2 HIGH libvips advisories (CVE-2026-33327/…).
+The app's only sharp consumer is `src/lib/images/store.ts` (resize/rotate/webp/
+metadata/toBuffer — all stable APIs).
+**Fix.** Upgraded direct dep to 0.35.3; added `"overrides": { "sharp": "^0.35.3" }`
+to force Next's *nested* sharp to the patched version too. Smoke-tested the exact
+store.ts pipeline on synthetic input (all ops pass). `npm audit --omit=dev` → **0
+high, 0 critical** (residual: `postcss` moderate, transitive under Next, only
+clears on a future Next release — `audit fix --force` would downgrade Next to 9.x
+and reintroduce the patched RCE, so it is rejected).
+**Rollback.** `npm i sharp@0.33.5` + remove the override.
+
+### RC — finding logged, NOT auto-fixed
+- **News article titles carry undecoded HTML entities** (41 rows: `&#8217;`,
+  `&#8216;`, `&#8211;`). Visible on the landing ticker / news feed and even leaked
+  into slugs (`/news/…-it-8217-s-…`). Source is **live news ingestion**, not seed.
+  The current `ingest.ts` `decodeEntities` handles single-encoded entities, so
+  these are pre-fix/legacy rows (or a double-encoding edge case). **Low severity,
+  cosmetic, no runtime error.** Recommend a one-time backfill decode + confirm the
+  ingest path covers every feed. Not fixed here to avoid a render-layer band-aid
+  that would mask future bad data.
+
+### Pre-CSP-enforcement audit (blocks CSP enforcement, NOT launch)
+Report-Only telemetry shows external image hosts NOT in `img-src` that load fine
+today (Report-Only blocks nothing) but **would break when CSP is enforced**:
+event posters (`cdn.onefc.com`, and other promotion CDNs), video thumbnails
+(`i.ytimg.com`). Before flipping CSP to enforced: enumerate every external image
+host and either add each to `img-src` or route them through `/api/img` (the
+existing proxy). Tracked as part of the nonce/enforcement work.
+
+## Wave 6 — RC-2 data-quality hardening (2026-07-24)
+
+Root-causes and eliminates the news-title HTML-entity issue RC-1 documented, and
+hardens the ingestion pipeline so the class of bug cannot recur.
+
+### Root cause (definitive)
+The inline `decodeEntities` in `news/ingest.ts` decoded in ONE fixed-order pass
+with `&amp;`→`&` applied **last**. Google News (and many CMSs) **double-encode**:
+they send `it&amp;#8217;s`. The single pass ran the `&#NNNN;` decode *before* the
+`&amp;`→`&` step revealed a fresh `&#8217;`, so that numeric entity was never
+decoded again. The stored `&#8217;`/`&amp;`/`&quot;` residue was exactly one
+`&amp;`→`&` step short of clean. Confirmed by reproducing every DB case against the
+old function. A second copy of the same bug lived in `src/lib/feed/rss.ts`
+(YouTube video titles) — and it also used `String.fromCharCode`, which mangles
+astral code points (e.g. `&#128293;` 🔥).
+
+### Fix — normalize once, at ingestion, then never again
+| Change | File(s) |
+|---|---|
+| New shared, fixpoint entity decoder + text normalizer (decode to a fixpoint → handles double/triple encoding; strip control/zero-width chars; collapse whitespace; idempotent; safe on malformed/out-of-range input) | **`src/lib/text/entities.ts`** (new) |
+| 16-case regression suite (apostrophes, quotes, ampersands, unicode punctuation, emoji, non-English, HTML tags, double/triple-encoding, malformed feeds, control chars, idempotency) | **`src/lib/text/__tests__/entities.test.ts`** (new) |
+| News RSS ingest routed through the shared normalizer (removed the buggy inline decoder) | `src/lib/news/ingest.ts` |
+| YouTube video feed routed through the shared normalizer (fixes the fromCharCode emoji bug too) | `src/lib/feed/rss.ts` |
+| One-time backfill + data-quality audit script | **`scripts/normalize-text-backfill.mts`** (new) |
+
+Because the single write path (`ingestNews`) now stores clean text, **every
+downstream surface is automatically correct** — slug generation, page title, meta
+description, OpenGraph, JSON-LD headline, and search all read the stored value and
+do no client-side decoding. Slugs derive from the normalized title, so the entity
+never leaks into a URL again.
+
+### Backfill (`scripts/normalize-text-backfill.mts`)
+Dry-run by default; `--apply` to write. Idempotent (only updates fields whose
+normalized value differs), resumable (id-ordered batches; interrupt-safe),
+transactional (each batch commits in one `$transaction`), logged with per-model
+counts + before/after samples. Writes `Article` (title/excerpt/content) and
+`FeedVideo` (title/channel/description); read-only audits `Fighter`/`Event`/`Gym`/
+`ForumThread` for the same class and reports (names are relationship-bearing —
+review before fixing). **Validated** end-to-end against synthetic double-encoded /
+single-encoded / emoji / clean rows: dry-run previewed exactly the dirty rows,
+`--apply` cleaned them (`&amp;#8217;`→`’`, `&#128293;`→🔥), a re-run updated 0
+(idempotent), and the post-run entity count was 0. The 41 production rows RC-1
+found were truncated by RC-1's integration run; the operator runs `--apply` against
+production once (after deploy) to clean any that re-ingested pre-fix.
+
+### Validation
+TSC 0 · ESLint 0 errors · **unit 83/83** (was 67; +16 entity tests) · production
+build compiled successfully. Integration unchanged from RC-1 (12/13; the FK
+true-positive is unrelated to text handling).
+
 ## Outstanding actions for the operator
+- **RC-2 backfill:** after deploy, run `node --import tsx scripts/normalize-text-backfill.mts` (dry run) then `--apply` once to clean any pre-fix news/video rows. Idempotent and safe to re-run.
 - **On next deploy:** confirm `prisma db push` applies the `Fight` FK change (Cascade → Restrict, Fix 3) and the new hot-path indexes (W1-3).
 - **Enable branch protection** on `main` requiring the CI `verify` check (W1-2).
-- **CSP:** review `Content-Security-Policy-Report-Only` reports, add a nonce middleware, then flip to enforced.
+- **CSP:** review `Content-Security-Policy-Report-Only` reports, add a nonce middleware, complete the **img-src external-host audit** (Wave 5 pre-enforcement item: event-poster CDNs + `i.ytimg.com`), then flip to enforced.
 - **DECISION NEEDED — Prisma Migrations:** moving off `db push --accept-data-loss` means baselining a migration history against the **live production DB** and changing the Render build command. That is an operational change with rollback implications I will not make autonomously. Confirm you want it and I'll prepare the baseline + `migrate deploy` flow (this also unblocks the `FighterAlias` unique and the fighter-name trigram index).
