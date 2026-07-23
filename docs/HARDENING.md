@@ -3,8 +3,8 @@
 Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
 Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
 
-**Readiness: 68 → ~78 / 100** (Wave 0). The remaining gap to 95 is Waves 1–5
-(tests + CI are the biggest single lift; see AUDIT.md §18–20).
+**Readiness: 68 → ~82 / 100** (Wave 0 complete; Wave 1 in progress). The remaining
+gap to 95 is the rest of Waves 1–5 (see AUDIT.md §18–20).
 
 Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
 BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
@@ -113,6 +113,46 @@ The per-fight `try/catch` at `persist.ts:216` is deliberate — one bad bout mus
 
 ---
 
+## Wave 1 — Reliability & Architecture (in progress)
+
+Score movement: **78 → ~82**. Testing/CI (the audit's lowest dimension, 35) is
+being lifted first.
+
+| Item | Commit | Verify | Status |
+|---|---|---|---|
+| Extract pure scoring core + 18 tests | `8f72dca` | TSC·LINT·TEST(67)·BUILD | ✅ done |
+| CI gate (typecheck+lint+test+build) | `b937675` | YAML valid; runs verified npm scripts | ✅ done |
+| Hot-path indexes | `715e9e9` | prisma validate·BUILD | ✅ done (needs `db push`) |
+| `persist.ts` per-fight transaction | — | — | ⏭ next (designed, not yet built) |
+| Repo-boundary ESLint rule + migrate 45 call sites | — | — | ⏭ pending |
+| Prisma Migrations adoption | — | — | ⏸ **needs operator decision** |
+
+### W1-1 — Extract & test the pick-scoring core · `8f72dca`
+**Finding.** Zero tests on the money path (picks/resolution/scoring). (Audit: Code-Quality H2.)
+**Root cause.** The scoring math was inline in `resolve.ts`/`reputation.ts` behind `import "server-only"`, so it could not be imported into a node test.
+**Solution.** New pure `src/lib/intelligence/scoring.ts` owns `winnerCorner`, `upsetFactor`, `REP`, `pickReputation`; `resolve.ts` and `reputation.ts` now wrap it (reputation re-exports for API stability). 18 tests cover id-or-slug winner resolution, void bouts, upset scaling, confidence multiplier, streak cap, and clamp bounds.
+**Files.** +`scoring.ts`, +`__tests__/scoring.test.ts`, `resolve.ts`, `reputation.ts`.
+**Validation.** TEST 67/67, TSC 0, LINT 0, BUILD 0. No behaviour change (pure refactor + tests).
+**Remaining risk.** The IO orchestration in `resolveFightPicks` (transaction fan-out) is still integration-untested — needs a test DB (later in Wave 1).
+**Rollback.** Revert; re-inline is mechanical.
+
+### W1-2 — CI gate · `b937675`
+**Finding.** No CI; Render auto-deploys on push, so a green *local* run was the only gate. (Audit: Code-Quality H1.)
+**Solution.** `.github/workflows/ci.yml` runs the existing npm scripts (typecheck, lint, test, build) on push+PR with concurrency cancellation and a dummy-env build.
+**Validation.** YAML parses; every step invokes a script already verified green locally.
+**Remaining risk.** Cannot execute Actions locally — first real run is on push (operator). Build step relies on graceful DB-less static generation (holds today).
+**Operator follow-up.** Enable branch protection on `main` requiring the `verify` check.
+**Rollback.** Delete the workflow file.
+
+### W1-3 — Hot-path indexes · `715e9e9`
+**Finding.** Full scans on hot paths incl. the WAPU North-Star metric. (Audit: Database.)
+**Solution.** Added `@@index` for `FightPick.updatedAt`, `Fight.(result,picksResolvedAt)`, `Fight.createdAt`, `Event.countryCode`, `User.createdAt`, `ForumThread.replyCount`/`reactionCount`.
+**Validation.** `prisma validate` ✅; BUILD ✅.
+**Remaining risk.** Additive; take effect only on next `prisma db push`. `FighterAlias @@unique` (data-dependent — may fail if dupes exist) and the fighter-name pg_trgm GIN (needs raw SQL) are deferred to the migrations work.
+**Rollback.** Revert; re-push.
+
 ## Outstanding actions for the operator
-- **On next deploy:** confirm `prisma db push` applies the `Fight` FK change from Cascade → Restrict (Fix 3).
-- **Wave 1 candidate (CSP):** review `Content-Security-Policy-Report-Only` violation reports, add a nonce middleware, then flip to enforced.
+- **On next deploy:** confirm `prisma db push` applies the `Fight` FK change (Cascade → Restrict, Fix 3) and the new hot-path indexes (W1-3).
+- **Enable branch protection** on `main` requiring the CI `verify` check (W1-2).
+- **CSP:** review `Content-Security-Policy-Report-Only` reports, add a nonce middleware, then flip to enforced.
+- **DECISION NEEDED — Prisma Migrations:** moving off `db push --accept-data-loss` means baselining a migration history against the **live production DB** and changing the Render build command. That is an operational change with rollback implications I will not make autonomously. Confirm you want it and I'll prepare the baseline + `migrate deploy` flow (this also unblocks the `FighterAlias` unique and the fighter-name trigram index).
