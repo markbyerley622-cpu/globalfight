@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -58,7 +59,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
       <article className="container-cr max-w-3xl py-10">
         <Link href="/news" className="mb-6 inline-flex items-center gap-1.5 text-sm text-mist hover:text-blood-400">
           <ArrowLeft className="size-4" /> All news

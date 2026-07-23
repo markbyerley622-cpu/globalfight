@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -107,7 +108,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
 
       {/* Hero — branded banner: dark themed base + the fighter's photo as
           intentional blurred/darkened ambiance + brand glows + CR logo mark. */}
