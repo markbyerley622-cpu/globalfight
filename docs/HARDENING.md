@@ -3,11 +3,22 @@
 Living record of the production-hardening effort tracked against `docs/AUDIT.md`.
 Branch: `harden/wave0-production-blockers`. **Not pushed, not merged, not deployed.**
 
-**Readiness: 68 → ~93 / 100** (Waves 0–4 headless-safe work complete; final review
-done). The gap to 95 is evidence that can only be produced with tooling absent
-here: integration tests (need a test Postgres), browser/Lighthouse a11y + smoke
-test (incl. the Next 15.5 upgrade), plus the sharp vuln (breaking bump) and the
-repo-boundary migration. Full Launch Candidate report: `docs/LAUNCH-CANDIDATE.md`.
+**Readiness: 68 → ~95 / 100.** Waves 0–4 complete; **integration tests + runtime
+validation now done against a disposable Postgres** (Docker). Remaining gap is
+browser-only evidence (Playwright/Lighthouse not installed → E2E, field Web
+Vitals, screen-reader a11y) and the `sharp` vuln (breaking bump). Reports:
+`docs/LAUNCH-CANDIDATE.md`, `docs/CERTIFICATION.md`.
+
+### Certification evidence (Docker Postgres, 2026-07-23)
+- **Migration** `0_init` applies cleanly (`migrate deploy` exit 0); 74 tables, 250
+  indexes; `Fight_redId_fkey` onDelete = RESTRICT confirmed in the live DB.
+- **Integration suite: 13/13 pass** (`test:integration`, now in CI with a postgres
+  service): resolve/scoring, cascade-refusal, persist atomicity+idempotency, auth
+  flow, health. Unit 67/67 unaffected.
+- **Runtime smoke (Next 15.5.21, `next start`):** all primary routes 200; security
+  headers ship (X-Frame/nosniff/HSTS/Referrer/Permissions/CSP-RO, no x-powered-by);
+  `/api/health` → `{status:ok,db:up}`; signup → 201; **rate-limit proven** (8×201
+  then 429); startup-guard correctly fails closed on incomplete prod config.
 
 Verification legend: TSC = `tsc --noEmit` (0 errors), LINT = `eslint` (0 errors),
 BUILD = `next build` (exit 0, 58/58 pages), RUNTIME = targeted node check.
