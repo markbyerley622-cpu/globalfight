@@ -35,6 +35,48 @@ export function PageSkeleton({ cards = 8 }: { cards?: number }) {
   );
 }
 
+// Event-card silhouette: an image band on top, then meta + a two-up watch/tickets
+// row + an action row — matching components/events/event-card so the events grid
+// settles in place instead of popping from a generic avatar-card skeleton.
+export function EventsSkeleton({ cards = 8 }: { cards?: number }) {
+  return (
+    <>
+      <div className="border-b border-ink-800 bg-ink-900/40">
+        <div className="container-cr py-12">
+          <Skeleton className="h-3 w-40" />
+          <Skeleton className="mt-3 h-10 w-72" />
+          <Skeleton className="mt-3 h-4 w-96 max-w-full" />
+        </div>
+      </div>
+      <div className="container-cr py-8">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: cards }).map((_, i) => (
+            <div key={i} className="card-surface overflow-hidden">
+              <Skeleton className="h-28 w-full rounded-none sm:h-32" />
+              <div className="space-y-3 p-3.5">
+                <Skeleton className="h-4 w-2/3" />
+                <div className="flex gap-3">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-28" />
+                  <Skeleton className="ml-auto h-8 w-24" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Shape-matched skeletons ────────────────────────────────────────────────
 // PageSkeleton is a hero + card grid, which is the wrong silhouette for the
 // pillar routes: showing a card grid and then swapping in a map or a ranked

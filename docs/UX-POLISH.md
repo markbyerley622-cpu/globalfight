@@ -15,10 +15,10 @@ and spot-checked in a real browser against a production `next start`.
 | 3 | Primary CTA hierarchy | ✅ done |
 | 4 | Mobile nav (logo → /events, delete Map/Gyms/Events selector) | ✅ done |
 | 6 | Partners + Breaking only on /events | ✅ done |
+| 7 | Venue → in-app map deep-link | ✅ done |
+| 9 | Event-card polish (shape-matched skeleton) | ✅ done |
 | 5 | Event results resolver audit | ⏳ pending (backend-heavy) |
-| 7 | Venue → in-app map deep-link | ⏳ pending |
 | 8 | Predictions IA (two systems) | ⏳ pending (larger) |
-| 9 | Event-card polish (spacing/tap/skeleton/focus) | ⏳ pending |
 | 11 | Performance re-measure (no regression) | ⏳ pending |
 
 ---
@@ -75,6 +75,29 @@ sport/location/date filters). **Files.** `section-tabs.tsx`, `app-shell.tsx`.
 **Decision.** Both are promotional chrome for the events home — gated to
 `pathname === "/events"` only. Verified absent on `/leaderboard`. **Files.**
 `app-shell.tsx`.
+
+## Phase 7 — Venue → in-app map
+
+**Problem.** Venue/location bounced out to Google Maps. **Insight.** Events are
+already plotted on our map, geocoded from venue/city via the gazetteer
+(`resolvePoint`). **Decision.** The event header's Location now deep-links to
+`/map?lat&lon&z` (primary, in-app); Google Maps becomes a secondary "Directions ↗"
+fallback. The map reads the params and flies there. **Bug caught in verify:** the
+first cut set focus on mount, but the map (dynamic, `ssr:false`) mounts *after* and
+the canvas drops a focus set before it exists — the map landed on its default
+[22,12] centre. Fixed by stashing the target and applying it in the map's
+`onReady`. Verified: `/map?lat=24.71&lon=46.68` centres on Riyadh with the event
+pin. **Files.** `event-header.tsx`, `map-explorer.tsx`.
+
+## Phase 9 — Card polish
+
+The interactive fundamentals were already in place (global `:focus-visible`
+rings, card hover, adequate tap padding). The real gap was the loading state: the
+generic avatar-card skeleton didn't match the redesigned image-topped card, so the
+grid popped on load. Added an **`EventsSkeleton`** whose silhouette matches the new
+card (image band → meta → watch/tickets → actions) and the real grid
+(`sm:grid-cols-2`), so the list settles in place. **Files.** `ui/skeleton.tsx`,
+`app/events/loading.tsx`.
 
 ---
 
