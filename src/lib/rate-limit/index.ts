@@ -91,6 +91,9 @@ export function clientIp(req: Request): string {
 
 export const POLICY = {
   login: { limit: 10, windowMs: 15 * 60_000 },
+  // Signup runs bcrypt(12) and creates a row per success. Bound per source host
+  // so a script can neither exhaust CPU nor enumerate the membership at speed.
+  signup: { limit: 8, windowMs: 60 * 60_000 },
   passwordChange: { limit: 5, windowMs: 15 * 60_000 },
   resetRequestPerIp: { limit: 5, windowMs: 15 * 60_000 },
   resetRequestPerAccount: { limit: 3, windowMs: 60 * 60_000 },

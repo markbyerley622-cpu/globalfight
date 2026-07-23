@@ -5,6 +5,10 @@ import {
 } from "@/lib/auth";
 import { checkPassword } from "@/lib/password-policy";
 import { MINIMUM_AGE, AGE_POLICY_VERSION } from "@/lib/age-policy";
+import { hit, clientIp, POLICY } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -16,6 +20,19 @@ function deriveUsername(seed: string): string {
 }
 
 export async function POST(req: Request) {
+  // Bound per source host BEFORE any bcrypt/DB work: this is both the
+  // CPU-exhaustion guard (each success runs bcrypt at 12 rounds) and the
+  // rate limiter that makes the "email already exists" 409 useless as a
+  // high-speed enumeration oracle.
+  const ip = clientIp(req);
+  const gate = await hit(`signup-ip:${ip}`, POLICY.signup.limit, POLICY.signup.windowMs);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "Too many sign-up attempts. Try again shortly." },
+      { status: 429, headers: { "retry-after": String(gate.retryAfter) } },
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
