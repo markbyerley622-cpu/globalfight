@@ -514,6 +514,9 @@ model Event {
   @@index([country])
   @@index([promotion])
   @@index([promotionId])
+  // Country filter + facet group in events-query.ts filter on countryCode; the
+  // existing @@index([country]) is the wrong column for those queries.
+  @@index([countryCode])
 }
 
 model Fight {
@@ -590,6 +593,11 @@ model Fight {
   @@index([redId])
   @@index([blueId])
   @@index([eventId, orderOnCard])
+  // resolveDuePicks cron: WHERE result != SCHEDULED AND picksResolvedAt IS NULL.
+  // The [date, result] index is date-leading and cannot serve this predicate.
+  @@index([result, picksResolvedAt])
+  // return-engine cron: recently-created fights in a 48h window.
+  @@index([createdAt])
 }
 
 /// A signed-in user's pick on a single bout — the crowd-prediction primitive and
@@ -614,6 +622,9 @@ model FightPick {
 
   @@id([userId, fightId])
   @@index([fightId, corner])
+  // WAPU (weekly-active-predicting-users), the North-Star metric: metrics.ts
+  // scans picks by updatedAt window with distinct userId — full scan without this.
+  @@index([updatedAt])
 }
 
 // ─── Predictions ────────────────────────────────────────────────────────
@@ -828,6 +839,9 @@ model ForumThread {
   @@index([videoId])
   @@index([createdAt])
   @@index([visibility, lastPostAt])
+  // Forum feed "most-discussed" / "most-liked" order by these counters.
+  @@index([replyCount])
+  @@index([reactionCount])
 }
 
 model ForumPost {
@@ -1174,6 +1188,8 @@ model User {
   @@index([reputation])
   // The people layer's hot path: "visible users who have a resolved point".
   @@index([mapVisibility, mapLat])
+  // Retention cohorts (D1/D7/D30) in metrics.ts scan users by createdAt window.
+  @@index([createdAt])
 }
 
 /// Forgotten-password reset tokens.
