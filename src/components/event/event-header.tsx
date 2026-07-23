@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { CalendarDays, MapPin, Radio, Building } from "lucide-react";
 import type { FightEvent } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { mapsUrl } from "@/lib/event-format";
+import { resolvePoint } from "@/lib/geo/gazetteer";
 import { Badge } from "@/components/ui/badge";
 import { Flag } from "@/components/flag";
 import { PromotionLogo } from "@/components/promotion-logo";
@@ -33,6 +35,11 @@ export function EventHeader({
   const location = [event.city, event.country].filter(Boolean).join(", ");
   const badgeTone = isLive ? "live" : isCompleted ? "neutral" : "red";
   const maps = mapsUrl(event);
+  // Deep-link the venue into OUR map (the event is already plotted there),
+  // geocoded from venue/city via the gazetteer. Google Maps drops to a secondary
+  // "Directions" fallback rather than being the primary experience.
+  const point = resolvePoint(event);
+  const inAppMap = point ? `/map?lat=${point.lat.toFixed(5)}&lon=${point.lon.toFixed(5)}&z=8` : null;
   // Resolve to the canonical org so we show a real name (never a raw "Various")
   // and only offer "follow" when it's an actual promotion, not the neutral mark.
   const org = resolvePromotion(event.promotion);
@@ -105,7 +112,29 @@ export function EventHeader({
         )}
         {location && (
           <Meta icon={<MapPin className="size-4" />} label="Location" className="col-span-2">
-            {maps ? (
+            {inAppMap ? (
+              <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                {/* Primary: open the venue inside the in-app map. */}
+                <Link
+                  href={inAppMap}
+                  className="inline-flex items-center gap-1.5 text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400"
+                >
+                  {location} <Flag code={event.countryCode} />
+                  <span className="text-[11px] font-medium text-blood-400">· View on map</span>
+                </Link>
+                {/* Secondary: external directions (final fallback). */}
+                {maps && (
+                  <a
+                    href={maps}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-medium text-fog underline decoration-ink-700 underline-offset-4 transition-colors hover:text-mist"
+                  >
+                    Directions ↗
+                  </a>
+                )}
+              </span>
+            ) : maps ? (
               <a
                 href={maps}
                 target="_blank"
@@ -113,7 +142,7 @@ export function EventHeader({
                 className="inline-flex items-center gap-1.5 text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400"
               >
                 {location} <Flag code={event.countryCode} />
-                <span className="text-[11px] font-medium text-blood-400">· Map</span>
+                <span className="text-[11px] font-medium text-blood-400">· Directions ↗</span>
               </a>
             ) : (
               <span className="inline-flex items-center gap-1.5">
