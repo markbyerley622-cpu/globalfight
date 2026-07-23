@@ -16,6 +16,8 @@ import { RotatingBackdrop } from "./rotating-backdrop";
 import { LanguageSwitcher } from "./language-switcher";
 import { PillarNav } from "./pillar-nav";
 import { OnlineCount } from "./online-count";
+import { NotificationBell } from "./notification-bell";
+import { useAuth } from "@/lib/auth-client";
 
 /**
  * App-wide shell: a 100dvh flex frame with a fixed top bar (logo · search ·
@@ -36,6 +38,7 @@ export function AppShell({
   const router = useRouter();
   const mainRef = useRef<HTMLElement>(null);
   const [navOpen, setNavOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => { setNavOpen(false); }, [pathname]);
 
@@ -120,6 +123,10 @@ export function AppShell({
               >
                 <Search className="size-[1.05rem]" />
               </Link>
+              {/* In-app notifications — mounted for signed-in users only; anon
+                  visitors have nothing to poll. This is the surface engine
+                  notifications (pick results, fight-week, follows) land on. */}
+              {user && <NotificationBell />}
               <AccountMenu onOpenNav={() => setNavOpen(true)} />
               {/* Language lives at the very top-right of the header. */}
               <LanguageSwitcher />
