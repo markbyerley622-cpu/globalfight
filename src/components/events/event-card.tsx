@@ -112,11 +112,13 @@ export function EventCard({ event }: { event: EventCardData }) {
             />
           )}
           <ShareMenu path={`/events/${event.slug}`} title={event.name} compact />
+          {/* Primary CTA — the visual anchor of the action row: filled, high
+              contrast, comfortably tappable. It is what the whole card is for. */}
           <Link
             href={`/events/${event.slug}`}
-            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-blood-300 transition-colors hover:text-blood-200"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-3.5 py-2 text-xs font-bold text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.7)] transition-colors hover:bg-blood-400"
           >
-            {isDone ? "Results" : "Full card"} →
+            {isDone ? "View results" : isLive ? "Watch live" : "Full card"} →
           </Link>
         </div>
       </div>

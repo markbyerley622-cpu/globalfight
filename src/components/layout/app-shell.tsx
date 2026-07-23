@@ -98,6 +98,9 @@ export function AppShell({
   }, [pathname, router]);
 
   const inSection = activeSection(pathname) !== null;
+  // Partners strip + Breaking-news ticker are promotional chrome that belongs to
+  // the events home only — everywhere else they were repeated clutter (RC-2 UX).
+  const onEventsIndex = pathname === "/events";
 
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden bg-ink-950">
@@ -110,7 +113,9 @@ export function AppShell({
             directly beneath inside the same header block. */}
         <header className="z-40 shrink-0 border-b border-ink-800 bg-ink-950/90 backdrop-blur-xl">
           <div className="flex items-center gap-3 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
-            <Logo sizeClass="h-9 lg:h-10" showWordmark={false} />
+            {/* Logo always returns to a clean /events (event-centric home), with
+                no preserved sport/location/date filter state. */}
+            <Logo sizeClass="h-9 lg:h-10" showWordmark={false} href="/events" />
             {/* Desktop pillars — the bottom bar is lg:hidden, so without this
                 Location was only reachable from the burger on a laptop. */}
             <PillarNav className="ml-3 hidden lg:flex" />
@@ -132,8 +137,8 @@ export function AppShell({
               <LanguageSwitcher />
             </div>
           </div>
-          {/* Breaking ticker — inside the header, between the top bar and tabs. */}
-          <div className="border-t border-ink-800/60">{ticker}</div>
+          {/* Breaking ticker — events home only (between the top bar and tabs). */}
+          {onEventsIndex && <div className="border-t border-ink-800/60">{ticker}</div>}
         </header>
 
         {/* Section tabs — swipeable on mobile. */}
@@ -149,7 +154,7 @@ export function AppShell({
           <div className="hidden lg:block">{footer}</div>
         </main>
 
-        <SponsorsStrip />
+        {onEventsIndex && <SponsorsStrip />}
         <BottomTabBar className="lg:hidden" />
       </div>
 

@@ -33,21 +33,12 @@ export const FEED_SECTION: SectionItem[] = [
   { label: "Home", href: "/", match: (p) => p === "/" },
 ];
 
-// ── Location ──────────────────────────────────────────────────────────────
-// Its own swipe section, so a phone can move between the map and the places
-// it points at without going back to a menu. It is deliberately NOT folded
-// into the feed section: swiping off a map onto the news feed would be a
-// surprise, and the map owns horizontal drag inside its own frame.
-//
-// `data-hscroll` on the map surface stops a pan gesture from being read as a
-// section swipe — see AppShell's startsInHScroller().
-export const LOCATION_SECTION: SectionItem[] = [
-  { label: "Map", href: "/map", match: (p) => p === "/map" },
-  { label: "Gyms", href: "/gyms", match: (p) => p.startsWith("/gyms") },
-  { label: "Events", href: "/events", match: (p) => p.startsWith("/events") },
-];
-
-const SECTIONS = [FEED_SECTION, LOCATION_SECTION];
+// The Map / Gyms / Events horizontal selector was removed (RC-2 UX): the
+// information architecture changed — Map and Gyms live under the "Location"
+// pillar, and Events is a top-level nav item, so a shared sub-selector across
+// the three was redundant navigation. The routes remain reachable from the main
+// nav; only the dead sub-selector is gone.
+const SECTIONS = [FEED_SECTION];
 
 export function activeSection(pathname: string): SectionItem[] | null {
   return SECTIONS.find((s) => s.some((i) => i.match(pathname))) ?? null;
