@@ -58,7 +58,7 @@ export function FighterManager({ slug, initial }: { slug: string; initial: Publi
   );
 }
 
-function MetaSection({ slug, initial, post }: { slug: string; initial: PublicProfile; post: (p: Record<string, unknown>) => Promise<unknown> }) {
+function MetaSection({ initial, post }: { slug: string; initial: PublicProfile; post: (p: Record<string, unknown>) => Promise<unknown> }) {
   const [f, setF] = useState({
     tagline: initial.tagline ?? "", bio: initial.bio ?? "", contactEmail: initial.contactEmail ?? "",
     imageUrl: initial.imageUrl ?? "", heroImageUrl: initial.heroImageUrl ?? "",

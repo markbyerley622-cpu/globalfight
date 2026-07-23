@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { PageHero } from "@/components/page-hero";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { getCurrentUser } from "@/lib/auth";

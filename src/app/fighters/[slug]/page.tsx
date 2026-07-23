@@ -25,8 +25,7 @@ import { recommendVideos } from "@/lib/feed/recommend";
 import { VideoRail } from "@/components/feed/video-rail";
 import { VideoCard, VideoCardProvider } from "@/components/feed/video-card";
 import { Flag } from "@/components/flag";
-import { ageFrom, koPercentage, formatRecord, formatDate } from "@/lib/utils";
-import { embedUrl } from "@/lib/feed/channels";
+import { ageFrom, koPercentage, formatDate } from "@/lib/utils";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

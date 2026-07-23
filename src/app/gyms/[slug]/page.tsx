@@ -11,7 +11,6 @@ import { getPresence } from "@/lib/geo/presence";
 import { CheckInButton } from "@/components/map/check-in-button";
 import { GymMembershipButtons } from "@/components/map/gym-membership";
 import { GymPublicGallery } from "@/components/map/gym-public-gallery";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +84,6 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
   const mine = user ? gym.members.find((m) => m.user.id === user.id) : undefined;
 
   const place = [gym.address, gym.city, gym.region, gym.country].filter(Boolean).join(", ");
-  const coaches = gym.members.filter((m) => m.role === "coach" || m.role === "owner");
 
   return (
     <div className="mx-auto w-full max-w-2xl pb-16 lg:max-w-3xl">
@@ -295,29 +293,3 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function PersonChip({
-  name, username, image, note, live,
-}: { name: string; username: string | null; image: string | null; note?: string | null; live?: boolean }) {
-  const inner = (
-    <>
-      {image ? (
-        <Image src={image} alt="" width={28} height={28} unoptimized className="size-7 rounded-full object-cover" />
-      ) : (
-        <span className="grid size-7 place-items-center rounded-full bg-blood-500/15 text-[0.7rem] font-bold text-blood-300">
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-      )}
-      <span className="min-w-0">
-        <span className="block max-w-[9rem] truncate text-[0.76rem] font-semibold text-chalk">{name}</span>
-        {note && <span className="block text-[0.62rem] uppercase tracking-wide text-fog">{note}</span>}
-      </span>
-      {live && <span className="live-dot shrink-0" />}
-    </>
-  );
-  const cls = cn(
-    "flex items-center gap-2 rounded-full border px-2.5 py-1.5 transition-colors",
-    live ? "border-blood-500/30 bg-blood-500/8" : "border-ink-700 bg-ink-900",
-    username && "hover:border-ink-600",
-  );
-  return username ? <Link href={`/u/${username}`} className={cls}>{inner}</Link> : <span className={cls}>{inner}</span>;
-}
