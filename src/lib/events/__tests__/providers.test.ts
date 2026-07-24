@@ -56,3 +56,23 @@ test("tickets: unknown promotion → null (TBA)", () => {
   assert.equal(resolveTickets("Multiple promotions", null), null);
   assert.equal(resolveTickets(null, null), null);
 });
+
+test("watch: unknown promotion WITH an event name falls back to an honest search", () => {
+  const w = resolveWatch("Various", null, null, "Tyson Fury vs Mariusz Wach");
+  assert.equal(w?.label, "Find stream");
+  assert.match(w!.url, /google\.com\/search/);
+  assert.match(w!.url, /Tyson%20Fury/);
+  assert.equal(w?.exact, false);
+});
+
+test("tickets: unknown promotion WITH an event name falls back to a ticket search", () => {
+  const t = resolveTickets("Various", null, "Anthony Joshua vs Kristian Prenga");
+  assert.equal(t?.label, "Find tickets");
+  assert.match(t!.url, /google\.com\/search/);
+  assert.match(t!.url, /tickets/);
+});
+
+test("known promotion still beats the search fallback even with an event name", () => {
+  assert.equal(resolveWatch("ONE Championship", null, null, "ONE 170")?.label, "Prime Video");
+  assert.equal(resolveTickets("BKFC", null, "BKFC 99")?.label, "BKFC");
+});

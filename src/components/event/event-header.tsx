@@ -44,8 +44,8 @@ export function EventHeader({
   const inAppMap = point ? `/map?lat=${point.lat.toFixed(5)}&lon=${point.lon.toFixed(5)}&z=8` : null;
   // Where to watch / attend, resolved per-promotion (lib/events/providers) so the
   // detail page matches the card instead of hiding this behind a missing field.
-  const watch = resolveWatch(event.promotion, event.broadcaster, null);
-  const tickets = resolveTickets(event.promotion, null);
+  const watch = resolveWatch(event.promotion, event.broadcaster, null, event.name);
+  const tickets = resolveTickets(event.promotion, null, event.name);
   // Resolve to the canonical org so we show a real name (never a raw "Various")
   // and only offer "follow" when it's an actual promotion, not the neutral mark.
   const org = resolvePromotion(event.promotion);

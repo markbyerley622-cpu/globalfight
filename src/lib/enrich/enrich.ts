@@ -83,12 +83,37 @@ export async function enrichFighter(f: FighterRow): Promise<EnrichResult> {
  */
 export async function enrichPending(limit = 50): Promise<{ scanned: number; enriched: number; photos: number }> {
   const staleBefore = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000);
-  const rows = (await prisma.fighter.findMany({
-    where: { OR: [{ lastProfileScrapedAt: null }, { lastProfileScrapedAt: { lt: staleBefore } }] },
-    orderBy: { lastProfileScrapedAt: { sort: "asc", nulls: "first" } },
+  const now = new Date();
+
+  // Fighters appearing on UPCOMING events who still have no photo are enriched
+  // FIRST — those are the cards fans are looking at right now, so a fixed-size
+  // batch fills the visible surface instead of grinding through the archive.
+  const onUpcoming = { some: { event: { date: { gte: now }, status: { notIn: ["COMPLETED", "CANCELLED"] as never } } } };
+  const priority = (await prisma.fighter.findMany({
+    where: {
+      photoUrl: null,
+      OR: [{ fightsAsRed: onUpcoming }, { fightsAsBlue: onUpcoming }],
+    },
     take: limit,
     select: FIELDS,
   })) as FighterRow[];
+
+  // Fill any remaining budget with the usual oldest-first stale sweep, skipping
+  // anyone already queued above.
+  const seen = new Set(priority.map((f) => f.id));
+  const backfill = priority.length >= limit
+    ? []
+    : ((await prisma.fighter.findMany({
+        where: {
+          id: { notIn: [...seen] },
+          OR: [{ lastProfileScrapedAt: null }, { lastProfileScrapedAt: { lt: staleBefore } }],
+        },
+        orderBy: { lastProfileScrapedAt: { sort: "asc", nulls: "first" } },
+        take: limit - priority.length,
+        select: FIELDS,
+      })) as FighterRow[]);
+
+  const rows = [...priority, ...backfill];
 
   let enriched = 0;
   let photos = 0;

@@ -68,6 +68,7 @@ export function resolveWatch(
   promotionRaw: string | null | undefined,
   broadcaster: string | null | undefined,
   eventUrl: string | null | undefined,
+  eventName?: string | null,
 ): ResolvedProvider | null {
   if (broadcaster && isHttp(eventUrl)) return { label: broadcaster, url: eventUrl, exact: true };
   const slug = resolvePromotion(promotionRaw).slug;
@@ -75,6 +76,9 @@ export function resolveWatch(
   if (def) return { ...def, exact: false };
   // Broadcaster known but no link: still name it (no navigation).
   if (broadcaster) return { label: broadcaster, url: "", exact: true };
+  // Last resort — an honest search for how to watch, rather than a bare "TBA".
+  // Labelled "Find stream" so it's clearly a lookup, not a promised broadcaster.
+  if (eventName) return { label: "Find stream", url: searchUrl(`how to watch ${eventName} live stream`), exact: false };
   return null;
 }
 
@@ -85,10 +89,18 @@ export function resolveWatch(
 export function resolveTickets(
   promotionRaw: string | null | undefined,
   ticketUrl: string | null | undefined,
+  eventName?: string | null,
 ): ResolvedProvider | null {
   if (isHttp(ticketUrl)) return { label: "Buy", url: ticketUrl, exact: true };
   const slug = resolvePromotion(promotionRaw).slug;
   const def = TICKETS_BY_PROMOTION[slug];
   if (def) return { ...def, exact: false };
+  // Last resort — an honest ticket search rather than "TBA".
+  if (eventName) return { label: "Find tickets", url: searchUrl(`${eventName} tickets`), exact: false };
   return null;
+}
+
+/** A neutral web search — used only as the final fallback for watch/tickets. */
+function searchUrl(q: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
 }

@@ -125,8 +125,8 @@ export function EventCard({ event }: { event: EventCardData }) {
             (never hidden in a menu). Resolved per-promotion (lib/events/providers)
             so most cards show a real destination; "TBA" only when unknown. */}
         {!isDone && !isOff && (() => {
-          const watch = resolveWatch(event.promotion, event.broadcaster, event.eventUrl);
-          const tickets = resolveTickets(event.promotion, event.ticketUrl);
+          const watch = resolveWatch(event.promotion, event.broadcaster, event.eventUrl, event.name);
+          const tickets = resolveTickets(event.promotion, event.ticketUrl, event.name);
           return (
             <div className="mt-2.5 grid grid-cols-2 gap-2">
               <ActionPill icon={Tv} label="Watch" value={watch?.label ?? null} href={watch?.url || null} />
