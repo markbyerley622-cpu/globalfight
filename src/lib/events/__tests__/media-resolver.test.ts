@@ -24,20 +24,11 @@ test("fighter faceoff when a real photo exists (before owned art)", () => {
   assert.deepEqual(m, { kind: "faceoff", red: "/a.jpg", blue: null });
 });
 
-test("owned promotion art (ONE) when no photos", () => {
-  // MUAY_THAI + ONE has shipped promotion art.
-  const m = resolveEventMedia({ ...base, sport: "MUAY_THAI", promotion: "ONE Championship" });
-  assert.equal(m.kind, "image");
-  assert.equal((m as { source: string }).source, "promotion");
-});
-
-test("owned sport art (MMA) when no photos and no promotion art", () => {
-  const m = resolveEventMedia({ ...base, sport: "MMA", promotion: "UFC" });
-  assert.equal(m.kind, "image");
-  assert.equal((m as { source: string }).source, "sport");
-});
-
-test("generated backdrop when nothing is available", () => {
-  const m = resolveEventMedia({ ...base, sport: "SAMBO", promotion: null });
-  assert.deepEqual(m, { kind: "generated" });
+test("no photos, no owned art shipped → generated backdrop (the current default)", () => {
+  // Owned promotion/sport image banks are empty, so every image-less card falls
+  // to the generated backdrop rather than a photo. (When banks are populated,
+  // "promotion"/"sport" tiers slot in ahead of this — see event-card-image.ts.)
+  assert.deepEqual(resolveEventMedia({ ...base, sport: "MUAY_THAI", promotion: "ONE Championship" }), { kind: "generated" });
+  assert.deepEqual(resolveEventMedia({ ...base, sport: "MMA", promotion: "UFC" }), { kind: "generated" });
+  assert.deepEqual(resolveEventMedia({ ...base, sport: "SAMBO", promotion: null }), { kind: "generated" });
 });
