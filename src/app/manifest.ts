@@ -11,7 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Combat Reviews",
     short_name: "Combat Reviews",
     description: "Today's best fights across every discipline — an endless combat-sports reel.",
-    start_url: "/",
+    // Launch straight into the events app (the event-centric home), never the
+    // marketing "/" landing — that's the surface returning users expect.
+    start_url: "/events",
     display: "standalone",
     background_color: "#05070a",
     theme_color: "#05070a",
