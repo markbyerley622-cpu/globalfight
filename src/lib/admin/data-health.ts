@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { RANKING_SOURCES } from "@/lib/rankings/sources";
+import { toCountryCode } from "@/lib/countries";
 
 // ════════════════════════════════════════════════════════════════════════
 //  Data Health audit — turns data quality from a game of discovery into a
@@ -100,6 +101,18 @@ export async function auditDataHealth(): Promise<DataHealthReport> {
     "No venue line / map pin. Backfill venue + city.",
     { ...PUBLIC_EVENT, ...UPCOMING, venue: null }, "event",
   );
+
+  // ── Unresolved countries (would render a blank flag) ─────────────────────
+  const codeGroups = await prisma.fighter.groupBy({ by: ["countryCode"], where: { countryCode: { not: null } }, _count: { countryCode: true } });
+  const unresolved = codeGroups.filter((g) => g.countryCode && !toCountryCode(g.countryCode));
+  if (unresolved.length > 0) {
+    checks.push({
+      id: "unresolved-countries", label: "Fighters with an unresolvable country", severity: "warn",
+      count: unresolved.reduce((n, g) => n + g._count.countryCode, 0),
+      hint: "These country values don't map to an ISO-2 flag — add the alias/code to lib/countries so the resolver handles them (never patch one card).",
+      samples: unresolved.slice(0, 10).map((g) => ({ label: `${g.countryCode} (${g._count.countryCode})`, href: `/fighters?country=${encodeURIComponent(g.countryCode ?? "")}` })),
+    });
+  }
 
   // ── News ────────────────────────────────────────────────────────────────
   const articlesTotal = await prisma.article.count();

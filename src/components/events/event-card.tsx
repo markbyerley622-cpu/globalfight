@@ -12,8 +12,8 @@ import { AddToCalendar } from "@/components/event/add-to-calendar";
 import { resolvePromotion } from "@/lib/promotions";
 import { SPORT_LABEL } from "@/lib/sports";
 import { formatDate } from "@/lib/utils";
-import { pickEventArtwork } from "@/lib/event-artwork";
-import { ownedCardImage, ownedPromotionImage, sportAccent } from "@/lib/event-card-image";
+import { resolveEventMedia } from "@/lib/events/media-resolver";
+import { sportAccent } from "@/lib/event-card-image";
 import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import { matchupIntel } from "@/lib/events/matchup";
@@ -232,7 +232,7 @@ function ActionPill({
 function EventArtworkBackground({
   event, accent, sportLabel, hasRealPromo,
 }: { event: EventCardData; accent: string; sportLabel: string; hasRealPromo: boolean }) {
-  const art = pickEventArtwork(event);
+  const media = resolveEventMedia(event);
   // Every image-less card gets a DESIGNED poster backdrop (inline SVG: spotlight,
   // accent slashes, film grain, oversized sport wordmark) — seeded by the slug so
   // no two are alike — instead of one flat grey gradient. The promotion mark is
@@ -259,27 +259,18 @@ function EventArtworkBackground({
     />
   );
 
-  // Priority: official event artwork → OWNED promotion art (e.g. ONE's own event
-  // imagery, rotated per event) → OWNED sport art → the two fighters facing off →
-  // the generated backdrop. The promotion/sport art beats the faceoff on purpose:
-  // a designed landscape reads better than two cut-out photos.
-  if (art.kind === "hero" || art.kind === "poster") {
-    return cover(art.src, art.kind === "poster" ? "object-top" : "object-center");
+  // The single EventMediaResolver decides what shows; this only renders it.
+  if (media.kind === "image") {
+    return cover(media.src, media.position === "top" ? "object-top" : "object-center");
   }
 
-  const promoImg = ownedPromotionImage(resolvePromotion(event.promotion).slug, event.slug);
-  if (promoImg) return cover(promoImg);
-
-  const owned = ownedCardImage(event.sport, event.slug);
-  if (owned) return cover(owned);
-
-  if (art.kind === "fighters") {
+  if (media.kind === "faceoff") {
     return (
       <div className="absolute inset-0 flex bg-ink-950">
         {/* Red corner on the left; blue mirrored so the two face centre. */}
-        <FighterHalf src={art.red} side="left" accent={accent} brand={brand} />
+        <FighterHalf src={media.red} side="left" accent={accent} brand={brand} />
         <div className="z-10 w-px shrink-0 bg-gradient-to-b from-transparent via-blood-500/40 to-transparent" />
-        <FighterHalf src={art.blue} side="right" accent={accent} brand={brand} />
+        <FighterHalf src={media.blue} side="right" accent={accent} brand={brand} />
       </div>
     );
   }
