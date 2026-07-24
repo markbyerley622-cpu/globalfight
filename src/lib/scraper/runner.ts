@@ -17,6 +17,7 @@ import { enrichPending } from "@/lib/enrich/enrich";
 import { ingestNews } from "@/lib/news/ingest";
 import { syncBKFC } from "@/lib/scraper/bkfc";
 import { generateAllP4P } from "@/lib/rankings/generate";
+import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
@@ -80,12 +81,20 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
       );
       break;
     case "rankings":
+      // Divisional rankings from the licensed ranking connectors (official
+      // sanctioning bodies etc.). Gated behind RANKINGS_INGEST_ENABLED *and*
+      // each source's per-source licence flag; BoxRec is blocked in code. When
+      // the gate is off this is a no-op, so it's safe to schedule unconditionally.
+      await safe("rankings:ingest", async () =>
+        (await ingestAllRankings()).reduce((n, r) => n + r.imported, 0),
+      );
+      break;
     case "champions":
     case "results":
     case "people":
-      // Divisional rankings/champions still need per-fighter division data (most
-      // imported fighters lack it) — no-op until that lands; P4P above needs none.
-      log.info({ kind }, "refresh:noop (divisional/curated — served by API providers)");
+      // Champions/results/people still need per-fighter data (most imported
+      // fighters lack it) — no-op until that lands.
+      log.info({ kind }, "refresh:noop (curated — served by API providers)");
       break;
     case "events":
       // Multi-sport upcoming events from configured official calendar feeds

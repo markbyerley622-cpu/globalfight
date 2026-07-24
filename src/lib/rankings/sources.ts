@@ -34,7 +34,7 @@ export interface RankingSource {
 
 export const RANKING_SOURCES: RankingSource[] = [
   // ── Tier 1 — official sanctioning bodies ──────────────────────────────
-  { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
+  { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: true, notes: "Reference connector — server-rendered HTML tables, verified end-to-end (193 entries/16 divisions). Set licensed:true + RANKINGS_INGEST_ENABLED=true to go live." },
   { id: "wbc-female", label: "WBC Female", organisation: "WBC", url: "https://wbcboxing.com/en/main-ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "wbo-female", label: "WBO Female", organisation: "WBO", url: "https://wboboxing.com/wborankings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "ibf-female", label: "IBF/USBA Female", organisation: "IBF", url: "https://www.ibf-usba-boxing.com/ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
@@ -44,7 +44,7 @@ export const RANKING_SOURCES: RankingSource[] = [
   { id: "ipba", label: "Indian Professional Boxing (IPBA)", organisation: "IPBA", url: "https://www.ipbaboxing.com/", tier: 1, trust: "federation", scope: "boxing/india", licensed: false, connectorReady: false },
 
   // ── Tier 2 — strong secondary / regional aggregators ──────────────────
-  { id: "british-boxers", label: "British Boxers Rankings", organisation: "British Boxing", url: "https://britishboxers.uk/rankings", tier: 2, trust: "media", scope: "boxing/uk", licensed: false, connectorReady: false, notes: "Owner suggested as the interim UK source until official data is in place." },
+  { id: "british-boxers", label: "British Boxers Rankings", organisation: "British Boxing", url: "https://britishboxers.uk/rankings", tier: 2, trust: "media", scope: "boxing/uk", licensed: false, connectorReady: false, notes: "Client-rendered — rankings load via JS with no server HTML or data endpoint. Needs a headless fetch, not a plain connector. WBA (Tier 1) used as the reference source instead." },
   { id: "fightersrec-pk", label: "FightersRec — Pakistan", organisation: "FightersRec", url: "https://fightersrec.com/RankingCountries/PAKISTAN/Male/PROFESSIONAL/BOXING", tier: 2, trust: "community", scope: "boxing/pakistan", licensed: false, connectorReady: false },
 
   // ── Tier 3 — media / supplemental ─────────────────────────────────────

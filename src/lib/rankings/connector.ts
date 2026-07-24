@@ -88,5 +88,7 @@ const WEIGHT_ALIASES: Record<string, string> = {
 
 export function normalizeWeightClass(raw: string): string {
   const key = raw.trim().toLowerCase().replace(/\s+/g, " ");
-  return WEIGHT_ALIASES[key] ?? raw.trim().replace(/\b\w/g, (m) => m.toUpperCase());
+  // Title-case from the lowercased key so all-caps source labels ("HEAVYWEIGHT")
+  // come out "Heavyweight", not left shouting.
+  return WEIGHT_ALIASES[key] ?? key.replace(/\b\w/g, (m) => m.toUpperCase());
 }

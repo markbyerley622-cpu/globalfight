@@ -40,6 +40,14 @@ export interface FeatureFlags {
   // ── Data provenance ────────────────────────────────────────────────────
   /** Serve the rankings routes. Off until an approved, licensed source exists. */
   rankingsEnabled: boolean;
+  /**
+   * Master switch for AUTOMATED ranking ingestion (the connector cron). Off by
+   * default. A source is fetched only when THIS is on AND that source is both
+   * `licensed` and `connectorReady` in the registry — two locks, so enabling one
+   * source for testing can't silently scrape every source. BoxRec is blocked in
+   * code regardless of any flag.
+   */
+  rankingsIngestEnabled: boolean;
   /** Allow automated download/re-hosting of third-party media. */
   mediaIngestionEnabled: boolean;
 
@@ -62,6 +70,7 @@ export function readFlags(env: NodeJS.ProcessEnv = process.env): FeatureFlags {
     tradingLinksEnabled: on("TRADING_LINKS_ENABLED", env),
 
     rankingsEnabled: on("RANKINGS_ENABLED", env),
+    rankingsIngestEnabled: on("RANKINGS_INGEST_ENABLED", env),
     mediaIngestionEnabled: on("MEDIA_INGESTION_ENABLED", env),
 
     ugcMediaUploadsEnabled: on("UGC_MEDIA_UPLOADS_ENABLED", env),
