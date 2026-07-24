@@ -33,7 +33,12 @@ export interface RankingSource {
 }
 
 export const RANKING_SOURCES: RankingSource[] = [
-  // ── Tier 1 — official sanctioning bodies ──────────────────────────────
+  // ── MMA — promotion official rankings ─────────────────────────────────
+  // UFC is the first MMA provider; PFL / ONE / Sherdog / Tapology plug in as
+  // additional RankingConnector modules without engine changes.
+  { id: "ufc-mma", label: "UFC.com Official Rankings", organisation: "UFC", url: "https://www.ufc.com/rankings", tier: 1, trust: "official", scope: "mma/divisions", licensed: false, connectorReady: true, notes: "Server-rendered, verified (11 divisions × top-15). Set licensed:true + RANKINGS_INGEST_ENABLED=true to go live." },
+
+  // ── Tier 1 — official sanctioning bodies (boxing) ─────────────────────
   { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: true, notes: "Reference connector — server-rendered HTML tables, verified end-to-end (193 entries/16 divisions). Set licensed:true + RANKINGS_INGEST_ENABLED=true to go live." },
   { id: "wbc-female", label: "WBC Female", organisation: "WBC", url: "https://wbcboxing.com/en/main-ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "wbo-female", label: "WBO Female", organisation: "WBO", url: "https://wboboxing.com/wborankings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },

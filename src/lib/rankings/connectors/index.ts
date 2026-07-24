@@ -1,6 +1,7 @@
 import type { RankingConnector } from "../connector";
 import { RANKING_SOURCES } from "../sources";
 import { wbaFemaleConnector } from "./wba";
+import { ufcMmaConnector } from "./ufc";
 
 // ════════════════════════════════════════════════════════════════════════
 //  Connector registry — maps a source id to its implementation. A source can
@@ -19,6 +20,7 @@ export const INGEST_BLOCKLIST = new Set(["boxrec"]);
 /** id → connector. Add a source by implementing RankingConnector and registering here. */
 const CONNECTORS: Record<string, RankingConnector> = {
   "wba-female": wbaFemaleConnector,
+  "ufc-mma": ufcMmaConnector,
   // Pending parsers (registered in sources.ts, connectorReady:false):
   //   wbc-female, wbo-female, ibf-female, ebu-* (PDF), boxing-ireland, ipba,
   //   fightersrec-pk, boxingscene.
