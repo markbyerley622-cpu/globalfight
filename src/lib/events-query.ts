@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
-import { safeFighterImageOrNull } from "@/lib/media-safe";
+import { safeFighterImageOrNull, imageProxyUrl } from "@/lib/media-safe";
 import { decodeHtmlEntities } from "@/lib/text/entities";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -107,7 +107,23 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
   return where;
 }
 
-const FIGHTER_CARD_SELECT = { name: true, imageUrl: true, thumbUrl: true, countryCode: true } as const;
+const FIGHTER_CARD_SELECT = {
+  name: true, imageUrl: true, thumbUrl: true, countryCode: true,
+  // Enriched Wikimedia photos live in photoUrl (raw URL) and display through the
+  // /api/img proxy — the same resolution repo.prisma uses. Without these the card
+  // missed every enriched fighter's photo and fell back to a gradient.
+  photoUrl: true, photoLicense: true,
+} as const;
+
+/** Card fighter image: own storage → proxied licensed Wikimedia photo → null. */
+function cardFighterImage(f: {
+  imageUrl: string | null; thumbUrl: string | null; photoUrl: string | null; photoLicense: string | null;
+}): string | null {
+  return (
+    safeFighterImageOrNull(f.imageUrl ?? f.thumbUrl) ??
+    (!f.imageUrl && f.photoLicense ? imageProxyUrl(f.photoUrl) : null)
+  );
+}
 
 const CARD_SELECT = {
   id: true, slug: true, name: true, date: true, status: true, promotion: true,
@@ -167,8 +183,8 @@ export async function queryEvents(
         mainEvent: m
           ? {
               red: decodeHtmlEntities(m.red.name), blue: decodeHtmlEntities(m.blue.name), titleFight: m.titleFight,
-              redImage: safeFighterImageOrNull(m.red.imageUrl ?? m.red.thumbUrl),
-              blueImage: safeFighterImageOrNull(m.blue.imageUrl ?? m.blue.thumbUrl),
+              redImage: cardFighterImage(m.red),
+              blueImage: cardFighterImage(m.blue),
             }
           : null,
         following: followedIds.has(e.id),
