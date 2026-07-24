@@ -4,6 +4,9 @@ import { promotionBySlug, promotionSearchTerms } from "@/lib/promotions";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { brandedHero } from "@/lib/placeholder";
 import { safeNewsCover } from "@/lib/media-safe";
+
+/** "none" is the OG-enrichment sentinel for "checked, no image" — treat as absent. */
+const ogImage = (v: string | null | undefined): string | null => (v && v !== "none" ? v : null);
 import { resolvePromotion } from "@/lib/promotions";
 import { formatSportRecord } from "@/lib/sports";
 import { safeFighterImageOrNull } from "@/lib/media-safe";
@@ -290,7 +293,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
           take: 10,
           // publishedAt is nullable on the model; the WHERE above guarantees a
           // value, but the type doesn't, so it's narrowed at the mapping site.
-          select: { id: true, slug: true, title: true, publishedAt: true, coverImageUrl: true, category: true, author: { select: { name: true } } },
+          select: { id: true, slug: true, title: true, publishedAt: true, coverImageUrl: true, ogImageUrl: true, category: true, author: { select: { name: true } } },
         })
       : Promise.resolve([]),
 
@@ -432,8 +435,8 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
         // safeNewsCover keeps the deliberate legal line: a publisher image is
         // used only when it is licensed syndication, otherwise we draw our own
         // rather than hotlinking someone's server.
-        image: safeNewsCover(a.slug, a.coverImageUrl) || brandedHero(a.slug, null, null),
-        generated: !a.coverImageUrl,
+        image: safeNewsCover(a.slug, a.coverImageUrl ?? ogImage(a.ogImageUrl)) || brandedHero(a.slug, null, null),
+        generated: !a.coverImageUrl && !ogImage(a.ogImageUrl),
         source: a.author?.name ?? "News",
       },
     });

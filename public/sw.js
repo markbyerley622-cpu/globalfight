@@ -9,7 +9,9 @@
  *  Kill switch: to disable, deploy a /sw.js whose fetch handler is empty and that
  *  calls self.registration.unregister() on activate — the next visit clears it.
  */
-const VERSION = "cr-v1";
+// Bump on any change that must purge old caches (activate deletes non-VERSION
+// caches), so no one is left on a stale shell after a deploy.
+const VERSION = "cr-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/icon-512.png"];
 

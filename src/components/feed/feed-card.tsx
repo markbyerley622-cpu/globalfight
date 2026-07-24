@@ -5,6 +5,7 @@ import { CalendarDays, Flag, Newspaper, Trophy, Swords } from "lucide-react";
 import { VideoCard } from "./video-card";
 import { FighterCard } from "./fighter-card";
 import type { FeedItem } from "@/lib/following";
+import { safeNewsCover } from "@/lib/media-safe";
 import { timeAgo, cn } from "@/lib/utils";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -72,16 +73,17 @@ export function FeedCard({ item }: { item: FeedItem }) {
       style={media?.accent ? ({ ["--accent" as string]: media.accent }) : undefined}
     >
       <div className="relative aspect-video overflow-hidden bg-ink-850">
-        {media?.image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={media.image}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          />
-        )}
+        {/* THERE IS ALWAYS AN IMAGE — enforced here too: safeNewsCover falls back
+            to generated branded artwork when the item has no media (e.g. an
+            opponent with no avatar), so a feed card is never a bare dark box. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={safeNewsCover(item.id, media?.image)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        />
         <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/85 via-ink-950/10 to-transparent" />
 
         {media?.promotionName && (

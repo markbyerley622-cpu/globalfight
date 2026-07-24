@@ -11,7 +11,7 @@ import { safeNewsCover } from "@/lib/media-safe";
 
 export type NewsItem = {
   id: string; slug: string; title: string; excerpt?: string; category: string;
-  coverImageUrl?: string; sourceUrl?: string; author?: string; views: number; publishedAt: string;
+  coverImageUrl?: string; ogImageUrl?: string; sourceUrl?: string; author?: string; views: number; publishedAt: string;
 };
 
 /** Article link: opens the original source in a new tab when we have its URL,
@@ -75,7 +75,7 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
   // blank far more often than not. Prefer the newest article that actually has
   // a cover, bounded to LEAD_WINDOW so the hero stays current rather than
   // reaching back for an old article just because it had a photo.
-  const lead = shown.slice(0, LEAD_WINDOW).find((a) => a.coverImageUrl) ?? shown[0];
+  const lead = shown.slice(0, LEAD_WINDOW).find((a) => a.coverImageUrl ?? a.ogImageUrl) ?? shown[0];
   const rest = shown.filter((a) => a !== lead);
 
   return (
@@ -103,7 +103,7 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
           {lead && (
             <ArticleLink item={lead} className="group mb-8 block">
               <div className="relative flex min-h-[18rem] flex-col justify-end overflow-hidden rounded-card border border-ink-700 p-8">
-                <div className="absolute inset-0 bg-cover bg-center opacity-70 transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${safeNewsCover(lead.slug, lead.coverImageUrl)})` }} />
+                <div className="absolute inset-0 bg-cover bg-center opacity-70 transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${safeNewsCover(lead.slug, lead.coverImageUrl ?? lead.ogImageUrl)})` }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-ink-950/20" />
                 <div className="absolute inset-0 bg-grid opacity-15" />
                 <Image src="/cr-logo.png" alt="Combat Reviews" width={100} height={66} className="absolute right-6 top-6 h-8 w-auto opacity-50" />
@@ -121,7 +121,7 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
             {rest.map((a) => (
               <ArticleLink key={a.id} item={a} className="group card-surface flex flex-col overflow-hidden transition-all hover:border-blood-500/40">
                 <div className="relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br from-ink-800 to-ink-900">
-                  <Image src={safeNewsCover(a.slug, a.coverImageUrl)} alt="" fill className="object-cover object-center opacity-80 transition-transform duration-500 group-hover:scale-105" sizes="(max-width:1024px) 50vw, 33vw" unoptimized />
+                  <Image src={safeNewsCover(a.slug, a.coverImageUrl ?? a.ogImageUrl)} alt="" fill className="object-cover object-center opacity-80 transition-transform duration-500 group-hover:scale-105" sizes="(max-width:1024px) 50vw, 33vw" unoptimized />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/45 to-transparent" />
                   <Image src="/cr-logo.png" alt="" width={70} height={46} className="absolute left-3 top-3 h-5 w-auto opacity-55" />
                   <CategoryIcon name={a.category} className="relative size-12 text-white/15" />

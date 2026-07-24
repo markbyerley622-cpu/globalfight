@@ -18,24 +18,23 @@
 
 import { SPORTS } from "@/lib/sports";
 
-// ── Owned stock imagery ──────────────────────────────────────────────────────
-// How many owned face-off photos exist for each sport SLUG. 0 = none yet, so the
-// card uses the generative sport-accent fallback. To add art: drop
-// /public/cards/boxing/1.jpg, /public/cards/boxing/2.jpg … then set boxing: 2.
-// Landscape (~16:9), dark/high-contrast reads best behind the card overlay.
-const CARD_IMAGE_COUNTS: Record<string, number> = {
-  mma: 0,
-  boxing: 0,
-  "muay-thai": 0,
-  kickboxing: 0,
-  "bare-knuckle": 0,
-  bjj: 0,
-  "no-gi-bjj": 0,
-  wrestling: 0,
-  judo: 0,
-  taekwondo: 0,
-  sambo: 0,
-  "combat-sambo": 0,
+// ── Owned card imagery ───────────────────────────────────────────────────────
+// Explicit file manifests of OWNED artwork we ship in /public. Because we ship
+// them ourselves they are safe under the media gate that blocks scraped images.
+// Any extension is fine (list the real filenames). Add art by dropping files in
+// /public/cards/... and listing them here.
+//
+// By PROMOTION slug (resolvePromotion) — a promotion's own event artwork, used
+// for every card of that org that has no official poster:
+//   drop /public/cards/promotions/one/1.png … and list them below.
+const PROMOTION_CARD_IMAGES: Record<string, string[]> = {
+  one: ["/cards/promotions/one/1.png", "/cards/promotions/one/2.png", "/cards/promotions/one/3.png"],
+};
+
+// By SPORT slug — generic per-discipline artwork, used when there's no promotion
+// art either. Landscape (~16:9), dark/high-contrast reads best behind the card.
+const SPORT_CARD_IMAGES: Record<string, string[]> = {
+  // e.g. boxing: ["/cards/boxing/1.jpg", "/cards/boxing/2.jpg"],
 };
 
 // FNV-1a — stable per-event pick (same event → same image, forever, no flicker).
@@ -52,17 +51,28 @@ const SLUG_BY_VALUE: Record<string, string> = Object.fromEntries(
   SPORTS.map((s) => [s.value, s.slug]),
 );
 
+/** Deterministically pick one path from a list, seeded by the event slug. */
+function pick(list: string[] | undefined, seed: string): string | null {
+  if (!list || list.length === 0) return null;
+  return list[hash(seed || "event") % list.length];
+}
+
 /**
- * A deterministic OWNED card image for an event, or null when the sport has no
- * shipped art yet. `seed` should be the event slug so the choice is stable.
+ * OWNED artwork for a promotion (e.g. every ONE card rotates through ONE's promo
+ * images), or null when none is shipped. `seed` = event slug for a stable pick.
+ */
+export function ownedPromotionImage(promotionSlug: string | null | undefined, seed: string): string | null {
+  if (!promotionSlug) return null;
+  return pick(PROMOTION_CARD_IMAGES[promotionSlug], seed);
+}
+
+/**
+ * OWNED generic artwork for a sport, or null when the sport has none shipped.
+ * `seed` = event slug so the choice is stable.
  */
 export function ownedCardImage(sportValue: string | null | undefined, seed: string): string | null {
   const slug = sportValue ? SLUG_BY_VALUE[sportValue] : undefined;
-  if (!slug) return null;
-  const n = CARD_IMAGE_COUNTS[slug] ?? 0;
-  if (n <= 0) return null;
-  const idx = (hash(seed || slug) % n) + 1;
-  return `/cards/${slug}/${idx}.jpg`;
+  return pick(slug ? SPORT_CARD_IMAGES[slug] : undefined, seed);
 }
 
 // ── Sport accent colours ─────────────────────────────────────────────────────
