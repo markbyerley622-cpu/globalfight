@@ -12,6 +12,7 @@ import { AddToCalendar } from "@/components/event/add-to-calendar";
 import { resolvePromotion } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
 import { pickEventArtwork } from "@/lib/event-artwork";
+import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import type { EventCard as EventCardData } from "@/lib/events-query";
 
 /**
@@ -94,13 +95,18 @@ export function EventCard({ event }: { event: EventCardData }) {
         )}
 
         {/* WATCH + ATTEND — two of the six questions, as first-class actions
-            (never hidden in a menu). "TBA" when the provider/vendor is unknown. */}
-        {!isDone && !isOff && (
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
-            <ActionPill icon={Tv} label="Watch" value={event.broadcaster} href={event.eventUrl} />
-            <ActionPill icon={Ticket} label="Tickets" value={event.ticketUrl ? "Buy" : null} href={event.ticketUrl} accent />
-          </div>
-        )}
+            (never hidden in a menu). Resolved per-promotion (lib/events/providers)
+            so most cards show a real destination; "TBA" only when unknown. */}
+        {!isDone && !isOff && (() => {
+          const watch = resolveWatch(event.promotion, event.broadcaster, event.eventUrl);
+          const tickets = resolveTickets(event.promotion, event.ticketUrl);
+          return (
+            <div className="mt-2.5 grid grid-cols-2 gap-2">
+              <ActionPill icon={Tv} label="Watch" value={watch?.label ?? null} href={watch?.url || null} />
+              <ActionPill icon={Ticket} label="Tickets" value={tickets?.label ?? null} href={tickets?.url || null} accent />
+            </div>
+          );
+        })()}
 
         {/* Act without opening the event. Same components as the event page. */}
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-800 pt-3">
