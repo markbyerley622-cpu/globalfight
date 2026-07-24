@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isAdminRole } from "@/lib/admin/guard";
 import { repairDuplicateFighters } from "@/lib/admin/merge-fighters";
 import { enrichPending } from "@/lib/enrich/enrich";
+import { enrichArticleImages } from "@/lib/news/og-images";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { generateAllP4P } from "@/lib/rankings/generate";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 const ACTIONS = {
   "repair-duplicates": async () => repairDuplicateFighters(),
   "enrich-photos": async () => enrichPending(50),
+  "enrich-article-images": async () => enrichArticleImages(50),
   "refresh-rankings": async () => ({ ingested: await ingestAllRankings() }),
   "refresh-p4p": async () => ({
     curated: await ingestCuratedP4P(),

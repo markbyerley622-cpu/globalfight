@@ -15,6 +15,7 @@ import { ingestOdds } from "@/lib/odds/ingest";
 import { ingestAdapterEvents } from "@/lib/events/ingest";
 import { enrichPending } from "@/lib/enrich/enrich";
 import { ingestNews } from "@/lib/news/ingest";
+import { enrichArticleImages } from "@/lib/news/og-images";
 import { syncBKFC } from "@/lib/scraper/bkfc";
 import { generateAllP4P } from "@/lib/rankings/generate";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
@@ -110,6 +111,12 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
       break;
     case "news":
       await safe("news", () => ingestNews()); // pull all combat-sports RSS feeds → Article table
+      // Most RSS carries no image; fetch each new article's own OG image so cards
+      // show a real picture instead of a generated placeholder.
+      await safe("news:og-images", async () => {
+        const r = await enrichArticleImages(40);
+        return `scanned=${r.scanned} found=${r.found} missed=${r.missed} failed=${r.failed}`;
+      });
       break;
     case "odds":
       await safe("odds", async () => ingestOdds()); // real bookmaker lines (licensed odds feed)

@@ -101,6 +101,25 @@ export async function auditDataHealth(): Promise<DataHealthReport> {
     { ...PUBLIC_EVENT, ...UPCOMING, venue: null }, "event",
   );
 
+  // ── News ────────────────────────────────────────────────────────────────
+  const articlesTotal = await prisma.article.count();
+  const articlesNoImage = await prisma.article.count({
+    where: { coverImageUrl: null, OR: [{ ogImageUrl: null }, { ogImageUrl: "none" }] },
+  });
+  if (articlesNoImage > 0) {
+    const pct = articlesTotal ? Math.round((articlesNoImage / articlesTotal) * 100) : 0;
+    const recent = await prisma.article.findMany({
+      where: { coverImageUrl: null, OR: [{ ogImageUrl: null }, { ogImageUrl: "none" }] },
+      select: { slug: true, title: true }, take: 8, orderBy: { publishedAt: "desc" },
+    });
+    checks.push({
+      id: "articles-no-image", label: "Articles showing a generated placeholder", severity: "warn",
+      count: articlesNoImage,
+      hint: `${pct}% of articles have no real image (RSS carries none). Run "Article images" to fetch each one's OpenGraph image.`,
+      samples: recent.map((a) => ({ label: a.title.slice(0, 40), href: `/news/${a.slug}` })),
+    });
+  }
+
   // ── Rankings ──────────────────────────────────────────────────────────────
   const unknownSourceRows = await prisma.ranking.groupBy({ by: ["source"], _count: { source: true } });
   const unprovenanced = unknownSourceRows.filter((r) => !KNOWN_SOURCES.has(r.source));

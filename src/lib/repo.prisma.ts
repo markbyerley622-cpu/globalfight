@@ -523,6 +523,8 @@ function mapArticle(a: PArticle): import("@/lib/types").Article {
     excerpt: a.excerpt ?? undefined, content: a.content ?? undefined,
     category: a.category, featured: a.featured,
     coverImageUrl: a.coverImageUrl ?? undefined,
+    // "none" is the enrichment sentinel for "checked, no image" — treat as absent.
+    ogImageUrl: a.ogImageUrl && a.ogImageUrl !== "none" ? a.ogImageUrl : undefined,
     sourceUrl: a.sourceUrl ?? undefined,       // original article link (RSS)
     author: a.metaTitle ?? undefined,          // metaTitle holds the RSS source
     views: a.views,

@@ -168,6 +168,8 @@ export interface Article {
   category: string;
   featured: boolean;
   coverImageUrl?: string;
+  /** OpenGraph image — used as the cover fallback before a generated placeholder. */
+  ogImageUrl?: string;
   sourceUrl?: string;
   author?: string;
   views: number;

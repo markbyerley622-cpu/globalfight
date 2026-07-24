@@ -88,6 +88,7 @@ export default function DataHealthPage() {
 
 const OPS = [
   { action: "enrich-photos", label: "Enrich photos", icon: ImageDown, hint: "Pull licensed photos for upcoming-card fighters first (batch of 50)." },
+  { action: "enrich-article-images", label: "Article images", icon: ImageDown, hint: "Fetch OpenGraph images for news articles that have none (batch of 50)." },
   { action: "repair-duplicates", label: "Merge duplicates", icon: GitMerge, hint: "Merge same-name fighters into the most-complete record (data-preserving)." },
   { action: "refresh-p4p", label: "Refresh P4P", icon: Trophy, hint: "Re-ingest curated P4P + regenerate rating-engine P4P." },
   { action: "refresh-rankings", label: "Refresh rankings", icon: ListOrdered, hint: "Run every licensed ranking connector." },
