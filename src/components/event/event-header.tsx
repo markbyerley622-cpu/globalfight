@@ -41,7 +41,9 @@ export function EventHeader({
   // geocoded from venue/city via the gazetteer. Google Maps drops to a secondary
   // "Directions" fallback rather than being the primary experience.
   const point = resolvePoint(event);
-  const inAppMap = point ? `/map?lat=${point.lat.toFixed(5)}&lon=${point.lon.toFixed(5)}&z=8` : null;
+  // The location ALWAYS opens OUR map — focused on the venue when we can geocode
+  // it, otherwise the map's default view. Never a third-party map as the primary.
+  const inAppMap = point ? `/map?lat=${point.lat.toFixed(5)}&lon=${point.lon.toFixed(5)}&z=8` : "/map";
   // Where to watch / attend, resolved per-promotion (lib/events/providers) so the
   // detail page matches the card instead of hiding this behind a missing field.
   const watch = resolveWatch(event.promotion, event.broadcaster, null, event.name);

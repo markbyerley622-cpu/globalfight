@@ -28,13 +28,16 @@ import { SPORTS } from "@/lib/sports";
 // for every card of that org that has no official poster:
 //   drop /public/cards/promotions/one/1.png … and list them below.
 const PROMOTION_CARD_IMAGES: Record<string, string[]> = {
-  one: ["/cards/promotions/one/1.png", "/cards/promotions/one/2.png", "/cards/promotions/one/3.png"],
+  one: ["/cards/promotions/one/1.png", "/cards/promotions/one/2.png", "/cards/promotions/one/3.png", "/cards/promotions/one/4.png"],
 };
 
 // By SPORT slug — generic per-discipline artwork, used when there's no promotion
 // art either. Landscape (~16:9), dark/high-contrast reads best behind the card.
 const SPORT_CARD_IMAGES: Record<string, string[]> = {
-  // e.g. boxing: ["/cards/boxing/1.jpg", "/cards/boxing/2.jpg"],
+  mma: ["/cards/mma/1.png", "/cards/mma/2.jpg", "/cards/mma/3.png", "/cards/mma/4.png", "/cards/mma/5.png"],
+  boxing: ["/cards/boxing/1.png", "/cards/boxing/2.png"],
+  bjj: ["/cards/bjj/1.png", "/cards/bjj/2.png", "/cards/bjj/3.png"],
+  judo: ["/cards/judo/1.png", "/cards/judo/2.png", "/cards/judo/3.png"], // judo reuses BJJ imagery
 };
 
 // FNV-1a — stable per-event pick (same event → same image, forever, no flicker).
