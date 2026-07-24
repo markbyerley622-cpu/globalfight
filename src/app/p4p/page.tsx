@@ -60,9 +60,32 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
 
         {items.length === 0 ? (
           <div className="card-surface mt-6 p-10 text-center">
-            <p className="font-display text-lg font-bold text-chalk">No {sportLabel} fighters yet</p>
-            <p className="mt-2 text-sm text-fog">As fighters are added, the {sportLabel} pound-for-pound list fills in automatically.</p>
-            <Link href="/fighters" className="mt-4 inline-block rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">Fighter directory</Link>
+            {(() => {
+              // Never a bare "no data": explain WHY and show the roadmap.
+              const pendingSource = ["JUDO", "TAEKWONDO", "SAMBO"].includes(sportValue ?? "");
+              return pendingSource ? (
+                <>
+                  <p className="font-display text-lg font-bold text-chalk">{sportLabel} P4P is on the roadmap</p>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-fog">
+                    {sportLabel} federations rank per weight class, and we haven&apos;t found a defensible
+                    cross-weight pound-for-pound source. Rather than guess, we&apos;re leaving this empty until
+                    a credible source is in place — every ranking here is source-backed.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-display text-lg font-bold text-chalk">{sportLabel} rankings are compiling</p>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-fog">
+                    The {sportLabel} pound-for-pound list fills in automatically as fighter records and
+                    source-backed rankings are ingested.
+                  </p>
+                </>
+              );
+            })()}
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Link href="/p4p" className="inline-block rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">All combat sports</Link>
+              <Link href="/fighters" className="inline-block rounded-lg border border-ink-700 px-4 py-2 font-display text-xs font-semibold uppercase text-mist hover:text-chalk">Fighter directory</Link>
+            </div>
           </div>
         ) : (
           <div className="mt-6">
