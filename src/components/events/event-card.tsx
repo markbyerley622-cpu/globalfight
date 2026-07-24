@@ -12,6 +12,7 @@ import { AddToCalendar } from "@/components/event/add-to-calendar";
 import { resolvePromotion } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
 import { pickEventArtwork } from "@/lib/event-artwork";
+import { eventFallbackArt } from "@/lib/event-fallback-art";
 import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import type { EventCard as EventCardData } from "@/lib/events-query";
 
@@ -179,11 +180,15 @@ function ActionPill({
  */
 function EventArtworkBackground({ event, accent }: { event: EventCardData; accent: string }) {
   const art = pickEventArtwork(event);
+  // Every image-less card still gets a DISTINCT, premium backdrop: a mesh gradient
+  // seeded by the event slug (no two alike) + the promotion mark as a faded
+  // watermark — instead of every card sharing one flat gradient.
   const brand = (
-    <div
-      className="size-full"
-      style={{ background: `radial-gradient(120% 140% at 20% 0%, color-mix(in srgb, ${accent} 45%, transparent), transparent 70%)` }}
-    />
+    <div className="relative size-full overflow-hidden" style={{ background: eventFallbackArt(event.slug, accent) }}>
+      <div className="pointer-events-none absolute -right-4 -top-3 opacity-[0.08] blur-[0.5px]">
+        <PromotionLogo promotion={event.promotion} size="lg" />
+      </div>
+    </div>
   );
 
   if (art.kind === "hero" || art.kind === "poster") {

@@ -5,6 +5,7 @@ import { SPORT_BY_SLUG } from "@/lib/sports";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
 import { safeFighterImageOrNull } from "@/lib/media-safe";
+import { decodeHtmlEntities } from "@/lib/text/entities";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Event discovery.
@@ -157,7 +158,7 @@ export async function queryEvents(
     events: rows.map((e) => {
       const m = e.fights[0];
       return {
-        id: e.id, slug: e.slug, name: e.name, date: e.date.toISOString(), status: e.status,
+        id: e.id, slug: e.slug, name: decodeHtmlEntities(e.name), date: e.date.toISOString(), status: e.status,
         promotion: e.promotion, promotionName: resolvePromotion(e.promotion).name,
         venue: e.venue, city: e.city, country: e.country, countryCode: e.countryCode,
         broadcaster: e.broadcaster,
@@ -165,7 +166,7 @@ export async function queryEvents(
         boutCount: e._count.fights,
         mainEvent: m
           ? {
-              red: m.red.name, blue: m.blue.name, titleFight: m.titleFight,
+              red: decodeHtmlEntities(m.red.name), blue: decodeHtmlEntities(m.blue.name), titleFight: m.titleFight,
               redImage: safeFighterImageOrNull(m.red.imageUrl ?? m.red.thumbUrl),
               blueImage: safeFighterImageOrNull(m.blue.imageUrl ?? m.blue.thumbUrl),
             }
