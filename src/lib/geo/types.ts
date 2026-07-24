@@ -12,11 +12,12 @@ import type { GeoPrecision } from "./gazetteer";
 /** The pin families: red events, blue gyms, gold people, purple clubs. */
 export type MapLayer = "events" | "gyms" | "people" | "clubs";
 
+// Filters SHOWN on the Location map. People + Fight Clubs were empty and removed
+// from the UI (RC-6); the types/providers stay so the layers can return later
+// without a schema change. Events + Gyms are the surfaced families.
 export const MAP_LAYERS: { id: MapLayer; label: string; short: string }[] = [
   { id: "events", label: "Events", short: "Event" },
   { id: "gyms", label: "Gyms", short: "Gym" },
-  { id: "people", label: "People", short: "Person" },
-  { id: "clubs", label: "Fight Clubs", short: "Fight Club" },
 ];
 
 export interface MapPin {

@@ -16,6 +16,8 @@ import { ingestAdapterEvents } from "@/lib/events/ingest";
 import { enrichPending } from "@/lib/enrich/enrich";
 import { ingestNews } from "@/lib/news/ingest";
 import { syncBKFC } from "@/lib/scraper/bkfc";
+import { generateAllP4P } from "@/lib/rankings/generate";
+import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
 import { syncWikiCards } from "@/lib/scraper/wikicard";
@@ -69,11 +71,21 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
     // (src/services) + the mock-data layer. Kept as no-ops so cron routes and the
     // sync-fallback mapping keep compiling and simply do nothing here.
     case "p4p":
+      // Record-based P4P from the licensed fighter data already in Postgres — the
+      // rating engine scores every fighter's record and writes generated Ranking
+      // rows. Never clobbers curated rankings. This is the licensed-DERIVED source
+      // that replaces the withdrawn scraped data (see docs/RANKING_ENGINE.md).
+      await safe("p4p:generate", async () =>
+        (await generateAllP4P(SPORTS.map((s) => s.value))).reduce((n, r) => n + r.ranked, 0),
+      );
+      break;
     case "rankings":
     case "champions":
     case "results":
     case "people":
-      log.info({ kind }, "refresh:noop (BoxRec removed — served by API providers)");
+      // Divisional rankings/champions still need per-fighter division data (most
+      // imported fighters lack it) — no-op until that lands; P4P above needs none.
+      log.info({ kind }, "refresh:noop (divisional/curated — served by API providers)");
       break;
     case "events":
       // Multi-sport upcoming events from configured official calendar feeds
