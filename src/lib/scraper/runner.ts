@@ -18,6 +18,7 @@ import { ingestNews } from "@/lib/news/ingest";
 import { syncBKFC } from "@/lib/scraper/bkfc";
 import { generateAllP4P } from "@/lib/rankings/generate";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
+import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
@@ -72,10 +73,15 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
     // (src/services) + the mock-data layer. Kept as no-ops so cron routes and the
     // sync-fallback mapping keep compiling and simply do nothing here.
     case "p4p":
-      // Record-based P4P from the licensed fighter data already in Postgres — the
-      // rating engine scores every fighter's record and writes generated Ranking
-      // rows. Never clobbers curated rankings. This is the licensed-DERIVED source
-      // that replaces the withdrawn scraped data (see docs/RANKING_ENGINE.md).
+      // Two coexisting P4P sources, in precedence order:
+      //  1. CURATED — source-backed cross-sport lists (BJJ, Muay Thai, Kickboxing,
+      //     Wrestling, Bare Knuckle) with provenance. Ingested FIRST so the rating
+      //     engine then skips those sports.
+      //  2. RATING ENGINE — record-based P4P for the sports curated doesn't cover
+      //     (Boxing, MMA). Never clobbers curated. See docs/RANKING_ENGINE.md.
+      await safe("p4p:curated", async () =>
+        (await ingestCuratedP4P()).reduce((n, r) => n + r.ranked, 0),
+      );
       await safe("p4p:generate", async () =>
         (await generateAllP4P(SPORTS.map((s) => s.value))).reduce((n, r) => n + r.ranked, 0),
       );

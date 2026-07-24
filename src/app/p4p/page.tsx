@@ -8,6 +8,7 @@ import { SportFilter } from "@/components/sport-filter";
 import { Pager } from "@/components/pager";
 import { getPoundForPoundPage } from "@/lib/repo";
 import { SampleDataNote } from "@/components/sample-data-note";
+import { curatedProvenance } from "@/lib/rankings/curated/lists";
 import { SPORT_BY_SLUG, SPORT_LABEL } from "@/lib/sports";
 import { getServerT } from "@/lib/i18n-server";
 import { Flag } from "@/components/flag";
@@ -67,9 +68,7 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
           <div className="mt-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs uppercase tracking-wider text-fog">{sportLabel} · {total} {t("ranked")}</p>
-              <span className={`rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider ${generated ? "bg-volt-500/15 text-volt-300" : "bg-gold-500/15 text-gold-300"}`}>
-                {generated ? t("Rating engine · record-based") : t("Curated rankings")}
-              </span>
+              <ProvenanceBadge generated={generated} sportValue={sportValue} />
             </div>
             {/* Podium (first page only) */}
             {podium.length > 0 && (
@@ -129,5 +128,54 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Where a ranking came from — honest about method. Rating engine (algorithmic),
+ * or curated (source-backed) with its confidence, freshness and the exact
+ * sources it was compiled from. Never implies sanctioning-body approval.
+ */
+function ProvenanceBadge({ generated, sportValue }: { generated: boolean; sportValue: string | undefined }) {
+  if (generated) {
+    return (
+      <span className="rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider bg-volt-500/15 text-volt-300">
+        Rating engine · record-based
+      </span>
+    );
+  }
+  const prov = sportValue ? curatedProvenance(sportValue) : null;
+  if (!prov) {
+    // "All Sports" mixes curated + rating engine.
+    return (
+      <span className="rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider bg-gold-500/15 text-gold-300">
+        Curated + rating engine
+      </span>
+    );
+  }
+  const conf = prov.confidence;
+  const confClass = conf === "HIGH" ? "bg-volt-500/15 text-volt-300"
+    : conf === "MEDIUM" ? "bg-gold-500/15 text-gold-300"
+    : "bg-ink-700 text-mist";
+  const when = new Date(`${prov.updated}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <span className="rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider bg-gold-500/15 text-gold-300">
+        Curated · Source-backed
+      </span>
+      <span className={`rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider ${confClass}`} title="Confidence reflects how well sources agree.">
+        {conf} confidence
+      </span>
+      <span className="text-[0.65rem] uppercase tracking-wider text-fog">Updated {when}</span>
+      <span className="w-full text-right text-[0.65rem] text-fog">
+        Compiled from{" "}
+        {prov.sources.map((s, i) => (
+          <span key={s.url}>
+            {i > 0 && ", "}
+            <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-blood-400 underline decoration-ink-700 underline-offset-2 hover:text-blood-300">{s.label}</a>
+          </span>
+        ))}
+      </span>
+    </div>
   );
 }

@@ -262,9 +262,13 @@ export async function getPoundForPoundBySport(
 
   const rows = await prisma.ranking.findMany({
     where,
-    // Within a sport, rank order is authoritative. Across all sports each sport
-    // has its own rank 1..N, so order by rating to get a meaningful merged list.
-    orderBy: sportValue ? { rank: "asc" } : [{ rating: { sort: "desc", nulls: "last" } }, { rank: "asc" }],
+    // Within a sport, rank order is authoritative. Across ALL sports, ratings are
+    // incomparable (a boxing rating vs a curated grappling rank with no rating),
+    // so we interleave by rank — every sport's #1, then every #2, … — a
+    // transparent cross-sport leaderboard that surfaces each sport rather than
+    // burying the ones the rating engine doesn't score. Rated fighters break
+    // ties within a rank so the boxing/MMA #1s still lead the pack of #1s.
+    orderBy: sportValue ? { rank: "asc" } : [{ rank: "asc" }, { rating: { sort: "desc", nulls: "last" } }],
     skip, take: limit,
     include: { fighter: { include: { titles: true } } },
   });
