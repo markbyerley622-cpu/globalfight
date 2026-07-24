@@ -13,7 +13,7 @@ import { resolvePromotion } from "@/lib/promotions";
 import { SPORT_LABEL } from "@/lib/sports";
 import { formatDate } from "@/lib/utils";
 import { pickEventArtwork } from "@/lib/event-artwork";
-import { ownedCardImage, sportAccent } from "@/lib/event-card-image";
+import { ownedCardImage, ownedPromotionImage, sportAccent } from "@/lib/event-card-image";
 import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import { matchupIntel } from "@/lib/events/matchup";
@@ -248,18 +248,30 @@ function EventArtworkBackground({
     </div>
   );
 
+  const cover = (src: string, position = "object-center") => (
+    <Image
+      src={src}
+      alt=""
+      fill
+      className={`object-cover transition-transform duration-300 group-hover:scale-105 ${position}`}
+      sizes="(max-width: 640px) 100vw, 640px"
+      unoptimized
+    />
+  );
+
+  // Priority: official event artwork → OWNED promotion art (e.g. ONE's own event
+  // imagery, rotated per event) → OWNED sport art → the two fighters facing off →
+  // the generated backdrop. The promotion/sport art beats the faceoff on purpose:
+  // a designed landscape reads better than two cut-out photos.
   if (art.kind === "hero" || art.kind === "poster") {
-    return (
-      <Image
-        src={art.src}
-        alt=""
-        fill
-        className={`object-cover transition-transform duration-300 group-hover:scale-105 ${art.kind === "poster" ? "object-top" : "object-center"}`}
-        sizes="(max-width: 640px) 100vw, 640px"
-        unoptimized
-      />
-    );
+    return cover(art.src, art.kind === "poster" ? "object-top" : "object-center");
   }
+
+  const promoImg = ownedPromotionImage(resolvePromotion(event.promotion).slug, event.slug);
+  if (promoImg) return cover(promoImg);
+
+  const owned = ownedCardImage(event.sport, event.slug);
+  if (owned) return cover(owned);
 
   if (art.kind === "fighters") {
     return (
@@ -269,23 +281,6 @@ function EventArtworkBackground({
         <div className="z-10 w-px shrink-0 bg-gradient-to-b from-transparent via-blood-500/40 to-transparent" />
         <FighterHalf src={art.blue} side="right" accent={accent} brand={brand} />
       </div>
-    );
-  }
-
-  // No promotion artwork and no fighter photos (the common case in production,
-  // where scraped photos are gated off): an OWNED, licensed sport face-off photo
-  // if one is shipped for this sport, otherwise the generative sport backdrop.
-  const owned = ownedCardImage(event.sport, event.slug);
-  if (owned) {
-    return (
-      <Image
-        src={owned}
-        alt=""
-        fill
-        className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
-        sizes="(max-width: 640px) 100vw, 640px"
-        unoptimized
-      />
     );
   }
 
