@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { activeSponsors } from "@/lib/sponsors";
 import { SponsorMark } from "@/components/sponsor-mark";
 
@@ -5,7 +6,13 @@ import { SponsorMark } from "@/components/sponsor-mark";
 // auto-scrolling marquee on all sizes (the base set is repeated so a -50%
 // translate lands on an identical frame — no seam). Logos are noticeably larger
 // and better spaced on desktop.
-export function SponsorsStrip() {
+//
+// memo'd: it lives in the always-mounted app shell, which re-renders on unrelated
+// state (nav sheet, online-count/notification polling). Without memo those
+// re-renders reconciled the whole logo track on a timer; the marquee's animation
+// is pure CSS and its duration lives in the class (no per-render style object),
+// so the scroll now runs uninterrupted regardless of shell activity.
+export const SponsorsStrip = memo(function SponsorsStrip() {
   const sponsors = activeSponsors();
   // Nothing live (all expired, or none configured) → render nothing rather than
   // an empty branded strip that reads as a broken component.
@@ -22,7 +29,7 @@ export function SponsorsStrip() {
           <span className="hidden lg:inline">Official Partners</span>
         </span>
         <div className="relative flex-1 overflow-hidden mask-fade-r">
-          <div className="animate-marquee flex w-max items-center gap-8 lg:gap-16" style={{ animationDuration: "45s" }}>
+          <div className="animate-marquee flex w-max items-center gap-8 lg:gap-16">
             {track.map((s, i) => (
               <SponsorMark
                 key={`${s.id}-${i}`}
@@ -37,4 +44,4 @@ export function SponsorsStrip() {
       </div>
     </div>
   );
-}
+});

@@ -305,7 +305,10 @@
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
-.animate-marquee { animation: marquee 40s linear infinite; }
+/* Promote to its own compositor layer so the scroll is GPU-smooth and never
+   stutters/repaints with the rest of the shell. */
+.animate-marquee { animation: marquee 45s linear infinite; will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .animate-marquee { animation: none; } }
 
 /* Double-tap "salute" burst on forum cards (Combat Register's like emblem). */
 @keyframes salute {
