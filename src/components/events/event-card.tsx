@@ -16,7 +16,8 @@ import { pickEventArtwork } from "@/lib/event-artwork";
 import { ownedCardImage, sportAccent } from "@/lib/event-card-image";
 import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { resolveWatch, resolveTickets } from "@/lib/events/providers";
-import type { EventCard as EventCardData } from "@/lib/events-query";
+import { matchupIntel } from "@/lib/events/matchup";
+import type { EventCard as EventCardData, FighterRank } from "@/lib/events-query";
 
 /**
  * One event, as a card.
@@ -86,12 +87,19 @@ export function EventCard({ event }: { event: EventCardData }) {
         <div className="absolute inset-x-0 bottom-0 p-3">
           {event.mainEvent ? (
             <p className="font-display text-lg font-black leading-tight text-chalk drop-shadow sm:text-xl">
-              {event.mainEvent.red} <span className="text-blood-400">vs</span> {event.mainEvent.blue}
+              <RankChip r={event.mainEvent.redRank} />{event.mainEvent.red} <span className="text-blood-400">vs</span> <RankChip r={event.mainEvent.blueRank} />{event.mainEvent.blue}
             </p>
           ) : (
             <p className="font-display text-lg font-black leading-tight text-chalk drop-shadow">{event.name}</p>
           )}
-          {event.mainEvent && <p className="truncate text-xs text-mist">{event.name}</p>}
+          {event.mainEvent && (() => {
+            const intel = matchupIntel(event.mainEvent.redRank, event.mainEvent.blueRank);
+            return intel ? (
+              <p className="truncate text-[0.62rem] font-bold uppercase tracking-wider text-volt-300 drop-shadow">{intel}</p>
+            ) : (
+              <p className="truncate text-xs text-mist">{event.name}</p>
+            );
+          })()}
         </div>
       </div>
 
@@ -161,6 +169,23 @@ export function EventCard({ event }: { event: EventCardData }) {
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * A fighter's rank, inline before their name. A division rank reads plainly
+ * ("#2"); a pound-for-pound rank is marked ("P4P #2") so the number isn't
+ * mistaken for a weight-class position. Only shown when the fighter is ranked.
+ */
+function RankChip({ r }: { r: FighterRank | null }) {
+  if (!r) return null;
+  return (
+    <span
+      className="mr-1 inline-flex items-baseline rounded bg-volt-500/20 px-1.5 py-0.5 align-middle text-[0.6rem] font-bold uppercase tracking-wide text-volt-200"
+      title={r.kind === "p4p" ? "Pound-for-pound rank" : "Divisional rank"}
+    >
+      {r.kind === "p4p" ? "P4P " : ""}#{r.rank}
+    </span>
   );
 }
 

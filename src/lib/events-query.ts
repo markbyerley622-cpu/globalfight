@@ -58,8 +58,20 @@ export interface EventCard {
     /** Media-safe fighter image URLs (or null) for the composed card background. */
     redImage: string | null;
     blueImage: string | null;
+    /** Each corner's best current ranking, or null — event↔ranking intelligence. */
+    redRank: FighterRank | null;
+    blueRank: FighterRank | null;
   } | null;
   following: boolean;
+}
+
+/** A fighter's best current ranking, surfaced on the card. */
+export interface FighterRank {
+  rank: number;
+  /** "p4p" (pound-for-pound) or "division" — how to read the number. */
+  kind: "p4p" | "division";
+  /** The ranking source (curated / ufc-mma / generated…) for provenance. */
+  source: string;
 }
 
 export interface EventFacet { value: string; label: string; count: number }
@@ -115,7 +127,17 @@ const FIGHTER_CARD_SELECT = {
   // /api/img proxy — the same resolution repo.prisma uses. Without these the card
   // missed every enriched fighter's photo and fell back to a gradient.
   photoUrl: true, photoLicense: true,
+  // Best current ranking (lowest rank number wins) — powers the "#2" badge and
+  // the ranked-matchup line. Division ranks read plainly; P4P ranks are labelled.
+  rankings: { orderBy: { rank: "asc" as const }, take: 1, select: { rank: true, source: true, isPoundForPound: true } },
 } as const;
+
+/** Map a fighter's top ranking row to the card's FighterRank, or null. */
+function cardFighterRank(f: { rankings: { rank: number; source: string; isPoundForPound: boolean }[] }): FighterRank | null {
+  const r = f.rankings[0];
+  if (!r) return null;
+  return { rank: r.rank, kind: r.isPoundForPound ? "p4p" : "division", source: r.source };
+}
 
 /** Card fighter image: own storage → proxied licensed Wikimedia photo → null. */
 function cardFighterImage(f: {
@@ -188,6 +210,8 @@ export async function queryEvents(
               red: decodeHtmlEntities(m.red.name), blue: decodeHtmlEntities(m.blue.name), titleFight: m.titleFight,
               redImage: cardFighterImage(m.red),
               blueImage: cardFighterImage(m.blue),
+              redRank: cardFighterRank(m.red),
+              blueRank: cardFighterRank(m.blue),
             }
           : null,
         following: followedIds.has(e.id),
