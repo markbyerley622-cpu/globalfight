@@ -37,6 +37,8 @@ export interface EventCard {
   name: string;
   date: string;
   status: string;
+  /** Prisma Sport enum value (e.g. "BOXING") — drives the sport tag + card art. */
+  sport: string;
   promotion: string | null;
   promotionName: string;
   venue: string | null;
@@ -126,7 +128,7 @@ function cardFighterImage(f: {
 }
 
 const CARD_SELECT = {
-  id: true, slug: true, name: true, date: true, status: true, promotion: true,
+  id: true, slug: true, name: true, date: true, status: true, sport: true, promotion: true,
   venue: true, city: true, country: true, countryCode: true, broadcaster: true,
   // Both artwork shapes + the action URLs a card surfaces (watch / tickets).
   posterUrl: true, heroUrl: true, eventUrl: true, ticketUrl: true,
@@ -175,6 +177,7 @@ export async function queryEvents(
       const m = e.fights[0];
       return {
         id: e.id, slug: e.slug, name: decodeHtmlEntities(e.name), date: e.date.toISOString(), status: e.status,
+        sport: e.sport,
         promotion: e.promotion, promotionName: resolvePromotion(e.promotion).name,
         venue: e.venue, city: e.city, country: e.country, countryCode: e.countryCode,
         broadcaster: e.broadcaster,

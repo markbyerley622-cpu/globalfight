@@ -10,9 +10,11 @@ import { FollowButton } from "@/components/follow-button";
 import { ShareMenu } from "@/components/share-menu";
 import { AddToCalendar } from "@/components/event/add-to-calendar";
 import { resolvePromotion } from "@/lib/promotions";
+import { SPORT_LABEL } from "@/lib/sports";
 import { formatDate } from "@/lib/utils";
 import { pickEventArtwork } from "@/lib/event-artwork";
-import { eventFallbackArt } from "@/lib/event-fallback-art";
+import { ownedCardImage, sportAccent } from "@/lib/event-card-image";
+import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import type { EventCard as EventCardData } from "@/lib/events-query";
 
@@ -29,7 +31,13 @@ import type { EventCard as EventCardData } from "@/lib/events-query";
  * variants, no duplicated logic.
  */
 export function EventCard({ event }: { event: EventCardData }) {
-  const accent = resolvePromotion(event.promotion).brand;
+  const promo = resolvePromotion(event.promotion);
+  // A generic/placeholder promotion ("Multiple promotions") is not a real org —
+  // we never advertise it. Real promotions keep their brand colour; unattributed
+  // events take the SPORT's signature colour so the card still has an identity.
+  const hasRealPromo = promo.slug !== "combat";
+  const accent = hasRealPromo ? promo.brand : sportAccent(event.sport);
+  const sportLabel = SPORT_LABEL[event.sport] ?? "Combat";
   const location = [event.city, event.country].filter(Boolean).join(", ");
   const isLive = event.status === "LIVE";
   const isDone = event.status === "COMPLETED";
@@ -41,19 +49,37 @@ export function EventCard({ event }: { event: EventCardData }) {
       style={{ "--accent": accent } as React.CSSProperties}
     >
       {/* Meaningful visual context, in priority order: event hero → poster →
-          the two fighters facing each other → promotion colour. Never an empty box. */}
+          the two fighters facing each other → owned sport photo → sport gradient.
+          Never an empty box. */}
       <div className="relative h-28 overflow-hidden sm:h-32">
-        <EventArtworkBackground event={event} accent={accent} />
+        <EventArtworkBackground event={event} accent={accent} sportLabel={sportLabel} hasRealPromo={hasRealPromo} />
         <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-transparent" />
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
-          <span className="flex items-center gap-2">
-            <PromotionLogo promotion={event.promotion} size="sm" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-chalk drop-shadow">{event.promotionName}</span>
+          {/* Promotion, ONLY when it's a real org — an unattributed card shows no
+              "Multiple promotions" clutter, just the sport tag on the right. */}
+          <span className="flex min-h-[1.5rem] items-center gap-2">
+            {hasRealPromo && (
+              <>
+                <PromotionLogo promotion={event.promotion} size="sm" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-chalk drop-shadow">{event.promotionName}</span>
+              </>
+            )}
           </span>
-          <Badge tone={isLive ? "live" : isOff ? "neutral" : isDone ? "neutral" : "red"}>
-            {isLive && <span className="live-dot" aria-hidden />} {event.status}
-          </Badge>
+          {/* Top-right = the combat sport (Boxing / MMA / …), the fastest thing to
+              scan a card by. A LIVE or cancelled event still flags its status too. */}
+          <span className="flex shrink-0 items-center gap-1.5">
+            {isLive && (
+              <Badge tone="live"><span className="live-dot" aria-hidden /> LIVE</Badge>
+            )}
+            {isOff && <Badge tone="neutral">{event.status}</Badge>}
+            <span
+              className="inline-flex items-center rounded-md border px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wider drop-shadow"
+              style={{ color: accent, borderColor: `${accent}66`, background: `${accent}26` }}
+            >
+              {sportLabel}
+            </span>
+          </span>
         </div>
 
         {/* The headline bout — the biggest thing on the card. */}
@@ -178,16 +204,22 @@ function ActionPill({
  * no event artwork exists we compose the two main-event fighters facing centre —
  * the most commonly-available imagery — so a card is almost never a bare gradient.
  */
-function EventArtworkBackground({ event, accent }: { event: EventCardData; accent: string }) {
+function EventArtworkBackground({
+  event, accent, sportLabel, hasRealPromo,
+}: { event: EventCardData; accent: string; sportLabel: string; hasRealPromo: boolean }) {
   const art = pickEventArtwork(event);
-  // Every image-less card still gets a DISTINCT, premium backdrop: a mesh gradient
-  // seeded by the event slug (no two alike) + the promotion mark as a faded
-  // watermark — instead of every card sharing one flat gradient.
+  // Every image-less card gets a DESIGNED poster backdrop (inline SVG: spotlight,
+  // accent slashes, film grain, oversized sport wordmark) — seeded by the slug so
+  // no two are alike — instead of one flat grey gradient. The promotion mark is
+  // laid over it when the event is attributed to a real org.
   const brand = (
-    <div className="relative size-full overflow-hidden" style={{ background: eventFallbackArt(event.slug, accent) }}>
-      <div className="pointer-events-none absolute -right-4 -top-3 opacity-[0.08] blur-[0.5px]">
-        <PromotionLogo promotion={event.promotion} size="lg" />
-      </div>
+    <div className="relative size-full overflow-hidden">
+      <SportPosterArt seed={event.slug} sportValue={event.sport} label={sportLabel} />
+      {hasRealPromo && (
+        <div className="pointer-events-none absolute -right-4 -top-3 opacity-[0.12] blur-[0.5px]">
+          <PromotionLogo promotion={event.promotion} size="lg" />
+        </div>
+      )}
     </div>
   );
 
@@ -212,6 +244,23 @@ function EventArtworkBackground({ event, accent }: { event: EventCardData; accen
         <div className="z-10 w-px shrink-0 bg-gradient-to-b from-transparent via-blood-500/40 to-transparent" />
         <FighterHalf src={art.blue} side="right" accent={accent} brand={brand} />
       </div>
+    );
+  }
+
+  // No promotion artwork and no fighter photos (the common case in production,
+  // where scraped photos are gated off): an OWNED, licensed sport face-off photo
+  // if one is shipped for this sport, otherwise the generative sport backdrop.
+  const owned = ownedCardImage(event.sport, event.slug);
+  if (owned) {
+    return (
+      <Image
+        src={owned}
+        alt=""
+        fill
+        className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+        sizes="(max-width: 640px) 100vw, 640px"
+        unoptimized
+      />
     );
   }
 

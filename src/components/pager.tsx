@@ -12,10 +12,15 @@ export function Pager({ page, hasNext }: { page: number; hasNext: boolean }) {
   const params = useSearchParams();
   const t = useT();
 
-  const href = (p: number) => {
+  // `page` is the 0-based INTERNAL index; `?page` in the URL is 1-based (the
+  // server does `Number(?page) - 1`). `href` therefore takes a 1-based target —
+  // getting this wrong is an off-by-one where "Next" maps straight back to the
+  // page you're already on.
+  const current = page + 1; // 1-based, matches the URL
+  const href = (target1: number) => {
     const q = new URLSearchParams(params.toString());
-    if (p <= 0) q.delete("page");
-    else q.set("page", String(p));
+    if (target1 <= 1) q.delete("page");
+    else q.set("page", String(target1));
     const s = q.toString();
     return s ? `${pathname}?${s}` : pathname;
   };
@@ -29,11 +34,11 @@ export function Pager({ page, hasNext }: { page: number; hasNext: boolean }) {
   return (
     <div className="mt-6 flex items-center justify-center gap-3">
       {page > 0
-        ? <Link href={href(page - 1)} className={cn(btn, enabled)}><ChevronLeft className="size-4" /> {t("Previous")}</Link>
+        ? <Link href={href(current - 1)} className={cn(btn, enabled)}><ChevronLeft className="size-4" /> {t("Previous")}</Link>
         : <span className={cn(btn, disabled)}><ChevronLeft className="size-4" /> {t("Previous")}</span>}
-      <span className="text-sm text-fog">{t("Page")} {page + 1}</span>
+      <span className="text-sm text-fog">{t("Page")} {current}</span>
       {hasNext
-        ? <Link href={href(page + 1)} className={cn(btn, enabled)}>{t("Next")} <ChevronRight className="size-4" /></Link>
+        ? <Link href={href(current + 1)} className={cn(btn, enabled)}>{t("Next")} <ChevronRight className="size-4" /></Link>
         : <span className={cn(btn, disabled)}>{t("Next")} <ChevronRight className="size-4" /></span>}
     </div>
   );

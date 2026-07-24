@@ -12,6 +12,7 @@ import { resolvePromotion } from "@/lib/promotions";
 import { FollowButton } from "@/components/follow-button";
 import { ShareMenu } from "@/components/share-menu";
 import { AddToCalendar } from "@/components/event/add-to-calendar";
+import { BackButton } from "@/components/back-button";
 
 /**
  * Top of the event destination. Frames the event and reflects lifecycle:
@@ -58,6 +59,12 @@ export function EventHeader({
           "radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--accent, #e11d2a) 14%, transparent), transparent 70%)",
       }}
     >
+      {/* Leaf page: this sits outside the section tabs, so mobile needs an
+          explicit way back to where the fan came from. */}
+      <div className="relative mb-3">
+        <BackButton fallback="/events" label="Back to events" />
+      </div>
+
       <div className="relative flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <PromotionLogo promotion={event.promotion} size="md" />
