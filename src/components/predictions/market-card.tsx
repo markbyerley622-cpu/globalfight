@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Share2, Check } from "lucide-react";
+import { Send, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PredictionMarket } from "@/features/predictions/types";
 import type { CommunityOption, MarketVote } from "@/features/predictions/community/types";
@@ -97,8 +97,13 @@ export function MarketCard({
         </div>
       )}
 
-      {/* Market probability */}
+      {/* Market probability — labelled so it never reads as the community vote:
+          this is the bookmaker-implied line, the section below is user picks. */}
       <div className="px-4 pb-3.5 pt-4">
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-fog">Market odds</span>
+          <span className="text-[0.58rem] text-fog/80">Bookmaker implied probability</span>
+        </div>
         <ConsensusBar leftLabel={fav?.label ?? "—"} leftPct={favPct} rightLabel={under.label} rightPct={underPct} size="lg" />
       </div>
 
@@ -186,6 +191,7 @@ function CommunityVote({
           )}
         </div>
       </div>
+      <p className="mb-2 text-[0.58rem] leading-snug text-fog">Community prediction — how fans are calling it, not the odds.</p>
 
       {voteCount > 0 ? (
         <>
@@ -259,7 +265,7 @@ function ShareButton({ market, community, favLabel, favPct }: { market: Predicti
   }
   return (
     <button onClick={onShare} aria-label="Share this prediction" className="tap grid size-6 place-items-center rounded-md border border-ink-700 text-fog transition-colors hover:border-ink-600 hover:text-chalk">
-      {copied ? <Check className="size-3 text-up" /> : <Share2 className="size-3" />}
+      {copied ? <Check className="size-3 text-up" /> : <Send className="size-3" />}
     </button>
   );
 }

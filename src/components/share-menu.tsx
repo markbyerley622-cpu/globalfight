@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Share2, Check, Copy, Mail, Link2 } from "lucide-react";
+import { Send, Check, Copy, Mail, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ONE share control for the whole product — events, fights, fighters, rankings,
@@ -84,7 +84,7 @@ export function ShareMenu({
         aria-label={compact ? label : undefined}
         className="inline-flex items-center gap-1.5 rounded-lg border border-ink-700 px-2.5 py-1.5 text-xs font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
       >
-        <Share2 className="size-3.5" /> {!compact && label}
+        <Send className="size-3.5" /> {!compact && label}
       </button>
 
       {open && (

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, getSessionUserId } from "@/lib/auth";
 import { getPosts, createPost } from "@/lib/forum/repo";
 import { sanitizeAttachments } from "@/lib/forum/embeds";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,6 +19,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "You must be signed in to reply." }, { status: 401 });
+  const limited = await enforceLimit(req, "forum-post", POLICY.forumPost, user.id);
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }

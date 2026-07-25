@@ -2,38 +2,27 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Flame, Target, Trophy, Layers, ChevronRight } from "lucide-react";
-import type { CardRarity } from "@prisma/client";
+import { Loader2, Flame, Target, Trophy, ListChecks } from "lucide-react";
+import { ButtonLink } from "@/components/ui/button";
 
 interface Stats {
   reputation: number; rank: number | null; accuracy: number;
   picksResolved: number; picksCorrect: number; pickStreak: number; bestPickStreak: number;
-  cardsTotal: number; cardsByRarity: Record<CardRarity, number>;
   followsFighters: number; followsPromotions: number;
 }
-interface CardItem { id: string; rarity: CardRarity; fighter: { slug: string; name: string } }
 interface ActivityItem { id: string; type: string; title: string; url: string | null; createdAt: string }
 
-export const RARITY_TINT: Record<CardRarity, string> = {
-  LEGEND: "text-gold-300",
-  CHAMPION: "text-gold-400",
-  EPIC: "text-volt-400",
-  RARE: "text-blood-300",
-  BASE: "text-fog",
-};
-const RARITY_ORDER: CardRarity[] = ["LEGEND", "CHAMPION", "EPIC", "RARE", "BASE"];
-
-/** Profile 2.0 identity block: reputation, accuracy, streak, collection + recent
- *  activity — read from the intelligence engine via /api/me/stats. */
+/** Profile 2.0 identity block: reputation, accuracy, streak, prediction record +
+ *  recent activity — read from the intelligence engine via /api/me/stats. */
 export function ProfileStats() {
-  const [data, setData] = useState<{ stats: Stats | null; cards: CardItem[]; activity: ActivityItem[] } | null>(null);
+  const [data, setData] = useState<{ stats: Stats | null; activity: ActivityItem[] } | null>(null);
 
   useEffect(() => {
     let live = true;
     fetch("/api/me/stats")
       .then((r) => r.json())
-      .then((d) => { if (live) setData(d.signedIn ? d : { stats: null, cards: [], activity: [] }); })
-      .catch(() => { if (live) setData({ stats: null, cards: [], activity: [] }); });
+      .then((d) => { if (live) setData(d.signedIn ? d : { stats: null, activity: [] }); })
+      .catch(() => { if (live) setData({ stats: null, activity: [] }); });
     return () => { live = false; };
   }, []);
 
@@ -43,84 +32,120 @@ export function ProfileStats() {
   const s = data.stats;
   if (!s) return null;
 
+  // A profile with no resolved picks is a wall of zeros — the most deflating
+  // moment in the product. Replace it with a single invitation to the one
+  // action that starts a record, rather than four "0" tiles and a link to an
+  // empty history.
+  const isNew = s.picksResolved === 0;
+  const follows = s.followsFighters + s.followsPromotions;
+
   return (
     <div className="mt-6 space-y-5">
       {/* Reputation headline */}
       <div className="overflow-hidden rounded-2xl border border-ink-800 bg-[radial-gradient(600px_200px_at_50%_0%,rgba(225,29,42,0.18),transparent_65%)] p-5 text-center">
         <p className="text-[0.65rem] uppercase tracking-[0.25em] text-fog">Combat Reputation</p>
         <p className="mt-1 font-display text-5xl font-black tabular-nums text-chalk">{s.reputation.toLocaleString()}</p>
-        {s.rank != null && (
+        {s.rank != null ? (
           <p className="mt-1 text-xs font-semibold text-blood-300">Rank #{s.rank.toLocaleString()} on the board</p>
-        )}
+        ) : isNew ? (
+          <p className="mt-1 text-xs text-fog">Your record starts with your first call.</p>
+        ) : null}
       </div>
 
-      {/* Core stat tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile icon={Target} label="Accuracy" value={`${s.accuracy}%`} sub={`${s.picksCorrect}/${s.picksResolved} picks`} />
-        <Tile icon={Flame} label="Streak" value={String(s.pickStreak)} sub={`best ${s.bestPickStreak}`} />
-        <Tile icon={Layers} label="Cards" value={String(s.cardsTotal)} sub={`${s.cardsByRarity.CHAMPION + s.cardsByRarity.LEGEND} elite`} />
-        <Tile icon={Trophy} label="Following" value={String(s.followsFighters + s.followsPromotions)} sub={`${s.followsFighters} fighters`} />
-      </div>
-
-      {/* Collection preview */}
-      <Section title="Collection" href="/collection" cta="Open collection">
-        <div className="mb-3 flex flex-wrap gap-2">
-          {RARITY_ORDER.filter((r) => s.cardsByRarity[r] > 0).map((r) => (
-            <span key={r} className="rounded-lg border border-ink-700 bg-ink-950/50 px-2.5 py-1 text-xs font-semibold">
-              <span className={RARITY_TINT[r]}>{r[0] + r.slice(1).toLowerCase()}</span>
-              <span className="ml-1.5 tabular-nums text-fog">{s.cardsByRarity[r]}</span>
-            </span>
-          ))}
-          {s.cardsTotal === 0 && <p className="text-sm text-fog">No cards yet — predict correctly to earn a fighter&apos;s card.</p>}
+      {isNew ? (
+        // ── Activation: the profile IS the call to predict ────────────────
+        <div className="rounded-2xl border border-blood-500/30 bg-blood-500/[0.06] p-6 text-center">
+          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-blood-500/15 text-blood-300">
+            <ListChecks className="size-6" />
+          </span>
+          <h3 className="mt-3 font-display text-lg font-bold text-chalk">Make your first prediction</h3>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-fog">
+            Call a fight, earn reputation when it lands, and climb the leaderboard. Skill, not betting.
+          </p>
+          <ButtonLink href="/events" className="mt-4">Find a fight to predict</ButtonLink>
+          {follows === 0 && (
+            <p className="mt-3 text-[0.72rem] text-fog">
+              Or <Link href="/leaderboard" className="font-semibold text-blood-300 hover:text-blood-200">follow a fighter</Link> to fill your feed.
+            </p>
+          )}
         </div>
-        {data.cards.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto">
-            {data.cards.map((c) => (
-              <Link key={c.id} href={`/fighters/${c.fighter.slug}`} className="shrink-0 rounded-lg border border-ink-700 bg-ink-950/50 px-3 py-2 text-center">
-                <p className={`text-[0.6rem] font-bold uppercase ${RARITY_TINT[c.rarity]}`}>{c.rarity}</p>
-                <p className="mt-0.5 max-w-[8rem] truncate text-xs font-semibold text-chalk">{c.fighter.name}</p>
-              </Link>
-            ))}
+      ) : (
+        <>
+          {/* Core stat tiles — passive numbers made navigable. The record tiles
+              open your prediction history; Following opens your feed. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Tile icon={Target} label="Accuracy" value={`${s.accuracy}%`} sub={`${s.picksCorrect}/${s.picksResolved} picks`} href="/predictions/mine" />
+            <Tile icon={Flame} label="Streak" value={String(s.pickStreak)} sub={`best ${s.bestPickStreak}`} href="/predictions/mine" />
+            <Tile icon={ListChecks} label="Predictions" value={String(s.picksResolved)} sub={`${s.picksCorrect} correct`} href="/predictions/mine" />
+            <Tile icon={Trophy} label="Following" value={String(follows)} sub={`${s.followsFighters} fighters`} href="/following" />
           </div>
-        )}
-      </Section>
 
-      {/* Recent activity */}
-      {data.activity.length > 0 && (
-        <Section title="Recent activity">
-          <ul className="divide-y divide-ink-800">
-            {data.activity.map((a) => (
-              <li key={a.id}>
-                <Link href={a.url ?? "#"} className="flex items-center gap-2 py-2 text-sm text-mist hover:text-chalk">
-                  <span className="size-1.5 shrink-0 rounded-full bg-blood-400" />
-                  <span className="min-w-0 flex-1 truncate">{a.title}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Section>
+          {/* Prediction history — the primary profile content, now a real page:
+              every call, how it landed, what's still open. */}
+          <Link
+            href="/predictions/mine"
+            className="flex items-center justify-between rounded-2xl border border-ink-800 bg-ink-900 p-4 transition-colors hover:border-ink-700 hover:bg-ink-850"
+          >
+            <span>
+              <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">My predictions</span>
+              <span className="block text-[0.72rem] text-fog">Every call you&apos;ve made — open one to see how it landed</span>
+            </span>
+            <span className="font-display text-sm font-semibold text-blood-300">View →</span>
+          </Link>
+          <Link
+            href="/leaderboard"
+            className="flex items-center justify-between rounded-2xl border border-ink-800 bg-ink-900 p-4 transition-colors hover:border-ink-700 hover:bg-ink-850"
+          >
+            <span>
+              <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">See where you rank</span>
+              <span className="block text-[0.72rem] text-fog">Your reputation against every predictor on the board</span>
+            </span>
+            <span className="font-display text-sm font-semibold text-blood-300">View →</span>
+          </Link>
+
+          {/* Recent activity */}
+          {data.activity.length > 0 && (
+            <Section title="Recent activity">
+              <ul className="divide-y divide-ink-800">
+                {data.activity.map((a) => (
+                  <li key={a.id}>
+                    <Link href={a.url ?? "#"} className="flex items-center gap-2 py-2 text-sm text-mist hover:text-chalk">
+                      <span className="size-1.5 shrink-0 rounded-full bg-blood-400" />
+                      <span className="min-w-0 flex-1 truncate">{a.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function Tile({ icon: Icon, label, value, sub }: { icon: typeof Target; label: string; value: string; sub: string }) {
-  return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-3.5 text-center">
+function Tile({ icon: Icon, label, value, sub, href }: { icon: typeof Target; label: string; value: string; sub: string; href?: string }) {
+  const inner = (
+    <>
       <Icon className="mx-auto mb-1 size-4 text-blood-400" />
       <p className="font-display text-2xl font-bold tabular-nums text-chalk">{value}</p>
       <p className="text-[0.6rem] uppercase tracking-wider text-fog">{label}</p>
       <p className="mt-0.5 text-[0.65rem] text-mist">{sub}</p>
-    </div>
+    </>
+  );
+  const cls = "block rounded-2xl border border-ink-800 bg-ink-900 p-3.5 text-center";
+  return href ? (
+    <Link href={href} className={`${cls} transition-colors hover:border-ink-700 hover:bg-ink-850`}>{inner}</Link>
+  ) : (
+    <div className={cls}>{inner}</div>
   );
 }
 
-function Section({ title, href, cta, children }: { title: string; href?: string; cta?: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</h3>
-        {href && <Link href={href} className="inline-flex items-center gap-0.5 text-xs font-semibold text-blood-300">{cta} <ChevronRight className="size-3.5" /></Link>}
       </div>
       {children}
     </div>

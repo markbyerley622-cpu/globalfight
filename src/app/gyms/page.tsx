@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { BadgeCheck, Users, Plus, MapPin } from "lucide-react";
+import { BadgeCheck, Users, Plus, MapPin, Star } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getPresenceCounts } from "@/lib/geo/presence";
 import { Chip, ChipRow } from "@/components/ui/chip";
@@ -53,6 +53,7 @@ export default async function GymsPage({
     select: {
       id: true, slug: true, name: true, city: true, country: true,
       logoUrl: true, verified: true, memberCount: true, disciplines: true,
+      ratingAvg: true, ratingCount: true,
     },
   });
 
@@ -136,6 +137,12 @@ export default async function GymsPage({
                       <span className="inline-flex items-center gap-1">
                         <Users className="size-3" /> {g.memberCount}
                       </span>
+                      {g.ratingCount > 0 && g.ratingAvg != null && (
+                        <span className="inline-flex items-center gap-1 font-semibold text-mist">
+                          <Star className="size-3 fill-gold-400 text-gold-400" /> {g.ratingAvg.toFixed(1)}
+                          <span className="font-normal text-fog">({g.ratingCount})</span>
+                        </span>
+                      )}
                     </span>
                   </span>
                   {here > 0 && (

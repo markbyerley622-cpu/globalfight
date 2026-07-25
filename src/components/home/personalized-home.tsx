@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Radio, ListChecks, Heart, TrendingUp, Trophy, Flame, Layers, Target, ChevronRight } from "lucide-react";
+import { Radio, ListChecks, Heart, TrendingUp, Trophy, Flame, Target, ChevronRight } from "lucide-react";
 import type { HomeData } from "@/lib/home/recommendations";
 import type { FightEvent } from "@/lib/types";
 import { DiscoveryEventCard } from "@/components/events/discovery-event-card";
@@ -62,7 +62,7 @@ function Progress({ data }: { data: NonNullable<HomeData["progress"]> }) {
     { icon: Trophy, label: "Reputation", value: data.reputation.toLocaleString(), href: "/leaderboard" },
     { icon: Target, label: "Accuracy", value: `${data.accuracy}%`, href: "/profile" },
     { icon: Flame, label: "Streak", value: String(data.pickStreak), href: "/profile" },
-    { icon: Layers, label: "Cards", value: String(data.cardsTotal), href: "/collection" },
+    { icon: ListChecks, label: "Predictions", value: String(data.picksResolved), href: "/predictions/mine" },
   ];
   return (
     <section>

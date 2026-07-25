@@ -2,19 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Trophy, Target, Flame, Layers, Crown, TrendingUp } from "lucide-react";
+import { Trophy, Target, Flame, ListChecks, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getTrainingNowFor } from "@/lib/geo/presence";
 import { getProfileStats } from "@/lib/profile-stats";
-import { getUserCards } from "@/lib/collectibles";
 import { getUserActivity } from "@/lib/activity";
 import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { BackButton } from "@/components/back-button";
+import { ShareMenu } from "@/components/share-menu";
 import { timeAgo } from "@/lib/utils";
-import type { CardRarity } from "@prisma/client";
-
-const RARITY_TINT: Record<CardRarity, string> = {
-  LEGEND: "text-gold-300", CHAMPION: "text-gold-400", EPIC: "text-volt-400", RARE: "text-blood-300", BASE: "text-fog",
-};
 
 const ROLE_LABEL: Record<string, string> = {
   fighter: "Fighter", coach: "Coach", gym: "Gym", promoter: "Promoter",
@@ -49,9 +46,8 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const u = await loadUser(username);
   if (!u?.username) notFound();
 
-  const [stats, cards, activity, rankedTotal, trainingNow] = await Promise.all([
+  const [stats, activity, rankedTotal, trainingNow] = await Promise.all([
     getProfileStats(u.id),
-    getUserCards(u.id),
     getUserActivity(u.id, 8),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
     // Live gym check-in. Derived from CheckIn rather than a stored status
@@ -66,8 +62,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const streak = stats?.pickStreak ?? 0;
   const bestStreak = stats?.bestPickStreak ?? 0;
   const resolved = stats?.picksResolved ?? 0;
-  const cardsTotal = stats?.cardsTotal ?? 0;
-  const elite = (stats?.cardsByRarity.CHAMPION ?? 0) + (stats?.cardsByRarity.LEGEND ?? 0);
+  const correct = stats?.picksCorrect ?? 0;
   const rank = stats?.rank ?? null;
   const percentile = rank && rankedTotal ? Math.max(1, Math.round((rank / rankedTotal) * 100)) : null;
   const roleLabel = ROLE_LABEL[u.registryRole];
@@ -83,7 +78,6 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   if (streak >= 3) chips.push({ icon: <Flame className="size-3" />, label: `${streak}-fight streak`, tone: "red" });
   else if (bestStreak >= 5) chips.push({ icon: <Flame className="size-3" />, label: `Best ${bestStreak} streak`, tone: "neutral" });
   if (resolved >= 5) chips.push({ icon: <Target className="size-3" />, label: `${acc}% accuracy`, tone: "volt" });
-  if (elite >= 3) chips.push({ icon: <Crown className="size-3" />, label: "Champion collector", tone: "gold" });
   if (roleLabel) chips.push({ icon: null, label: roleLabel, tone: "neutral" });
 
   return (
@@ -96,6 +90,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
           <div className="size-full bg-gradient-to-br from-blood-900/60 via-ink-900 to-ink-950" />
         )}
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-ink-950 to-transparent" />
+        <BackButton fallback="/following" className="absolute left-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-10" />
       </div>
 
       <div className="container-cr">
@@ -139,35 +134,14 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Tile icon={<Target className="size-4 text-volt-400" />} label="Accuracy" value={resolved ? `${acc}%` : "—"} sub={resolved ? `${stats?.picksCorrect}/${resolved} calls` : "no calls yet"} />
           <Tile icon={<Flame className="size-4 text-blood-400" />} label="Best streak" value={bestStreak ? String(bestStreak) : "—"} sub={streak >= 2 ? `${streak} live now` : "consecutive"} />
-          <Tile icon={<Layers className="size-4 text-gold-400" />} label="Cards" value={cardsTotal ? String(cardsTotal) : "—"} sub={elite ? `${elite} elite` : "collected"} />
+          <Tile icon={<ListChecks className="size-4 text-volt-400" />} label="Predictions" value={resolved ? String(resolved) : "—"} sub={resolved ? `${correct} correct` : "no calls yet"} />
           <Tile icon={<Trophy className="size-4 text-gold-400" />} label="Rank" value={rank ? `#${rank}` : "—"} sub={percentile ? `top ${percentile}%` : "unranked"} />
         </div>
-
-        {/* Collection */}
-        <Section title="Collection">
-          {cards.length === 0 ? (
-            <Empty>No cards yet — {displayName.split(" ")[0]} earns one for every fight they call correctly.</Empty>
-          ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {cards.slice(0, 14).map((c) => (
-                <Link key={c.id} href={`/fighters/${c.fighter.slug}`} className="w-24 shrink-0 rounded-xl border border-ink-800 bg-ink-900 p-2 text-center transition-colors hover:border-ink-700">
-                  <div className="mx-auto mb-1.5 size-16 overflow-hidden rounded-lg bg-ink-800">
-                    {(c.fighter.thumbUrl || c.fighter.imageUrl) && (
-                      <Image src={(c.fighter.thumbUrl || c.fighter.imageUrl)!} alt={c.fighter.name} width={64} height={64} className="size-full object-cover" unoptimized />
-                    )}
-                  </div>
-                  <p className="truncate text-[0.7rem] font-semibold text-chalk">{c.fighter.name}</p>
-                  <p className={`text-[0.6rem] font-bold uppercase tracking-wide ${RARITY_TINT[c.rarity]}`}>{c.rarity}</p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Section>
 
         {/* Recent activity */}
         <Section title="Recent form">
           {activity.length === 0 ? (
-            <Empty>Nothing to show yet — their picks and cards will appear here.</Empty>
+            <Empty>Nothing to show yet — their picks will appear here.</Empty>
           ) : (
             <ul className="divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800">
               {activity.map((a) => {
@@ -186,6 +160,20 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             </ul>
           )}
         </Section>
+
+        {/* Momentum footer — a public profile used to end cold. It's a high-
+            traffic destination (every leaderboard row lands here), so it closes
+            on the competition loop: out-predict them, or share the card. */}
+        <div className="mt-8 mb-4 flex flex-col items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-6 text-center sm:flex-row sm:justify-between sm:text-left">
+          <div>
+            <p className="font-display text-sm font-bold text-chalk">Think you can out-predict {displayName.split(" ")[0]}?</p>
+            <p className="mt-0.5 text-[0.72rem] text-fog">Call the next card and climb the same board.</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <ButtonLink href="/events" size="sm">Predict a fight</ButtonLink>
+            <ShareMenu path={`/u/${u.username}`} title={`${displayName} on GlobalFight`} />
+          </div>
+        </div>
       </div>
     </div>
   );

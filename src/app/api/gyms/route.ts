@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { uniqueGymSlug, setGymMembership } from "@/lib/geo/gyms";
 import { resolvePoint, countryCodeFor } from "@/lib/geo/gazetteer";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 
 const DISCIPLINES_MAX = 12;
 
@@ -47,6 +49,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to add a gym." }, { status: 401 });
+  const limited = await enforceLimit(req, "gym-create", POLICY.gymCreate, user.id);
+  if (limited) return limited;
 
   const parsed = Create.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

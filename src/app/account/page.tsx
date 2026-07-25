@@ -119,9 +119,9 @@ export default function AccountPage() {
               <Bookmark className="size-6 text-blood-400" />
               <div><p className="font-display text-sm font-bold text-chalk">Join the forums</p><p className="text-sm text-mist">Post, reply and build reputation.</p></div>
             </Link>
-            <Link href="/predictions" className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40">
+            <Link href="/events" className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40">
               <Bell className="size-6 text-blood-400" />
-              <div><p className="font-display text-sm font-bold text-chalk">Make predictions</p><p className="text-sm text-mist">Track your picks vs the model.</p></div>
+              <div><p className="font-display text-sm font-bold text-chalk">Make predictions</p><p className="text-sm text-mist">Call the next card before it closes.</p></div>
             </Link>
           </div>
         </div>

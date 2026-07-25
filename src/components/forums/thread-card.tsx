@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Share2, Pin, Loader2, Trash2, Eye } from "lucide-react";
+import { MessageSquare, Send, Pin, Loader2, Trash2, Eye } from "lucide-react";
 import { timeAgo, cn } from "@/lib/utils";
 import { KindBadge } from "@/components/forums/kind-badge";
 import { RespectIcon, SaluteIcon } from "@/components/forums/emblems";
@@ -145,7 +145,7 @@ export function ThreadCard({
               <MessageSquare className="size-3.5" />{thread.replyCount} comments
             </span>
             <span className="flex items-center gap-1 rounded px-1.5 py-1 group-hover:bg-ink-800">
-              <Share2 className="size-3.5" />Share
+              <Send className="size-3.5" />Share
             </span>
             <span className="ml-auto flex items-center gap-1 text-[0.7rem]">
               <Eye className="size-3.5" />{thread.views}

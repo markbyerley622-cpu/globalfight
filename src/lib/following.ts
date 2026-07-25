@@ -12,6 +12,7 @@ import { formatSportRecord } from "@/lib/sports";
 import { safeFighterImageOrNull } from "@/lib/media-safe";
 import { SPORTS } from "@/lib/sports";
 import { recommendVideos } from "@/lib/feed/recommend";
+import { getMyPicksForFightIds, getCrowdForFightIds } from "@/lib/picks";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -76,6 +77,28 @@ export interface FeedItem {
       opponent: string; date: string; eventName: string | null;
       promotionName: string | null; accent: string | null; url: string;
       titleFight: boolean;
+      /** Countdown label ("Fight day" / "Tomorrow" / "In 6d"), computed on the
+       *  server so the card stays a pure render (no Date.now at paint). */
+      countdown: string;
+      /** True inside 48h — the card raises the countdown's colour. */
+      urgent: boolean;
+      // ── Living-fight signals ────────────────────────────────────────────
+      // All four come from data that ALREADY exists, batch-loaded once for the
+      // whole feed (picks, crowd, odds, room). Each is null when there is
+      // nothing to say, so the card only ever shows signals it can back up —
+      // and the fighter card stops being a poster and becomes a fight you can
+      // act on without opening another screen.
+      /** The viewer's own pick on this bout, so the card can say "you called
+       *  it" instead of asking again. Null → the CTA is "Predict". */
+      predicted: { corner: "RED" | "BLUE"; name: string } | null;
+      /** The community split (fan picks), red vs blue. Null when nobody has
+       *  called it yet — an empty bar is noise, not information. */
+      crowd: { redName: string; redPct: number; blueName: string; bluePct: number; total: number } | null;
+      /** Bookmaker-implied favourite — labelled Market, kept visually distinct
+       *  from the crowd so the two percentages can never be confused. */
+      odds: { favName: string; favPct: number } | null;
+      /** Live reply count in the bout's room, when the conversation is real. */
+      discussion: number | null;
     } | null;
     /** Whether fight alerts will actually reach them, so the card can state it
      *  truthfully instead of implying it. */
@@ -113,6 +136,37 @@ const DISCIPLINE_SLUG: Record<string, string> = Object.fromEntries(
 
 
 const iso = (d: Date) => d.toISOString();
+
+/** Latest bookmaker-implied probabilities for a set of bouts, in ONE read.
+ *  Rows come back newest-first, so the first hit per fight is the current line. */
+async function latestOddsFor(
+  fightIds: string[],
+): Promise<Map<string, { redImplied: number; blueImplied: number }>> {
+  const out = new Map<string, { redImplied: number; blueImplied: number }>();
+  if (!fightIds.length) return out;
+  const rows = await prisma.oddsSnapshot.findMany({
+    where: { fightId: { in: fightIds } },
+    orderBy: { capturedAt: "desc" },
+    select: { fightId: true, redImplied: true, blueImplied: true },
+  });
+  for (const r of rows) {
+    if (!out.has(r.fightId)) out.set(r.fightId, { redImplied: r.redImplied, blueImplied: r.blueImplied });
+  }
+  return out;
+}
+
+/** Reply counts for the bouts' rooms, in ONE read. The count is denormalised on
+ *  the thread (ForumThread.replyCount), so this never touches the posts table. */
+async function discussionFor(fightIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (!fightIds.length) return out;
+  const rows = await prisma.forumThread.findMany({
+    where: { fightId: { in: fightIds } },
+    select: { fightId: true, replyCount: true },
+  });
+  for (const r of rows) if (r.fightId) out.set(r.fightId, r.replyCount);
+  return out;
+}
 
 /**
  * "Something changed" for a fighter, derived from the booking already in hand.
@@ -360,11 +414,31 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     .sort((a, b) => (nextByFighter.has(b.id) ? 1 : 0) - (nextByFighter.has(a.id) ? 1 : 0))
     .slice(0, 8);
 
+  // Living-fight enrichment for the bouts these cards will show — FOUR fixed
+  // batched reads for the whole feed (your picks · the crowd · the odds · the
+  // room), never one per card. Keyed by the next-fight ids only, so a card with
+  // no booking costs nothing here.
+  const nextFightIds = [...new Set(fighterCards.map((fr) => nextByFighter.get(fr.id)?.id).filter((v): v is string => !!v))];
+  const [myPicks, crowds, oddsByFight, discussionByFight] = await Promise.all([
+    getMyPicksForFightIds(userId, nextFightIds),
+    getCrowdForFightIds(nextFightIds),
+    latestOddsFor(nextFightIds),
+    discussionFor(nextFightIds),
+  ]);
+
   for (const fr of fighterCards) {
     const nf = nextByFighter.get(fr.id);
     const opponent = nf ? (nf.red.id === fr.id ? nf.blue : nf.red) : null;
     const promo = nf?.event ? resolvePromotion(nf.event.promotion ?? null) : null;
     const rk = rankByFighter.get(fr.id);
+
+    // Resolve the living-fight signals for this bout (all null-safe: a bout with
+    // no picks/odds/room simply shows fewer signals, never an empty widget).
+    const pick = nf ? myPicks.get(nf.id) : undefined;
+    const crowd = nf ? crowds.get(nf.id) : undefined;
+    const odds = nf ? oddsByFight.get(nf.id) : undefined;
+    const replies = nf ? discussionByFight.get(nf.id) : undefined;
+    const oddsRedFav = odds ? odds.redImplied >= odds.blueImplied : false;
 
     items.push({
       id: `fr-${fr.id}`,
@@ -399,6 +473,30 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
               accent: promo?.brand ?? null,
               url: `/fights/${nf.slug}`,
               titleFight: !!nf.titleFight,
+              countdown: (() => {
+                const d = days(nf.date);
+                return d <= 0 ? "Fight day" : d === 1 ? "Tomorrow" : d <= 7 ? `In ${d}d` : `In ${Math.round(d / 7)}w`;
+              })(),
+              urgent: days(nf.date) <= 2,
+              predicted: pick
+                ? { corner: pick.corner, name: pick.corner === "RED" ? nf.red.name : nf.blue.name }
+                : null,
+              crowd: crowd && crowd.total > 0
+                ? {
+                    redName: nf.red.name,
+                    redPct: Math.round((crowd.red / crowd.total) * 100),
+                    blueName: nf.blue.name,
+                    bluePct: Math.round((crowd.blue / crowd.total) * 100),
+                    total: crowd.total,
+                  }
+                : null,
+              odds: odds
+                ? {
+                    favName: oddsRedFav ? nf.red.name : nf.blue.name,
+                    favPct: Math.round((oddsRedFav ? odds.redImplied : odds.blueImplied) * 100),
+                  }
+                : null,
+              discussion: replies && replies > 0 ? replies : null,
             }
           : null,
         notifications: notifyFights,

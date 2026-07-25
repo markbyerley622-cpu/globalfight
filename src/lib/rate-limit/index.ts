@@ -106,6 +106,20 @@ export const POLICY = {
   voicebuild: { limit: 10, windowMs: 15 * 60_000 },
   // Abuse controls for text community actions.
   contentReport: { limit: 20, windowMs: 60 * 60_000 },
+  // ── Community WRITES (persist public content) — generous for a human, useless
+  //    for a spam loop. Bounded per account.
+  gymReview: { limit: 12, windowMs: 60 * 60_000 },
+  forumThread: { limit: 15, windowMs: 60 * 60_000 },
+  forumPost: { limit: 40, windowMs: 15 * 60_000 },
+  // Creating a gym GEOCODES against an external provider — a cost + a spam
+  // vector, so it is bounded tighter than an ordinary write.
+  gymCreate: { limit: 6, windowMs: 60 * 60_000 },
+  // A challenge creates a Battle row and pairs two users.
+  challenge: { limit: 25, windowMs: 15 * 60_000 },
+  // ── Cheap INTERACTIONS (picks, votes, reactions, follows, helpful). One
+  //    ceiling for all of them: high enough that real use never notices, low
+  //    enough that a script cannot hammer the write path.
+  interaction: { limit: 150, windowMs: 5 * 60_000 },
   // Share is anonymous by design (sharing shouldn't need an account) but it
   // increments the counter that feeds the TRENDING score — so unbounded it is a
   // one-line script for putting any thread at the top of the forum. Bounded per

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { challengeUser } from "@/lib/battles";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 
 /** Spectator → challenger. A community-room reader who disagrees taps Challenge
  *  on a message and the two are paired into a battle on this bout. Both sides
@@ -10,6 +12,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to challenge someone." }, { status: 401 });
+  const limited = await enforceLimit(req, "challenge", POLICY.challenge, user.id);
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }

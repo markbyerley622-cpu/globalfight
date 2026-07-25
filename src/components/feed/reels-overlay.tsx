@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Heart, MessageCircle, Share2, Volume2, VolumeX, MoreVertical, X, ChevronDown, EyeOff, Bookmark,
+  Heart, MessageCircle, Send, Volume2, VolumeX, MoreVertical, X, ChevronDown, EyeOff, Bookmark,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { useScrollLock } from "@/lib/use-scroll-lock";
@@ -473,7 +473,7 @@ export function ReelsOverlay({
                   <Bookmark className={savedIds.has(v.id) ? "size-7 fill-blood-500 text-blood-500" : "size-7"} />
                 </RailButton>
                 <RailButton label="Share" onClick={() => share(v)}>
-                  <Share2 className="size-7" />
+                  <Send className="size-7" />
                 </RailButton>
                 <RailButton label="Sound" onClick={toggleMute}>
                   {muted.current ? <VolumeX className="size-7" /> : <Volume2 className="size-7" />}

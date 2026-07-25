@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   CalendarDays, Users, Building2, ArrowRight, Sparkles, Swords, Mic, Flame,
+  Trophy, Newspaper, Bell, Play,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -25,7 +26,8 @@ export const metadata: Metadata = {
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following pillar. Four surfaces under one tab strip:
 //
-//    Feed       everything you follow, one timeline
+//    Feed       everything you follow — grouped into PRIORITY BANDS, not a
+//               chronological merge of six object types (see FeedTimeline)
 //    Rivals     the people you've actually battled (the concept calls this
 //               "Friends"; this schema has no user→user follow graph, and
 //               Rivalry is the real relationship — so the tab shows the real
@@ -33,8 +35,13 @@ export const metadata: Metadata = {
 //    Events     just the cards — fight week, filtered
 //    Corner Men analysis and shows
 //
-//  Every item still traces back to something the user asked for. This is not a
-//  generic social feed and the tabs do not make it one.
+//  The Feed used to be one flat timeline sorted by timestamp, which read as
+//  "six products competing equally" — a fighter portrait, an event poster, a
+//  news thumbnail and a video back to back, with the same fight scattered
+//  across the list. FeedTimeline replaces that with labelled bands in a fixed
+//  priority order (act → affects me → context → reference), and demotes news
+//  and video OUT of the main timeline into their own sections. Same data, same
+//  cards — a coherent order the user can read at a glance.
 // ════════════════════════════════════════════════════════════════════════════
 
 type Tab = "feed" | "rivals" | "events" | "corner";
@@ -108,13 +115,7 @@ export default async function FollowingPage({
           // the first, and nothing renders a player until it is clicked.
           <AlertsProvider initial={alertsOn} signedIn>
           <VideoCardProvider>
-            <ol className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {items.map((item) => (
-                <li key={item.id} className={item.kind === "personal" ? "" : "md:col-span-1"}>
-                  <FeedCard item={item} />
-                </li>
-              ))}
-            </ol>
+            <FeedTimeline items={items} eventsOnly={tab === "events"} />
           </VideoCardProvider>
           </AlertsProvider>
         )}
@@ -123,6 +124,94 @@ export default async function FollowingPage({
   );
 }
 
+
+// ── Feed timeline (priority bands) ───────────────────────────────────────────
+
+/**
+ * The Feed, read top to bottom as a priority ladder rather than a timestamp
+ * merge:
+ *
+ *   1. For you        personal interrupts — a reply, a battle settled, a pick
+ *                     result. Already addressed to you, so they lead.
+ *   2. Your fights     upcoming cards + booked fighters you follow — the things
+ *                     you can still act on (predict before they close).
+ *   3. Results         cards that just finished — see how your picks landed.
+ *   4. In the news     coverage of what you follow — context, so it's demoted
+ *                     out of the fight timeline into its own band.
+ *   5. Watch           video — reference, the last band.
+ *
+ * One fight no longer scatters across the list: everything that acts like an
+ * event (upcoming + booked fighters) sits together under one heading, so the
+ * eye reads "these are my fights" instead of "another Ankalaev card". Every
+ * card here is the SAME component the flat feed used — only the ordering and
+ * the signposting changed.
+ */
+function FeedTimeline({ items, eventsOnly }: { items: FeedItem[]; eventsOnly: boolean }) {
+  const by = (kinds: FeedItem["kind"][]) =>
+    items
+      .filter((i) => kinds.includes(i.kind))
+      // Newest/most-imminent first within a band. Upcoming events and booked
+      // fighters carry a synthetic near-now `at` keyed to how soon they are, so
+      // this puts the soonest fight at the top of its band.
+      .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+
+  const personal = by(["personal"]);
+  const fights = by(["event_upcoming", "fighter"]);
+  const results = by(["result"]);
+  const news = by(["coverage"]);
+  const videos = by(["video"]);
+
+  // The Events tab is the same machinery, narrowed to the two event bands.
+  if (eventsOnly) {
+    return (
+      <div>
+        <FeedBand title="Your fights" subtitle="Fight week" icon={Swords} items={fights} />
+        <FeedBand title="Results" subtitle="How your picks landed" icon={Trophy} items={results} />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <FeedBand title="For you" icon={Bell} items={personal} compact />
+      <FeedBand title="Your fights" subtitle="Call them before they close" icon={Swords} items={fights} />
+      <FeedBand title="Results" subtitle="How your picks landed" icon={Trophy} items={results} />
+      <FeedBand title="In the news" icon={Newspaper} items={news} />
+      <FeedBand title="Watch" icon={Play} items={videos} />
+    </div>
+  );
+}
+
+/** One labelled band. Renders nothing when empty, so the feed only ever shows
+ *  the bands a user actually has content for. */
+function FeedBand({
+  title, subtitle, icon: Icon, items, compact,
+}: {
+  title: string;
+  subtitle?: string;
+  icon: typeof Swords;
+  items: FeedItem[];
+  compact?: boolean;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section className="mb-6 last:mb-0">
+      <div className="mb-2.5 flex items-baseline justify-between gap-3 px-0.5">
+        <h2 className="inline-flex items-center gap-1.5 font-display text-sm font-black uppercase tracking-wide text-chalk">
+          <Icon className="size-4 text-blood-400" /> {title}
+        </h2>
+        {subtitle && <span className="shrink-0 text-[0.7rem] text-fog">{subtitle}</span>}
+      </div>
+      <ol className={cn("grid gap-4", compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
+        {items.map((item) => (
+          <li key={item.id}>
+            <FeedCard item={item} />
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
 // ── Rivals ──────────────────────────────────────────────────────────────────
 

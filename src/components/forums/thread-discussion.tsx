@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, AlertCircle, Pencil, Trash2, Check, X, Wifi, Reply, Quote, CornerDownRight, Swords } from "lucide-react";
+import { Loader2, AlertCircle, Pencil, Trash2, Check, X, Wifi, Reply, CornerDownRight, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-client";
 import { useT } from "@/lib/i18n";
@@ -123,6 +123,13 @@ export function ThreadDiscussion({
 
   function renderNode(post: ForumPostDTO, depth: number, isOp: boolean): React.ReactNode {
     const children = byParent.get(post.id) ?? [];
+    // A deleted post leaves no tombstone. If it has replies we keep the subtree
+    // (promoted to the deleted node's position, so the conversation still reads);
+    // a deleted leaf simply disappears. No "this comment was deleted" line.
+    if (post.deleted) {
+      if (children.length === 0) return null;
+      return <div key={post.id}>{children.map((c) => renderNode(c, depth, false))}</div>;
+    }
     const identity = identities?.[post.authorId];
     // Challengeable = they called the OTHER corner, they aren't you, and you've
     // made a call of your own to put on the line.
@@ -140,8 +147,7 @@ export function ThreadDiscussion({
           compact={compact}
           identity={identity}
           onChallenge={challengeable ? () => onChallenge!(post.authorId, post.authorName) : undefined}
-          onReply={() => startReply(post, false)}
-          onQuote={() => startReply(post, true)}
+          onReply={() => startReply(post, true)}
           onChanged={reload}
         />
         {children.length > 0 && (
@@ -209,11 +215,11 @@ export function ThreadDiscussion({
 }
 
 function PostItem({
-  post, isOp, canManage, requireAuth, locked, compact, identity, onChallenge, onReply, onQuote, onChanged,
+  post, isOp, canManage, requireAuth, locked, compact, identity, onChallenge, onReply, onChanged,
 }: {
   post: ForumPostDTO; isOp: boolean; canManage: boolean; requireAuth: boolean; locked: boolean;
   compact?: boolean; identity?: RoomIdentity; onChallenge?: () => void;
-  onReply: () => void; onQuote: () => void; onChanged: () => void;
+  onReply: () => void; onChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.content);
@@ -277,9 +283,7 @@ function PostItem({
         </blockquote>
       )}
 
-      {post.deleted ? (
-        <p className="text-sm italic text-fog">[deleted]</p>
-      ) : editing ? (
+      {editing ? (
         <div className="space-y-2">
           <textarea
             value={draft}
@@ -313,14 +317,9 @@ function PostItem({
               </button>
             )}
             {!locked && (
-              <>
-                <button onClick={onReply} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-fog transition-colors hover:text-blood-300" title="Reply">
-                  <Reply className="size-3.5" /> <span className="hidden sm:inline">Reply</span>
-                </button>
-                <button onClick={onQuote} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-fog transition-colors hover:text-blood-300" title="Quote reply">
-                  <Quote className="size-3.5" /> <span className="hidden sm:inline">Quote</span>
-                </button>
-              </>
+              <button onClick={onReply} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-fog transition-colors hover:text-blood-300" title="Reply">
+                <Reply className="size-3.5" /> <span className="hidden sm:inline">Reply</span>
+              </button>
             )}
             <ReportButton targetType="post" targetId={post.id} compact />
           </div>
@@ -378,8 +377,8 @@ function ReplyComposer({
       {target && (
         <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-blood-500/30 bg-blood-500/5 px-3 py-2 text-xs text-mist">
           <span className="flex items-center gap-1.5">
-            {target.quotePostId ? <Quote className="size-3.5 text-blood-300" /> : <CornerDownRight className="size-3.5 text-blood-300" />}
-            {target.quotePostId ? "Quoting" : "Replying to"} <span className="font-semibold text-chalk">{target.authorName}</span>
+            <CornerDownRight className="size-3.5 text-blood-300" />
+            Replying to <span className="font-semibold text-chalk">{target.authorName}</span>
           </span>
           <button type="button" onClick={onClearTarget} className="text-fog hover:text-chalk"><X className="size-3.5" /></button>
         </div>

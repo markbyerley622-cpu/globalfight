@@ -11,6 +11,8 @@ import { getPresence } from "@/lib/geo/presence";
 import { CheckInButton } from "@/components/map/check-in-button";
 import { GymMembershipButtons } from "@/components/map/gym-membership";
 import { GymPublicGallery } from "@/components/map/gym-public-gallery";
+import { GymReviews } from "@/components/gyms/gym-reviews";
+import { getGymReviewData } from "@/lib/gym-reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
 
   const user = await getCurrentUser().catch(() => null);
   const presence = await getPresence({ gymId: gym.id }, user?.id);
+  const reviewData = await getGymReviewData(gym.id, user?.id);
 
   // Nearby = same city first, then same country. Cheap, indexed, and honest:
   // we do not have street coordinates for most gyms, so "nearby" means the
@@ -203,6 +206,16 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         </dl>
 
         {/* Gallery */}
+        <Section title="Reviews">
+          <GymReviews
+            gymSlug={gym.slug}
+            gymName={gym.name}
+            disciplines={gym.disciplines}
+            data={reviewData}
+            signedIn={!!user}
+          />
+        </Section>
+
         {gym.photos.length > 0 && (
           <Section title="Photos">
             <GymPublicGallery photos={gym.photos} gymName={gym.name} />

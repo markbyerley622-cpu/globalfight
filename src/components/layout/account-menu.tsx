@@ -74,7 +74,7 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
             {user ? (
               <>
                 <Item href="/profile" icon={<CircleUserRound className="size-4" />} onClick={() => setOpen(false)}>Profile</Item>
-                <Item href="/predictions" icon={<TrendingUp className="size-4" />} onClick={() => setOpen(false)}>My Predictions</Item>
+                <Item href="/predictions/mine" icon={<TrendingUp className="size-4" />} onClick={() => setOpen(false)}>My Predictions</Item>
                 <Item href="/library" icon={<Bookmark className="size-4" />} onClick={() => setOpen(false)}>Saved</Item>
                 <Item href="/account" icon={<Settings className="size-4" />} onClick={() => setOpen(false)}>Settings</Item>
                 {isAdmin && (

@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { castPick, clearPick } from "@/lib/picks";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 
 /** Cast/change the viewer's pick on a bout. Body: { corner: "RED"|"BLUE", confidence?: 1..5, method?: "KO"|"SUB"|"UD" } */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to make a pick." }, { status: 401 });
+  const limited = await enforceLimit(req, "pick", POLICY.interaction, user.id);
+  if (limited) return limited;
   try {
     const body = await req.json().catch(() => ({}));
     return NextResponse.json(await castPick(user.id, slug, body?.corner, body?.confidence, body?.method));

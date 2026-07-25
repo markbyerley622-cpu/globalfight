@@ -128,12 +128,12 @@ export function ProfileView() {
         <EditProfileLink />
       </div>
 
-      {/* Identity: reputation, accuracy, streak, collection, activity */}
+      {/* Identity: reputation, accuracy, streak, prediction history, activity */}
       <ProfileStats />
 
       {/* Account shortcuts */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
-        <Row href="/predictions" icon={Star} name="Predictions" desc="Your picks and results" />
+        <Row href="/predictions/mine" icon={Star} name="My Predictions" desc="Your picks and how they landed" />
         <Row href="/profile/edit" icon={Pencil} name="Edit profile" desc="Role, disciplines, links, map presence" />
         <Row href="/gyms" icon={Dumbbell} name="Gyms" desc="Where you train, and who trains there" />
         <Row href="/profile/edit" icon={Bell} name="Notifications" desc="Fight-week reminders & breaking news" />

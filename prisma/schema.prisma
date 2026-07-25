@@ -1180,6 +1180,8 @@ model User {
   gymsOwned         Gym[]                @relation("GymOwner")
   gymClaimsMade     GymClaim[]           @relation("GymClaimsMade")
   gymClaimsReviewed GymClaim[]           @relation("GymClaimsReviewed")
+  gymReviews        GymReview[]          @relation("GymReviewAuthor")
+  gymReviewVotes    GymReviewVote[]
   checkIns          CheckIn[]
   following         UserFollow[]         @relation("Follower")
   followers         UserFollow[]         @relation("Following")
@@ -1895,6 +1897,11 @@ model Gym {
   owner      User?   @relation("GymOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   /// Denormalised so a map pin never counts rows.
   memberCount Int    @default(0)
+  /// Denormalised review aggregate — same reasoning as memberCount: a map pin,
+  /// a list row and a search result show the rating without loading a single
+  /// review row. Recomputed in a transaction whenever a review changes.
+  ratingAvg   Float? // 1..5, null until the first review
+  ratingCount Int    @default(0)
 
   createdById String?
   createdAt   DateTime @default(now())
@@ -1904,6 +1911,7 @@ model Gym {
   claims   GymClaim[]
   checkIns CheckIn[]
   photos   GymPhoto[]
+  reviews  GymReview[]
 
   @@index([countryCode])
   @@index([latitude, longitude])
@@ -2037,6 +2045,71 @@ model GymPhoto {
   updatedAt    DateTime @updatedAt
 
   @@index([gymId, sortOrder])
+}
+
+/// A fighter's review of a gym. One per user per gym (upserted, editable, soft-
+/// deleted). Category ratings (coaching/facilities/atmosphere/cleanliness/value)
+/// are optional and produce far richer data than a single star — a gym can be
+/// elite coaching in a rough room, and the summary shows exactly that. The
+/// author's membership is SNAPSHOT at review time (verifiedMember/authorRole) so
+/// a later membership change can't retroactively rewrite the trust signal on an
+/// old review.
+model GymReview {
+  id       String @id @default(cuid())
+  gymId    String
+  gym      Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation("GymReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// Overall 1..5. The headline number.
+  overall     Int
+  /// Optional category ratings, 1..5. Null = "didn't rate this".
+  coaching    Int?
+  facilities  Int?
+  atmosphere  Int?
+  cleanliness Int?
+  value       Int?
+
+  title       String?
+  body        String   @db.Text
+  recommended Boolean  @default(true)
+  /// beginner | intermediate | advanced | professional
+  skillLevel  String?
+  /// What this author trains here — subset of the gym's disciplines.
+  disciplines String[]
+
+  /// Trust snapshot at review time.
+  verifiedMember Boolean @default(false)
+  /// member | coach | owner — null when the author was not a recorded member.
+  authorRole     String?
+
+  /// Denormalised helpful-vote tally, kept in sync with GymReviewVote.
+  helpfulCount Int      @default(0)
+  edited       Boolean  @default(false)
+  deleted      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  votes GymReviewVote[]
+
+  // One review per user per gym.
+  @@unique([gymId, authorId])
+  // Ranked list: a gym's live reviews, best-supported first.
+  @@index([gymId, deleted, helpfulCount])
+  @@index([authorId])
+}
+
+/// A "helpful" vote on a review. Mirrors ForumReaction: one row per user per
+/// review, the denormalised count lives on GymReview.helpfulCount.
+model GymReviewVote {
+  reviewId  String
+  review    GymReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@id([reviewId, userId])
+  @@index([reviewId])
 }
 
 /// A browser's Web Push endpoint. One row per DEVICE, not per user — a person

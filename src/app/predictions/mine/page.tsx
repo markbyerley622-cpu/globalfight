@@ -1,0 +1,178 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Check, X, Clock, Star, Trophy } from "lucide-react";
+import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { BackButton } from "@/components/back-button";
+import { ButtonLink } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "My Predictions",
+  description: "Every fight you've called — your record, what's still open, and how each pick landed.",
+};
+
+export const dynamic = "force-dynamic";
+
+const METHOD_LABEL: Record<string, string> = {
+  KO: "KO/TKO", TKO: "KO/TKO", SUB: "Submission", SUBMISSION: "Submission",
+  UD: "Decision", SD: "Decision", MD: "Decision", DECISION: "Decision",
+};
+
+export default async function MyPredictionsPage() {
+  const user = await getCurrentUser();
+  if (!user) return <SignedOut />;
+
+  const picks = await prisma.fightPick.findMany({
+    where: { userId: user.id },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      corner: true, method: true, confidence: true, correct: true,
+      fight: {
+        select: {
+          slug: true, date: true, result: true, titleFight: true,
+          red: { select: { name: true } },
+          blue: { select: { name: true } },
+          event: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  const open = picks.filter((p) => p.fight.result === "SCHEDULED");
+  const settled = picks.filter((p) => p.fight.result !== "SCHEDULED");
+  const resolved = settled.filter((p) => p.correct !== null);
+  const correct = resolved.filter((p) => p.correct === true).length;
+  const accuracy = resolved.length ? Math.round((correct / resolved.length) * 100) : 0;
+
+  return (
+    <div className="px-4 pb-16 pt-5">
+      <div className="mx-auto max-w-2xl">
+        <BackButton fallback="/profile" label="Back to profile" className="mb-5" />
+
+        <header className="mb-5">
+          <p className="eyebrow">Your record</p>
+          <h1 className="mt-1.5 font-display text-2xl font-black uppercase tracking-tight text-chalk">My Predictions</h1>
+        </header>
+
+        {picks.length === 0 ? (
+          <EmptyState
+            icon={<Trophy className="size-5 text-blood-400" />}
+            title="No predictions yet"
+            body="Call a fight and it lands here — with your confidence, your finish, and whether you nailed it once the bout resolves."
+            action={{ href: "/events", label: "Find a fight to predict" }}
+          />
+        ) : (
+          <>
+            {/* Record summary — the payoff line. */}
+            <div className="mb-6 grid grid-cols-3 gap-3">
+              <Stat value={`${accuracy}%`} label="Accuracy" sub={`${correct}/${resolved.length}`} />
+              <Stat value={String(open.length)} label="Open" sub="awaiting result" />
+              <Stat value={String(picks.length)} label="Total calls" sub="all time" />
+            </div>
+
+            {open.length > 0 && (
+              <Section title="Awaiting result">
+                {open.map((p) => <PickRow key={p.fight.slug} pick={p} />)}
+              </Section>
+            )}
+            {settled.length > 0 && (
+              <Section title="Settled">
+                {settled.map((p) => <PickRow key={p.fight.slug} pick={p} />)}
+              </Section>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type PickData = {
+  corner: string; method: string | null; confidence: number | null; correct: boolean | null;
+  fight: {
+    slug: string; date: Date; result: string; titleFight: boolean;
+    red: { name: string }; blue: { name: string }; event: { name: string } | null;
+  };
+};
+
+function PickRow({ pick }: { pick: PickData }) {
+  const { fight } = pick;
+  const pickedName = pick.corner === "RED" ? fight.red.name : fight.blue.name;
+  const opponent = pick.corner === "RED" ? fight.blue.name : fight.red.name;
+  const pending = fight.result === "SCHEDULED";
+  const method = pick.method ? METHOD_LABEL[pick.method] ?? pick.method : null;
+
+  // Outcome badge — pending, correct, missed, or void (draw/NC → no grade).
+  const outcome = pending
+    ? { icon: Clock, tone: "text-fog", ring: "border-ink-700", label: "Open" }
+    : pick.correct === true
+      ? { icon: Check, tone: "text-up", ring: "border-up/40", label: "Correct" }
+      : pick.correct === false
+        ? { icon: X, tone: "text-down", ring: "border-down/40", label: "Missed" }
+        : { icon: X, tone: "text-fog", ring: "border-ink-700", label: "No result" };
+  const Icon = outcome.icon;
+
+  return (
+    <Link
+      href={`/fights/${fight.slug}`}
+      className={cn(
+        "flex items-center gap-3 border-b border-ink-800 px-4 py-3.5 transition-colors last:border-b-0 hover:bg-ink-800/50",
+      )}
+    >
+      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl border bg-ink-950/40", outcome.ring, outcome.tone)}>
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-sm font-bold text-chalk">
+          {pickedName} <span className="font-normal text-fog">vs {opponent}</span>
+        </span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.7rem] text-fog">
+          {fight.event?.name && <span className="truncate">{fight.event.name}</span>}
+          {fight.titleFight && <span className="text-gold-400">· Title</span>}
+          {pick.confidence != null && (
+            <span className="inline-flex items-center gap-0.5">
+              · <Star className="size-3 fill-gold-400 text-gold-400" /> {pick.confidence}/5
+            </span>
+          )}
+          {method && <span>· {method}</span>}
+        </span>
+      </span>
+      <span className={cn("shrink-0 font-display text-[0.62rem] font-bold uppercase tracking-wide", outcome.tone)}>
+        {outcome.label}
+      </span>
+    </Link>
+  );
+}
+
+function Stat({ value, label, sub }: { value: string; label: string; sub: string }) {
+  return (
+    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-3.5 text-center">
+      <p className="font-display text-2xl font-bold tabular-nums text-chalk">{value}</p>
+      <p className="text-[0.6rem] uppercase tracking-wider text-fog">{label}</p>
+      <p className="mt-0.5 text-[0.65rem] text-mist">{sub}</p>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-6">
+      <h2 className="mb-2.5 px-0.5 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">{title}</h2>
+      <div className="overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">{children}</div>
+    </section>
+  );
+}
+
+function SignedOut() {
+  return (
+    <div className="px-4 py-16">
+      <div className="mx-auto max-w-md rounded-xl border border-ink-700 bg-ink-900/60 p-7 text-center">
+        <h1 className="font-display text-xl font-black text-chalk">My Predictions</h1>
+        <p className="mt-2 text-sm text-fog">Sign in to see every fight you&apos;ve called and how your picks landed.</p>
+        <ButtonLink href="/account" className="mt-4">Sign in</ButtonLink>
+      </div>
+    </div>
+  );
+}

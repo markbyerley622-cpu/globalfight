@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { AvatarUploader } from "@/components/fighters/avatar-uploader";
-import { ClaimProfileButton } from "@/components/fighters/claim-profile-button";
+import { BackButton } from "@/components/back-button";
 import { getCurrentUser } from "@/lib/auth";
 import { RecordDonut, StatBar } from "@/components/charts";
 import { getFighter, getFighterFights } from "@/lib/repo";
@@ -131,6 +131,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
           <Image src="/cr-logo.png" alt="Combat Reviews" width={120} height={80} className="h-7 w-auto sm:h-9" />
         </div>
         <div className="container-cr relative py-12 lg:py-16">
+          <BackButton fallback="/leaderboard" label="Back to Leaderboard" className="mb-6" />
           <div className="flex flex-col items-center gap-6 text-center lg:flex-row lg:items-end lg:text-left">
             {isOwner ? (
               <AvatarUploader slug={slug} className="scale-125">
@@ -161,7 +162,6 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
               {profile.tagline && <p className="mt-1 text-sm italic text-fog">{profile.tagline}</p>}
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
                 {!isOwner && <FollowButton kind="fighter" slug={slug} name={profile.name} initialFollowing={following_} />}
-                <ClaimProfileButton slug={slug} ownerId={profile.ownerId} />
               </div>
             </div>
             {upcoming && (

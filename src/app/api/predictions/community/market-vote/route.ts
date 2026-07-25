@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
 import { voteOnMarket, type MarketVotePayload } from "@/features/predictions/community/service";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +13,8 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Sign in to vote." }, { status: 401 });
+  const limited = await enforceLimit(req, "market-vote", POLICY.interaction, userId);
+  if (limited) return limited;
 
   let body: Partial<MarketVotePayload>;
   try {

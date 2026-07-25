@@ -29,8 +29,19 @@ export function BackButton({
     <button
       type="button"
       onClick={() => {
-        if (typeof window !== "undefined" && window.history.length > 1) router.back();
-        else router.push(fallback);
+        // Only step back through IN-APP history. If the user arrived cold (shared
+        // link, new tab) or from another site, router.back() would leave the app —
+        // so we route to a sane in-app fallback instead.
+        if (
+          typeof window !== "undefined" &&
+          window.history.length > 1 &&
+          document.referrer &&
+          document.referrer.startsWith(window.location.origin)
+        ) {
+          router.back();
+        } else {
+          router.push(fallback);
+        }
       }}
       aria-label={text}
       className={cn(

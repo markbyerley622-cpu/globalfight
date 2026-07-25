@@ -17,14 +17,20 @@ export const PILLARS: {
     href: "/events",
     label: "Events",
     icon: CalendarDays,
-    match: (p) => p.startsWith("/events") || p.startsWith("/schedule") || p.startsWith("/results"),
+    // A fight belongs to an event — keep Events lit on a bout page so the core
+    // predict/discuss surface never loses its home tab.
+    match: (p) =>
+      p.startsWith("/events") || p.startsWith("/schedule") || p.startsWith("/results") || p.startsWith("/fights"),
   },
   {
     href: "/leaderboard",
     label: "Leaderboard",
     icon: BarChart3,
+    // Fighter profiles are ranked entities reached from the board — keep the
+    // Leaderboard pillar lit there so a detail page never loses its home tab.
     match: (p) =>
-      p.startsWith("/leaderboard") || p.startsWith("/rankings") || p.startsWith("/p4p") || p.startsWith("/champions"),
+      p.startsWith("/leaderboard") || p.startsWith("/rankings") || p.startsWith("/p4p") ||
+      p.startsWith("/champions") || p.startsWith("/fighters"),
   },
   { href: "/following", label: "Following", icon: Users, match: (p) => p.startsWith("/following") },
   // Gyms live under Location: they are the places the map points at.
@@ -33,6 +39,9 @@ export const PILLARS: {
     href: "/profile",
     label: "Profile",
     icon: User,
-    match: (p) => p.startsWith("/profile") || p.startsWith("/account") || p.startsWith("/u/"),
+    // "My Predictions" is your personal record, reached from the profile — it
+    // lives under Profile, not the gated /predictions markets route.
+    match: (p) =>
+      p.startsWith("/profile") || p.startsWith("/account") || p.startsWith("/u/") || p.startsWith("/predictions/mine"),
   },
 ];

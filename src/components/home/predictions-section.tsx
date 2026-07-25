@@ -7,7 +7,7 @@ export async function PredictionsSection() {
 
   return (
     <section className="container-cr py-12">
-      <SectionHeading eyebrow="Powered by the CR model" title="Fight Predictions" href="/predictions" />
+      <SectionHeading eyebrow="Powered by the CR model" title="Fight Predictions" href="/events" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {fights.map((f) => (
           <FightCard key={f.id} fight={f} />

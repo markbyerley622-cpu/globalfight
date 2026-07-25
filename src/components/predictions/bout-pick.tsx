@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, Loader2, Flame, Users, Swords } from "lucide-react";
+import { Star, Loader2, Flame, Users, Swords, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-client";
 import { ProbabilityBar } from "@/components/probability-bar";
@@ -53,6 +53,10 @@ export function BoutPick({
   const [crowd, setCrowd] = useState<Crowd>(initialCrowd);
   const [pick, setPick] = useState<Pick | null>(initialPick);
   const [busy, setBusy] = useState(false);
+  // Transient "just locked it" celebration — the moment a call is committed,
+  // fired only when the CORNER changes (not on every confidence/method tweak),
+  // so the reward marks the decision, not each adjustment.
+  const [flash, setFlash] = useState(false);
 
   async function send(corner: Corner, confidence: number | null, method: Method | null) {
     if (!user) { window.location.href = "/account"; return; }
@@ -61,6 +65,7 @@ export function BoutPick({
 
     // Optimistic crowd move.
     const prev = pick;
+    const committing = !prev || prev.corner !== corner;
     setPick({ corner, confidence, method });
     setCrowd((c) => {
       const next = { ...c };
@@ -82,6 +87,7 @@ export function BoutPick({
         const d = await res.json();
         setCrowd(d.crowd);
         setPick(d.myPick);
+        if (committing) { setFlash(true); setTimeout(() => setFlash(false), 1400); }
       } else {
         setPick(prev);
         setCrowd(initialCrowd);
@@ -209,6 +215,32 @@ export function BoutPick({
             ))}
           </div>
         )}
+
+        {/* Locked-in confirmation — the reward. A pick used to save silently;
+            now committing a call lands with a visible, satisfying "locked in"
+            state that also tells you how to score more (add confidence / a
+            finish). The flash marks the moment; the banner persists. */}
+        {pick && (
+          <div
+            className={cn(
+              "mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300",
+              flash ? "scale-[1.015] border-up/60 bg-up/10 shadow-glow-red" : "border-ink-700 bg-ink-950/40",
+            )}
+          >
+            <CheckCircle2 className={cn("size-5 shrink-0 text-up", flash && "animate-pulse")} />
+            <div className="min-w-0">
+              <p className="font-display text-sm font-bold text-chalk">
+                Locked in — you&apos;re calling {pick.corner === "RED" ? redName : blueName}
+              </p>
+              <p className="text-[0.7rem] leading-snug text-fog">
+                {pick.confidence ? `${pick.confidence}/5 confidence` : "Tap the stars to set your confidence"}
+                {pick.method ? ` · by ${METHODS.find((m) => m.value === pick.method)?.label}` : ""}
+                {" · "}
+                <span className="text-mist">points if it lands</span>
+              </p>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -242,7 +274,7 @@ function CornerButton({
       )}
     >
       {underdog && (
-        <span className="absolute right-1.5 top-1.5 rounded bg-gold-400/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-gold-400">
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-gold-400/30 bg-ink-900 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-gold-400 shadow-sm">
           Underdog
         </span>
       )}

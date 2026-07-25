@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarDays, Sparkles, Swords } from "lucide-react";
+import { CalendarDays, Sparkles, Swords, Check, ArrowRight, TrendingUp, MessageSquare } from "lucide-react";
 import { Flag } from "@/components/flag";
 import { brandedHero } from "@/lib/placeholder";
 import { FollowButton } from "@/components/follow-button";
@@ -91,22 +91,7 @@ export function FighterCard({ item }: { item: FeedItem }) {
 
       <div className="p-4">
         {f.next ? (
-          <Link href={f.next.url} className="group/next block">
-            <p className="font-display text-[0.6rem] font-bold uppercase tracking-widest text-blood-400">
-              Next fight{f.next.titleFight ? " · Title" : ""}
-            </p>
-            <p className="mt-1 flex items-center gap-1.5 font-display text-sm font-bold text-chalk group-hover/next:text-blood-200">
-              <Swords className="size-3.5 shrink-0 text-fog" />
-              <span className="truncate">vs {f.next.opponent}</span>
-            </p>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.72rem] text-fog">
-              <span className="inline-flex items-center gap-1">
-                <CalendarDays className="size-3" />
-                {new Date(f.next.date).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
-              </span>
-              {f.next.eventName && <span className="truncate">{f.next.eventName}</span>}
-            </p>
-          </Link>
+          <FightStory next={f.next} />
         ) : (
           // Answered, not blank. An empty region reads as a broken card.
           <p className="text-[0.78rem] text-fog">No fight announced</p>
@@ -121,6 +106,90 @@ export function FighterCard({ item }: { item: FeedItem }) {
           <AlertsToggle />
         </div>
       </div>
+    </div>
+  );
+}
+
+type NextFight = NonNullable<NonNullable<FeedItem["fighter"]>["next"]>;
+
+/** Surname only — the split bar and chips are tight, and "Makhachev 61%" reads
+ *  faster than a full name that truncates mid-word. */
+const surname = (n: string) => n.trim().split(/\s+/).slice(-1)[0] ?? n;
+
+/**
+ * The fight, as a living object.
+ *
+ * The matchup used to be a static "vs X · date" line. It now carries — only
+ * when the data exists — a countdown, the crowd split, the market favourite and
+ * the room's activity, ending in ONE clear action: predict it, or (if you
+ * already have) open the room. Everything here was already in the database; the
+ * card just stops making you open three screens to see it.
+ */
+function FightStory({ next }: { next: NextFight }) {
+  return (
+    <div>
+      <Link href={next.url} className="group/next block">
+        <p className="flex items-center justify-between gap-2 font-display text-[0.6rem] font-bold uppercase tracking-widest text-blood-400">
+          <span>Next fight{next.titleFight ? " · Title" : ""}</span>
+          <span className={next.urgent ? "text-gold-300" : "text-fog"}>{next.countdown}</span>
+        </p>
+        <p className="mt-1 flex items-center gap-1.5 font-display text-sm font-bold text-chalk group-hover/next:text-blood-200">
+          <Swords className="size-3.5 shrink-0 text-fog" />
+          <span className="truncate">vs {next.opponent}</span>
+        </p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.72rem] text-fog">
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays className="size-3" />
+            {new Date(next.date).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+          </span>
+          {next.eventName && <span className="truncate">{next.eventName}</span>}
+        </p>
+      </Link>
+
+      {/* Community split — the crowd, kept visually separate from the market. */}
+      {next.crowd && (
+        <div className="mt-2.5">
+          <div className="mb-1 flex items-center justify-between gap-2 text-[0.62rem] font-bold">
+            <span className="truncate text-up">{next.crowd.redPct}% {surname(next.crowd.redName)}</span>
+            <span className="truncate text-volt-400">{surname(next.crowd.blueName)} {next.crowd.bluePct}%</span>
+          </div>
+          <div className="flex h-1.5 overflow-hidden rounded-full bg-ink-700">
+            <div className="bg-up" style={{ width: `${next.crowd.redPct}%` }} />
+            <div className="bg-volt-500" style={{ width: `${next.crowd.bluePct}%` }} />
+          </div>
+          <p className="mt-0.5 text-[0.56rem] uppercase tracking-wide text-fog">
+            {next.crowd.total} fan pick{next.crowd.total === 1 ? "" : "s"} · community prediction
+          </p>
+        </div>
+      )}
+
+      {/* Market + room chips. Market is bookmaker-implied, never the crowd. */}
+      {(next.odds || next.discussion) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {next.odds && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-[0.62rem] text-mist">
+              <TrendingUp className="size-3 text-gold-400" /> Market: {surname(next.odds.favName)} {next.odds.favPct}%
+            </span>
+          )}
+          {next.discussion && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-[0.62rem] text-mist">
+              <MessageSquare className="size-3 text-blood-400" /> {next.discussion} in the room
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* One action. Predict it, or open the room if you already called it. */}
+      <Link
+        href={next.url}
+        className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-blood-500 px-3 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400"
+      >
+        {next.predicted ? (
+          <><Check className="size-3.5" /> You picked {surname(next.predicted.name)} · Open the room</>
+        ) : (
+          <>Predict this fight <ArrowRight className="size-3.5" /></>
+        )}
+      </Link>
     </div>
   );
 }

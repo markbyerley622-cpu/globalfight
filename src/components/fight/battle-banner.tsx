@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mic, Swords, Trophy, X } from "lucide-react";
+import { Swords, Trophy, X } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
 import { PickLine, RecordLine } from "@/components/forums/pick-identity";
 import { Countdown } from "@/components/countdown";
@@ -72,14 +72,6 @@ export function BattleBanner({ battle, fightDate }: { battle: BattleRoomDTO; fig
             <>Settles in <Countdown date={fightDate} compact /></>
           )}
         </span>
-        <button
-          type="button"
-          disabled
-          title="Voice Debate — coming soon"
-          className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-ink-700 px-2.5 py-1 text-[0.7rem] font-semibold text-fog/60"
-        >
-          <Mic className="size-3.5" /> Voice · soon
-        </button>
       </div>
     </div>
   );
