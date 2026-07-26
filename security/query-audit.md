@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 755 across 664 files
-- **By class:** 509 public · 155 user-owned · 91 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 67 medium · 🟡 147 low · ⚪ 541 info
+- **Queries analysed:** 753 across 665 files
+- **By class:** 507 public · 155 user-owned · 91 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 67 medium · 🟡 147 low · ⚪ 539 info
 
 ## 🔴 High risk
 

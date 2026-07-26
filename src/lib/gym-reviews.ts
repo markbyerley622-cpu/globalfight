@@ -229,19 +229,19 @@ export async function submitGymReview(userId: string, gymId: string, input: Revi
     authorRole: membership?.role ?? null,
   };
 
+  // Upsert, NOT read-then-write. A double-clicked submit fires two requests that
+  // both read "no existing review" and both `create`, and the second hit the
+  // @@unique([gymId, authorId]) constraint — surfacing a raw Prisma P2002 (which
+  // names the model and columns) straight to the client, AND failing the submit
+  // that had in fact just saved. upsert resolves the conflict in the database:
+  // whichever write lands second becomes the update. `edited` is only set on the
+  // update branch, so a first-time review is not born already flagged as edited.
   await prisma.$transaction(async (tx) => {
-    const existing = await tx.gymReview.findUnique({
+    await tx.gymReview.upsert({
       where: { gymId_authorId: { gymId, authorId: userId } },
-      select: { id: true },
+      create: { ...data, gymId, authorId: userId },
+      update: { ...data, edited: true, deleted: false },
     });
-    if (existing) {
-      await tx.gymReview.update({
-        where: { gymId_authorId: { gymId, authorId: userId } },
-        data: { ...data, edited: true, deleted: false },
-      });
-    } else {
-      await tx.gymReview.create({ data: { ...data, gymId, authorId: userId } });
-    }
     await recomputeRating(tx, gymId);
   });
 }
