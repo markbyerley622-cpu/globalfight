@@ -4152,7 +4152,7 @@
     },
     {
       "file": "src/app/events/[slug]/page.tsx",
-      "line": 132,
+      "line": 150,
       "fn": "EventPage",
       "model": "User",
       "method": "findUnique",
@@ -6284,7 +6284,7 @@
     },
     {
       "file": "src/lib/feed/recommend.ts",
-      "line": 103,
+      "line": 94,
       "fn": "recommendVideos",
       "model": "FeedVideo",
       "method": "findMany",
@@ -6297,7 +6297,7 @@
     },
     {
       "file": "src/lib/feed/recommend.ts",
-      "line": 123,
+      "line": 114,
       "fn": "recommendVideos",
       "model": "FeedNotInterested",
       "method": "findMany",
@@ -6310,7 +6310,7 @@
     },
     {
       "file": "src/lib/feed/recommend.ts",
-      "line": 126,
+      "line": 117,
       "fn": "recommendVideos",
       "model": "FeedHiddenChannel",
       "method": "findMany",
@@ -6323,7 +6323,7 @@
     },
     {
       "file": "src/lib/feed/recommend.ts",
-      "line": 129,
+      "line": 120,
       "fn": "recommendVideos",
       "model": "FeedView",
       "method": "findMany",

@@ -97,6 +97,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       publishedAfter: new Date(eventDate.getTime() - 21 * 86_400_000),
       publishedBefore: new Date(eventDate.getTime() + 10 * 86_400_000),
       viewerId: viewer?.id ?? null,
+      // A card that has already happened leads with highlights/recap/reaction;
+      // an upcoming one leads with fight-week build-up.
+      phase: eventDate.getTime() < Date.now() ? "post" : "pre",
       limit: 4,
     }),
   ]);

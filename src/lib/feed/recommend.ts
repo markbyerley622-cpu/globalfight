@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { promotionBySlug } from "@/lib/promotions";
 import { SPORTS } from "@/lib/sports";
+import { shapeLabel, shapeIndex } from "@/lib/feed/video-shape";
 import type { Prisma } from "@prisma/client";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -46,6 +47,9 @@ export interface VideoContext {
    *  they sit on ("Related to UFC"). Same rules, same query, different voice —
    *  which is cheaper than a second selector that drifts. */
   voice?: "related" | "following";
+  /** Event phase. "post" (a card that has happened) leads with highlights/recap
+   *  and demotes fight-week build-up; "pre" is the reverse. Default "pre". */
+  phase?: "pre" | "post";
   limit?: number;
 }
 
@@ -65,28 +69,15 @@ export interface VideoRec {
 // refuses short terms for exactly this reason.
 const MIN_NAME = 6;
 
-/** Editorial shapes, best first. Used only to ORDER within a tier — never to
- *  exclude, because a channel that doesn't use these words still publishes. */
-const SHAPE_RANK: { re: RegExp; label: string }[] = [
-  { re: /\binterview\b|\bsits down\b|\bone[- ]on[- ]one\b/i, label: "Interview" },
-  { re: /\bmedia day\b|\bscrum\b/i, label: "Media day" },
-  { re: /\bembedded\b|\bfight week\b|\bvlog\b/i, label: "Fight week" },
-  { re: /\bpress conference\b|\bpresser\b|\bface[- ]?off\b/i, label: "Press conference" },
-  { re: /\bweigh[- ]?in/i, label: "Weigh-ins" },
-  { re: /\bcountdown\b|\bpreview\b|\bbreakdown\b/i, label: "Preview" },
-  { re: /\bhighlight|\bknockout|\bko\b|\bfinish\b/i, label: "Highlights" },
-];
-
-const shapeIndex = (title: string): number => {
-  const i = SHAPE_RANK.findIndex((s) => s.re.test(title));
-  return i === -1 ? SHAPE_RANK.length : i;
-};
+// Editorial shape + phase ordering live in a pure module so they can be
+// unit-tested without prisma. See video-shape.ts.
 
 export async function recommendVideos(ctx: VideoContext): Promise<VideoRec[]> {
   const names = (ctx.fighterNames ?? []).filter((n) => n && n.trim().length >= MIN_NAME);
   const promotions = ctx.promotions?.filter(Boolean) ?? [];
   const disciplines = ctx.disciplines?.filter(Boolean) ?? [];
   const text = (ctx.text ?? "").trim();
+  const phase = ctx.phase ?? "pre";
   const limit = Math.min(Math.max(ctx.limit ?? 4, 1), 24);
 
   const or: Prisma.FeedVideoWhereInput[] = [
@@ -151,7 +142,7 @@ export async function recommendVideos(ctx: VideoContext): Promise<VideoRec[]> {
       tier = 0;
       reason = following
         ? `Because you follow ${named}`
-        : `${SHAPE_RANK[shapeIndex(v.title)]?.label ?? "Featuring"} · ${named}`;
+        : `${shapeLabel(v.title) ?? "Featuring"} · ${named}`;
     } else if (v.promotion && promotions.includes(v.promotion)) {
       tier = 1;
       reason = following ? `Following ${promoName ?? v.promotion}` : `Related to ${promoName ?? v.promotion}`;
@@ -168,7 +159,7 @@ export async function recommendVideos(ctx: VideoContext): Promise<VideoRec[]> {
 
     scored.push({
       tier,
-      shape: shapeIndex(v.title),
+      shape: shapeIndex(v.title, phase),
       seen: seen.has(v.id) ? 1 : 0,
       at: v.publishedAt ? v.publishedAt.getTime() : 0,
       rec: {
