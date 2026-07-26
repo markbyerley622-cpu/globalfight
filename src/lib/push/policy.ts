@@ -27,6 +27,11 @@ export const CATEGORY_OF: Record<string, NotifCategory> = {
   BATTLE_REPLY: "social",
   COMMUNITY_REPLY: "social",
   FOLLOW: "social",
+  // A streak is earned by predicting and lives in the same habit loop as rank
+  // and results, so it rides the "predictions" toggle rather than adding a fifth
+  // category (and a migration). A user who muted predictions muting this too is
+  // coherent.
+  STREAK_REMINDER: "predictions",
   SYSTEM: "social",
 };
 

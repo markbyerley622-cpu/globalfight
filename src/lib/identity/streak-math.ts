@@ -94,3 +94,26 @@ export function liveStreak(prev: StreakCounters, now: Date): number {
   const gap = daysBetween(dayKey(prev.lastActiveOn), dayKey(now));
   return gap > 1 || gap < 0 ? 0 : prev.dayStreak;
 }
+
+/** Streaks below this aren't worth a reminder — a 1–2 day run isn't yet a habit
+ *  and warning about it reads as spam to a casual new user. */
+export const STREAK_WARN_MIN = 3;
+
+/**
+ * Is this streak ALIVE but not yet extended today — i.e. it breaks at the next
+ * UTC midnight unless the user shows up? The one condition a "keep your streak"
+ * reminder is allowed to fire on.
+ *
+ *   gap 0  → already visited today (safe, nothing to warn)
+ *   gap 1  → visited yesterday, not today → AT RISK → warn
+ *   gap >1 → already broken (liveStreak is 0); the column is just stale
+ *
+ * Pure so the Return Engine's decision is unit-tested without a database.
+ */
+export function streakWarningDue(
+  prev: Pick<StreakCounters, "dayStreak" | "lastActiveOn">,
+  now: Date,
+): boolean {
+  if (!prev.lastActiveOn || prev.dayStreak < STREAK_WARN_MIN) return false;
+  return daysBetween(dayKey(prev.lastActiveOn), dayKey(now)) === 1;
+}

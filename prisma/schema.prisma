@@ -1203,6 +1203,9 @@ model User {
   @@index([mapVisibility, mapLat])
   // Retention cohorts (D1/D7/D30) in metrics.ts scan users by createdAt window.
   @@index([createdAt])
+  // The Return Engine's streak-warning pass ranges on lastActiveOn each hour
+  // ("streaks alive yesterday, not extended today"); without this it scans User.
+  @@index([lastActiveOn])
 }
 
 /// Forgotten-password reset tokens.
@@ -1653,6 +1656,7 @@ enum NotificationType {
   BATTLE_RESULT
   BATTLE_MATCHED // an opponent took the other side — the room is live
   BATTLE_REPLY // your rival spoke in the battle room
+  STREAK_REMINDER // your daily visit streak is alive but not yet extended today
   SYSTEM
 }
 

@@ -3,6 +3,7 @@ import type { NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { pushToUsers } from "@/lib/push/send";
 import { resolvePromotion } from "@/lib/promotions";
+import { dayKey, STREAK_WARN_MIN } from "@/lib/identity/streak-math";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Return Engine — the deterministic pipeline that brings people back.
@@ -260,8 +261,70 @@ export async function runReturnEngine(): Promise<{ eventsSoon: number; eventsLiv
   sent += await emitFighterBookings(now);
   sent += await emitRankMilestones();
   sent += await emitDormantNudge(now);
+  sent += await emitStreakWarnings(now);
 
   return { eventsSoon: soonEvents.length, eventsLive: liveEvents.length, sent };
+}
+
+// ── The streak-keeper: the ONE reminder that needs no fight ──────────────────
+
+// Warn only in the back half of the UTC day. The streak breaks at the next UTC
+// midnight, so firing at 02:00 UTC (they have all day to return on their own) is
+// premature and reads as nagging; firing in the evening catches the people who
+// genuinely aren't coming back today. The per-day dedupeKey keeps it to one
+// reminder even though the cron runs every hour in this window.
+const STREAK_WARN_FROM_UTC_HOUR = 17;
+// Bound one run. Ordered by streak desc so the biggest (most painful to lose,
+// and the users we most want to save) are never the ones dropped if capped.
+const STREAK_WARN_LIMIT = 5000;
+
+/**
+ * "Keep your 42-day streak alive."
+ *
+ * The only Return-Engine trigger that fires on a day with no fights — the answer
+ * to "why open the app on a Tuesday". Targets streaks that are ALIVE (visited
+ * yesterday) but NOT yet extended today, worth protecting (≥ STREAK_WARN_MIN).
+ *
+ * The at-risk set is a single indexed range on lastActiveOn: rows whose last
+ * active day is exactly yesterday. `dayStreak >= MIN` filters in memory (the
+ * range already narrows to one day of actives). No per-user lookup; quiet hours
+ * and the predictions toggle gate the PUSH inside pushToUsers, exactly as every
+ * other producer here relies on.
+ */
+async function emitStreakWarnings(now: Date): Promise<number> {
+  if (now.getUTCHours() < STREAK_WARN_FROM_UTC_HOUR) return 0;
+
+  const today = dayKey(now);
+  const yesterday = new Date(today.getTime() - 86_400_000);
+
+  // lastActiveOn is stored as a UTC-midnight value, so "== yesterday" is the
+  // half-open range [yesterday, today). That is precisely streakWarningDue's
+  // gap === 1 case; encoding it as a range lets the index do the work.
+  const atRisk = await prisma.user.findMany({
+    where: {
+      dayStreak: { gte: STREAK_WARN_MIN },
+      lastActiveOn: { gte: yesterday, lt: today },
+    },
+    select: { id: true, dayStreak: true },
+    orderBy: { dayStreak: "desc" },
+    take: STREAK_WARN_LIMIT,
+  });
+  if (!atRisk.length) return 0;
+
+  const dayTag = today.toISOString().slice(0, 10); // one reminder per user per day
+  return emit(
+    atRisk.map((u) => ({
+      userId: u.id,
+      type: "STREAK_REMINDER",
+      title: `Keep your ${u.dayStreak}-day streak`,
+      // No wall-clock: the deadline is UTC midnight, an odd local time for many,
+      // so the copy stays true in every zone.
+      body: `You haven't opened Combat Reviews today — drop in to keep your ${u.dayStreak}-day streak alive.`,
+      url: "/today",
+      icon: "🔥",
+      dedupeKey: `streak_warn:${dayTag}`,
+    })),
+  );
 }
 
 // ── Following: a fighter you follow got booked ──────────────────────────────

@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 761,
+    "queries": 762,
     "high": 0,
     "medium": 67,
     "low": 147,
-    "info": 547,
-    "public": 511,
+    "info": 548,
+    "public": 512,
     "userOwned": 159,
     "shared": 91,
     "admin": 0
@@ -1292,7 +1292,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 42,
+      "line": 43,
       "fn": "audienceFor",
       "model": "FavoritePromotion",
       "method": "findMany",
@@ -1305,7 +1305,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 45,
+      "line": 46,
       "fn": "audienceFor",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -1318,7 +1318,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 100,
+      "line": 101,
       "fn": "unpickedFollowers",
       "model": "FavoriteEvent",
       "method": "findMany",
@@ -1331,7 +1331,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 101,
+      "line": 102,
       "fn": "unpickedFollowers",
       "model": "FightPick",
       "method": "findMany",
@@ -1344,7 +1344,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 124,
+      "line": 125,
       "fn": "before",
       "model": "Notification",
       "method": "findMany",
@@ -1357,7 +1357,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 154,
+      "line": 155,
       "fn": "created",
       "model": "Notification",
       "method": "findMany",
@@ -1370,7 +1370,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 297,
+      "line": 360,
       "fn": "follows",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -8624,7 +8624,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 31,
+      "line": 32,
       "fn": "fights",
       "model": "Fight",
       "method": "findMany",
@@ -8637,7 +8637,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 48,
+      "line": 49,
       "fn": "audienceFor",
       "model": "FightPick",
       "method": "groupBy",
@@ -8650,7 +8650,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 130,
+      "line": 131,
       "fn": "res",
       "model": "Notification",
       "method": "createMany",
@@ -8663,7 +8663,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 189,
+      "line": 190,
       "fn": "runReturnEngine",
       "model": "Event",
       "method": "findMany",
@@ -8676,7 +8676,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 193,
+      "line": 194,
       "fn": "runReturnEngine",
       "model": "Event",
       "method": "findMany",
@@ -8689,7 +8689,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 234,
+      "line": 235,
       "fn": "closing",
       "model": "Event",
       "method": "findMany",
@@ -8702,7 +8702,20 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 281,
+      "line": 303,
+      "fn": "atRisk",
+      "model": "User",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/intelligence/return-engine.ts",
+      "line": 344,
       "fn": "fights",
       "model": "Fight",
       "method": "findMany",
@@ -8715,7 +8728,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 357,
+      "line": 420,
       "fn": "top",
       "model": "User",
       "method": "findMany",
@@ -8728,7 +8741,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 397,
+      "line": 460,
       "fn": "events",
       "model": "Event",
       "method": "findMany",
@@ -8741,7 +8754,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 418,
+      "line": 481,
       "fn": "active",
       "model": "AnalyticsEvent",
       "method": "findMany",

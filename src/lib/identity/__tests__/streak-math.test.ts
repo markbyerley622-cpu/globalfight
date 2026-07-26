@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { advanceStreak, dayKey, daysBetween, liveStreak, type StreakCounters } from "../streak-math";
+import { advanceStreak, dayKey, daysBetween, liveStreak, streakWarningDue, STREAK_WARN_MIN, type StreakCounters } from "../streak-math";
 
 // The day-streak rule. A streak is the only counter in the product a user moves
 // by turning up, so an off-by-one here is the difference between "I have a
@@ -129,4 +129,35 @@ test("liveStreak: today's visit counts", () => {
 
 test("liveStreak: never visited → 0", () => {
   assert.equal(liveStreak(at(), D("2026-07-26T10:00:00Z")), 0);
+});
+
+// ── streakWarningDue — the "keep your streak" trigger ────────────────────────
+
+const warn = (dayStreak: number, lastActiveOn: Date | null) =>
+  streakWarningDue({ dayStreak, lastActiveOn }, D("2026-07-26T18:00:00Z"));
+
+test("warn: alive yesterday, not yet today, worth protecting → true", () => {
+  assert.equal(warn(5, D("2026-07-25T00:00:00Z")), true);
+});
+
+test("warn: already visited today → false (nothing at risk)", () => {
+  assert.equal(warn(5, D("2026-07-26T09:00:00Z")), false);
+});
+
+test("warn: streak already broken (gap > 1) → false, not resurrected", () => {
+  assert.equal(warn(5, D("2026-07-23T00:00:00Z")), false);
+});
+
+test("warn: streak below the minimum is not worth a push", () => {
+  assert.equal(warn(STREAK_WARN_MIN - 1, D("2026-07-25T00:00:00Z")), false);
+  assert.equal(warn(STREAK_WARN_MIN, D("2026-07-25T00:00:00Z")), true);
+});
+
+test("warn: never visited → false", () => {
+  assert.equal(warn(5, null), false);
+});
+
+test("warn: a lastActiveOn later in yesterday still counts as yesterday", () => {
+  // Stored value is a UTC-midnight day-key, but be robust to any yesterday instant.
+  assert.equal(warn(4, D("2026-07-25T23:30:00Z")), true);
 });
