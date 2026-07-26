@@ -23,7 +23,8 @@ const RARITY: Record<string, { label: string; ring: string; text: string; glow: 
 };
 
 // Badge styling by tier — elite badges are meant to catch the eye first.
-const TIER: Record<BadgeTier, string> = {
+// Exported so the Event Scorecard renders its badges identically (one source).
+export const BADGE_TIER_CLASS: Record<BadgeTier, string> = {
   elite:  "border-gold-500/45 bg-gold-500/12 text-gold-200",
   strong: "border-volt-500/35 bg-volt-500/10 text-volt-200",
   base:   "border-ink-700 bg-ink-800/60 text-mist",
@@ -107,7 +108,7 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
       {card.badges.length > 0 && (
         <div className="mx-6 mt-4 flex flex-wrap gap-2">
           {card.badges.map((b) => (
-            <span key={b.kind + b.label} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-[0.72rem] font-bold", TIER[b.tier])}>
+            <span key={b.kind + b.label} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-[0.72rem] font-bold", BADGE_TIER_CLASS[b.tier])}>
               {b.label}
             </span>
           ))}

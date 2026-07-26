@@ -8,7 +8,15 @@ import { TrackView } from "@/components/analytics-track";
  * picks on its card — how they did, reputation gained, streak, cards earned.
  * Closes the loop: predict → result → reward → collection/leaderboard → next.
  */
-export function ResultReveal({ summary, streak }: { summary: EventPickSummary; streak: number }) {
+export function ResultReveal({
+  summary, streak, scorecardHref,
+}: {
+  summary: EventPickSummary;
+  streak: number;
+  /** /u/<user>/card/<event> — present for a signed-in viewer with a username,
+   *  so their night becomes a shareable, permanent scorecard. */
+  scorecardHref?: string | null;
+}) {
   return (
     <section
       aria-label="Your result"
@@ -32,11 +40,22 @@ export function ResultReveal({ summary, streak }: { summary: EventPickSummary; s
         )}
       </div>
 
-      {summary.cardsEarned > 0 && (
-        <Link href="/collection" className="mt-4 inline-block rounded-lg bg-blood-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blood-600">
-          View your new cards
-        </Link>
-      )}
+      {/* The night is now a shareable, permanent artifact — the identity moment.
+          Primary CTA when there's a record worth sharing; cards link is secondary. */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        {scorecardHref && (
+          <Link href={scorecardHref} className="inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blood-600">
+            See your scorecard
+          </Link>
+        )}
+        {summary.cardsEarned > 0 && (
+          <Link href="/collection" className={scorecardHref
+            ? "inline-flex items-center gap-1.5 rounded-lg border border-ink-700 px-4 py-2 text-sm font-semibold text-mist transition-colors hover:text-chalk"
+            : "inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blood-600"}>
+            View your new cards
+          </Link>
+        )}
+      </div>
     </section>
   );
 }

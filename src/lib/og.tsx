@@ -76,6 +76,8 @@ export interface VictoryOg {
   /** "gold" | "volt" | "blood" — the rarity accent. */
   accent: "gold" | "volt" | "blood";
   win: boolean;
+  /** Overrides the win/miss verdict pill — e.g. a scorecard passes "5 / 6". */
+  verdict?: string;
   headline: string;
   /** "<user> called <fighter>". */
   sub: string;
@@ -113,7 +115,7 @@ export function renderVictoryOg(v: VictoryOg): ImageResponse {
               {v.rarityLabel}
             </div>
             <div style={{ display: "flex", alignItems: "center", padding: "8px 20px", borderRadius: 8, background: v.win ? VOLT : "#2a2f38", color: v.win ? INK : MIST, fontSize: 24, letterSpacing: 3, textTransform: "uppercase" }}>
-              {v.win ? "Called it" : "Missed"}
+              {v.verdict ?? (v.win ? "Called it" : "Missed")}
             </div>
           </div>
           <div style={{ display: "flex", fontSize: 26, letterSpacing: 5, color: FOG, textTransform: "uppercase" }}>Combat Reviews</div>

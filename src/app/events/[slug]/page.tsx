@@ -151,7 +151,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         eventFollowing={eventFollowing}
         boutCount={fights.length}
       />
-      {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
+      {pickSummary && (
+        <ResultReveal
+          summary={pickSummary}
+          streak={viewerStreak}
+          scorecardHref={viewer?.username ? `/u/${viewer.username}/card/${event.slug}` : null}
+        />
+      )}
       {room && <TheRoom room={room} />}
       <EventSchedule
         date={event.date}
