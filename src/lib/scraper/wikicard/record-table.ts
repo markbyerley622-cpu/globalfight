@@ -114,12 +114,17 @@ export function parseRecordTable(html: string): RecordRow[] {
       .find("th")
       .toArray()
       .map((th) => clean($(th).text()).toLowerCase());
-    const iResult = headers.findIndex((h) => h === "result");
+    // Boxing heads this column "Result"; MMA heads it "Res." — the same table, two
+    // conventions, and requiring the boxing spelling made every MMA biography parse to
+    // zero rows while boxing worked perfectly.
+    const iResult = headers.findIndex((h) => h === "result" || h === "res" || h === "res.");
     const iOpponent = headers.findIndex((h) => h === "opponent");
     if (iResult < 0 || iOpponent < 0) return;
 
     const iType = headers.findIndex((h) => h === "type" || h === "method");
+    // Boxing merges these into "Round, time"; MMA splits them into "Round" and "Time".
     const iRound = headers.findIndex((h) => h.startsWith("round"));
+    const iTime = headers.findIndex((h) => h === "time");
     const iDate = headers.findIndex((h) => h === "date");
 
     $(table)
@@ -151,7 +156,9 @@ export function parseRecordTable(html: string): RecordRow[] {
           opponent,
           method: at(iType) || null,
           round: rt.round,
-          time: rt.time,
+          // A separate Time column wins when the layout has one (MMA); otherwise the
+          // time comes out of the combined "Round, time" cell (boxing).
+          time: (iTime >= 0 ? at(iTime) : "").match(/^\d{1,2}:\d{2}$/) ? at(iTime) : rt.time,
           date: parseRecordDate(at(iDate)),
         });
       });

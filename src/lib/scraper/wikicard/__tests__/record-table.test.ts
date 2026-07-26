@@ -94,3 +94,34 @@ test("parseRecordDate handles the formats Wikipedia actually uses", () => {
   assert.equal(parseRecordDate("TBA"), null);
   assert.equal(parseRecordDate(""), null);
 });
+
+// ── the two conventions ─────────────────────────────────────────────────────
+// Boxing heads the outcome column "Result" and merges "Round, time"; MMA heads it
+// "Res." and splits Round and Time. Requiring the boxing spelling made every MMA
+// biography parse to ZERO rows while boxing worked perfectly — invisible until the
+// trace printed "record rows=0" on an MMA fighter's page.
+
+const MMA_HTML = `
+<table class="wikitable">
+  <tr><th>Res.</th><th>Record</th><th>Opponent</th><th>Method</th><th>Event</th><th>Date</th><th>Round</th><th>Time</th><th>Location</th></tr>
+  <tr><td>Win</td><td>17–0</td><td>Max Holloway</td><td>KO (punches)</td><td>UFC 308</td><td>26 Oct 2024</td><td>3</td><td>1:34</td><td>Abu Dhabi</td></tr>
+  <tr><td>Loss</td><td>16–1</td><td>Someone Else</td><td>Submission</td><td>UFC 300</td><td>13 Apr 2024</td><td>2</td><td>4:10</td><td>Las Vegas</td></tr>
+</table>`;
+
+test("an MMA record table ('Res.' + separate Time column) parses", () => {
+  const rows = parseRecordTable(MMA_HTML);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].outcome, "win");
+  assert.equal(rows[0].opponent, "Max Holloway");
+  assert.equal(rows[0].method, "KO (punches)");
+  assert.equal(rows[0].round, 3);
+  assert.equal(rows[0].time, "1:34", "the separate Time column is used");
+  assert.equal(rows[0].date?.toISOString().slice(0, 10), "2024-10-26");
+});
+
+test("MMA corners flip on a loss, exactly as boxing does", () => {
+  const rows = parseRecordTable(MMA_HTML);
+  const bout = recordRowToBout(rows[1], "Ilia Topuria");
+  assert.equal(bout.redName, "Someone Else");
+  assert.equal(bout.blueName, "Ilia Topuria");
+});

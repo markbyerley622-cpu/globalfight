@@ -32,7 +32,7 @@ import { searchPages, fetchPageHtml } from "./client";
 import { parseWikiCard, type WikiBout } from "./extract";
 import { toNormalizedWikiEvent } from "./map";
 import { verifyCard, verifyTitle, isAcceptable } from "./verify";
-import { parseRecordTable, findRecordRow, recordRowToBout, type RecordRow } from "./record-table";
+import { parseRecordTable, findRecordRow, recordRowToBout, DATE_TOLERANCE_DAYS, type RecordRow } from "./record-table";
 import { resolveName } from "@/lib/entities/resolve";
 import { rankCandidates, PARSE_BUDGET, type CandidateContext } from "./candidates";
 import type { NormalizedEvent } from "@/services/providers/types";
@@ -227,11 +227,24 @@ async function harvestTarget(
           fromRecord = true;
         }
       }
+      // Always report BOTH readers. Saying only "0 bout rows from the page card" on a
+      // biography hides the question that matters — was the record table read, and did
+      // it simply not contain this bout?
       step("parse", bouts.length > 0,
-        fromRecord
-          ? `${bouts.length} bout(s) matched in this fighter's career record (${page.records.length} rows)`
-          : `${bouts.length} bout row(s) extracted from the page card`);
-      if (!bouts.length) continue;
+        `card rows=${page.bouts.length} · record rows=${page.records.length}` +
+          (fromRecord ? ` → matched ${bouts.length} via career record` : ""));
+      if (!bouts.length) {
+        if (page.records.length && !fromRecord) {
+          const near = page.records.filter(
+            (r) => r.date && Math.abs(r.date.getTime() - new Date(eventIdentity.date).getTime()) <= DATE_TOLERANCE_DAYS * 86_400_000,
+          );
+          step("verify", false,
+            near.length
+              ? `record has ${near.length} row(s) near ${eventIdentity.date.slice(0, 10)} but the opponent is not our fighter: ${near.map((r) => r.opponent).join(", ")}`
+              : `record has no row within ${DATE_TOLERANCE_DAYS} days of ${eventIdentity.date.slice(0, 10)} — this bout is not on it yet`);
+        }
+        continue;
+      }
       sawCard = true;
 
       // ── THE GATE ──────────────────────────────────────────────────────────

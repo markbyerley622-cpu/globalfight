@@ -29,9 +29,20 @@ import type { WikiMode } from "../src/lib/scraper/wikicard/targets.ts";
 
 const argv = process.argv.slice(2);
 const flag = (name: string) => argv.includes(`--${name}`);
+/**
+ * A flag's value, joining every token up to the next `--flag`.
+ *
+ * npm strips the quotes from `-- --fight "Anthony Joshua vs Kristian Prenga"`, so the
+ * value arrives as five separate argv entries. Reading only argv[i+1] silently
+ * searched for "Anthony" and reported no match — a wrong answer that looks like a
+ * real one, which is the worst kind.
+ */
 const value = (name: string) => {
   const i = argv.indexOf(`--${name}`);
-  return i >= 0 ? argv[i + 1] : undefined;
+  if (i < 0) return undefined;
+  const parts: string[] = [];
+  for (let j = i + 1; j < argv.length && !argv[j].startsWith("--"); j++) parts.push(argv[j]);
+  return parts.length ? parts.join(" ") : undefined;
 };
 
 const mode: WikiMode = flag("historical") ? "historical" : flag("replay") ? "replay" : "incremental";
@@ -116,8 +127,7 @@ No UNRESOLVED bout matches "${fightQuery}".`);
   };
   console.log(`  ${why[o.reason] ?? o.reason}`);
   if (o.reason !== "verified") {
-    console.log("
-  This is a SOURCE-COVERAGE limit, not a settlement bug: there is nothing");
+    console.log("\n  This is a SOURCE-COVERAGE limit, not a settlement bug: there is nothing");
     console.log("  to write. Nothing is fabricated to close it.");
   }
   await prisma.$disconnect();
