@@ -39,6 +39,8 @@ export function BoutPick({
   initialCrowd,
   initialPick,
   marketRedP = null,
+  locked = false,
+  lockedNote,
 }: {
   fightSlug: string;
   redName: string;
@@ -48,6 +50,18 @@ export function BoutPick({
   /** Vig-free market win probability for the RED corner (0..1), or null when no
    *  odds are connected (niche sports) — the underdog cue simply stays hidden. */
   marketRedP?: number | null;
+  /**
+   * Picks are CLOSED (first bell has rung — see intelligence/pick-status
+   * ::picksLocked, the same predicate castPick enforces server-side).
+   *
+   * Without this the control stayed fully interactive on a bout that had already
+   * happened: taps were rejected by the API, and a call made before the bell read
+   * as a live, unsettled prediction indefinitely. A locked card shows the call that
+   * was made and says what it is waiting for.
+   */
+  locked?: boolean;
+  /** What the locked card is waiting for, e.g. "Awaiting confirmed result". */
+  lockedNote?: string;
 }) {
   const { user } = useAuth();
   const [crowd, setCrowd] = useState<Crowd>(initialCrowd);
@@ -60,7 +74,10 @@ export function BoutPick({
 
   async function send(corner: Corner, confidence: number | null, method: Method | null) {
     if (!user) { window.location.href = "/account"; return; }
-    if (busy) return;
+    // Belt and braces: the buttons are disabled when locked, and the write is
+    // refused here too, so no code path optimistically moves the crowd bar for a
+    // pick the server is going to reject.
+    if (locked || busy) return;
     setBusy(true);
 
     // Optimistic crowd move.
@@ -146,7 +163,11 @@ export function BoutPick({
           {busy && <Loader2 className="size-4 animate-spin text-fog" />}
         </div>
         <p className="mb-3 text-[0.7rem] leading-relaxed text-fog">
-          {pick ? "Set your confidence and how it ends — correct calls earn points." : "Make your call — earn points if it lands. Skill, not betting."}
+          {locked
+            ? (lockedNote ?? "Picks are closed — the card has started.")
+            : pick
+              ? "Set your confidence and how it ends — correct calls earn points."
+              : "Make your call — earn points if it lands. Skill, not betting."}
         </p>
 
         {/* Choose a fighter */}
@@ -156,6 +177,7 @@ export function BoutPick({
             picked={pick?.corner === "RED"}
             tone="red"
             underdog={redUnderdog}
+            disabled={locked}
             onClick={() => send("RED", pick?.corner === "RED" ? pick.confidence : null, pick?.corner === "RED" ? pick.method : null)}
           />
           <CornerButton
@@ -163,6 +185,7 @@ export function BoutPick({
             picked={pick?.corner === "BLUE"}
             tone="blue"
             underdog={blueUnderdog}
+            disabled={locked}
             onClick={() => send("BLUE", pick?.corner === "BLUE" ? pick.confidence : null, pick?.corner === "BLUE" ? pick.method : null)}
           />
         </div>
@@ -175,7 +198,7 @@ export function BoutPick({
         )}
 
         {/* Confidence — appears once a fighter is chosen */}
-        {pick && (
+        {pick && !locked && (
           <div className="mt-4 flex items-center justify-center gap-2">
             <span className="text-[0.65rem] uppercase tracking-wider text-fog">Confidence</span>
             <div className="-my-1 flex items-center">
@@ -196,7 +219,7 @@ export function BoutPick({
         )}
 
         {/* Finish method — optional, appears with a fighter. */}
-        {pick && (
+        {pick && !locked && (
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             <span className="w-full text-center text-[0.65rem] uppercase tracking-wider text-fog">How it ends</span>
             {METHODS.map((m) => (
@@ -233,10 +256,13 @@ export function BoutPick({
                 Locked in — you&apos;re calling {pick.corner === "RED" ? redName : blueName}
               </p>
               <p className="text-[0.7rem] leading-snug text-fog">
-                {pick.confidence ? `${pick.confidence}/5 confidence` : "Tap the stars to set your confidence"}
+                {pick.confidence ? `${pick.confidence}/5 confidence` : locked ? "No confidence set" : "Tap the stars to set your confidence"}
                 {pick.method ? ` · by ${METHODS.find((m) => m.value === pick.method)?.label}` : ""}
                 {" · "}
-                <span className="text-mist">points if it lands</span>
+                {/* Locked: say what it is waiting for. "points if it lands" on a bout
+                    that finished two days ago is the sentence that made an unsettled
+                    prediction look like a live one. */}
+                <span className="text-mist">{locked ? (lockedNote ?? "awaiting result") : "points if it lands"}</span>
               </p>
             </div>
           </div>
@@ -251,26 +277,34 @@ function CornerButton({
   picked,
   tone,
   underdog = false,
+  disabled = false,
   onClick,
 }: {
   name: string;
   picked: boolean;
   tone: "red" | "blue";
   underdog?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={picked}
       className={cn(
-        "relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-center transition-all active:scale-95",
+        "relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-center transition-all",
+        // A locked corner keeps the CALL legible (that is the whole point of showing
+        // it) but drops every affordance that promises it can still be changed.
+        disabled ? "cursor-default" : "active:scale-95",
         picked
           ? tone === "red"
             ? "border-blood-500 bg-blood-500/15 text-chalk shadow-glow-red"
             : "border-volt-500 bg-volt-500/15 text-chalk"
-          : "border-ink-700 text-mist hover:border-ink-600 hover:bg-ink-800",
+          : disabled
+            ? "border-ink-800 text-fog"
+            : "border-ink-700 text-mist hover:border-ink-600 hover:bg-ink-800",
       )}
     >
       {underdog && (
@@ -282,7 +316,9 @@ function CornerButton({
         {tone === "red" ? "Red corner" : "Blue corner"}
       </span>
       <span className="font-display text-sm font-bold leading-tight">{name}</span>
-      <span className="text-[0.65rem] text-fog">{picked ? "Your call ✓" : "Tap to choose"}</span>
+      <span className="text-[0.65rem] text-fog">
+        {picked ? "Your call ✓" : disabled ? "—" : "Tap to choose"}
+      </span>
     </button>
   );
 }

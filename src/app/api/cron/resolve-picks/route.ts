@@ -20,17 +20,30 @@ export async function GET(req: Request) {
   const started = Date.now();
   try {
     const out = await resolveDuePicks();
+    // Telemetry runs AFTER reconciliation, so the numbers describe what is still
+    // broken rather than what this run was about to fix. unsettledPicks is the
+    // invariant: a decisive result with an ungraded pick means payouts are owed, and
+    // if it is non-zero here — immediately after the reconciler ran — something is
+    // failing rather than merely lagging. That distinction was not observable before.
     const ops = await resultOps().catch(() => null);
-    if (ops && (ops.awaitingResults > 0 || ops.resolutionLag > 0)) {
+    if (ops && (ops.unsettledPicks > 0 || ops.unsettledBattles > 0)) {
+      log.error(
+        { op: "resolve-picks.drift", unsettledPicks: ops.unsettledPicks,
+          unsettledBattles: ops.unsettledBattles, lagSample: ops.lagSample.slice(0, 5) },
+        "INVARIANT VIOLATED: decided bouts still carry ungraded picks after reconciliation",
+      );
+    }
+    if (ops && ops.awaitingResults > 0) {
       log.warn(
-        { op: "resolve-picks.ops", awaitingResults: ops.awaitingResults, resolutionLag: ops.resolutionLag,
-          awaitingSample: ops.awaitingSample.slice(0, 5), lagSample: ops.lagSample.slice(0, 5) },
-        "result-integrity: bouts awaiting results or picks awaiting resolution",
+        { op: "resolve-picks.ops", awaitingResults: ops.awaitingResults,
+          awaitingSample: ops.awaitingSample.slice(0, 5) },
+        "bouts are over with no ingested result — the results feed, not settlement",
       );
     }
     return NextResponse.json({
       ok: true, kind: "resolve-picks", durationMs: Date.now() - started, ...out,
       awaitingResults: ops?.awaitingResults ?? null, resolutionLag: ops?.resolutionLag ?? null,
+      unsettledPicks: ops?.unsettledPicks ?? null, unsettledBattles: ops?.unsettledBattles ?? null,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, kind: "resolve-picks", error: (e as Error).message }, { status: 500 });

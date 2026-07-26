@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
 import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
+import { onResultWritten } from "@/lib/intelligence/resolve";
 import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
@@ -341,7 +342,13 @@ async function upsertFight(
       if (Object.keys(update).length > 0) {
         await tx.fight.update({ where: { id: existing.id }, data: update });
       }
-      return { fightId: existing.id, existing, data, redId, blueId };
+      // Did THIS write decide a bout that wasn't decided before? That transition is
+      // the domain event every downstream consumer hangs off.
+      const decided =
+        existing.result === "SCHEDULED" &&
+        typeof update.result === "string" &&
+        update.result !== "SCHEDULED";
+      return { fightId: existing.id, existing, data, redId, blueId, decided };
     }
 
     const created = await tx.fight.upsert({
@@ -363,7 +370,16 @@ async function upsertFight(
         date,
       },
     });
-    return { fightId: created.id, existing: null, data, redId, blueId };
+    // A brand-new row can also arrive already decided (a Wikipedia results table
+    // backfilling a card we never held), and picks may already exist against it.
+    return {
+      fightId: created.id,
+      existing: null,
+      data,
+      redId,
+      blueId,
+      decided: (stub.result ?? "SCHEDULED") !== "SCHEDULED",
+    };
   });
 
   // Best-effort provenance, OUTSIDE the transaction. Link only corners we just
@@ -374,4 +390,11 @@ async function upsertFight(
   if (outcome.existing) {
     await recordConflicts("Fight", outcome.fightId, outcome.data, outcome.existing.lockedFields, outcome.existing as unknown as Record<string, unknown>, source);
   }
+
+  // SETTLEMENT, fired by the write that caused it. Ingest used to stop at
+  // Fight.result and leave every prediction on the bout open until a cron happened
+  // to run — the gap that let a decided fight coexist with an open prediction.
+  // onResultWritten never throws: the result is the fact, settlement is a
+  // consequence, and resolveDuePicks re-tries anything that fails here.
+  if (outcome.decided) await onResultWritten(outcome.fightId, source);
 }

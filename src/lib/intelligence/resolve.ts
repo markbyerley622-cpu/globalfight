@@ -6,6 +6,8 @@ import { recordActivity } from "@/lib/activity";
 import { awardCard, rarityForFight } from "@/lib/collectibles";
 import { resolveFightBattles } from "@/lib/battles";
 import { winnerCorner, upsetFactor } from "@/lib/intelligence/scoring";
+import { invalidate } from "@/lib/cache";
+import { log } from "@/lib/scraper/logger";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Combat Intelligence Engine — the resolution pipeline.
@@ -16,10 +18,21 @@ import { winnerCorner, upsetFactor } from "@/lib/intelligence/scoring";
 //    grade pick → update stats/streak → award reputation → earn collectible
 //                → notify → record activity
 //
-//  Idempotency: each pick is graded only while `correct IS NULL`, and the fight
-//  is stamped `picksResolvedAt` when done — so re-runs are safe no-ops. Each
-//  pick's fan-out is wrapped in its own transaction: one user's payout can't
-//  half-apply, and one failure doesn't poison the rest of the card.
+//  IDEMPOTENCY — and, now, CONCURRENCY SAFETY.
+//
+//  Each pick's fan-out is wrapped in its own transaction: one user's payout can't
+//  half-apply, and one failure doesn't poison the rest of the card. The fight is
+//  stamped `picksResolvedAt` when done, so re-runs skip it.
+//
+//  But "grade only while correct IS NULL" was a READ-then-WRITE: the picks were
+//  selected in loadFight and updated later. With a single hourly cron that was
+//  safe by luck. Settlement is now also triggered the moment a result is WRITTEN
+//  (see onResultWritten), so two runs can overlap — and awardReputation appends a
+//  ledger row and increments unconditionally, so an overlap would DOUBLE-AWARD.
+//
+//  The fix is an atomic CLAIM: `updateMany({ where: { correct: null } })` and act
+//  only when it reports 1 row. Postgres serialises that, so exactly one runner
+//  ever owns a given pick's payout, however many are in flight.
 // ════════════════════════════════════════════════════════════════════════════
 
 function loadFight(fightId: string) {
@@ -43,7 +56,8 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
     // Nothing to grade — resolve any battles (a re-run may still have open ones),
     // then stamp so the due-query stops selecting it.
     await resolveFightBattles(fightId, winnerCorner(fight));
-    if (!fight.picksResolvedAt) await prisma.fight.update({ where: { id: fightId }, data: { picksResolvedAt: new Date() } });
+    await stampResolved(fightId);
+    await invalidateSettlement(fight);
     return { resolved: 0 };
   }
 
@@ -64,17 +78,33 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   const onWinner = decisive ? fight.picks.filter((p) => p.corner === corner).length : 0;
   const upset = upsetFactor(onWinner, fight.picks.length, decisive);
 
+  // A void bout (draw / no-contest) has no winner to have called. Previously every
+  // pick on one was stored as `correct = false`, which made it render as a MISS
+  // while `picksResolved` was deliberately NOT incremented — so the profile said
+  // 0/0 while the list showed a red X, and getJustHappened counted the pick as
+  // graded when the user's record didn't. Void picks now stay `correct = null` and
+  // are recognised by the fight's own result (pickStatus → VOID). The fight's
+  // `picksResolvedAt` stamp is what stops reprocessing, not a false grade.
+  if (!decisive) {
+    await resolveFightBattles(fightId, corner);
+    await stampResolved(fightId);
+    await invalidateSettlement(fight);
+    return { resolved: 0 };
+  }
+
   let resolved = 0;
   for (const pick of fight.picks) {
-    const correct = decisive && pick.corner === corner;
+    const correct = pick.corner === corner;
 
     await prisma.$transaction(async (tx) => {
-      await tx.fightPick.update({
-        where: { userId_fightId: { userId: pick.userId, fightId } },
-        data: { correct: decisive ? correct : false },
+      // ATOMIC CLAIM. Only the runner whose updateMany actually flips this row
+      // from NULL owns the payout below; a concurrent runner sees count 0 and
+      // skips, so reputation, cards and notifications happen exactly once.
+      const claim = await tx.fightPick.updateMany({
+        where: { userId: pick.userId, fightId, correct: null },
+        data: { correct },
       });
-
-      if (!decisive) return; // void bout: mark graded, no stats/rep/notify
+      if (claim.count !== 1) return;
 
       const user = await tx.user.update({
         where: { id: pick.userId },
@@ -135,13 +165,38 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   // side's pick is graded (winner = whoever's FightPick landed). Idempotent.
   await resolveFightBattles(fightId, corner);
 
-  await prisma.fight.update({ where: { id: fightId }, data: { picksResolvedAt: new Date() } });
+  await stampResolved(fightId);
+
+  // Settlement changed derived aggregates every surface reads — the card's crowd
+  // split, the room's verdict, the event payload. Nothing invalidated them, so a
+  // cached page could keep serving the pre-settlement view after the payouts had
+  // already landed. The write is the trigger; the cache must follow it.
+  await invalidateSettlement(fight);
 
   // If that was the last graded bout on the card, close the loop with one
   // scoreline. Best-effort: the payouts above are the real work.
   if (fight.eventId) await notifyCardSummary(fight.eventId).catch(() => {});
 
   return { resolved };
+}
+
+/** Stamp the fight as settled. Conditional, so concurrent runners don't fight over it. */
+async function stampResolved(fightId: string): Promise<void> {
+  await prisma.fight.updateMany({
+    where: { id: fightId, picksResolvedAt: null },
+    data: { picksResolvedAt: new Date() },
+  });
+}
+
+/** Drop every cached read whose content depends on settlement having happened. */
+async function invalidateSettlement(fight: { event: { slug: string } | null }): Promise<void> {
+  await Promise.all([
+    fight.event ? invalidate(`event:${fight.event.slug}`) : Promise.resolve(),
+    invalidate("events:results"),
+    invalidate("events:upcoming"),
+  ]).catch(() => {
+    /* a cache miss is a slow page, never a wrong payout — never fail settlement */
+  });
 }
 
 /**
@@ -200,10 +255,28 @@ async function notifyCardSummary(eventId: string): Promise<void> {
   );
 }
 
-/** Grade every decided bout that still has ungraded picks. Cron entrypoint. */
+/**
+ * Grade every decided bout that still has ungraded picks — the RECONCILER.
+ *
+ * This is the safety net, not the primary path: settlement now fires from the
+ * result write itself (onResultWritten). This exists so a missed hook, a crashed
+ * process or a result written directly in the database still converges.
+ *
+ * The old query required `picks: { some: {} }`, which left a blind spot: a decided
+ * bout carrying an OPEN BATTLE but no FightPick rows was never selected, so that
+ * battle stayed unresolved forever. Both gaps are covered now.
+ */
 export async function resolveDuePicks(limit = 200): Promise<{ fights: number; picks: number }> {
   const due = await prisma.fight.findMany({
-    where: { result: { not: "SCHEDULED" }, picksResolvedAt: null, picks: { some: {} } },
+    where: {
+      result: { not: "SCHEDULED" },
+      picksResolvedAt: null,
+      OR: [
+        { picks: { some: {} } },
+        // A bout whose battles are still open is unsettled even with no picks.
+        { battles: { some: { state: { in: ["WAITING", "ACTIVE"] } } } },
+      ],
+    },
     select: { id: true },
     orderBy: { date: "asc" },
     take: limit,
@@ -211,4 +284,54 @@ export async function resolveDuePicks(limit = 200): Promise<{ fights: number; pi
   let picks = 0;
   for (const f of due) picks += (await resolveFightPicks(f.id)).resolved;
   return { fights: due.length, picks };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE DOMAIN EVENT — "an official result was written".
+//
+//  This is the link that did not exist. `resolveFightPicks` had exactly ONE
+//  caller: the resolve-picks cron. So a result arriving from ingest, or typed into
+//  the admin editor, updated Fight.result and the event page and then STOPPED. The
+//  prediction stayed open, the challenge stayed unsettled and the accuracy stayed
+//  0/0 until the next cron tick — and on Vercel, where resolve-picks was never
+//  registered as a cron at all, until never.
+//
+//  Every site that persists a result now calls this, so the invariant holds by
+//  construction rather than by schedule:
+//
+//      result written  →  settlement  →  stats · rep · battles · notifications
+//                                        →  caches invalidated
+//
+//  It NEVER throws. A settlement failure must not roll back or reject the result
+//  write — the result is the fact, settlement is a consequence, and the reconciler
+//  above will retry. It logs loudly instead, because a silent failure here is
+//  exactly the class of bug this whole change exists to remove.
+// ════════════════════════════════════════════════════════════════════════════
+
+export async function onResultWritten(
+  fightId: string,
+  source: string,
+): Promise<{ settled: boolean; resolved: number }> {
+  try {
+    const out = await resolveFightPicks(fightId);
+    log.info({ op: "settle.onResultWritten", fightId, source, resolved: out.resolved }, "settlement:fired");
+    return { settled: true, resolved: out.resolved };
+  } catch (e) {
+    log.error(
+      { op: "settle.onResultWritten", fightId, source, err: (e as Error).message },
+      "settlement:FAILED — result stands, reconciler will retry",
+    );
+    return { settled: false, resolved: 0 };
+  }
+}
+
+/**
+ * Fire settlement for many fights at once — the ingest path, which writes a whole
+ * card in one pass. Sequential on purpose: each settlement runs its own
+ * transactions and there is no gain in hammering the pool during a cron.
+ */
+export async function onResultsWritten(fightIds: string[], source: string): Promise<number> {
+  let resolved = 0;
+  for (const id of fightIds) resolved += (await onResultWritten(id, source)).resolved;
+  return resolved;
 }

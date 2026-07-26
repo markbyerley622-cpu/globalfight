@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
 import { lockableFightFields, withLocked } from "@/lib/admin/provenance";
+import { onResultWritten } from "@/lib/intelligence/resolve";
 import type { ValidationIssue } from "@/lib/admin/events";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -186,6 +187,23 @@ export async function saveFight(
   ]);
 
   if (updated.event) await invalidate(`event:${updated.event.slug}`);
+
+  // SETTLEMENT, fired by the write that caused it.
+  //
+  // This is the path an operator uses to enter "KO, round 4, 1:53" by hand, and it
+  // used to end at the cache invalidation above: the event page showed the winner
+  // immediately while every prediction on the bout stayed open, the challenge stayed
+  // unsettled and the accuracy stayed 0/0 — until the next resolve-picks tick, and
+  // on Vercel (where that cron was never registered) indefinitely. An operator
+  // recording a result now settles the bout as part of recording it.
+  //
+  // Fires whenever this patch DECIDED a previously-undecided bout, or corrected the
+  // winner of one already decided (re-grading is what the atomic claim in
+  // resolveFightPicks makes safe). Never throws — the result stands either way.
+  const resultChanged = "result" in finalData || "winnerId" in finalData;
+  const nowDecided = String(finalData.result ?? before.result) !== "SCHEDULED";
+  if (resultChanged && nowDecided) await onResultWritten(fightId, `admin:${actorId}`);
+
   return { ok: true, fight: { id: updated.id, updatedAt: updated.updatedAt.toISOString(), lockedFields: updated.lockedFields } };
 }
 

@@ -43,6 +43,7 @@ import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll
 import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress } from "@/lib/card-segments";
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
+import { picksLocked, pickStatus, STATUS_PRESENTATION } from "@/lib/intelligence/pick-status";
 import { FightModule } from "@/components/fight/fight-module";
 import { CollapsibleFights } from "@/components/event/collapsible-fights";
 import { EventGeneralRoom } from "@/components/event/event-general-room";
@@ -205,6 +206,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                         crowd={crowdByFightId.get(f.id) ?? { red: 0, blue: 0, total: 0 }}
                         myPick={myPicksByFightId.get(f.id) ?? null}
                         market={marketBySlug.get(f.slug) ?? null}
+                        eventDate={event.date}
                       />
                     }
                   />
@@ -289,8 +291,14 @@ function ScrollSection({
  * bout collapses to its outcome and how the crowd called it. The battle and the
  * discussion that hang off this prediction live one block below, in the arena.
  */
-function BoutPrediction({ fight, crowd, myPick, market }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null }) {
+function BoutPrediction({ fight, crowd, myPick, market, eventDate }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null; eventDate: string }) {
   if (fight.result === "SCHEDULED") {
+    // The card may have STARTED without a result being ingested yet. Picks are
+    // closed at first bell (castPick enforces it server-side), so the control must
+    // render locked and say what it is waiting for — otherwise a call made before
+    // the bell reads as a live, open prediction for as long as the result is missing.
+    const locked = picksLocked(eventDate);
+    const status = pickStatus({ correct: null }, fight);
     return (
       <BoutPick
         fightSlug={fight.slug}
@@ -299,6 +307,8 @@ function BoutPrediction({ fight, crowd, myPick, market }: { fight: Fight; crowd:
         initialCrowd={crowd}
         initialPick={myPick}
         marketRedP={market?.redP ?? null}
+        locked={locked}
+        lockedNote={locked ? STATUS_PRESENTATION[status].detail : undefined}
       />
     );
   }

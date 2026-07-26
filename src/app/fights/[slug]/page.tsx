@@ -11,6 +11,7 @@ import { getCrowdForFight, getMyPick } from "@/lib/picks";
 import { resolvePromotion } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
 import { BoutPick } from "@/components/predictions/bout-pick";
+import { picksLocked, pickStatus, STATUS_PRESENTATION } from "@/lib/intelligence/pick-status";
 import { FightRoom } from "@/components/fight/fight-room";
 import { TaleOfTape } from "@/components/fight/tale-of-tape";
 
@@ -33,6 +34,7 @@ function loadFight(slug: string) {
     select: {
       id: true, slug: true, date: true, result: true, method: true, roundEnded: true, timeEnded: true,
       scheduledRounds: true, titleFight: true, mainEvent: true, coMain: true, winnerId: true, redId: true, blueId: true,
+      cancelled: true, // needed to derive the pick's terminal state (pick-status.ts)
       weightClass: { select: { name: true } },
       red: { select: { slug: true, name: true, nickname: true, countryCode: true, nationality: true, wins: true, losses: true, draws: true, koWins: true, koLosses: true, heightCm: true, reachCm: true, stance: true, gym: true, birthDate: true, imageUrl: true, thumbUrl: true, sport: true } },
       blue: { select: { slug: true, name: true, nickname: true, countryCode: true, nationality: true, wins: true, losses: true, draws: true, koWins: true, koLosses: true, heightCm: true, reachCm: true, stance: true, gym: true, birthDate: true, imageUrl: true, thumbUrl: true, sport: true } },
@@ -133,18 +135,28 @@ export default async function FightPage({ params }: { params: Promise<{ slug: st
           <TaleOfTape red={fight.red} blue={fight.blue} />
         </div>
 
-        {scheduled && (
-          <div className="mt-6">
-            <BoutPick
-              fightSlug={fight.slug}
-              redName={fight.red.name}
-              blueName={fight.blue.name}
-              initialCrowd={crowd}
-              initialPick={myPick}
-              marketRedP={market?.redP ?? null}
-            />
-          </div>
-        )}
+        {scheduled && (() => {
+          // Picks close at first bell even when no result has been ingested yet —
+          // the same predicate castPick enforces server-side. A locked control shows
+          // the call that was made and what it is waiting for, instead of staying
+          // interactive on a bout that already happened.
+          const locked = picksLocked(fight.event?.date);
+          const status = pickStatus({ correct: null }, { result: fight.result, date: fight.date, cancelled: fight.cancelled });
+          return (
+            <div className="mt-6">
+              <BoutPick
+                fightSlug={fight.slug}
+                redName={fight.red.name}
+                blueName={fight.blue.name}
+                initialCrowd={crowd}
+                initialPick={myPick}
+                marketRedP={market?.redP ?? null}
+                locked={locked}
+                lockedNote={locked ? STATUS_PRESENTATION[status].detail : undefined}
+              />
+            </div>
+          );
+        })()}
 
         {/* The same arena the event page opens — one implementation, two doors. */}
         <div className="mt-6">

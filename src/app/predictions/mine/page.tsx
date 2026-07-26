@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, X, Clock, Star, Trophy } from "lucide-react";
+import { Check, X, Clock, Star, Trophy, Hourglass, Loader, MinusCircle, Ban } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/db";
+import {
+  pickStatus,
+  isTerminal,
+  STATUS_PRESENTATION,
+  type PickStatus,
+} from "@/lib/intelligence/pick-status";
 import { getCurrentUser } from "@/lib/auth";
 import { BackButton } from "@/components/back-button";
 import { ButtonLink } from "@/components/ui/button";
@@ -38,6 +45,8 @@ export default async function MyPredictionsPage() {
         fight: {
           select: {
             slug: true, date: true, result: true, titleFight: true,
+            // Needed to DERIVE the pick's terminal state (see intelligence/pick-status).
+            cancelled: true, picksResolvedAt: true,
             red: { select: { name: true } },
             blue: { select: { name: true } },
             event: { select: { name: true } },
@@ -46,15 +55,29 @@ export default async function MyPredictionsPage() {
       },
     }),
     prisma.user.findUnique({ where: { id: user.id }, select: { picksResolved: true, picksCorrect: true } }),
-    prisma.fightPick.count({ where: { userId: user.id, fight: { result: "SCHEDULED" } } }),
+    // Genuinely open = not fought yet. Counting every SCHEDULED bout here folded
+    // "awaiting a result" into "Open", which is the conflation this page existed to
+    // hide behind: a stuck prediction inflated the Open number and looked normal.
+    prisma.fightPick.count({
+      where: { userId: user.id, fight: { result: "SCHEDULED", date: { gt: new Date() } } },
+    }),
     prisma.fightPick.count({ where: { userId: user.id } }),
   ]);
 
   const resolved = stats?.picksResolved ?? 0;
   const correct = stats?.picksCorrect ?? 0;
   const accuracy = resolved ? Math.round((correct / resolved) * 100) : 0;
-  const open = picks.filter((p) => p.fight.result === "SCHEDULED");
-  const settled = picks.filter((p) => p.fight.result !== "SCHEDULED");
+  // Grouped by DERIVED terminal state, not by `result === "SCHEDULED"`. That test
+  // called four different situations "Open": a fight next week, a fight that ended
+  // with no result ingested, a decided fight whose grading never ran, and a void
+  // bout. Only the first is genuinely open, and a reader could not tell them apart —
+  // which is precisely how an unsettled prediction hides. See pick-status.ts.
+  const withStatus = picks.map((p) => ({ ...p, status: pickStatus(p, p.fight) }));
+  const open = withStatus.filter((p) => p.status === "OPEN");
+  const waiting = withStatus.filter(
+    (p) => p.status === "AWAITING_RESULT" || p.status === "AWAITING_SETTLEMENT",
+  );
+  const settled = withStatus.filter((p) => isTerminal(p.status));
 
   return (
     <div className="px-4 pb-16 pt-5">
@@ -78,7 +101,7 @@ export default async function MyPredictionsPage() {
             {/* Record summary — the payoff line. */}
             <div className="mb-6 grid grid-cols-3 gap-3">
               <Stat value={`${accuracy}%`} label="Accuracy" sub={`${correct}/${resolved}`} />
-              <Stat value={String(openCount)} label="Open" sub="awaiting result" />
+              <Stat value={String(openCount)} label="Open" sub="not fought yet" />
               <Stat value={String(totalCount)} label="Total calls" sub="all time" />
             </div>
             {totalCount > picks.length && (
@@ -86,13 +109,18 @@ export default async function MyPredictionsPage() {
             )}
 
             {open.length > 0 && (
+              <Section title="Open">
+                {open.map((p) => <PickRow key={p.fight.slug} pick={p} status={p.status} username={user.username} />)}
+              </Section>
+            )}
+            {waiting.length > 0 && (
               <Section title="Awaiting result">
-                {open.map((p) => <PickRow key={p.fight.slug} pick={p} username={user.username} />)}
+                {waiting.map((p) => <PickRow key={p.fight.slug} pick={p} status={p.status} username={user.username} />)}
               </Section>
             )}
             {settled.length > 0 && (
               <Section title="Settled">
-                {settled.map((p) => <PickRow key={p.fight.slug} pick={p} username={user.username} />)}
+                {settled.map((p) => <PickRow key={p.fight.slug} pick={p} status={p.status} username={user.username} />)}
               </Section>
             )}
           </>
@@ -106,15 +134,27 @@ type PickData = {
   corner: string; method: string | null; confidence: number | null; correct: boolean | null;
   fight: {
     slug: string; date: Date; result: string; titleFight: boolean;
+    cancelled: boolean; picksResolvedAt: Date | null;
     red: { name: string }; blue: { name: string }; event: { name: string } | null;
   };
 };
 
-function PickRow({ pick, username }: { pick: PickData; username: string | null }) {
+// One row of presentation per terminal state. The engine names the state; this only
+// dresses it — so "Settling" can never be rendered as "Open" again.
+const STATUS_STYLE: Record<PickStatus, { icon: LucideIcon; tone: string; ring: string }> = {
+  OPEN: { icon: Clock, tone: "text-fog", ring: "border-ink-700" },
+  AWAITING_RESULT: { icon: Hourglass, tone: "text-mist", ring: "border-ink-700" },
+  AWAITING_SETTLEMENT: { icon: Loader, tone: "text-volt-300", ring: "border-volt-500/40" },
+  SETTLED_CORRECT: { icon: Check, tone: "text-up", ring: "border-up/40" },
+  SETTLED_INCORRECT: { icon: X, tone: "text-down", ring: "border-down/40" },
+  VOID: { icon: MinusCircle, tone: "text-fog", ring: "border-ink-700" },
+  CANCELLED: { icon: Ban, tone: "text-fog", ring: "border-ink-700" },
+};
+
+function PickRow({ pick, status, username }: { pick: PickData; status: PickStatus; username: string | null }) {
   const { fight } = pick;
   const pickedName = pick.corner === "RED" ? fight.red.name : fight.blue.name;
   const opponent = pick.corner === "RED" ? fight.blue.name : fight.red.name;
-  const pending = fight.result === "SCHEDULED";
   const method = pick.method ? METHOD_LABEL[pick.method] ?? pick.method : null;
   // A correct call opens its shareable Victory Card; everything else goes to the
   // bout. Needs a username to build the /u/ URL — fall back to the bout without.
@@ -122,14 +162,8 @@ function PickRow({ pick, username }: { pick: PickData; username: string | null }
     ? `/u/${username}/call/${fight.slug}`
     : `/fights/${fight.slug}`;
 
-  // Outcome badge — pending, correct, missed, or void (draw/NC → no grade).
-  const outcome = pending
-    ? { icon: Clock, tone: "text-fog", ring: "border-ink-700", label: "Open" }
-    : pick.correct === true
-      ? { icon: Check, tone: "text-up", ring: "border-up/40", label: "Correct" }
-      : pick.correct === false
-        ? { icon: X, tone: "text-down", ring: "border-down/40", label: "Missed" }
-        : { icon: X, tone: "text-fog", ring: "border-ink-700", label: "No result" };
+  const style = STATUS_STYLE[status];
+  const outcome = { ...style, label: STATUS_PRESENTATION[status].label };
   const Icon = outcome.icon;
 
   return (

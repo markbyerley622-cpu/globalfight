@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { track } from "@/lib/analytics";
 import { pairBattle } from "@/lib/battles";
+import { picksLocked } from "@/lib/intelligence/pick-status";
 
 // ── Crowd bout predictions ──────────────────────────────────────────────────
 // The North Star mechanic: a signed-in user picks a corner (+ optional 1–5
@@ -53,7 +54,10 @@ export async function castPick(
   // Prevents picking a bout whose outcome is already known but not yet recorded
   // (results are entered in a batch after the event) — the integrity hole that a
   // seeded community would exploit on night one. Standard pick'em behaviour.
-  if (f.event?.date && f.event.date.getTime() <= Date.now()) {
+  //
+  // The rule itself lives in intelligence/pick-status (pure) so the UI can render a
+  // locked control from the SAME predicate instead of a second copy that drifts.
+  if (picksLocked(f.event?.date)) {
     throw new Error("Picks are locked — the card has started");
   }
   const fightId = f.id;
