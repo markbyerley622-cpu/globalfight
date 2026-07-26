@@ -8143,7 +8143,7 @@
     },
     {
       "file": "src/lib/identity/just-happened.ts",
-      "line": 72,
+      "line": 80,
       "fn": "events",
       "model": "Event",
       "method": "findMany",
@@ -8156,7 +8156,7 @@
     },
     {
       "file": "src/lib/identity/just-happened.ts",
-      "line": 104,
+      "line": 113,
       "fn": "_getJustHappened",
       "model": "FightPick",
       "method": "groupBy",
@@ -8169,7 +8169,7 @@
     },
     {
       "file": "src/lib/identity/just-happened.ts",
-      "line": 107,
+      "line": 116,
       "fn": "_getJustHappened",
       "model": "FightPick",
       "method": "findMany",
@@ -8182,7 +8182,7 @@
     },
     {
       "file": "src/lib/identity/just-happened.ts",
-      "line": 118,
+      "line": 127,
       "fn": "rep",
       "model": "ReputationEvent",
       "method": "groupBy",

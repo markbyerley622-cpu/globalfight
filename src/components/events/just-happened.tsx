@@ -1,8 +1,28 @@
 import Link from "next/link";
-import { Check, Flame, ArrowRight, Clock } from "lucide-react";
+import { Check, Flame, ArrowRight, Clock, Zap } from "lucide-react";
 import type { JustHappenedEvent } from "@/lib/identity/just-happened";
-import { methodLabel } from "@/components/forums/pick-identity";
 import { timeAgo, cn } from "@/lib/utils";
+
+// A finish method mapped to a scannable badge. Colour carries meaning at a
+// glance: a stoppage reads hot, a submission volt, a decision cool. Every label
+// is the real FightMethod — nothing invented.
+const METHOD_BADGE: Record<string, { label: string; cls: string }> = {
+  KO:  { label: "KO",  cls: "border-blood-500/40 bg-blood-500/15 text-blood-300" },
+  TKO: { label: "TKO", cls: "border-blood-500/40 bg-blood-500/15 text-blood-300" },
+  RTD: { label: "TKO", cls: "border-blood-500/40 bg-blood-500/15 text-blood-300" }, // corner stoppage
+  SUB: { label: "SUB", cls: "border-volt-500/40 bg-volt-500/12 text-volt-300" },
+  UD:  { label: "UD",  cls: "border-ink-600 bg-ink-800/70 text-mist" },
+  MD:  { label: "MD",  cls: "border-ink-600 bg-ink-800/70 text-mist" },
+  SD:  { label: "SD",  cls: "border-gold-500/40 bg-gold-500/12 text-gold-300" }, // split — dramatic
+  TD:  { label: "TD",  cls: "border-ink-600 bg-ink-800/70 text-mist" },
+  DQ:  { label: "DQ",  cls: "border-blood-500/40 bg-blood-500/12 text-blood-300" },
+  NC:  { label: "NC",  cls: "border-ink-600 bg-ink-800/70 text-fog" },
+  DRAW:{ label: "Draw",cls: "border-ink-600 bg-ink-800/70 text-fog" },
+};
+
+function Badge({ children, cls }: { children: React.ReactNode; cls: string }) {
+  return <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wide", cls)}>{children}</span>;
+}
 
 // ── Just Happened band ──────────────────────────────────────────────────────
 // Sits above the upcoming list. Each card answers who won · how · how hard the
@@ -32,8 +52,8 @@ export function JustHappened({ events }: { events: JustHappenedEvent[] }) {
 
 function Card({ e }: { e: JustHappenedEvent }) {
   const m = e.main;
-  const finish = m ? [methodLabel(m.method), m.roundEnded ? `R${m.roundEnded}` : null].filter(Boolean).join(" · ") : null;
-  const hard = m?.calledByPct != null && m.calledByPct <= 40;
+  const method = m?.method ? METHOD_BADGE[m.method] : null;
+  const roundTime = m?.roundEnded ? `R${m.roundEnded}${m.timeEnded ? ` · ${m.timeEnded}` : ""}` : null;
 
   return (
     <Link
@@ -47,23 +67,32 @@ function Card({ e }: { e: JustHappenedEvent }) {
         </div>
 
         {m && m.resolved ? (
+          // Scannable: the WINNER dominates, the loser recedes, then a badge row
+          // reads method · round · honours · upset at a glance. No prose to read.
           <>
-            <p className="mt-2 font-display text-base font-black leading-tight text-chalk">
-              {m.winnerName} <span className="text-fog">def.</span> {m.loserName}
+            <p className="mt-2 font-display text-lg font-black leading-[1.05] text-chalk">{m.winnerName}</p>
+            <p className="text-[0.72rem] leading-tight text-fog">
+              <span className="uppercase tracking-wide">def.</span> {m.loserName}
             </p>
-            <p className="mt-0.5 text-xs text-mist">
-              {finish || "Result in"}{m.titleFight ? <span className="text-gold-400"> · Title</span> : null}
-            </p>
-            {m.calledByPct != null && (
-              <p className={cn("mt-2 inline-flex items-center rounded-md border px-2 py-0.5 text-[0.68rem] font-bold",
-                hard ? "border-volt-500/35 bg-volt-500/10 text-volt-300" : "border-ink-700 bg-ink-800/60 text-fog")}>
-                {hard ? `Only ${m.calledByPct}% called it` : `${m.calledByPct}% called it`}
-              </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {method && <Badge cls={method.cls}>{method.label}</Badge>}
+              {roundTime && <Badge cls="border-ink-600 bg-ink-800/70 text-mist">{roundTime}</Badge>}
+              {m.titleFight && <Badge cls="border-gold-500/40 bg-gold-500/12 text-gold-300">Title</Badge>}
+              {m.upset && <Badge cls="border-volt-500/40 bg-volt-500/12 text-volt-300"><Zap className="size-2.5" />Upset</Badge>}
+              {(m.performanceBonus || m.fightOfTheNight) && (
+                <Badge cls="border-gold-500/40 bg-gold-500/12 text-gold-300">{m.fightOfTheNight ? "FOTN" : "POTN"}</Badge>
+              )}
+            </div>
+            {m.calledByPct != null && !m.upset && (
+              <p className="mt-2 text-[0.68rem] font-semibold text-fog">{m.calledByPct}% of the room called it</p>
+            )}
+            {m.upset && (
+              <p className="mt-2 text-[0.68rem] font-semibold text-volt-300">Only {m.calledByPct}% saw it coming</p>
             )}
           </>
         ) : m ? (
-          // The card happened but results aren't in yet — show the matchup, mark
-          // it pending. It fills in with the winner once the resolve cron runs.
+          // The card happened but results aren't in yet — show the matchup and be
+          // honest about why. It fills in with the winner once the cron resolves.
           <>
             <p className="mt-2 font-display text-base font-black leading-tight text-chalk">
               {m.redName} <span className="text-fog">vs</span> {m.blueName}
@@ -71,6 +100,7 @@ function Card({ e }: { e: JustHappenedEvent }) {
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800/60 px-2 py-0.5 text-[0.68rem] font-bold text-fog">
               <Clock className="size-3" /> Result pending{m.titleFight ? <span className="text-gold-400"> · Title</span> : null}
             </p>
+            <p className="mt-1.5 text-[0.66rem] text-fog">The card has passed — results aren&apos;t in yet.</p>
           </>
         ) : (
           <p className="mt-2 font-display text-base font-black text-chalk">{e.name}</p>

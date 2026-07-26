@@ -26,10 +26,18 @@ export interface JustHappenedMain {
   // ── Resolved-only (null while pending) ──
   winnerName: string | null;
   loserName: string | null;
+  /** Raw FightMethod enum (KO/TKO/UD/SD/SUB/…) — the card maps it to a badge. */
   method: string | null;
   roundEnded: number | null;
+  /** Finish time within the round, e.g. "1:53". */
+  timeEnded: string | null;
+  /** Operator-awarded post-fight honours. */
+  performanceBonus: boolean;
+  fightOfTheNight: boolean;
   /** Share of the crowd (0..100) that called the winner, or null below quorum. */
   calledByPct: number | null;
+  /** True when the winner was the crowd's minority pick (a called upset). */
+  upset: boolean;
 }
 
 export interface JustHappenedViewer {
@@ -85,7 +93,8 @@ async function _getJustHappened(
         take: 1,
         select: {
           id: true, result: true, winnerId: true, redId: true, blueId: true,
-          method: true, roundEnded: true, titleFight: true,
+          method: true, roundEnded: true, timeEnded: true, titleFight: true,
+          performanceBonus: true, fightOfTheNight: true,
           red: { select: { name: true, slug: true } },
           blue: { select: { name: true, slug: true } },
         },
@@ -164,7 +173,12 @@ async function _getJustHappened(
         loserName: resolved ? (corner === "RED" ? f.blue.name : f.red.name) : null,
         method: resolved ? f.method : null,
         roundEnded: resolved ? f.roundEnded : null,
+        timeEnded: resolved ? f.timeEnded : null,
+        performanceBonus: f.performanceBonus,
+        fightOfTheNight: f.fightOfTheNight,
         calledByPct,
+        // A called upset: the winner was the crowd's minority pick (needs quorum).
+        upset: calledByPct !== null && calledByPct <= 33,
       };
     }
 
