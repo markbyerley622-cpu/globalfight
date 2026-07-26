@@ -77,44 +77,68 @@ const clampStar = (v: number | null | undefined): number | null => {
   return n >= 1 && n <= 5 ? n : null;
 };
 
-/** Everything a gym page needs to render reviews — in three batched reads
- *  (reviews + this viewer's helpful votes), regardless of review count. */
-export async function getGymReviewData(gymId: string, viewerId?: string | null): Promise<GymReviewData> {
-  const rows = await prisma.gymReview.findMany({
-    where: { gymId, deleted: false },
-    // Best-supported first: verified members, then most-helpful, then recent.
-    // NOT newest-first, which rewards review spam over signal.
-    orderBy: [{ verifiedMember: "desc" }, { helpfulCount: "desc" }, { createdAt: "desc" }],
-    select: {
-      id: true, authorId: true, overall: true,
-      coaching: true, facilities: true, atmosphere: true, cleanliness: true, value: true,
-      title: true, body: true, recommended: true, skillLevel: true, disciplines: true,
-      verifiedMember: true, authorRole: true, helpfulCount: true, edited: true, createdAt: true,
-      author: { select: { name: true, username: true, image: true } },
-    },
-  });
+/** How many review rows the page renders. The summary is computed from DB
+ *  aggregates (below), so this cap bounds the payload/memory WITHOUT skewing the
+ *  headline numbers — a gym with 10k reviews costs the same as one with 10. */
+const REVIEW_PAGE = 40;
 
-  // Which of these did the viewer mark helpful — ONE read for all of them.
+const round1 = (v: number | null | undefined): number | null =>
+  v == null ? null : Math.round(v * 10) / 10;
+
+/**
+ * Everything a gym page needs to render reviews.
+ *
+ * The SUMMARY (count, average, distribution, category averages, verified /
+ * recommended tallies) is computed by DB aggregates — groupBy + aggregate + two
+ * counts — so it never loads review rows to add them up. The DISPLAY LIST is a
+ * capped `findMany` (REVIEW_PAGE). This is what keeps a popular gym's page O(1)
+ * in review count instead of streaming every row to the server on each view.
+ */
+export async function getGymReviewData(gymId: string, viewerId?: string | null): Promise<GymReviewData> {
+  const where = { gymId, deleted: false } as const;
+
+  const [dist, agg, recommendedCount, verifiedCount, myRow, listRows] = await Promise.all([
+    prisma.gymReview.groupBy({ by: ["overall"], where, _count: { _all: true } }),
+    prisma.gymReview.aggregate({
+      where,
+      _count: { _all: true },
+      _avg: { overall: true, coaching: true, facilities: true, atmosphere: true, cleanliness: true, value: true },
+    }),
+    prisma.gymReview.count({ where: { ...where, recommended: true } }),
+    prisma.gymReview.count({ where: { ...where, verifiedMember: true } }),
+    viewerId
+      ? prisma.gymReview.findFirst({ where: { ...where, authorId: viewerId }, select: REVIEW_SELECT })
+      : Promise.resolve(null),
+    // Best-supported first: verified members, then most-helpful, then recent —
+    // NOT newest-first, which rewards spam over signal. Own review excluded (it
+    // renders separately). Capped.
+    prisma.gymReview.findMany({
+      where: viewerId ? { ...where, authorId: { not: viewerId } } : where,
+      orderBy: [{ verifiedMember: "desc" }, { helpfulCount: "desc" }, { createdAt: "desc" }],
+      take: REVIEW_PAGE,
+      select: REVIEW_SELECT,
+    }),
+  ]);
+
+  // Viewer's helpful votes for the rows actually shown — one read, bounded.
+  const shownIds = [...listRows.map((r) => r.id), ...(myRow ? [myRow.id] : [])];
   let myVotes = new Set<string>();
-  if (viewerId && rows.length) {
+  if (viewerId && shownIds.length) {
     const votes = await prisma.gymReviewVote.findMany({
-      where: { userId: viewerId, reviewId: { in: rows.map((r) => r.id) } },
+      where: { userId: viewerId, reviewId: { in: shownIds } },
       select: { reviewId: true },
     });
     myVotes = new Set(votes.map((v) => v.reviewId));
   }
 
-  const toDTO = (r: (typeof rows)[number]): ReviewDTO => ({
+  const toDTO = (r: typeof listRows[number], isMine: boolean): ReviewDTO => ({
     id: r.id,
     authorId: r.authorId,
     authorName: r.author.name ?? "Anonymous",
     authorUsername: r.author.username,
     authorImage: r.author.image,
     overall: r.overall,
-    categories: {
-      coaching: r.coaching, facilities: r.facilities, atmosphere: r.atmosphere,
-      cleanliness: r.cleanliness, value: r.value,
-    },
+    categories: { coaching: r.coaching, facilities: r.facilities, atmosphere: r.atmosphere, cleanliness: r.cleanliness, value: r.value },
     title: r.title,
     body: r.body,
     recommended: r.recommended,
@@ -126,30 +150,34 @@ export async function getGymReviewData(gymId: string, viewerId?: string | null):
     votedHelpful: myVotes.has(r.id),
     edited: r.edited,
     createdAt: r.createdAt.toISOString(),
-    isMine: !!viewerId && r.authorId === viewerId,
+    isMine,
   });
 
-  const reviews = rows.map(toDTO);
-
-  // Summary — computed from the rows already in hand, no extra query.
-  const count = reviews.length;
-  const average = count ? Math.round((reviews.reduce((s, r) => s + r.overall, 0) / count) * 10) / 10 : 0;
-  const recommendedPct = count ? Math.round((reviews.filter((r) => r.recommended).length / count) * 100) : 0;
-  const distribution = [5, 4, 3, 2, 1].map((star) => ({ star, count: reviews.filter((r) => r.overall === star).length }));
-  const categoryAverages = Object.fromEntries(
-    CATEGORIES.map((c) => {
-      const vals = reviews.map((r) => r.categories[c]).filter((v): v is number => v != null);
-      return [c, vals.length ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10 : null];
-    }),
-  ) as Record<Category, number | null>;
-  const verifiedCount = reviews.filter((r) => r.verifiedMember).length;
+  const count = agg._count._all;
+  const distribution = [5, 4, 3, 2, 1].map((star) => ({ star, count: dist.find((d) => d.overall === star)?._count._all ?? 0 }));
+  const categoryAverages = Object.fromEntries(CATEGORIES.map((c) => [c, round1(agg._avg[c])])) as Record<Category, number | null>;
 
   return {
-    summary: { count, average, recommendedPct, distribution, categoryAverages, verifiedCount },
-    reviews: reviews.filter((r) => !r.isMine),
-    myReview: reviews.find((r) => r.isMine) ?? null,
+    summary: {
+      count,
+      average: round1(agg._avg.overall) ?? 0,
+      recommendedPct: count ? Math.round((recommendedCount / count) * 100) : 0,
+      distribution,
+      categoryAverages,
+      verifiedCount,
+    },
+    reviews: listRows.map((r) => toDTO(r, false)),
+    myReview: myRow ? toDTO(myRow, true) : null,
   };
 }
+
+const REVIEW_SELECT = {
+  id: true, authorId: true, overall: true,
+  coaching: true, facilities: true, atmosphere: true, cleanliness: true, value: true,
+  title: true, body: true, recommended: true, skillLevel: true, disciplines: true,
+  verifiedMember: true, authorRole: true, helpfulCount: true, edited: true, createdAt: true,
+  author: { select: { name: true, username: true, image: true } },
+} as const;
 
 /** Recompute a gym's denormalised rating from its live reviews. Runs inside the
  *  same transaction as the write that triggered it, so the aggregate can never

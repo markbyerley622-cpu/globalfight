@@ -24,27 +24,37 @@ export default async function MyPredictionsPage() {
   const user = await getCurrentUser();
   if (!user) return <SignedOut />;
 
-  const picks = await prisma.fightPick.findMany({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
-    select: {
-      corner: true, method: true, confidence: true, correct: true,
-      fight: {
-        select: {
-          slug: true, date: true, result: true, titleFight: true,
-          red: { select: { name: true } },
-          blue: { select: { name: true } },
-          event: { select: { name: true } },
+  // The record HEADLINE comes from denormalised User counters (O(1), accurate at
+  // any scale) and two cheap COUNTs — never from summing the pick rows, so a user
+  // with thousands of calls doesn't stream them all. The LIST is capped.
+  const PAGE = 200;
+  const [picks, stats, openCount, totalCount] = await Promise.all([
+    prisma.fightPick.findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      take: PAGE,
+      select: {
+        corner: true, method: true, confidence: true, correct: true,
+        fight: {
+          select: {
+            slug: true, date: true, result: true, titleFight: true,
+            red: { select: { name: true } },
+            blue: { select: { name: true } },
+            event: { select: { name: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.user.findUnique({ where: { id: user.id }, select: { picksResolved: true, picksCorrect: true } }),
+    prisma.fightPick.count({ where: { userId: user.id, fight: { result: "SCHEDULED" } } }),
+    prisma.fightPick.count({ where: { userId: user.id } }),
+  ]);
 
+  const resolved = stats?.picksResolved ?? 0;
+  const correct = stats?.picksCorrect ?? 0;
+  const accuracy = resolved ? Math.round((correct / resolved) * 100) : 0;
   const open = picks.filter((p) => p.fight.result === "SCHEDULED");
   const settled = picks.filter((p) => p.fight.result !== "SCHEDULED");
-  const resolved = settled.filter((p) => p.correct !== null);
-  const correct = resolved.filter((p) => p.correct === true).length;
-  const accuracy = resolved.length ? Math.round((correct / resolved.length) * 100) : 0;
 
   return (
     <div className="px-4 pb-16 pt-5">
@@ -56,7 +66,7 @@ export default async function MyPredictionsPage() {
           <h1 className="mt-1.5 font-display text-2xl font-black uppercase tracking-tight text-chalk">My Predictions</h1>
         </header>
 
-        {picks.length === 0 ? (
+        {totalCount === 0 ? (
           <EmptyState
             icon={<Trophy className="size-5 text-blood-400" />}
             title="No predictions yet"
@@ -67,10 +77,13 @@ export default async function MyPredictionsPage() {
           <>
             {/* Record summary — the payoff line. */}
             <div className="mb-6 grid grid-cols-3 gap-3">
-              <Stat value={`${accuracy}%`} label="Accuracy" sub={`${correct}/${resolved.length}`} />
-              <Stat value={String(open.length)} label="Open" sub="awaiting result" />
-              <Stat value={String(picks.length)} label="Total calls" sub="all time" />
+              <Stat value={`${accuracy}%`} label="Accuracy" sub={`${correct}/${resolved}`} />
+              <Stat value={String(openCount)} label="Open" sub="awaiting result" />
+              <Stat value={String(totalCount)} label="Total calls" sub="all time" />
             </div>
+            {totalCount > picks.length && (
+              <p className="-mt-3 mb-5 text-center text-[0.7rem] text-fog">Showing your {picks.length} most recent calls.</p>
+            )}
 
             {open.length > 0 && (
               <Section title="Awaiting result">

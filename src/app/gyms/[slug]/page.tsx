@@ -60,30 +60,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function GymPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const gym = await loadGym(slug);
+  // Wave 1: the gym and the viewer are independent — fetch together.
+  const [gym, user] = await Promise.all([loadGym(slug), getCurrentUser().catch(() => null)]);
   if (!gym) notFound();
 
-  const user = await getCurrentUser().catch(() => null);
-  const presence = await getPresence({ gymId: gym.id }, user?.id);
-  const reviewData = await getGymReviewData(gym.id, user?.id);
-
-  // Nearby = same city first, then same country. Cheap, indexed, and honest:
-  // we do not have street coordinates for most gyms, so "nearby" means the
-  // place people would actually consider as an alternative.
-  const nearby = gym.city || gym.countryCode
-    ? await prisma.gym.findMany({
-        where: {
-          id: { not: gym.id },
-          OR: [
-            ...(gym.city ? [{ city: { equals: gym.city, mode: "insensitive" as const } }] : []),
-            ...(gym.countryCode ? [{ countryCode: gym.countryCode }] : []),
-          ],
-        },
-        orderBy: [{ verified: "desc" }, { memberCount: "desc" }],
-        take: 6,
-        select: { slug: true, name: true, city: true, logoUrl: true, verified: true, memberCount: true, disciplines: true },
-      })
-    : [];
+  // Wave 2: presence, reviews and "nearby" all depend only on the gym/viewer we
+  // now have and NOT on each other — one parallel batch instead of three
+  // sequential round-trips on a public, high-traffic page.
+  const [presence, reviewData, nearby] = await Promise.all([
+    getPresence({ gymId: gym.id }, user?.id),
+    getGymReviewData(gym.id, user?.id),
+    // Nearby = same city first, then same country. Cheap, indexed, and honest:
+    // we do not have street coordinates for most gyms, so "nearby" means the
+    // place people would actually consider as an alternative.
+    gym.city || gym.countryCode
+      ? prisma.gym.findMany({
+          where: {
+            id: { not: gym.id },
+            OR: [
+              ...(gym.city ? [{ city: { equals: gym.city, mode: "insensitive" as const } }] : []),
+              ...(gym.countryCode ? [{ countryCode: gym.countryCode }] : []),
+            ],
+          },
+          orderBy: [{ verified: "desc" }, { memberCount: "desc" }],
+          take: 6,
+          select: { slug: true, name: true, city: true, logoUrl: true, verified: true, memberCount: true, disciplines: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const mine = user ? gym.members.find((m) => m.user.id === user.id) : undefined;
 
   const place = [gym.address, gym.city, gym.region, gym.country].filter(Boolean).join(", ");
