@@ -34,6 +34,8 @@ const CHALK = "#f4f5f7";
 const MIST = "#c7cad1";
 const FOG = "#8b909a";
 const BLOOD = "#e11d2a";
+const GOLD = "#d6a43a";
+const VOLT = "#38bdf8";
 
 // Read once per process, not per request.
 const FONT = readFileSync(join(process.cwd(), "public", "fonts", "og-noto-sans-400.ttf"));
@@ -59,6 +61,98 @@ function headlineSize(text: string): number {
   if (text.length <= 50) return 64;
   if (text.length <= 68) return 54;
   return 46;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Victory OG — a DEDICATED layout for a resolved prediction, distinct from the
+//  generic card so a shared call reads instantly as a Combat Reviews victory and
+//  not "another sports graphic". Same constraints (1200×630, one font, no remote
+//  images). It carries the five things: the call, that it was hard (badges), the
+//  result (verdict + reputation gained), the standing, and the challenge hook.
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface VictoryOg {
+  rarityLabel: string;
+  /** "gold" | "volt" | "blood" — the rarity accent. */
+  accent: "gold" | "volt" | "blood";
+  win: boolean;
+  headline: string;
+  /** "<user> called <fighter>". */
+  sub: string;
+  eyebrow?: string | null; // event / promotion
+  /** Up to four short achievement labels; elite ones are passed first. */
+  badges: string[];
+  /** Reputation delta on a win (>0), else null. */
+  repGained: number | null;
+}
+
+const ACCENTS = { gold: GOLD, volt: VOLT, blood: BLOOD } as const;
+
+function vHeadlineSize(text: string): number {
+  if (text.length <= 16) return 104;
+  if (text.length <= 26) return 84;
+  if (text.length <= 38) return 68;
+  return 56;
+}
+
+export function renderVictoryOg(v: VictoryOg): ImageResponse {
+  const accent = ACCENTS[v.accent] ?? BLOOD;
+  const badges = v.badges.filter(Boolean).slice(0, 4);
+
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: INK, padding: 60, position: "relative" }}>
+        {/* Rarity-toned corner glow + accent rail — the instantly-recognisable frame. */}
+        <div style={{ position: "absolute", top: 0, left: 0, width: 1200, height: 630, display: "flex", background: `radial-gradient(80% 120% at 100% 0%, ${accent}55, transparent 60%)` }} />
+        <div style={{ position: "absolute", top: 0, left: 0, width: 16, height: 630, background: accent, display: "flex" }} />
+
+        {/* Top row — rarity + result badge · wordmark */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", padding: "8px 20px", borderRadius: 8, border: `3px solid ${accent}`, color: accent, fontSize: 24, letterSpacing: 4, textTransform: "uppercase" }}>
+              {v.rarityLabel}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", padding: "8px 20px", borderRadius: 8, background: v.win ? VOLT : "#2a2f38", color: v.win ? INK : MIST, fontSize: 24, letterSpacing: 3, textTransform: "uppercase" }}>
+              {v.win ? "Called it" : "Missed"}
+            </div>
+          </div>
+          <div style={{ display: "flex", fontSize: 26, letterSpacing: 5, color: FOG, textTransform: "uppercase" }}>Combat Reviews</div>
+        </div>
+
+        {/* Middle — headline + who called what, with the reputation badge on the right */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40 }}>
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: v.repGained ? 760 : 1060 }}>
+            {v.eyebrow ? (
+              <div style={{ display: "flex", fontSize: 24, letterSpacing: 3, color: accent, textTransform: "uppercase", marginBottom: 14 }}>{v.eyebrow}</div>
+            ) : null}
+            <div style={{ display: "flex", fontSize: vHeadlineSize(v.headline), lineHeight: 1.0, color: CHALK, letterSpacing: -2 }}>{v.headline}</div>
+            <div style={{ display: "flex", marginTop: 18, fontSize: 32, color: MIST }}>{v.sub}</div>
+          </div>
+          {v.repGained ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 210, height: 210, borderRadius: 28, background: `${GOLD}1f`, border: `4px solid ${GOLD}` }}>
+              <div style={{ display: "flex", color: CHALK, fontSize: 76, letterSpacing: -2 }}>{`+${v.repGained}`}</div>
+              <div style={{ display: "flex", color: GOLD, fontSize: 24, letterSpacing: 4, textTransform: "uppercase", marginTop: 4 }}>Rep</div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Bottom — the achievement pills (why it was hard) + the challenge hook */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", maxWidth: 820 }}>
+            {badges.length > 0
+              ? badges.map((b, i) => (
+                  <div key={b} style={{ display: "flex", alignItems: "center", padding: "12px 24px", borderRadius: 999, background: i === 0 ? `${accent}1f` : "#16181d", border: `2px solid ${i === 0 ? accent : "#2a2f38"}`, color: i === 0 ? CHALK : MIST, fontSize: 25 }}>
+                    {b}
+                  </div>
+                ))
+              : null}
+          </div>
+          <div style={{ display: "flex", fontSize: 26, color: FOG, letterSpacing: 1, whiteSpace: "nowrap" }}>Can you beat it?</div>
+        </div>
+      </div>
+    ),
+    { ...OG_SIZE, fonts: [{ name: "NotoSans", data: FONT, weight: 400, style: "normal" }] },
+  );
 }
 
 export function renderOgCard(card: OgCard): ImageResponse {

@@ -46,7 +46,8 @@ export interface Headline {
 
 // A % is only quoted when enough people picked to make it mean something. Below
 // this, "only 8% saw it coming" is noise about three strangers, not a signal.
-const QUORUM = 12;
+// Exported as the ONE quorum — the badge module and the card dedup share it.
+export const QUORUM = 12;
 
 /**
  * The one line at the top of the card. Priority order runs rarest/most-impressive

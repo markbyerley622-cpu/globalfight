@@ -8377,7 +8377,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 87,
+      "line": 90,
       "fn": "_getVictoryCard",
       "model": "User",
       "method": "findUnique",
@@ -8390,7 +8390,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 94,
+      "line": 97,
       "fn": "_getVictoryCard",
       "model": "Fight",
       "method": "findUnique",
@@ -8403,7 +8403,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 108,
+      "line": 111,
       "fn": "pick",
       "model": "FightPick",
       "method": "findUnique",
@@ -8416,7 +8416,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 117,
+      "line": 120,
       "fn": "_getVictoryCard",
       "model": "ReputationEvent",
       "method": "aggregate",
@@ -8429,7 +8429,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 122,
+      "line": 126,
       "fn": "_getVictoryCard",
       "model": "FightPick",
       "method": "groupBy",
@@ -8442,7 +8442,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 124,
+      "line": 131,
       "fn": "_getVictoryCard",
       "model": "User",
       "method": "count",
@@ -8455,7 +8455,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 125,
+      "line": 132,
       "fn": "_getVictoryCard",
       "model": "User",
       "method": "count",
@@ -8468,7 +8468,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 128,
+      "line": 135,
       "fn": "_getVictoryCard",
       "model": "FightPick",
       "method": "count",

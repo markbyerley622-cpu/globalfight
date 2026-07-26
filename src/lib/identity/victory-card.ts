@@ -4,9 +4,10 @@ import { prisma } from "@/lib/db";
 import { rarityForFight } from "@/lib/collectibles";
 import type { CardRarity } from "@prisma/client";
 import {
-  predictionHeadline, socialProofLine, methodFamily,
+  predictionHeadline, socialProofLine, methodFamily, QUORUM,
   type CardFacts, type Headline,
 } from "@/lib/identity/victory-headline";
+import { predictionBadges, type Badge, type BadgeContext } from "@/lib/identity/victory-badges";
 
 // ── Prediction Victory Card — data ──────────────────────────────────────────
 // The public artifact generated when a prediction resolves: the thing a user
@@ -28,6 +29,8 @@ import {
 
 export interface VictoryCard {
   headline: Headline;
+  /** Objectively-true achievement chips — the "why this was impressive" stack. */
+  badges: Badge[];
   socialProof: string | null;
   user: {
     name: string;
@@ -88,7 +91,7 @@ async function _getVictoryCard(username: string, fightSlug: string): Promise<Vic
       where: { username },
       select: {
         id: true, name: true, username: true, image: true,
-        reputation: true, picksResolved: true, picksCorrect: true, pickStreak: true,
+        reputation: true, picksResolved: true, picksCorrect: true, pickStreak: true, bestPickStreak: true,
       },
     }),
     prisma.fight.findUnique({
@@ -118,8 +121,12 @@ async function _getVictoryCard(username: string, fightSlug: string): Promise<Vic
       where: { userId: user.id, refType: "fight", refId: fight.id },
       _sum: { delta: true },
     }),
-    // The (now stable) crowd split for this bout.
-    prisma.fightPick.groupBy({ by: ["corner"], where: { fightId: fight.id }, _count: { _all: true } }),
+    // The (now stable) crowd split for this bout — with the crowd's mean
+    // confidence per corner, so "higher conviction than the crowd" is provable.
+    prisma.fightPick.groupBy({
+      by: ["corner"], where: { fightId: fight.id },
+      _count: { _all: true }, _avg: { confidence: true },
+    }),
     // Reputation rank = predictors strictly ahead + 1.
     prisma.user.count({ where: { picksResolved: { gt: 0 }, reputation: { gt: user.reputation } } }),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
@@ -133,6 +140,13 @@ async function _getVictoryCard(username: string, fightSlug: string): Promise<Vic
   const total = crowd.reduce((s, c) => s + c._count._all, 0);
   const onCalled = crowd.find((c) => c.corner === pick.corner)?._count._all ?? 0;
   const calledByPct = total > 0 ? Math.round((onCalled / total) * 100) : 0;
+  // Crowd-wide mean confidence: the count-weighted average of the per-corner
+  // means, over only the picks that set one.
+  const confWeighted = crowd.reduce(
+    (a, c) => (c._avg.confidence != null ? { sum: a.sum + c._avg.confidence * c._count._all, n: a.n + c._count._all } : a),
+    { sum: 0, n: 0 },
+  );
+  const consensusConfidence = confWeighted.n > 0 ? confWeighted.sum / confWeighted.n : null;
 
   const accuracy = user.picksResolved > 0 ? Math.round((user.picksCorrect / user.picksResolved) * 100) : null;
   const rank = user.picksResolved > 0 ? ahead + 1 : null;
@@ -150,9 +164,27 @@ async function _getVictoryCard(username: string, fightSlug: string): Promise<Vic
     streak,
     titleFight: fight.titleFight,
   };
+  const badgeCtx: BadgeContext = {
+    ...facts,
+    accuracy, percentile, bestStreak: user.bestPickStreak,
+    reputation: user.reputation, repGained: num(repAgg._sum.delta),
+    consensusConfidence,
+  };
+
+  // When the HEADLINE already leads on the upset/rarity, drop the echoing badge
+  // so the stack adds NEW information ("1k reputation", "Career-best streak")
+  // rather than repeating the hero line back.
+  const headlineLeadsRarity = facts.correct && total >= QUORUM && calledByPct <= 33;
+  // Dedup BEFORE capping (request the full ranked list, filter, then take 4) —
+  // otherwise dropping the echoed rarity badge would leave a hole instead of
+  // promoting the next real achievement into view.
+  const badges = predictionBadges(badgeCtx, 8)
+    .filter((b) => !(headlineLeadsRarity && (b.kind === "rarity" || b.kind === "upset")))
+    .slice(0, 4);
 
   return {
     headline: predictionHeadline(facts),
+    badges,
     socialProof: socialProofLine(facts),
     user: {
       name: user.name ?? `@${user.username}`,
