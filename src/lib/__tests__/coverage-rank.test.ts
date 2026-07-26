@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scoreArticleRelevance, rankCoverage, type CoverageContext } from "../event-format";
+import { scoreArticleRelevance, rankCoverage, sourceAuthority, freshnessScore, groupCoverage, type CoverageContext } from "../event-format";
 import type { Article } from "@/lib/types";
 
 // Coverage ranking decides which stories a completed event surfaces. The bug it
@@ -15,10 +15,12 @@ const art = (over: Partial<Article> & { title: string }): Article => ({
 });
 
 // A real card: Fury vs Wach headlines; an undercard bout too.
+const EVENT_DATE = "2026-07-25T22:00:00Z";
 const ctx: CoverageContext = {
   fighters: ["Tyson Fury", "Mariusz Wach", "Derek Chisora", "Joe Joyce"],
   mainFighters: ["Tyson Fury", "Mariusz Wach"],
   eventName: "Fury vs Wach",
+  eventDate: EVENT_DATE,
 };
 
 test("both main fighters in the headline scores highest", () => {
@@ -66,4 +68,68 @@ test("rankCoverage dedupes near-duplicate headlines", () => {
     art({ title: "Tyson Fury beats Mariusz Wach by knockout, sources say" }),
   ];
   assert.equal(rankCoverage(pool, ctx, 8).length, 1);
+});
+
+// ── Source authority ──────────────────────────────────────────────────────
+
+test("source authority: promotions/broadcasters tier 1, press tier 2, rest tier 3", () => {
+  assert.equal(sourceAuthority("https://www.dazn.com/news/fury-wach"), 1);
+  assert.equal(sourceAuthority("https://www.espn.com/boxing/story"), 1);
+  assert.equal(sourceAuthority("https://www.mmafighting.com/2026/report"), 2);
+  assert.equal(sourceAuthority("https://someblog.wordpress.com/post"), 3);
+  assert.equal(sourceAuthority(undefined), 3);
+});
+
+test("authority is a tiebreak: it never lifts an off-card story over an on-card one", () => {
+  const pool: Article[] = [
+    art({ title: "Anthony Joshua on DAZN", sourceUrl: "https://dazn.com/joshua" }), // tier 1 but 0 relevance → dropped
+    art({ title: "Tyson Fury vs Mariusz Wach recap", sourceUrl: "https://smallblog.com/x" }), // tier 3 but on-card
+  ];
+  const ranked = rankCoverage(pool, ctx, 8);
+  assert.equal(ranked.length, 1);
+  assert.match(ranked[0].title, /Fury vs Mariusz Wach/);
+});
+
+test("among two on-card stories, the more authoritative source wins", () => {
+  const pool: Article[] = [
+    art({ title: "Tyson Fury beats Mariusz Wach — report", sourceUrl: "https://randomblog.net/a", publishedAt: EVENT_DATE }),
+    art({ title: "Tyson Fury defeats Mariusz Wach in style", sourceUrl: "https://dazn.com/b", publishedAt: EVENT_DATE }),
+  ];
+  assert.match(rankCoverage(pool, ctx, 8)[0].title, /in style/, "the DAZN story ranks first");
+});
+
+// ── Freshness ─────────────────────────────────────────────────────────────
+
+test("freshness: a post-fight report beats an equally-relevant three-week preview", () => {
+  const postFight = freshnessScore("2026-07-25T23:00:00Z", EVENT_DATE); // 1h after
+  const oldPreview = freshnessScore("2026-07-04T00:00:00Z", EVENT_DATE); // 3 weeks before
+  assert.ok(postFight > oldPreview);
+});
+
+test("freshness decays: a recap two weeks later scores ~zero", () => {
+  assert.ok(freshnessScore("2026-08-09T00:00:00Z", EVENT_DATE) <= 1);
+});
+
+test("rankCoverage dedupes the SAME story by canonical URL (query/hash ignored)", () => {
+  const pool: Article[] = [
+    art({ title: "Fury stops Wach", slug: "a", sourceUrl: "https://dazn.com/news/fury-wach?utm=rss" }),
+    art({ title: "Fury stops Wach — different rewrite entirely", slug: "b", sourceUrl: "https://dazn.com/news/fury-wach#top" }),
+  ];
+  assert.equal(rankCoverage(pool, ctx, 8).length, 1, "same URL → one story");
+});
+
+// ── Grouping into post-fight sections ────────────────────────────────────────
+
+test("groupCoverage routes post-fight stories into the right sections", () => {
+  const g = groupCoverage([
+    art({ title: "WATCH: Highlights of Fury vs Wach" }),
+    art({ title: "Fury vs Wach — full results and recap" }),
+    art({ title: "Tyson Fury post-fight interview" }),
+    art({ title: "Fury calls out Anthony Joshua next" }),
+  ]);
+  const byKey = Object.fromEntries(g.map((x) => [x.key, x.articles.length]));
+  assert.ok(byKey.highlights >= 1, "a highlights story lands in Highlights");
+  assert.ok(byKey.result >= 1, "a recap lands in Official result");
+  assert.ok(byKey.interview >= 1, "an interview lands in Interviews");
+  assert.ok(byKey.next >= 1, "a callout lands in What's next");
 });

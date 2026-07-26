@@ -95,6 +95,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     fighters: fights.flatMap((f) => [f.red.name, f.blue.name]),
     mainFighters: headline ? [headline.red.name, headline.blue.name] : [],
     eventName: event.name,
+    eventDate: event.date,
   }, 8);
 
   // Promotion personality: every event uses the SAME layout, but its promotion's

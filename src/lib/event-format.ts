@@ -100,6 +100,13 @@ const COVERAGE_SIGNALS: [RegExp, number][] = [
 // unmatched falls into "Fight news". Lets us group the feed Reddit-style with a
 // heading + count per topic instead of one flat list.
 const COVERAGE_GROUPS: { key: string; label: string; emoji: string; test: RegExp }[] = [
+  // Post-fight sections lead — for a completed card these are what fans want, and
+  // for an upcoming card their keywords simply don't match. Distinct keywords
+  // from the pre-fight groups below so first-match grouping stays unambiguous.
+  { key: "highlights", label: "Highlights", emoji: "🎥", test: /highlights|full fight|watch:|knockout of|finish of the|round[- ]by[- ]round/i },
+  { key: "result", label: "Official result", emoji: "🏆", test: /\brecap\b|\breport\b|official result|scorecard|post[- ]fight report|full results/i },
+  { key: "interview", label: "Interviews", emoji: "🎙️", test: /interview|speaks (out|to)|post[- ]?fight (interview|reaction)|in his own words/i },
+  { key: "next", label: "What's next", emoji: "📈", test: /what.?s next|next fight|calls? out|callout|rematch|wants (to face|next)|targets? next|eyes (a|next)/i },
   { key: "presser", label: "Press conference", emoji: "🎤", test: /press conference|presser/i },
   { key: "weighin", label: "Weigh-ins", emoji: "⚖️", test: /weigh[- ]?in|weighin/i },
   { key: "faceoff", label: "Faceoffs", emoji: "🤜", test: /face[- ]?off|faceoff|staredown|stare[- ]?down/i },
@@ -142,6 +149,18 @@ function titleKey(title: string): string {
     .split(" ").slice(0, 6).join(" ");
 }
 
+/** Canonical form of a source URL for exact-duplicate detection: host + path,
+ *  no scheme, query, hash or trailing slash. Null when there's no URL. */
+function canonicalUrl(sourceUrl: string | undefined | null): string | null {
+  if (!sourceUrl) return null;
+  try {
+    const u = new URL(sourceUrl);
+    return `${u.host}${u.pathname}`.replace(/\/$/, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 // ── Coverage relevance ──────────────────────────────────────────────────────
 // The event page pulls a POOL of articles matched loosely on fighter surnames,
 // the promotion, or the event name (see coverageTerms). "Loosely on the
@@ -158,6 +177,43 @@ export interface CoverageContext {
   mainFighters: string[];
   /** The event's own name, e.g. "BKFC 91". */
   eventName: string;
+  /** The event's date (ISO) — powers freshness: a post-fight report outranks a
+   *  three-week-old preview of equal relevance. */
+  eventDate: string;
+}
+
+// ── Source authority ────────────────────────────────────────────────────────
+// Outlet trust, derived DETERMINISTICALLY from the article's source domain — no
+// NewsOutlet metadata needed. Two stories of similar relevance: prefer the more
+// authoritative source. A tiebreak, never enough to beat real relevance.
+const SOURCE_TIER: [RegExp, 1 | 2 | 3][] = [
+  // Tier 1 — promotions + major broadcasters.
+  [/dazn|espn|ufc\.com|onefc|matchroom|toprank|top-rank|bkfc|pflmma|\.pfl|skysports|sky-sports|btsport|bt-sport/i, 1],
+  // Tier 2 — established combat-sports press.
+  [/mmafighting|mmajunkie|bloodyelbow|boxingscene|fighthub|ifltv|sherdog|boxingnews|talksport|the-ring|ringtv/i, 2],
+];
+
+/** Authority tier (1 best) from a source URL. Unknown/absent → tier 3. */
+export function sourceAuthority(sourceUrl: string | undefined | null): 1 | 2 | 3 {
+  if (!sourceUrl) return 3;
+  for (const [re, tier] of SOURCE_TIER) if (re.test(sourceUrl)) return tier;
+  return 3;
+}
+
+const dayMs = 86_400_000;
+
+/**
+ * Freshness relative to the EVENT. A post-fight report (published after the bell)
+ * is the money content and decays over two weeks; a pre-fight preview is worth
+ * less and decays going backward. Deterministic, bounded.
+ */
+export function freshnessScore(publishedAt: string, eventDate: string): number {
+  const pub = Date.parse(publishedAt);
+  const ev = Date.parse(eventDate);
+  if (Number.isNaN(pub) || Number.isNaN(ev)) return 0;
+  const days = (pub - ev) / dayMs; // positive = published AFTER the fight
+  if (days >= 0) return Math.round(20 * Math.max(0, Math.min(1, 1 - days / 14)));
+  return Math.round(8 * Math.max(0, Math.min(1, 1 + days / 21)));
 }
 
 const REL = {
@@ -167,6 +223,7 @@ const REL = {
   BOTH_MAIN: 30, // both main-event fighters present → about the actual bout
   EVENT_TITLE: 25, // the event's own name in the headline
   EDITORIAL_CAP: 8, // presser/weigh-in/etc. only break ties among relevant stories
+  AUTHORITY: { 1: 12, 2: 6, 3: 0 } as Record<1 | 2 | 3, number>, // outlet trust tiebreak
 } as const;
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -208,10 +265,14 @@ export function scoreArticleRelevance(a: Article, ctx: CoverageContext): number 
 }
 
 /**
- * Rank event coverage by RELEVANCE to this card first, editorial value second,
- * dropping near-duplicate headlines and — critically — anything that names no
- * fighter on the card (the cross-promotion noise). Input is newest-first so
- * equal scores keep recency order (stable sort).
+ * Rank event coverage by RELEVANCE to this card, blended with source authority
+ * and freshness relative to the fight, dropping duplicates and — critically —
+ * anything that names no fighter on the card (the cross-promotion noise).
+ *
+ * Relevance dominates; authority, freshness and editorial signals are bounded
+ * tiebreaks, so a Tier-1 outlet or a fresh post-fight report never drags an
+ * off-card story above an on-card one. Input is newest-first so equal scores keep
+ * recency order (stable sort).
  */
 export function rankCoverage(articles: Article[], ctx: CoverageContext, limit = 8): Article[] {
   const scored = articles
@@ -220,18 +281,28 @@ export function rankCoverage(articles: Article[], ctx: CoverageContext, limit = 
       let ed = 0;
       const hay = `${a.title} ${a.category ?? ""}`;
       for (const [re, w] of COVERAGE_SIGNALS) if (re.test(hay)) ed += w;
-      return { a, rel, score: rel + Math.min(ed, REL.EDITORIAL_CAP), i };
+      const score =
+        rel +
+        Math.min(ed, REL.EDITORIAL_CAP) +
+        REL.AUTHORITY[sourceAuthority(a.sourceUrl)] +
+        freshnessScore(a.publishedAt, ctx.eventDate);
+      return { a, rel, score, i };
     })
     // A story about this card's fighters, not merely its promotion.
     .filter((x) => x.rel > 0)
     .sort((x, y) => y.score - x.score || x.i - y.i);
 
-  const seen = new Set<string>();
+  // Dedup on the canonical URL first (the same story syndicated/re-fetched), then
+  // on a normalised headline signature (near-identical rewrites).
+  const seenUrl = new Set<string>();
+  const seenTitle = new Set<string>();
   const out: Article[] = [];
   for (const { a } of scored) {
-    const key = titleKey(a.title);
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const url = canonicalUrl(a.sourceUrl);
+    const tkey = titleKey(a.title);
+    if ((url && seenUrl.has(url)) || seenTitle.has(tkey)) continue;
+    if (url) seenUrl.add(url);
+    seenTitle.add(tkey);
     out.push(a);
     if (out.length >= limit) break;
   }
