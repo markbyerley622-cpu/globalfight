@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 766 across 673 files
-- **By class:** 513 public · 162 user-owned · 91 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 67 medium · 🟡 147 low · ⚪ 552 info
+- **Queries analysed:** 771 across 675 files
+- **By class:** 514 public · 166 user-owned · 91 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 68 medium · 🟡 147 low · ⚪ 556 info
 
 ## 🔴 High risk
 
@@ -75,6 +75,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/geo/presence.ts:62` | checkIn | CheckIn (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:102` | getPresence | CheckIn (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:118` | coaches | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/identity/event-room.ts:79` | _getEventRoom | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/intelligence/return-engine.ts:43` | audienceFor | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/intelligence/return-engine.ts:46` | audienceFor | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/intelligence/return-engine.ts:101` | unpickedFollowers | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |

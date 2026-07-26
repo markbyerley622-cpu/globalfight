@@ -19,6 +19,8 @@ import { getCrowdForFightIds, getMyPicksForFightIds, type CrowdRead, type MyPick
 import { getRoomSummaries } from "@/lib/community/rooms";
 import { prisma } from "@/lib/db";
 import { ResultReveal } from "@/components/event/result-reveal";
+import { TheRoom } from "@/components/event/the-room";
+import { getEventRoom } from "@/lib/identity/event-room";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
@@ -123,6 +125,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       ])
     : [null, 0];
 
+  // The Room — the community's call on the headline bout. Shown on a completed
+  // event for everyone (not just pickers): it is social proof, not a personal
+  // result. Null when the crowd was below quorum or the bout was a draw/NC.
+  const room = isCompleted && headline ? await getEventRoom(headline.id) : null;
+
   // One scroll: card → card talk → coverage. There is no separate Predictions
   // section — a bout's prediction, battle and discussion live inside that bout's
   // module, because that is the scope a fan actually thinks in. "Card talk" is
@@ -145,6 +152,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         boutCount={fights.length}
       />
       {pickSummary && <ResultReveal summary={pickSummary} streak={viewerStreak} />}
+      {room && <TheRoom room={room} />}
       <EventSchedule
         date={event.date}
         status={event.status}

@@ -1,13 +1,13 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 766,
+    "queries": 771,
     "high": 0,
-    "medium": 67,
+    "medium": 68,
     "low": 147,
-    "info": 552,
-    "public": 513,
-    "userOwned": 162,
+    "info": 556,
+    "public": 514,
+    "userOwned": 166,
     "shared": 91,
     "admin": 0
   },
@@ -1289,6 +1289,19 @@
       "severity": "MEDIUM",
       "confidence": "high",
       "why": "Shared model with no relationship filter — confirm both parties' access is validated."
+    },
+    {
+      "file": "src/lib/identity/event-room.ts",
+      "line": 79,
+      "fn": "_getEventRoom",
+      "model": "FightPick",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
@@ -4139,7 +4152,7 @@
     },
     {
       "file": "src/app/events/[slug]/page.tsx",
-      "line": 122,
+      "line": 124,
       "fn": "EventPage",
       "model": "User",
       "method": "findUnique",
@@ -8075,6 +8088,58 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/event-room.ts",
+      "line": 55,
+      "fn": "fight",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/event-room.ts",
+      "line": 71,
+      "fn": "_getEventRoom",
+      "model": "FightPick",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/identity/event-room.ts",
+      "line": 73,
+      "fn": "_getEventRoom",
+      "model": "FightPick",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/identity/event-room.ts",
+      "line": 76,
+      "fn": "_getEventRoom",
+      "model": "FightPick",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
     },
     {
       "file": "src/lib/identity/just-happened.ts",
