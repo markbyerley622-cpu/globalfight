@@ -23,7 +23,7 @@ import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
-import { syncWikiCards, findWikiTargets, type WikiGap } from "@/lib/scraper/wikicard";
+import { syncWikiCards, findWikiTargets, type WikiGap, type WikiMode } from "@/lib/scraper/wikicard";
 import { persistAggregated } from "@/services/sync/persist";
 import { isSourceEnabled } from "@/lib/ingestion-registry";
 import type { Sport } from "@/lib/types";
@@ -50,13 +50,13 @@ const CONCURRENCY = Number(process.env.SCRAPER_CONCURRENCY ?? 2);
  * "written=0" tells you nothing; "targets=8 gap=missing_result matched=6 written=5"
  * tells you whether the problem is the query, Wikipedia, or the extractor.
  */
-async function harvestWikiTargets(opts: { gap?: WikiGap; limit: number }): Promise<string> {
-  const targets = await findWikiTargets({ gap: opts.gap, limit: opts.limit });
-  if (!targets.length) return `targets=0 gap=${opts.gap ?? "all"}`;
+export async function harvestWikiTargets(
+  opts: { gap?: WikiGap; limit: number; mode?: WikiMode; promotion?: string; skip?: number },
+): Promise<string> {
+  const targets = await findWikiTargets(opts);
+  if (!targets.length) return `targets=0 gap=${opts.gap ?? "all"} mode=${opts.mode ?? "incremental"}`;
 
-  const h = await syncWikiCards(
-    targets.map((t) => ({ name: t.name, date: t.date, sport: t.sport })),
-  );
+  const h = await syncWikiCards(targets);
 
   let written = 0;
   const bySport = new Map<Sport, typeof h.events>();
@@ -65,11 +65,26 @@ async function harvestWikiTargets(opts: { gap?: WikiGap; limit: number }): Promi
     if (!bySport.has(s)) bySport.set(s, []);
     bySport.get(s)!.push(e);
   }
+  // persistAggregated is what fires settlement (onResultWritten) for any bout this
+  // write decides — so a repaired result settles its predictions in the same pass,
+  // with no cron in between.
   for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
 
-  const pending = targets.filter((t) => t.gap === "missing_result").length;
-  log.info({ ...h.report, gap: opts.gap ?? "all", pending, written }, "wikicards:runner:done");
-  return `targets=${targets.length} pendingResults=${pending} matched=${h.report.matched} withCard=${h.report.withCard} written=${written}`;
+  // Name every non-verified outcome. "written=0" was uninterpretable; these three
+  // counts each point at a different subsystem — the search ladder, the extractor,
+  // or genuinely-absent public coverage.
+  const tally = (reason: string) => h.report.outcomes.filter((o) => o.reason === reason).length;
+  const strategies = Object.entries(h.report.byStrategy)
+    .map(([k, n]) => `${k}=${n}`)
+    .join(",");
+
+  log.info({ ...h.report, outcomes: undefined, gap: opts.gap ?? "all", mode: opts.mode ?? "incremental", written }, "wikicards:runner:done");
+  return (
+    `targets=${targets.length} verified=${h.report.withCard} written=${written} ` +
+    `queries=${h.report.queries} noCandidate=${tally("no_candidate")} noCard=${tally("no_card")} ` +
+    `unverified=${tally("unverified")} errors=${tally("error")}` +
+    (strategies ? ` via[${strategies}]` : "")
+  );
 }
 
 /** Run one target end-to-end inside a ScrapeJob lifecycle. */

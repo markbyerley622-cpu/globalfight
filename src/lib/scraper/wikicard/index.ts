@@ -12,5 +12,15 @@
 export { syncWikiCards } from "./sync";
 export { parseWikiCard, type WikiBout } from "./extract";
 export { toNormalizedWikiEvent, toFightStub, WIKI_SOURCE } from "./map";
-export { findWikiTargets, RESULT_BACKFILL_DAYS, type WikiGap, type WikiTargetRow } from "./targets";
-export type { WikiTarget, WikiHarvest, WikiHarvestReport } from "./types";
+export {
+  findWikiTargets, countWikiGaps, RESULT_BACKFILL_DAYS,
+  type WikiGap, type WikiMode, type FindTargetsOpts,
+} from "./targets";
+export {
+  buildSearchLadder, isSyntheticEventName,
+  type SearchStrategy, type SearchStrategyKind,
+} from "./search-strategies";
+export { verifyCard, isAcceptable, type ExpectedBout, type VerifiedMatch } from "./verify";
+export type {
+  WikiTarget, EventIdentity, WikiHarvest, WikiHarvestReport, WikiTargetOutcome,
+} from "./types";

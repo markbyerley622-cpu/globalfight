@@ -11,10 +11,11 @@ import type {
   NormalizedFightStub,
   SourceMeta,
 } from "@/services/providers/types";
-import type { Sport, FightResult, FightMethod } from "@/lib/types";
+import type { FightResult, FightMethod } from "@/lib/types";
 import { slugify } from "@/lib/utils";
 import { parseMethod } from "../bkfc/normalize";
 import type { WikiBout } from "./extract";
+import type { EventIdentity } from "./types";
 
 export const WIKI_SOURCE = "wikipedia";
 /** Editorially maintained + cited, but community-edited: below an official feed. */
@@ -52,9 +53,17 @@ export function toFightStub(b: WikiBout, index: number): NormalizedFightStub {
   };
 }
 
-/** Build a canonical event carrying the Wikipedia-sourced card. */
+/**
+ * Build a canonical event carrying the Wikipedia-sourced card.
+ *
+ * `event` is the EVENT IDENTITY — our own name and date, never the page title we
+ * found it under. That separation is the point: a synthetic card is located upstream
+ * by its bout ("Errol Spence Jr vs Tim Tszyu") but must persist onto the row we
+ * already have ("Boxing — 26 Jul 2026"), or the result lands on a new event and the
+ * predictions it was meant to settle never see it.
+ */
 export function toNormalizedWikiEvent(
-  event: { name: string; date: string; sport: Sport },
+  event: EventIdentity,
   pageTitle: string,
   bouts: WikiBout[],
   lastUpdated: string,
