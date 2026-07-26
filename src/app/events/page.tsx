@@ -6,6 +6,8 @@ import { Pager } from "@/components/pager";
 import { queryEvents, getEventFacets, type EventFilters as Filters } from "@/lib/events-query";
 import { getCurrentUser } from "@/lib/auth";
 import { getFollowedEventIds } from "@/lib/follows";
+import { getJustHappened } from "@/lib/identity/just-happened";
+import { JustHappened } from "@/components/events/just-happened";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { promotionBySlug } from "@/lib/promotions";
 
@@ -36,10 +38,14 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
   };
 
   const viewer = await getCurrentUser();
+  // "Just happened" leads the DEFAULT view only — not when someone is filtering
+  // (status/promotion/sport/etc.) or paging, where it would fight the query.
+  const isDefaultView = !sp.status && !sp.promotion && !sp.sport && !sp.country && !sp.when && filters.page === 0;
   const followed = viewer ? await getFollowedEventIds(viewer.id) : new Set<string>();
-  const [{ events, total, page, pages }, facets] = await Promise.all([
+  const [{ events, total, page, pages }, facets, justHappened] = await Promise.all([
     queryEvents(filters, followed),
     getEventFacets(filters),
+    isDefaultView ? getJustHappened(viewer?.id ?? null) : Promise.resolve([]),
   ]);
 
   return (
@@ -50,6 +56,8 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
         description="Upcoming fights with predictions, full cards, venues, broadcasters and live countdowns."
       />
       <div className="container-cr space-y-5 py-8">
+        {justHappened.length > 0 && <JustHappened events={justHappened} />}
+
         <EventFilters facets={facets} />
 
         <p className="text-xs text-fog">

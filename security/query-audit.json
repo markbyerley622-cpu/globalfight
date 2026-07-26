@@ -1,13 +1,13 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 762,
+    "queries": 766,
     "high": 0,
     "medium": 67,
     "low": 147,
-    "info": 548,
-    "public": 512,
-    "userOwned": 159,
+    "info": 552,
+    "public": 513,
+    "userOwned": 162,
     "shared": 91,
     "admin": 0
   },
@@ -8075,6 +8075,58 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/just-happened.ts",
+      "line": 63,
+      "fn": "events",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/just-happened.ts",
+      "line": 96,
+      "fn": "_getJustHappened",
+      "model": "FightPick",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/identity/just-happened.ts",
+      "line": 99,
+      "fn": "_getJustHappened",
+      "model": "FightPick",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/identity/just-happened.ts",
+      "line": 110,
+      "fn": "rep",
+      "model": "ReputationEvent",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
     },
     {
       "file": "src/lib/identity/milestones.ts",
