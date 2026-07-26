@@ -330,14 +330,47 @@ async function upsertFight(
       date,
     });
 
-    // Same rule as events, and it matters most here: `orderOnCard` above is
-    // rebuilt from the SOURCE's index every run, so an operator's drag-and-drop
-    // ordering (and any early-entered result) would be destroyed by the next cron.
-    const existing = await tx.fight.findUnique({ where: { slug } });
+    // ── IDENTITY: the corner PAIR on this event, then the slug ────────────────
+    //
+    // A bout is "the same bout" when it is the same two fighters on the same card.
+    // Keying on a name-derived slug alone was wrong the moment two pipelines built
+    // that name differently — and they do: the odds pipeline creates production's
+    // boxing/MMA bouts as `{red}-vs-{blue}` under a synthetic daily card, while this
+    // function builds `{eventName}-{red}-vs-{blue}`. Same bout, two slugs.
+    //
+    // The consequence was silent and severe: a Wikipedia result would be written to a
+    // NEW row while every pick, battle and prediction stayed on the original. The
+    // ingest job would report written=1, the reader's prediction would never settle,
+    // and the card would show two copies of the same fight.
+    //
+    // Corner order is not part of identity either — sources disagree about which
+    // fighter is "red", so both orientations resolve to the one bout.
+    const existing =
+      (await tx.fight.findFirst({
+        where: {
+          eventId,
+          OR: [
+            { redId, blueId },
+            { redId: blueId, blueId: redId },
+          ],
+        },
+      })) ??
+      // Fallback: same bout name on a card we haven't matched by corners (a fighter
+      // row that was since deduped and re-pointed).
+      (await tx.fight.findUnique({ where: { slug } }));
     if (existing) {
-      // Two guards, in order: (1) never let a later sync un-decide a bout back to
-      // SCHEDULED (result integrity); (2) never overwrite operator-locked fields.
-      const guarded = preventResultDowngrade(existing.result, data);
+      // THREE guards now, in order:
+      //  (1) never re-seat the CORNERS of a bout that already exists. FightPick
+      //      stores "RED"/"BLUE", not a fighter id, so swapping redId/blueId would
+      //      silently invert the meaning of every pick, battle and graded result on
+      //      the bout. A source reporting the corners the other way round is the
+      //      same bout (that is why identity ignores order) — it is not a licence to
+      //      rewrite which corner is which. `winnerId` is a Fighter id and therefore
+      //      orientation-independent, so the result still lands correctly.
+      //  (2) never let a later sync un-decide a bout back to SCHEDULED.
+      //  (3) never overwrite operator-locked fields.
+      const { redId: _r, blueId: _b, ...corneless } = data;
+      const guarded = preventResultDowngrade(existing.result, corneless);
       const update = stripLocked(guarded, existing.lockedFields);
       if (Object.keys(update).length > 0) {
         await tx.fight.update({ where: { id: existing.id }, data: update });
