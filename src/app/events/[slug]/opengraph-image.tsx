@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { resolvePromotion } from "@/lib/promotions";
+import { isPublicEvent } from "@/lib/events-visibility";
 import { renderOgCard, OG_SIZE, OG_CONTENT_TYPE } from "@/lib/og";
 
 export const size = OG_SIZE;
@@ -12,13 +13,15 @@ export default async function Image({ params }: { params: { slug: string } }) {
   const event = await prisma.event.findUnique({
     where: { slug: params.slug },
     select: {
-      name: true, date: true, city: true, country: true, promotion: true, broadcaster: true,
+      name: true, date: true, city: true, country: true, promotion: true, broadcaster: true, status: true,
       _count: { select: { fights: true } },
       fights: { where: { mainEvent: true }, take: 1, select: { red: { select: { name: true } }, blue: { select: { name: true } } } },
     },
   });
 
-  if (!event) return renderOgCard({ eyebrow: "Event", headline: "Event not found" });
+  // A DRAFT card is unpublished — the share image must not reveal its name/date,
+  // exactly as the page (getEvent) returns notFound. See events-visibility.ts.
+  if (!event || !isPublicEvent(event)) return renderOgCard({ eyebrow: "Event", headline: "Event not found" });
 
   const main = event.fights[0];
   const promo = resolvePromotion(event.promotion);

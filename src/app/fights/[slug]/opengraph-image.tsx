@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { resolvePromotion } from "@/lib/promotions";
+import { isPublicEvent } from "@/lib/events-visibility";
 import { renderOgCard, OG_SIZE, OG_CONTENT_TYPE } from "@/lib/og";
 
 export const size = OG_SIZE;
@@ -17,11 +18,16 @@ export default async function Image({ params }: { params: { slug: string } }) {
       weightClass: { select: { name: true } },
       red: { select: { name: true, slug: true, wins: true, losses: true, draws: true } },
       blue: { select: { name: true, slug: true, wins: true, losses: true, draws: true } },
-      event: { select: { name: true, promotion: true } },
+      event: { select: { name: true, promotion: true, status: true } },
     },
   });
 
-  if (!fight) return renderOgCard({ eyebrow: "Matchup", headline: "Fight not found" });
+  // A fight on a DRAFT card is an UNANNOUNCED booking — the share image must not
+  // reveal the matchup or the card, exactly as the page loader (getFight) hides
+  // it. Without this the OG leaked "Gordon Ryan vs Inoue · Secret Draft Card".
+  if (!fight || (fight.event && !isPublicEvent(fight.event))) {
+    return renderOgCard({ eyebrow: "Matchup", headline: "Fight not found" });
+  }
 
   const promo = resolvePromotion(fight.event?.promotion);
   const rec = (f: { wins: number; losses: number; draws: number }) =>

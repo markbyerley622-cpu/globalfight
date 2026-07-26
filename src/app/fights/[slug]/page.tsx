@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, MapPin } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { getOddsForFight } from "@/lib/repo";
 import { marketProbability } from "@/lib/market";
 import { getCurrentUser } from "@/lib/auth";
@@ -24,8 +25,11 @@ import { TaleOfTape } from "@/components/fight/tale-of-tape";
 // ════════════════════════════════════════════════════════════════════════════
 
 function loadFight(slug: string) {
-  return prisma.fight.findUnique({
-    where: { slug },
+  // A fight on a DRAFT card is an unannounced booking — hide it from the page
+  // AND its metadata (both call this). A fight with no event stays public; one
+  // whose event is DRAFT no longer matches. See events-visibility.ts.
+  return prisma.fight.findFirst({
+    where: { slug, OR: [{ eventId: null }, { event: PUBLIC_EVENT }] },
     select: {
       id: true, slug: true, date: true, result: true, method: true, roundEnded: true, timeEnded: true,
       scheduledRounds: true, titleFight: true, mainEvent: true, coMain: true, winnerId: true, redId: true, blueId: true,

@@ -490,7 +490,14 @@ export async function getEvent(slug: string): Promise<FightEvent | null> {
 }
 
 export async function getFight(slug: string): Promise<Fight | null> {
-  const f = await prisma.fight.findUnique({ where: { slug }, include: FIGHT_INCLUDE });
+  // A fight on a DRAFT card is an unannounced booking and must not be public
+  // (see events-visibility.ts). Gate at the query: a fight with no event stays
+  // public; a fight whose event is DRAFT no longer matches. findFirst (not
+  // findUnique) because the where is now compound; slug is still unique.
+  const f = await prisma.fight.findFirst({
+    where: { slug, OR: [{ eventId: null }, { event: PUBLIC_EVENT }] },
+    include: FIGHT_INCLUDE,
+  });
   return f ? mapFight(f) : null;
 }
 
