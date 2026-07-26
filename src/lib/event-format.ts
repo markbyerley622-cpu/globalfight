@@ -99,26 +99,27 @@ const COVERAGE_SIGNALS: [RegExp, number][] = [
 // Coverage buckets, in display order. First matching pattern wins; anything
 // unmatched falls into "Fight news". Lets us group the feed Reddit-style with a
 // heading + count per topic instead of one flat list.
-const COVERAGE_GROUPS: { key: string; label: string; emoji: string; test: RegExp }[] = [
+// The icon for each section is chosen in the UI (CoveragePanel) from `key`, so
+// this pure module stays free of React — and we don't ship tacky emoji.
+const COVERAGE_GROUPS: { key: string; label: string; test: RegExp }[] = [
   // Post-fight sections lead — for a completed card these are what fans want, and
   // for an upcoming card their keywords simply don't match. Distinct keywords
   // from the pre-fight groups below so first-match grouping stays unambiguous.
-  { key: "highlights", label: "Highlights", emoji: "🎥", test: /highlights|full fight|watch:|knockout of|finish of the|round[- ]by[- ]round/i },
-  { key: "result", label: "Official result", emoji: "🏆", test: /\brecap\b|\breport\b|official result|scorecard|post[- ]fight report|full results/i },
-  { key: "interview", label: "Interviews", emoji: "🎙️", test: /interview|speaks (out|to)|post[- ]?fight (interview|reaction)|in his own words/i },
-  { key: "next", label: "What's next", emoji: "📈", test: /what.?s next|next fight|calls? out|callout|rematch|wants (to face|next)|targets? next|eyes (a|next)/i },
-  { key: "presser", label: "Press conference", emoji: "🎤", test: /press conference|presser/i },
-  { key: "weighin", label: "Weigh-ins", emoji: "⚖️", test: /weigh[- ]?in|weighin/i },
-  { key: "faceoff", label: "Faceoffs", emoji: "🤜", test: /face[- ]?off|faceoff|staredown|stare[- ]?down/i },
-  { key: "predictions", label: "Predictions", emoji: "📈", test: /predict|pick(s)?|breakdown|betting|odds|preview/i },
-  { key: "updates", label: "Fighter updates", emoji: "🚨", test: /injur|out of|withdraw|pull(s|ed)? out|replace|steps? in|medical|announce|booked|signs/i },
-  { key: "reactions", label: "Fan reactions", emoji: "🔥", test: /reacts?|reaction|responds?|fires? back|opinion|slams?|calls? out/i },
+  { key: "highlights", label: "Highlights", test: /highlights|full fight|watch:|knockout of|finish of the|round[- ]by[- ]round/i },
+  { key: "result", label: "Official result", test: /\brecap\b|\breport\b|official result|scorecard|post[- ]fight report|full results/i },
+  { key: "interview", label: "Interviews", test: /interview|speaks (out|to)|post[- ]?fight (interview|reaction)|in his own words/i },
+  { key: "next", label: "What's next", test: /what.?s next|next fight|calls? out|callout|rematch|wants (to face|next)|targets? next|eyes (a|next)/i },
+  { key: "presser", label: "Press conference", test: /press conference|presser/i },
+  { key: "weighin", label: "Weigh-ins", test: /weigh[- ]?in|weighin/i },
+  { key: "faceoff", label: "Faceoffs", test: /face[- ]?off|faceoff|staredown|stare[- ]?down/i },
+  { key: "predictions", label: "Predictions", test: /predict|pick(s)?|breakdown|betting|odds|preview/i },
+  { key: "updates", label: "Fighter updates", test: /injur|out of|withdraw|pull(s|ed)? out|replace|steps? in|medical|announce|booked|signs/i },
+  { key: "reactions", label: "Fan reactions", test: /reacts?|reaction|responds?|fires? back|opinion|slams?|calls? out/i },
 ];
 
 export interface CoverageGroup {
   key: string;
   label: string;
-  emoji: string;
   articles: Article[];
 }
 
@@ -139,7 +140,7 @@ export function groupCoverage(articles: Article[]): CoverageGroup[] {
     if (arts?.length) groups.push({ ...g, articles: arts });
   }
   const rest = buckets.get("news");
-  if (rest?.length) groups.push({ key: "news", label: "Fight news", emoji: "📰", articles: rest });
+  if (rest?.length) groups.push({ key: "news", label: "Fight news", articles: rest });
   return groups;
 }
 

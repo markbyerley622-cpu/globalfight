@@ -12,7 +12,6 @@ import { SponsorsStrip } from "./sponsors-strip";
 import { NavSheet } from "./nav-sheet";
 import { FollowSync } from "./follow-sync";
 import { AccountMenu } from "./account-menu";
-import { RotatingBackdrop } from "./rotating-backdrop";
 import { LanguageSwitcher } from "./language-switcher";
 import { PillarNav } from "./pillar-nav";
 import { OnlineCount } from "./online-count";
@@ -104,8 +103,6 @@ export function AppShell({
 
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden bg-ink-950">
-      {/* App-wide rotating photo backdrop — sits above the base ink, below the UI. */}
-      <RotatingBackdrop />
       <AnalyticsPageviews />
       <a href="#main" className="skip-link">Skip to content</a>
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">

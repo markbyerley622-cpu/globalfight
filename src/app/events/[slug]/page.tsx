@@ -2,7 +2,22 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Play, Trophy, Mic, TrendingUp, Megaphone, Scale, Swords, BarChart3, Siren, Flame, Newspaper, type LucideIcon } from "lucide-react";
+
+// Clean monochrome section icons — one per coverage group key (no emoji).
+const COVERAGE_ICON: Record<string, LucideIcon> = {
+  highlights: Play,
+  result: Trophy,
+  interview: Mic,
+  next: TrendingUp,
+  presser: Megaphone,
+  weighin: Scale,
+  faceoff: Swords,
+  predictions: BarChart3,
+  updates: Siren,
+  reactions: Flame,
+  news: Newspaper,
+};
 import { getEvent, getEventCoverage, getOddsForFight } from "@/lib/repo";
 import { marketProbability, type MarketProb } from "@/lib/market";
 import { safeNewsCover } from "@/lib/media-safe";
@@ -390,7 +405,7 @@ function CoveragePanel({ articles }: { articles: Article[] }) {
       {groups.map((g) => (
         <section key={g.key}>
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-base" aria-hidden>{g.emoji}</span>
+            {(() => { const Icon = COVERAGE_ICON[g.key] ?? Newspaper; return <Icon className="size-4 text-fog" aria-hidden />; })()}
             <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{g.label}</h3>
             <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-fog">
               {g.articles.length}
