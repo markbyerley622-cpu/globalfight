@@ -87,12 +87,12 @@ export default async function MyPredictionsPage() {
 
             {open.length > 0 && (
               <Section title="Awaiting result">
-                {open.map((p) => <PickRow key={p.fight.slug} pick={p} />)}
+                {open.map((p) => <PickRow key={p.fight.slug} pick={p} username={user.username} />)}
               </Section>
             )}
             {settled.length > 0 && (
               <Section title="Settled">
-                {settled.map((p) => <PickRow key={p.fight.slug} pick={p} />)}
+                {settled.map((p) => <PickRow key={p.fight.slug} pick={p} username={user.username} />)}
               </Section>
             )}
           </>
@@ -110,12 +110,17 @@ type PickData = {
   };
 };
 
-function PickRow({ pick }: { pick: PickData }) {
+function PickRow({ pick, username }: { pick: PickData; username: string | null }) {
   const { fight } = pick;
   const pickedName = pick.corner === "RED" ? fight.red.name : fight.blue.name;
   const opponent = pick.corner === "RED" ? fight.blue.name : fight.red.name;
   const pending = fight.result === "SCHEDULED";
   const method = pick.method ? METHOD_LABEL[pick.method] ?? pick.method : null;
+  // A correct call opens its shareable Victory Card; everything else goes to the
+  // bout. Needs a username to build the /u/ URL — fall back to the bout without.
+  const href = pick.correct === true && username
+    ? `/u/${username}/call/${fight.slug}`
+    : `/fights/${fight.slug}`;
 
   // Outcome badge — pending, correct, missed, or void (draw/NC → no grade).
   const outcome = pending
@@ -129,7 +134,7 @@ function PickRow({ pick }: { pick: PickData }) {
 
   return (
     <Link
-      href={`/fights/${fight.slug}`}
+      href={href}
       className={cn(
         "flex items-center gap-3 border-b border-ink-800 px-4 py-3.5 transition-colors last:border-b-0 hover:bg-ink-800/50",
       )}

@@ -1,13 +1,13 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 753,
+    "queries": 761,
     "high": 0,
     "medium": 67,
     "low": 147,
-    "info": 539,
-    "public": 507,
-    "userOwned": 155,
+    "info": 547,
+    "public": 511,
+    "userOwned": 159,
     "shared": 91,
     "admin": 0
   },
@@ -2735,7 +2735,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 44,
+      "line": 46,
       "fn": "resolveFightPicks",
       "model": "Fight",
       "method": "update",
@@ -2748,7 +2748,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 77,
+      "line": 79,
       "fn": "user",
       "model": "User",
       "method": "update",
@@ -2761,7 +2761,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 90,
+      "line": 92,
       "fn": "resolveFightPicks",
       "model": "User",
       "method": "update",
@@ -2774,7 +2774,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 130,
+      "line": 138,
       "fn": "resolveFightPicks",
       "model": "Fight",
       "method": "update",
@@ -8376,6 +8376,110 @@
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
     },
     {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 87,
+      "fn": "_getVictoryCard",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 94,
+      "fn": "_getVictoryCard",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 108,
+      "fn": "pick",
+      "model": "FightPick",
+      "method": "findUnique",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 117,
+      "fn": "_getVictoryCard",
+      "model": "ReputationEvent",
+      "method": "aggregate",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 122,
+      "fn": "_getVictoryCard",
+      "model": "FightPick",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 124,
+      "fn": "_getVictoryCard",
+      "model": "User",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 125,
+      "fn": "_getVictoryCard",
+      "model": "User",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 128,
+      "fn": "_getVictoryCard",
+      "model": "FightPick",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
       "file": "src/lib/intelligence/resolve.ts",
       "line": 26,
       "fn": "loadFight",
@@ -8390,7 +8494,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 70,
+      "line": 72,
       "fn": "resolveFightPicks",
       "model": "FightPick",
       "method": "update",
@@ -8403,7 +8507,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 155,
+      "line": 163,
       "fn": "pending",
       "model": "Fight",
       "method": "count",
@@ -8416,7 +8520,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 160,
+      "line": 168,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -8429,7 +8533,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 165,
+      "line": 173,
       "fn": "notifyCardSummary",
       "model": "FightPick",
       "method": "groupBy",
@@ -8442,7 +8546,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 166,
+      "line": 174,
       "fn": "notifyCardSummary",
       "model": "FightPick",
       "method": "groupBy",
@@ -8455,7 +8559,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 197,
+      "line": 205,
       "fn": "due",
       "model": "Fight",
       "method": "findMany",

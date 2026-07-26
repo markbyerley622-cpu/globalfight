@@ -29,7 +29,9 @@ function loadFight(fightId: string) {
       red: { select: { id: true, slug: true, name: true } },
       blue: { select: { id: true, slug: true, name: true } },
       event: { select: { slug: true } },
-      picks: { where: { correct: null } },
+      // username: lets a correct-pick notification deep-link to the shareable
+      // Victory Card (/u/<user>/call/<fight>) instead of the bare bout page.
+      picks: { where: { correct: null }, include: { user: { select: { username: true } } } },
     },
   });
 }
@@ -96,12 +98,18 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
           await awardCard(tx, pick.userId, winnerFighterId, { rarity, reason: "correct_pick", fightId });
           await recordActivity(tx, pick.userId, { type: "CARD_EARNED", title: `Earned a ${rarity.toLowerCase()} ${winnerName} card`, url: boutUrl });
         }
-        await recordActivity(tx, pick.userId, { type: "PICK_CORRECT", title: `Correctly picked ${winnerName}`, url: boutUrl });
+        // A correct call now has a shareable Victory Card — send the win straight
+        // to it (the peak moment to share). Falls back to the bout for the rare
+        // user with no username (nothing to build a /u/ URL from).
+        const cardUrl = pick.user.username
+          ? `/u/${pick.user.username}/call/${fight.slug}`
+          : boutUrl;
+        await recordActivity(tx, pick.userId, { type: "PICK_CORRECT", title: `Correctly picked ${winnerName}`, url: cardUrl });
         await notify(tx, pick.userId, {
           type: "PICK_RESULT",
           title: `You called it — ${winnerName} won`,
           body: `+${rep} reputation · ${user.pickStreak}-pick streak${winnerFighterId ? ` · ${rarity.toLowerCase()} card earned` : ""}`,
-          url: boutUrl,
+          url: cardUrl,
           icon: "✅",
           // One card = one lit phone. The device replaces the previous bout's
           // push instead of stacking twelve; all twelve rows still land in the

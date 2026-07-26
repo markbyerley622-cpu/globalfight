@@ -45,6 +45,7 @@ Verified empirically against a production build (red-team pass, 2026-07-26).
 | Resource | Anonymous | User (non-owner) | User (owner) | Moderator | Admin |
 |---|---|---|---|---|---|
 | Public content (fighters, events, fights, rankings, gyms, gym reviews, forum threads/posts) | **read** | read | read | read | read |
+| Prediction Victory Card (`/u/<user>/call/<fight>`) | **read** (public boast, share target) | read | read | read | read |
 | `FightPick` (own picks) | ✗ (401) | ✗ own-scoped | CRUD own | — | — |
 | Crowd pick tally | read (aggregate) | read | read | read | read |
 | `GymReview` write | ✗ (401) | ✗ | **1 per gym**, edit/delete own | delete any (moderation) | delete any |
