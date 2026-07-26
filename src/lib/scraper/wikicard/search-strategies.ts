@@ -29,6 +29,8 @@ export type SearchStrategyKind =
   | "event_title"
   /** "Red vs Blue" — how Wikipedia titles a standalone fight article. */
   | "main_bout"
+  /** "{Promotion} Red vs Blue" — the promotion as a disambiguating search term. */
+  | "promotion_bout"
   /** Promotion + event, for a card whose bare number is ambiguous. */
   | "promotion_event"
   /** Both fighters' names with no separator — a looser sweep. */
@@ -96,6 +98,13 @@ export function buildSearchLadder(input: LadderInput): SearchStrategy[] {
   // real one (Wikipedia often has a standalone article for a marquee fight).
   const bouts = input.bouts.slice(0, MAX_BOUTS_QUERIED);
   for (const b of bouts) add("main_bout", `${b.red.name} vs ${b.blue.name}`);
+
+  // 2b — promotion + bout. "UFC Fight Night Ankalaev vs Guskov" and "BKFC 91 Hunt vs
+  // Pugliesi" are how these articles are actually titled, and the promotion word is
+  // what separates a UFC card from a boxing bout between similarly-named fighters.
+  if (input.promotionName) {
+    for (const b of bouts) add("promotion_bout", `${input.promotionName} ${b.red.name} vs ${b.blue.name}`);
+  }
 
   // 3 — promotion + event, for a card whose own name is a bare number ("91").
   // Skipped when the name already carries the promotion, or the query is the

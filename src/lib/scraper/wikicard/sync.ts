@@ -1,73 +1,120 @@
 // ════════════════════════════════════════════════════════════════════════
 //  Wikipedia card provider — `syncWikiCards()`.
 //
-//  PURE provider: takes a list of event targets, walks each one's SEARCH LADDER
-//  until a candidate page VERIFIES against the bouts we are missing, and returns
-//  canonical NormalizedEvent[] carrying the card. The caller (runner/script) hands
-//  them to persistAggregated, which resolves the event by name+date and attaches
-//  the fights. Promotion-agnostic — works for ONE, BKFC, PFL, UFC, and for the
-//  synthetic daily cards the odds pipeline invents.
+//  PURE provider: walks each target's SEARCH LADDER until a candidate page is
+//  ACCEPTED, and returns canonical NormalizedEvent[] carrying the card. The caller
+//  hands them to persistAggregated, which resolves the event by name+date, attaches
+//  the fights and fires settlement for anything it decides.
 //
-//  Two rules make the widened search safe:
+//  THREE rules, learned the hard way from a real historical run:
 //
-//    SEARCH IS LOOSE     — five ordered strategies per target (event title, the
-//                          bout, promotion+event, bare fighter names, registry
-//                          aliases), because a synthetic card's own name cannot be
-//                          found upstream and a real card's sometimes can't either.
+//  1. SEARCH IS LOOSE. Five ordered strategies per target, because a synthetic
+//     "Boxing — 26 Jul 2026" card cannot be found by its own name.
 //
-//    ACCEPTANCE IS STRICT — a page is only accepted when its parsed card actually
-//                          contains a bout between the two fighters we came for,
-//                          compared through Entity Resolution (verify.ts). Never a
-//                          title-prefix guess. A page we cannot verify is skipped,
-//                          because an unresolved bout is honest and a wrong result
-//                          is not.
+//  2. RETRIEVAL IS SELECTIVE. Search results are scored on their TITLE before any
+//     fetch (candidates.ts) and only the best few, above a threshold, are parsed.
+//     The first run downloaded "List of transgender people" (1.27 MB), "Kansas City
+//     Chiefs", "Back 4 Blood" and a dozen fighter biographies to learn nothing.
+//     Verification made those harmless; it did not make them free.
 //
-//  Every target's outcome is named and reported (verified / no_candidate / no_card /
-//  unverified / error) along with which strategy won, so a zero is always explicable.
+//  3. ACCEPTANCE IS STRICT, AND SO IS WHAT GETS WRITTEN. A page is accepted only on
+//     evidence, and only the bouts that were actually verified are persisted — never
+//     the whole parsed table. Wikipedia season pages carry every card of the year;
+//     attaching one of those wholesale put ~190 bouts on events that have 10.
+//
+//  Every decision is named and counted: which strategy won, what was rejected and
+//  why, pages parsed, requests spent. A zero is always explicable.
 // ════════════════════════════════════════════════════════════════════════
 
 import PQueue from "p-queue";
 import { log } from "../logger";
 import { searchPages, fetchPageHtml } from "./client";
-import { parseWikiCard } from "./extract";
+import { parseWikiCard, type WikiBout } from "./extract";
 import { toNormalizedWikiEvent } from "./map";
-import { verifyCard, isAcceptable } from "./verify";
+import { verifyCard, verifyTitle, isAcceptable } from "./verify";
+import { rankCandidates, PARSE_BUDGET, type CandidateContext } from "./candidates";
 import type { NormalizedEvent } from "@/services/providers/types";
-import type { WikiTarget, WikiHarvest, WikiHarvestReport, WikiTargetOutcome } from "./types";
+import type {
+  WikiTarget, WikiHarvest, WikiHarvestReport, WikiTargetOutcome, StrategyStat,
+} from "./types";
 
 const CONCURRENCY = Number(process.env.WIKICARD_CONCURRENCY ?? 2);
 /** Candidate pages considered per search query. */
 const CANDIDATES_PER_QUERY = Number(process.env.WIKICARD_CANDIDATES ?? 3);
+/** Rejections kept per target for the report. Enough to explain, not to bloat. */
+const MAX_REJECT_DETAIL = 8;
+
+/**
+ * Run-scoped page cache: title → parsed bouts.
+ *
+ * The single biggest waste in the first historical run. Wikipedia's
+ * "2026 in Bare Knuckle Fighting Championship" is the right page for most BKFC
+ * events, and it was fetched and parsed TWELVE times at 551 KB each because the
+ * de-dup set was per-target. Cached across the whole harvest, that is one fetch and
+ * one parse. Parsed bouts are cached rather than HTML — parseWikiCard is pure, so
+ * re-running it is pure waste too.
+ */
+class PageCache {
+  private readonly pages = new Map<string, WikiBout[] | null>();
+  fetches = 0;
+  parses = 0;
+  hits = 0;
+
+  async bouts(title: string): Promise<WikiBout[] | null> {
+    const cached = this.pages.get(title);
+    if (cached !== undefined) { this.hits += 1; return cached; }
+    this.fetches += 1;
+    const html = await fetchPageHtml(title);
+    if (!html) { this.pages.set(title, null); return null; }
+    this.parses += 1;
+    const bouts = parseWikiCard(html);
+    this.pages.set(title, bouts);
+    return bouts;
+  }
+}
 
 interface Attempt {
   outcome: WikiTargetOutcome;
   event: NormalizedEvent | null;
 }
 
+const emptyStat = (): StrategyStat => ({ searched: 0, candidates: 0, parsed: 0, verified: 0 });
+
 /**
- * Walk one target's ladder. Stops at the first VERIFIED page — so a real event
- * resolves on its title with a single query, and only a synthetic card pays for the
- * deeper strategies.
+ * Walk one target's ladder. Stops at the first ACCEPTED page — so a real event
+ * resolves on its title with one query, and only a synthetic card pays for depth.
  */
-async function harvestTarget(target: WikiTarget, lastUpdated: string): Promise<Attempt> {
-  const { eventIdentity, searchIdentity, expectedBouts } = target;
+async function harvestTarget(
+  target: WikiTarget,
+  lastUpdated: string,
+  cache: PageCache,
+  stats: Record<string, StrategyStat>,
+): Promise<Attempt> {
+  const { eventIdentity, searchIdentity, expectedBouts, gap } = target;
   const outcome: WikiTargetOutcome = {
     event: eventIdentity.name,
-    strategy: null,
-    page: null,
-    matched: 0,
-    bouts: 0,
-    queries: 0,
-    reason: "no_candidate",
+    strategy: null, page: null, matched: 0, bouts: 0,
+    queries: 0, parses: 0, rejected: 0, rejectedDetail: [], reason: "no_candidate",
   };
 
-  // Pages already fetched for THIS target: different strategies routinely surface
-  // the same article, and parsing it twice is a wasted request either way.
+  const ctx: CandidateContext = {
+    eventName: eventIdentity.name,
+    promotionName: target.promotionName,
+    promotionAliases: target.promotionAliases,
+    eventYear: eventIdentity.date.slice(0, 4),
+    expectedBouts,
+  };
+
   const tried = new Set<string>();
   let sawCandidate = false;
   let sawCard = false;
+  let parses = 0; // the per-target parse budget
 
   for (const strategy of searchIdentity) {
+    if (parses >= PARSE_BUDGET) { outcome.note = "parse budget exhausted"; break; }
+    const stat = (stats[strategy.kind] ??= emptyStat());
+    stat.searched += 1;
+
     let titles: string[];
     try {
       outcome.queries += 1;
@@ -77,45 +124,91 @@ async function harvestTarget(target: WikiTarget, lastUpdated: string): Promise<A
       outcome.note = `${strategy.kind}: ${(e as Error).message}`;
       return { outcome, event: null };
     }
-    if (titles.length) sawCandidate = true;
+    if (titles.length) { sawCandidate = true; stat.candidates += titles.length; }
 
-    for (const title of titles) {
-      if (tried.has(title)) continue;
-      tried.add(title);
+    // SCORE BEFORE FETCHING. This is where the wasted megabytes are refused.
+    const fresh = titles.filter((t) => !tried.has(t));
+    const { parse, rejected } = rankCandidates(fresh, ctx, { budget: PARSE_BUDGET - parses });
+    outcome.rejected += rejected.length;
+    // Rejections are recorded on the OUTCOME, not logged one by one. There are many
+    // per target and the cron would drown in them; the repair report is where
+    // "rejected X, score N, because …" is actually read. Capped so a pathological
+    // target can't grow the report without bound.
+    for (const r of rejected) {
+      if (outcome.rejectedDetail.length >= MAX_REJECT_DETAIL) break;
+      outcome.rejectedDetail.push({ title: r.title, score: r.score, reasons: r.reasons });
+    }
 
-      let html: string | null;
+    for (const cand of parse) {
+      if (parses >= PARSE_BUDGET) break;
+      tried.add(cand.title);
+      parses += 1;
+      outcome.parses += 1;
+      stat.parsed += 1;
+
+      let bouts: WikiBout[] | null;
       try {
-        outcome.queries += 1;
-        html = await fetchPageHtml(title);
+        bouts = await cache.bouts(cand.title);
       } catch (e) {
-        outcome.note = `${title}: ${(e as Error).message}`;
+        outcome.note = `${cand.title}: ${(e as Error).message}`;
         continue;
       }
-      if (!html) continue;
-
-      const bouts = parseWikiCard(html);
-      if (!bouts.length) continue;
+      if (!bouts || !bouts.length) continue;
       sawCard = true;
 
-      // THE gate. Content, not title.
-      const match = verifyCard(bouts, expectedBouts);
-      if (!isAcceptable(match)) continue;
+      // ── THE GATE ──────────────────────────────────────────────────────────
+      // A result-gap target is accepted on CONTENT and persists only the bouts that
+      // verified. A card-gap target has nothing to verify against (no bouts exist
+      // yet), so its title must carry the proof — safe because that gap's query IS
+      // the event title — and the whole parsed card is then legitimately its own.
+      let accept = false;
+      let persist: WikiBout[] = [];
+      let matched = 0;
 
+      if (gap === "missing_card") {
+        accept = verifyTitle(eventIdentity.name, cand.title);
+        persist = bouts;
+        matched = bouts.length;
+      } else {
+        const match = verifyCard(bouts, expectedBouts);
+        accept = isAcceptable(match);
+        persist = match.bouts; // verified bouts ONLY — never a season page's superset
+        matched = match.matched;
+      }
+      if (!accept || !persist.length) continue;
+
+      stat.verified += 1;
       outcome.strategy = strategy.kind;
-      outcome.page = title;
-      outcome.matched = match.matched;
-      outcome.bouts = bouts.length;
+      outcome.page = cand.title;
+      outcome.score = cand.score;
+      outcome.reasons = cand.reasons;
+      outcome.matched = matched;
+      outcome.bouts = persist.length;
+      outcome.parsedOnPage = bouts.length;
       outcome.reason = "verified";
-      return {
-        outcome,
-        event: toNormalizedWikiEvent(eventIdentity, title, bouts, lastUpdated),
-      };
+      log.info(
+        { op: "wikicard.accept", event: eventIdentity.name, page: cand.title, score: cand.score,
+          reasons: cand.reasons, strategy: strategy.kind, matched, persisted: persist.length, onPage: bouts.length },
+        "candidate accepted",
+      );
+      return { outcome, event: toNormalizedWikiEvent(eventIdentity, cand.title, persist, lastUpdated) };
     }
   }
 
-  // Nothing verified. Say WHICH kind of nothing — the three cases need different
-  // responses and lumping them together is how "written=0" became uninterpretable.
-  outcome.reason = sawCard ? "unverified" : sawCandidate ? "no_card" : "no_candidate";
+  // Name the failure precisely — each of these points somewhere different:
+  //   no_candidate   the search returned nothing at all
+  //   all_rejected   candidates came back but none scored high enough to read
+  //                  (the search ladder is finding junk — fix the query)
+  //   no_card        we parsed pages but none contained a readable results table
+  //   unverified     we parsed a card but it wasn't our bout (the source has no
+  //                  coverage of this fight — nothing to fix)
+  outcome.reason = sawCard
+    ? "unverified"
+    : outcome.parses > 0
+      ? "no_card"
+      : sawCandidate
+        ? "all_rejected"
+        : "no_candidate";
   return { outcome, event: null };
 }
 
@@ -125,10 +218,13 @@ export async function syncWikiCards(targets: WikiTarget[]): Promise<WikiHarvest>
   const lastUpdated = startedAt.toISOString();
   const warnings: string[] = [];
   const outcomes: WikiTargetOutcome[] = [];
+  const byStrategy: Record<string, StrategyStat> = {};
+  const cache = new PageCache();
   const report: WikiHarvestReport = {
     startedAt: lastUpdated, finishedAt: lastUpdated, durationMs: 0,
     targets: targets.length, matched: 0, withCard: 0, bouts: 0,
-    queries: 0, byStrategy: {}, outcomes, warnings,
+    queries: 0, parses: 0, rejected: 0, cacheHits: 0,
+    byStrategy, outcomes, warnings,
   };
 
   const queue = new PQueue({ concurrency: CONCURRENCY });
@@ -138,23 +234,23 @@ export async function syncWikiCards(targets: WikiTarget[]): Promise<WikiHarvest>
     targets.map((target) =>
       queue.add(async () => {
         try {
-          const { outcome, event } = await harvestTarget(target, lastUpdated);
+          const { outcome, event } = await harvestTarget(target, lastUpdated, cache, byStrategy);
           outcomes.push(outcome);
           report.queries += outcome.queries;
+          report.parses += outcome.parses;
+          report.rejected += outcome.rejected;
           if (outcome.reason !== "no_candidate") report.matched += 1;
           if (event) {
             report.withCard += 1;
             report.bouts += outcome.bouts;
-            if (outcome.strategy) {
-              report.byStrategy[outcome.strategy] = (report.byStrategy[outcome.strategy] ?? 0) + 1;
-            }
             events.push(event);
           }
           if (outcome.note) warnings.push(`${outcome.event}: ${outcome.note}`);
         } catch (e) {
           outcomes.push({
             event: target.eventIdentity.name, strategy: null, page: null,
-            matched: 0, bouts: 0, queries: 0, reason: "error", note: (e as Error).message,
+            matched: 0, bouts: 0, queries: 0, parses: 0, rejected: 0, rejectedDetail: [],
+            reason: "error", note: (e as Error).message,
           });
           warnings.push(`${target.eventIdentity.name}: ${(e as Error).message}`);
         }
@@ -163,13 +259,15 @@ export async function syncWikiCards(targets: WikiTarget[]): Promise<WikiHarvest>
   );
   await queue.onIdle();
 
+  report.cacheHits = cache.hits;
   const finishedAt = new Date();
   report.finishedAt = finishedAt.toISOString();
   report.durationMs = finishedAt.getTime() - startedAt.getTime();
   log.info(
     {
-      targets: report.targets, matched: report.matched, withCard: report.withCard,
-      bouts: report.bouts, queries: report.queries, byStrategy: report.byStrategy,
+      targets: report.targets, verified: report.withCard, bouts: report.bouts,
+      queries: report.queries, parses: report.parses, rejected: report.rejected,
+      pageFetches: cache.fetches, cacheHits: cache.hits, byStrategy,
     },
     "wikicard:harvest:done",
   );

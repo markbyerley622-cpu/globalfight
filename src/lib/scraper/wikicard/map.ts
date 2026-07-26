@@ -68,14 +68,22 @@ export function toNormalizedWikiEvent(
   bouts: WikiBout[],
   lastUpdated: string,
 ): NormalizedEvent {
+  // The source's identifier for THIS EVENT — the page it came from, qualified by the
+  // event itself. The page alone is NOT an event id: a Wikipedia season page
+  // ("2026 in Bare Knuckle Fighting Championship") is the right source for every BKFC
+  // card of the year, so using the bare title made a dozen events share one
+  // externalId. resolveEvent checks externalId FIRST, so the second and third events
+  // resolved to whichever one persisted first — every result landing on one event and
+  // the rest left unresolved. Composing keeps provenance honest and identity unique.
+  const externalId = `${pageTitle}#${event.name}@${event.date.slice(0, 10)}`;
   const meta: SourceMeta = {
     source: WIKI_SOURCE,
     confidence: WIKI_CONFIDENCE,
     lastUpdated,
-    externalId: pageTitle,
+    externalId,
   };
   return {
-    externalId: pageTitle,
+    externalId,
     name: event.name,
     sport: event.sport,
     date: event.date,

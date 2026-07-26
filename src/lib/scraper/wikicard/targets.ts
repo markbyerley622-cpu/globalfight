@@ -187,16 +187,16 @@ async function buildTargets(rows: { row: EventRow; gap: WikiGap }[]): Promise<Wi
   }
 
   const targets: WikiTarget[] = [];
-  for (const { row } of rows) {
+  for (const { row, gap } of rows) {
     const bouts = boutsByEvent.get(row.id) ?? [];
     const promo = resolvePromotion(row.promotion);
-    const searchIdentity = buildSearchLadder({
-      eventName: row.name,
-      // Only a CANONICAL promotion contributes a query; "Various" is a placeholder,
-      // not an organisation, and searching for it upstream finds nothing.
-      promotionName: promo.slug === "combat" ? null : promo.name,
-      bouts,
-    });
+    // Only a CANONICAL promotion counts; "Various" is a placeholder, not an
+    // organisation, and neither searching for it nor scoring on it means anything.
+    const isReal = promo.slug !== "combat";
+    const promotionName = isReal ? promo.name : null;
+    const promotionAliases = isReal ? promo.aliases : [];
+
+    const searchIdentity = buildSearchLadder({ eventName: row.name, promotionName, bouts });
     // A synthetic card with no bouts has no findable identity at all — its own name
     // cannot be searched and there is no bout to search for. Emitting it would spend
     // a request to learn nothing.
@@ -206,6 +206,9 @@ async function buildTargets(rows: { row: EventRow; gap: WikiGap }[]): Promise<Wi
       eventIdentity: { name: row.name, date: row.date.toISOString(), sport: row.sport as Sport },
       searchIdentity,
       expectedBouts: bouts,
+      gap,
+      promotionName,
+      promotionAliases,
     });
   }
   return targets;

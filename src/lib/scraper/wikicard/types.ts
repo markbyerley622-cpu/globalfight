@@ -3,6 +3,7 @@ import type { NormalizedEvent } from "@/services/providers/types";
 import type { Sport } from "@/lib/types";
 import type { SearchStrategy, SearchStrategyKind } from "./search-strategies";
 import type { ExpectedBout } from "./verify";
+import type { WikiGap } from "./targets";
 
 /**
  * How WE identify the event. Used to persist the harvested card onto the right row
@@ -31,9 +32,33 @@ export interface WikiTarget {
   /**
    * The bouts we are missing, resolved to registry entities. These are what a
    * candidate page is verified AGAINST (verify.ts) — a loose query is only safe
-   * because acceptance is strict.
+   * because acceptance is strict — and what only ever gets persisted.
+   *
+   * EMPTY for a `missing_card` target by definition: the event has no bouts yet.
+   * That gap is therefore accepted on its TITLE instead (verify.ts::verifyTitle).
    */
   expectedBouts: ExpectedBout[];
+  /**
+   * Which gap this target is filling. It decides the acceptance rule, so it is part
+   * of the target rather than something the caller has to remember to pass.
+   */
+  gap: WikiGap;
+  /** Canonical promotion name, or null — a candidate-scoring signal. */
+  promotionName: string | null;
+  /** Registry aliases for the promotion ("bare knuckle" finds far more than "BKFC"). */
+  promotionAliases: string[];
+}
+
+/** Per-rung retrieval stats, so a bad strategy is measurable rather than assumed. */
+export interface StrategyStat {
+  /** Queries issued on this rung. */
+  searched: number;
+  /** Candidate titles the source returned. */
+  candidates: number;
+  /** Candidates that scored highly enough to fetch + parse. */
+  parsed: number;
+  /** Targets this rung actually resolved. */
+  verified: number;
 }
 
 /** What happened to one target — every outcome is nameable, none is silent. */
@@ -45,12 +70,23 @@ export interface WikiTargetOutcome {
   page: string | null;
   /** Verified bouts on that page. */
   matched: number;
-  /** Bouts parsed from that page (what we hand to persist). */
+  /** Bouts actually handed to persist — verified only, never a season page's superset. */
   bouts: number;
+  /** Bouts the accepted page contained in total (bouts < parsedOnPage means we filtered). */
+  parsedOnPage?: number;
   /** Queries actually issued — the cost of this target. */
   queries: number;
+  /** Pages fetched + parsed. Bounded by PARSE_BUDGET. */
+  parses: number;
+  /** Candidates refused on their title, before any fetch. */
+  rejected: number;
+  /** A sample of those rejections with their scores — retrieval, made explainable. */
+  rejectedDetail: { title: string; score: number; reasons: string[] }[];
+  /** The accepted candidate's score and the signals behind it. */
+  score?: number;
+  reasons?: string[];
   /** Why it ended as it did. */
-  reason: "verified" | "no_candidate" | "no_card" | "unverified" | "error";
+  reason: "verified" | "no_candidate" | "all_rejected" | "no_card" | "unverified" | "error";
   note?: string;
 }
 
@@ -66,8 +102,14 @@ export interface WikiHarvestReport {
   bouts: number;
   /** Total upstream queries issued across every strategy. */
   queries: number;
-  /** How many targets each strategy resolved — proves the ladder earns its keep. */
-  byStrategy: Record<string, number>;
+  /** Pages fetched + parsed. The number that used to be "every search result". */
+  parses: number;
+  /** Candidates refused on their title before any fetch — the saved work. */
+  rejected: number;
+  /** Page-cache hits: the same season page reused instead of re-downloaded. */
+  cacheHits: number;
+  /** searched / candidates / parsed / verified per rung — the ladder, measured. */
+  byStrategy: Record<string, StrategyStat>;
   /** Per-target outcomes, for the repair report. */
   outcomes: WikiTargetOutcome[];
   warnings: string[];

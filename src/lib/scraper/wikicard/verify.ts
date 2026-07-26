@@ -37,10 +37,22 @@ export interface ExpectedBout {
 export interface VerifiedMatch {
   /** Bouts on the page that resolve to a bout we were looking for. */
   matched: number;
-  /** Total bouts parsed from the page (the card we would persist). */
+  /** Total bouts parsed from the page. */
   parsed: number;
   /** Which of the expected bouts were found, for the report. */
   matchedPairs: { red: string; blue: string }[];
+  /**
+   * ONLY the parsed bouts that resolve to a bout we came for.
+   *
+   * This is what may be persisted, and the distinction is not cosmetic. Wikipedia
+   * keeps season pages — "2026 in Bare Knuckle Fighting Championship" carries EVERY
+   * card of the year. Such a page verifies correctly (our bout really is on it) and
+   * then, if the whole parsed table were attached, dumps ~500 bouts from other events
+   * onto this one event. A historical run reported 3,803 bouts across 20 events; real
+   * cards are 10–13. Attaching a superset is not a performance problem, it is
+   * fabricated card data.
+   */
+  bouts: WikiBout[];
 }
 
 /**
@@ -52,7 +64,10 @@ export interface VerifiedMatch {
  */
 export function verifyCard(bouts: WikiBout[], expected: ExpectedBout[]): VerifiedMatch {
   const matchedPairs: { red: string; blue: string }[] = [];
-  if (!bouts.length || !expected.length) return { matched: 0, parsed: bouts.length, matchedPairs };
+  const matchedBouts: WikiBout[] = [];
+  if (!bouts.length || !expected.length) {
+    return { matched: 0, parsed: bouts.length, matchedPairs, bouts: [] };
+  }
 
   // Closed candidate set: only the corners of the bouts we are looking for.
   const candidates: ResolvedEntity[] = [];
@@ -80,9 +95,33 @@ export function verifyCard(bouts: WikiBout[], expected: ExpectedBout[]): Verifie
     if (!hit || seen.has(key)) continue;
     seen.add(key);
     matchedPairs.push({ red: hit.red.name, blue: hit.blue.name });
+    matchedBouts.push(bout);
   }
 
-  return { matched: matchedPairs.length, parsed: bouts.length, matchedPairs };
+  return { matched: matchedPairs.length, parsed: bouts.length, matchedPairs, bouts: matchedBouts };
+}
+
+/**
+ * Acceptance for a CARD-BACKFILL target — an event with no bouts at all, so there is
+ * nothing to verify against.
+ *
+ * Content verification is impossible here, so the title must carry the proof instead.
+ * That is safe precisely because the query for this gap IS the event title: a strict
+ * normalized prefix match between what we asked for and what came back. Anything
+ * looser would attach a stranger's card to our event.
+ *
+ * (This is the original `titleMatches` rule, kept for the one case it was correct
+ * for. Introducing content verification without keeping it silently made every
+ * card-backfill target unverifiable, since `expectedBouts` is empty by definition.)
+ */
+export function verifyTitle(eventName: string, pageTitle: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const want = norm(eventName);
+  const got = norm(pageTitle);
+  if (!want || !got) return false;
+  if (want === got) return true;
+  // "ONE Fight Night 39" ⊂ "ONE Fight Night 39: Superlek vs Takeru" and vice-versa.
+  return want.startsWith(got) || got.startsWith(want);
 }
 
 /**

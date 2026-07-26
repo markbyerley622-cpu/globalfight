@@ -23,7 +23,10 @@ import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
-import { syncWikiCards, findWikiTargets, type WikiGap, type WikiMode } from "@/lib/scraper/wikicard";
+import {
+  syncWikiCards, findWikiTargets,
+  type WikiGap, type WikiMode, type WikiHarvestReport,
+} from "@/lib/scraper/wikicard";
 import { persistAggregated } from "@/services/sync/persist";
 import { isSourceEnabled } from "@/lib/ingestion-registry";
 import type { Sport } from "@/lib/types";
@@ -70,21 +73,53 @@ export async function harvestWikiTargets(
   // with no cron in between.
   for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
 
-  // Name every non-verified outcome. "written=0" was uninterpretable; these three
-  // counts each point at a different subsystem — the search ladder, the extractor,
-  // or genuinely-absent public coverage.
+  // Name every non-verified outcome. "written=0" was uninterpretable; these counts
+  // each point at a different subsystem — the search ladder, the extractor, or
+  // genuinely-absent public coverage — and the retrieval numbers say what the run COST.
   const tally = (reason: string) => h.report.outcomes.filter((o) => o.reason === reason).length;
   const strategies = Object.entries(h.report.byStrategy)
-    .map(([k, n]) => `${k}=${n}`)
+    .filter(([, s]) => s.verified > 0)
+    .map(([k, s]) => `${k}=${s.verified}`)
     .join(",");
+  const per = (n: number) => (targets.length ? (n / targets.length).toFixed(1) : "0");
 
   log.info({ ...h.report, outcomes: undefined, gap: opts.gap ?? "all", mode: opts.mode ?? "incremental", written }, "wikicards:runner:done");
   return (
-    `targets=${targets.length} verified=${h.report.withCard} written=${written} ` +
-    `queries=${h.report.queries} noCandidate=${tally("no_candidate")} noCard=${tally("no_card")} ` +
+    `targets=${targets.length} verified=${h.report.withCard} written=${written} bouts=${h.report.bouts} ` +
+    `searches=${h.report.queries}(${per(h.report.queries)}/t) parses=${h.report.parses}(${per(h.report.parses)}/t) ` +
+    `rejected=${h.report.rejected} cacheHits=${h.report.cacheHits} ` +
+    `noCandidate=${tally("no_candidate")} allRejected=${tally("all_rejected")} noCard=${tally("no_card")} ` +
     `unverified=${tally("unverified")} errors=${tally("error")}` +
     (strategies ? ` via[${strategies}]` : "")
   );
+}
+
+/** Full harvest detail, for the repair script's report. */
+export async function harvestWikiTargetsDetailed(
+  opts: { gap?: WikiGap; limit: number; mode?: WikiMode; promotion?: string; skip?: number },
+): Promise<{ line: string; report: WikiHarvestReport | null; written: number }> {
+  const targets = await findWikiTargets(opts);
+  if (!targets.length) {
+    return { line: `targets=0 gap=${opts.gap ?? "all"} mode=${opts.mode ?? "incremental"}`, report: null, written: 0 };
+  }
+  const h = await syncWikiCards(targets);
+  let written = 0;
+  const bySport = new Map<Sport, typeof h.events>();
+  for (const e of h.events) {
+    const s = e.sport as Sport;
+    if (!bySport.has(s)) bySport.set(s, []);
+    bySport.get(s)!.push(e);
+  }
+  for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
+  const per = (n: number) => (targets.length ? (n / targets.length).toFixed(1) : "0");
+  return {
+    line:
+      `targets=${targets.length} verified=${h.report.withCard} written=${written} bouts=${h.report.bouts} ` +
+      `searches=${h.report.queries}(${per(h.report.queries)}/t) parses=${h.report.parses}(${per(h.report.parses)}/t) ` +
+      `rejected=${h.report.rejected} cacheHits=${h.report.cacheHits}`,
+    report: h.report,
+    written,
+  };
 }
 
 /** Run one target end-to-end inside a ScrapeJob lifecycle. */

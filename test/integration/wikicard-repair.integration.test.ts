@@ -221,7 +221,10 @@ test("a page about OTHER fighters is refused, and the bout stays honestly unreso
 
   const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
   assert.match(line, /verified=0/, line);
-  assert.match(line, /unverified=1/, "the failure must be named, not silent");
+  // Refused at scoring, BEFORE any fetch — so the honest reason is "all_rejected"
+  // (the search found junk), not "unverified" (we read a card that wasn't ours).
+  assert.match(line, /allRejected=1/, "the failure must be named, not silent");
+  assert.match(line, /parses=0/, "and it must not have cost a page fetch");
 
   const fresh = await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } });
   assert.equal(fresh.result, "SCHEDULED", "nothing may be written from an unverified page");
@@ -342,4 +345,135 @@ test("skip walks the backlog instead of re-attempting the same head", async () =
   assert.equal(first.length, 1);
   assert.equal(second.length, 1);
   assert.notEqual(first[0].eventIdentity.name, second[0].eventIdentity.name, "skip must advance");
+});
+
+// ── retrieval v2: precision, and what may be written ────────────────────────
+
+test("a SEASON page attaches only OUR bout, not every card of the year", async () => {
+  // The bug: "2026 in Bare Knuckle Fighting Championship" carries every BKFC card of
+  // the year. It verifies correctly (our bout really is on it) and, when the whole
+  // parsed table was persisted, dumped ~190 bouts onto a 1-bout event. A real run
+  // reported 3,803 bouts across 20 events. That is fabricated card data.
+  const { event, fight } = await realCard();
+
+  index("BKFC 91", ["2026 in Bare Knuckle Fighting Championship"]);
+  pages.set(
+    "2026 in Bare Knuckle Fighting Championship",
+    cardHtml([
+      { red: "Mike Perry", blue: "Eddie Alvarez", method: "KO", round: 2 }, // ours
+      { red: "Someone Else", blue: "Another Person" },
+      { red: "Third Fighter", blue: "Fourth Fighter" },
+      { red: "Fifth Fighter", blue: "Sixth Fighter" },
+    ]),
+  );
+
+  const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
+  assert.match(line, /verified=1/, line);
+
+  const fights = await prisma.fight.findMany({ where: { eventId: event.id } });
+  assert.equal(fights.length, 1, `only our bout may be attached, got ${fights.length}`);
+  assert.equal(fights[0].id, fight.id);
+  assert.equal(fights[0].result, "WIN");
+  // And no stray fighters were invented from the other cards on that page.
+  const names = (await prisma.fighter.findMany({ select: { name: true } })).map((f) => f.name);
+  assert.ok(!names.includes("Third Fighter"), `strangers were created: ${names.join(", ")}`);
+});
+
+test("unrelated candidates are REFUSED BEFORE any page fetch", async () => {
+  const { fight } = await syntheticCard();
+  // Exactly the junk a real search returned for this bout.
+  index("Errol Spence Jr vs Tim Tszyu", ["Kansas City Chiefs", "List of documentary films", "Dept. Q"]);
+  index("Errol Spence Jr Tim Tszyu", ["Heart of Midlothian F.C."]);
+  for (const t of ["Kansas City Chiefs", "List of documentary films", "Dept. Q", "Heart of Midlothian F.C."]) {
+    pages.set(t, cardHtml([{ red: "Nobody Here", blue: "Nor Here" }]));
+  }
+
+  const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
+  assert.match(line, /verified=0/, line);
+  assert.match(line, /parses=0/, "not one of those pages may be fetched");
+  assert.ok(line.includes("rejected="), line);
+  assert.equal((await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } })).result, "SCHEDULED");
+});
+
+test("a fighter BIOGRAPHY is not fetched", async () => {
+  const { fight } = await syntheticCard();
+  // The real search for this bout returned the two fighters' own pages.
+  index("Errol Spence Jr vs Tim Tszyu", ["Errol Spence Jr.", "Tim Tszyu"]);
+  index("Errol Spence Jr Tim Tszyu", ["Errol Spence Jr.", "Tim Tszyu"]);
+  pages.set("Errol Spence Jr.", cardHtml([{ red: "Errol Spence Jr", blue: "Tim Tszyu" }]));
+  pages.set("Tim Tszyu", cardHtml([{ red: "Errol Spence Jr", blue: "Tim Tszyu" }]));
+
+  const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
+  assert.match(line, /parses=0/, `a biography must not be fetched: ${line}`);
+  assert.equal((await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } })).result, "SCHEDULED");
+});
+
+test("the page cache fetches a shared season page ONCE across many targets", async () => {
+  // Twelve BKFC events all resolving to the same 551 KB season page fetched it twelve
+  // times, because the de-dup set was per-target.
+  const date = DAYS_AGO(3);
+  const created: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const [r, b] = await Promise.all([
+      prisma.fighter.create({ data: { slug: `bk-red-${i}`, name: `BkRed ${i}`, sport: "BARE_KNUCKLE" } }),
+      prisma.fighter.create({ data: { slug: `bk-blue-${i}`, name: `BkBlue ${i}`, sport: "BARE_KNUCKLE" } }),
+    ]);
+    const ev = await prisma.event.create({
+      data: { slug: `bkfc-9${i}`, name: `BKFC 9${i}`, sport: "BARE_KNUCKLE", promotion: "BKFC", date, status: "SCHEDULED" },
+    });
+    await prisma.fight.create({ data: { slug: `bk-red-${i}-vs-bk-blue-${i}`, eventId: ev.id, redId: r.id, blueId: b.id, date } });
+    index(`BKFC 9${i}`, ["2026 in Bare Knuckle Fighting Championship"]);
+    created.push(`BkRed ${i}`);
+  }
+  pages.set(
+    "2026 in Bare Knuckle Fighting Championship",
+    cardHtml(created.map((_, i) => ({ red: `BkRed ${i}`, blue: `BkBlue ${i}` }))),
+  );
+
+  const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
+  assert.match(line, /verified=3/, line);
+  // Three targets, one page: two of the three reads must be cache hits.
+  assert.match(line, /cacheHits=2/, line);
+
+  // Each event got exactly its OWN bout, from the same shared page.
+  for (let i = 0; i < 3; i++) {
+    const ev = await prisma.event.findFirstOrThrow({ where: { slug: `bkfc-9${i}` }, include: { fights: true } });
+    assert.equal(ev.fights.length, 1, `event ${i} got ${ev.fights.length} bouts`);
+    assert.equal(ev.fights[0].result, "WIN");
+  }
+});
+
+test("CARD backfill still works — accepted on its title, whole card attached", async () => {
+  // An event with no bouts has nothing to verify against, so verifyCard can never
+  // accept it. Content verification alone silently broke this entire gap.
+  const date = DAYS_AGO(5);
+  const event = await prisma.event.create({
+    data: { slug: "one-fn-39", name: "ONE Fight Night 39", sport: "MUAY_THAI", promotion: "ONE Championship", date, status: "SCHEDULED" },
+  });
+  index("ONE Fight Night 39", ["ONE Fight Night 39: Superlek vs Takeru"]);
+  pages.set(
+    "ONE Fight Night 39: Superlek vs Takeru",
+    cardHtml([
+      { red: "Superlek Kiatmoo9", blue: "Takeru Segawa", method: "UD" },
+      { red: "Nong-O Hama", blue: "Kulabdam Sor" },
+    ]),
+  );
+
+  const line = await harvestWikiTargets({ gap: "missing_card", limit: 10, mode: "historical" });
+  assert.match(line, /verified=1/, line);
+  const fresh = await prisma.event.findUniqueOrThrow({ where: { id: event.id }, include: { fights: true } });
+  assert.equal(fresh.fights.length, 2, "a card-gap event legitimately takes the whole card");
+});
+
+test("card backfill refuses a page whose title is a different event", async () => {
+  const date = DAYS_AGO(5);
+  const event = await prisma.event.create({
+    data: { slug: "one-fn-40", name: "ONE Fight Night 40", sport: "MUAY_THAI", promotion: "ONE Championship", date, status: "SCHEDULED" },
+  });
+  index("ONE Fight Night 40", ["ONE Fight Night 39: Superlek vs Takeru"]);
+  pages.set("ONE Fight Night 39: Superlek vs Takeru", cardHtml([{ red: "Superlek Kiatmoo9", blue: "Takeru Segawa" }]));
+
+  await harvestWikiTargets({ gap: "missing_card", limit: 10, mode: "historical" });
+  const fresh = await prisma.event.findUniqueOrThrow({ where: { id: event.id }, include: { fights: true } });
+  assert.equal(fresh.fights.length, 0, "event 39's card must not be attached to event 40");
 });
