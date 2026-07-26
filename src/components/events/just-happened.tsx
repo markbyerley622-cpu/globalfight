@@ -108,12 +108,16 @@ function Card({ e }: { e: JustHappenedEvent }) {
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {/* A finished card leads with HOW it ended; that's the fact a fan
-                scans for. An unresolved one says so plainly instead of wearing a
-                method badge it hasn't earned. */}
-            {resolved && method ? (
+                scans for. "Pending" is keyed on RESOLVED, not on having a method —
+                a decision that reached us without one still has a winner, and
+                stamping it "Pending" beside "Tszyu def. Spence" contradicts the
+                card's own headline. */}
+            {!resolved ? (
+              <Badge cls="border-ink-600 bg-ink-900/80 text-fog drop-shadow"><Hourglass className="size-2.5" />Pending</Badge>
+            ) : method ? (
               <Badge cls={cn(method.cls, "drop-shadow")}>{method.label}</Badge>
             ) : (
-              <Badge cls="border-ink-600 bg-ink-900/80 text-fog drop-shadow"><Hourglass className="size-2.5" />Pending</Badge>
+              <Badge cls="border-up/40 bg-up/12 text-up drop-shadow">Result</Badge>
             )}
             <span
               className="inline-flex items-center rounded-md border px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wider drop-shadow"
@@ -126,12 +130,19 @@ function Card({ e }: { e: JustHappenedEvent }) {
 
         <div className="absolute inset-x-0 bottom-0 p-3">
           {resolved && m ? (
-            // The winner is the headline. The loser recedes to a caption — the
-            // hierarchy IS the information.
+            // The winner IS the card. Read at arm's length it should say one thing:
+            // who won. So the name is the largest type on the surface and carries the
+            // win colour, while the loser drops a full step in size, weight and
+            // contrast and takes the loss colour. Colour alone is never the signal —
+            // size, weight and the "def." label all say the same thing, so the card
+            // still reads correctly in greyscale or to a colour-blind viewer.
             <>
-              <p className="truncate font-display text-lg font-black leading-tight text-chalk drop-shadow sm:text-xl">{m.winnerName}</p>
-              <p className="truncate text-[0.7rem] leading-tight text-mist drop-shadow">
-                <span className="uppercase tracking-wide text-fog">def.</span> {m.loserName}
+              <p className="truncate font-display text-2xl font-black leading-[1.05] tracking-tight text-up drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] sm:text-[1.75rem]">
+                {m.winnerName}
+              </p>
+              <p className="mt-0.5 flex items-baseline gap-1.5 truncate drop-shadow">
+                <span className="shrink-0 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-fog">def.</span>
+                <span className="truncate font-display text-sm font-bold text-down">{m.loserName}</span>
               </p>
             </>
           ) : m ? (

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { winnerCorner } from "@/lib/intelligence/scoring";
 import { QUORUM } from "@/lib/identity/victory-headline";
+import { decodeHtmlEntities } from "@/lib/text/entities";
 
 // ── Just Happened — the identity-first post-fight surface ────────────────────
 // A recently-completed card is NOT news here; it is EVIDENCE of what changed for
@@ -185,12 +186,15 @@ async function _getJustHappened(
       const onWinner = resolved ? c?.byCorner.get(corner) ?? 0 : 0;
       const calledByPct = resolved && c && c.total >= QUORUM ? Math.round((onWinner / c.total) * 100) : null;
       main = {
-        redName: f.red.name,
-        blueName: f.blue.name,
+        // Scraped names reach us HTML-escaped ("Gaston &#39;Tonga&#39; Reyno"). React
+        // escapes again on render, so an un-decoded entity is shown to the reader
+        // verbatim. Same decode the event cards already apply (events-query).
+        redName: decodeHtmlEntities(f.red.name),
+        blueName: decodeHtmlEntities(f.blue.name),
         titleFight: f.titleFight,
         resolved,
-        winnerName: resolved ? (corner === "RED" ? f.red.name : f.blue.name) : null,
-        loserName: resolved ? (corner === "RED" ? f.blue.name : f.red.name) : null,
+        winnerName: resolved ? decodeHtmlEntities(corner === "RED" ? f.red.name : f.blue.name) : null,
+        loserName: resolved ? decodeHtmlEntities(corner === "RED" ? f.blue.name : f.red.name) : null,
         method: resolved ? f.method : null,
         roundEnded: resolved ? f.roundEnded : null,
         timeEnded: resolved ? f.timeEnded : null,
@@ -213,7 +217,7 @@ async function _getJustHappened(
       : null;
 
     return {
-      slug: e.slug, name: e.name, date: e.date.toISOString(), promotion: e.promotion,
+      slug: e.slug, name: decodeHtmlEntities(e.name), date: e.date.toISOString(), promotion: e.promotion,
       sport: e.sport,
       boutCount: e._count.fights,
       pendingBouts: pendingByEvent.get(e.id) ?? 0,

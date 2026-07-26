@@ -1180,6 +1180,7 @@ model User {
   notifications     Notification[]
   activities        Activity[]
   cardAwards        CardAward[]
+  follows           Follow[]
   battlesChallenged Battle[]             @relation("BattleChallenger")
   battlesOpposed    Battle[]             @relation("BattleOpponent")
   rivalriesA        Rivalry[]            @relation("RivalryA")
@@ -1266,6 +1267,37 @@ model FavoriteEvent {
 
   @@id([userId, eventId])
   @@index([eventId])
+  @@index([userId, createdAt])
+}
+
+/// A POLYMORPHIC follow: one row per (user, target).
+///
+/// Following already existed as three separate tables — FavoriteFighter,
+/// FavoritePromotion, FavoriteEvent — one per entity, each with its own toggle,
+/// its own lookup and its own count query. Adding gyms and people that way would
+/// have meant two more tables and two more of everything, and every future entity
+/// another pair.
+///
+/// So new targets live here, keyed by (targetType, targetId), and lib/follows.ts
+/// presents ONE API over both. The legacy tables are deliberately NOT migrated:
+/// they carry real user data and real FKs, and a rewrite of working follows is
+/// risk with no user-visible payoff. They are routed to, not replaced.
+model Follow {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "gym" | "person" | … — see FollowTargetType in lib/follows.ts.
+  targetType String
+  /// The target's stable id. A cuid for a row-backed entity, a registry slug otherwise.
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  /// One follow per user per target — the database enforces it, so a double-tap
+  /// or a replayed request cannot create a second row or a second notification.
+  @@unique([userId, targetType, targetId])
+  /// Follower fan-out reads (targetType, targetId) and needs it indexed: notifying
+  /// a gym's followers must not scan the table.
+  @@index([targetType, targetId])
   @@index([userId, createdAt])
 }
 
@@ -1685,6 +1717,7 @@ enum NotificationType {
   BATTLE_MATCHED // an opponent took the other side — the room is live
   BATTLE_REPLY // your rival spoke in the battle room
   STREAK_REMINDER // your daily visit streak is alive but not yet extended today
+  GYM_REVIEW // a gym you follow (or own) received a review
   SYSTEM
 }
 

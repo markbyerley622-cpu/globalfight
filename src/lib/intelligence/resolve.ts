@@ -8,6 +8,7 @@ import { resolveFightBattles } from "@/lib/battles";
 import { winnerCorner, upsetFactor } from "@/lib/intelligence/scoring";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
+import { notifyFightResult } from "@/lib/social/triggers";
 
 /**
  * Interactive-transaction limits for the settlement fan-out.
@@ -203,6 +204,12 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   // cached page could keep serving the pre-settlement view after the payouts had
   // already landed. The write is the trigger; the cache must follow it.
   await invalidateSettlement(fight);
+
+  // FOLLOWERS. Distinct from the pick payouts above: those go to people who CALLED
+  // this bout, this goes to everyone who follows either fighter, the event or the
+  // promotion — whether or not they predicted. One shared dedupeKey means a reader
+  // following all four is told once, not four times. Never throws.
+  await notifyFightResult(fightId);
 
   // If that was the last graded bout on the card, close the loop with one
   // scoreline. Best-effort: the payouts above are the real work.

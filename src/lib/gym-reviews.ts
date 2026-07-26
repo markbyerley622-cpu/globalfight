@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { notifyGymReview } from "@/lib/gym-notifications";
 import type { Prisma } from "@prisma/client";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -236,7 +237,16 @@ export async function submitGymReview(userId: string, gymId: string, input: Revi
   // that had in fact just saved. upsert resolves the conflict in the database:
   // whichever write lands second becomes the update. `edited` is only set on the
   // update branch, so a first-time review is not born already flagged as edited.
+  // `existed` decides whether this is a NEW review or an edit, and it must be read
+  // INSIDE the transaction that upserts — reading it after would race a concurrent
+  // submit and mislabel the notification.
+  let existed = false;
   await prisma.$transaction(async (tx) => {
+    const prior = await tx.gymReview.findUnique({
+      where: { gymId_authorId: { gymId, authorId: userId } },
+      select: { id: true, deleted: true },
+    });
+    existed = !!prior && !prior.deleted;
     await tx.gymReview.upsert({
       where: { gymId_authorId: { gymId, authorId: userId } },
       create: { ...data, gymId, authorId: userId },
@@ -244,6 +254,11 @@ export async function submitGymReview(userId: string, gymId: string, input: Revi
     });
     await recomputeRating(tx, gymId);
   });
+
+  // Fan out AFTER the transaction commits. Inside it, a slow push would hold the
+  // review's row lock open, and a failure would roll back content the user wrote.
+  // notifyGymReview never throws.
+  await notifyGymReview(gymId, userId, existed ? "edited" : "created");
 }
 
 /** Soft-delete the viewer's own review and refresh the aggregate. */

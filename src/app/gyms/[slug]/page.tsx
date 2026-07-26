@@ -13,6 +13,8 @@ import { GymMembershipButtons } from "@/components/map/gym-membership";
 import { GymPublicGallery } from "@/components/map/gym-public-gallery";
 import { GymReviews } from "@/components/gyms/gym-reviews";
 import { getGymReviewData } from "@/lib/gym-reviews";
+import { isFollowing, followerCount } from "@/lib/follow-targets";
+import { FollowButton } from "@/components/follow-button";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +69,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
   // Wave 2: presence, reviews and "nearby" all depend only on the gym/viewer we
   // now have and NOT on each other — one parallel batch instead of three
   // sequential round-trips on a public, high-traffic page.
-  const [presence, reviewData, nearby] = await Promise.all([
+  const [presence, reviewData, nearby, gymFollowers, gymFollowing] = await Promise.all([
     getPresence({ gymId: gym.id }, user?.id),
     getGymReviewData(gym.id, user?.id),
     // Nearby = same city first, then same country. Cheap, indexed, and honest:
@@ -87,6 +89,10 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
           select: { slug: true, name: true, city: true, logoUrl: true, verified: true, memberCount: true, disciplines: true },
         })
       : Promise.resolve([]),
+    // Follow state joins the SAME parallel wave — a follower count must never add a
+    // sequential round-trip to a public, high-traffic page.
+    followerCount({ type: "gym", id: gym.id }),
+    user ? isFollowing(user.id, { type: "gym", id: gym.id }) : Promise.resolve(false),
   ]);
   const mine = user ? gym.members.find((m) => m.user.id === user.id) : undefined;
 
@@ -105,8 +111,14 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
       </div>
 
       <div className="px-4">
-        <div className="-mt-9 flex items-end gap-3">
-          <span className="grid size-[74px] shrink-0 place-items-center overflow-hidden rounded-2xl border-[3px] border-volt-500/60 bg-ink-950">
+        {/* The avatar overlaps the banner via -mt-9, and it used to disappear behind
+            it. Not a z-index VALUE problem — a stacking one: the banner's children
+            (<Image fill> and the vignette) are absolutely positioned, and positioned
+            elements paint above static ones in the same stacking context regardless of
+            DOM order. So the row must become a positioned element itself before any
+            z-index applies to it. `relative z-10` is the whole fix. */}
+        <div className="relative z-10 -mt-9 flex items-end gap-3">
+          <span className="grid size-[74px] shrink-0 place-items-center overflow-hidden rounded-2xl border-[3px] border-volt-500/60 bg-ink-950 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.9)]">
             {gym.logoUrl ? (
               <Image src={gym.logoUrl} alt="" width={74} height={74} className="size-full object-cover" unoptimized />
             ) : (
@@ -123,10 +135,30 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
           )}
         </div>
 
-        <h1 className="mt-3 flex items-center gap-2 font-display text-2xl font-black tracking-tight text-chalk">
-          {gym.name}
-          {gym.verified && <BadgeCheck className="size-5 shrink-0 text-volt-400" />}
-        </h1>
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <h1 className="flex min-w-0 items-center gap-2 font-display text-2xl font-black tracking-tight text-chalk">
+            <span className="truncate">{gym.name}</span>
+            {gym.verified && <BadgeCheck className="size-5 shrink-0 text-volt-400" />}
+          </h1>
+          {/* The SAME FollowButton every other entity uses — one component, one
+              endpoint contract, so a gym behaves exactly like a fighter or an event.
+              This is what the polymorphic follow model was for: nothing here is
+              gym-specific except the word "gym". */}
+          <FollowButton
+            kind="gym"
+            slug={gym.slug}
+            name={gym.name}
+            initialFollowing={gymFollowing}
+            size="sm"
+          />
+        </div>
+
+        {gymFollowers > 0 && (
+          <p className="mt-1 text-xs text-fog">
+            <span className="font-semibold text-mist">{gymFollowers.toLocaleString()}</span>{" "}
+            {gymFollowers === 1 ? "follower" : "followers"}
+          </p>
+        )}
 
         {gym.disciplines.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">

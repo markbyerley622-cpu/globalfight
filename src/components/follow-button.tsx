@@ -14,12 +14,13 @@ const ENDPOINT = {
   promotion: "promotions",
   event: "events",
   person: "users",
+  gym: "gyms",
 } as const;
 
 // Person follows use a different icon pair — following a human is not a bell.
 const ICONS = {
-  on: { fighter: BellRing, promotion: BellRing, event: BellRing, person: UserCheck },
-  off: { fighter: Bell, promotion: Bell, event: Bell, person: UserPlus },
+  on: { fighter: BellRing, promotion: BellRing, event: BellRing, person: UserCheck, gym: UserCheck },
+  off: { fighter: Bell, promotion: Bell, event: Bell, person: UserPlus, gym: UserPlus },
 } as const;
 
 export type FollowKind = keyof typeof ENDPOINT;
