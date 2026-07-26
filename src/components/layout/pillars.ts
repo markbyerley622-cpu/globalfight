@@ -40,8 +40,10 @@ export const PILLARS: {
     label: "Profile",
     icon: User,
     // "My Predictions" is your personal record, reached from the profile — it
-    // lives under Profile, not the gated /predictions markets route.
+    // lives under Profile, not the gated /predictions markets route. /today is
+    // the same identity pillar seen day-by-day rather than all-time.
     match: (p) =>
-      p.startsWith("/profile") || p.startsWith("/account") || p.startsWith("/u/") || p.startsWith("/predictions/mine"),
+      p.startsWith("/profile") || p.startsWith("/account") || p.startsWith("/u/") ||
+      p.startsWith("/predictions/mine") || p.startsWith("/today"),
   },
 ];

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, Pencil } from "lucide-react";
+import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, Pencil, Flame } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
 import { ProfileSettings } from "./profile-settings";
@@ -127,6 +127,24 @@ export function ProfileView() {
         {user.username && <span className="text-[0.8rem] text-fog">@{user.username}</span>}
         <EditProfileLink />
       </div>
+
+      {/* Today — the daily surface. Given its own card above the all-time stats
+          because it is the only thing on this screen that changes on a day
+          with no fights, and burying it in the shortcut list made it look
+          like a settings row. */}
+      <Link
+        href="/today"
+        className="mt-5 flex items-center gap-3 rounded-2xl border border-blood-500/30 bg-[radial-gradient(320px_120px_at_0%_0%,rgba(225,29,42,0.18),transparent_70%),linear-gradient(150deg,#141923,#0a0d12)] p-4 transition-colors hover:border-blood-500/50"
+      >
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-blood-500/40 bg-blood-500/12 text-blood-400">
+          <Flame className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">Today</span>
+          <span className="block truncate text-[0.72rem] text-fog">Your streak, what moved, and what to do next</span>
+        </span>
+        <ChevronRight className="size-4 text-fog" />
+      </Link>
 
       {/* Identity: reputation, accuracy, streak, prediction history, activity */}
       <ProfileStats />

@@ -95,6 +95,10 @@ export type NavItem = { label: string; href: string; children?: NavItem[]; accen
 // route when the tab bar was reduced to the pillars.
 export const PRIMARY_NAV: NavItem[] = [
   { label: "Home", href: "/" },
+  // The one surface that is about the reader rather than the next card — and
+  // the only reason to open the app on a day with no fights, so it sits second
+  // rather than buried under Explore.
+  { label: "Today", href: "/today" },
   { label: "Location", href: "/map" },
   {
     label: "Explore",

@@ -1084,6 +1084,17 @@ model User {
   battleDraws      Int       @default(0)
   battleStreak     Int       @default(0) // current consecutive battle wins
   bestBattleStreak Int       @default(0)
+  // ── Daily habit loop ──────────────────────────────────────────────────
+  // Every other counter on this model moves only when a FIGHT happens, which
+  // is why the product has no reason to be opened on a Tuesday. These three do
+  // move daily. `lastActiveOn` is a UTC midnight (a DAY, not an instant) — the
+  // comparison that decides "is this a new day for you" has to be day-grained
+  // or a streak breaks at 23:59 and survives at 00:01 for no reason a user
+  // could explain.
+  lastActiveOn     DateTime? // UTC midnight of the last day this user showed up
+  dayStreak        Int       @default(0) // consecutive days, current
+  bestDayStreak    Int       @default(0)
+  activeDays       Int       @default(0) // lifetime distinct days — never resets
   bio              String?
   /// Disciplines chosen in the first-run flow. A scalar list rather than a join
   /// table: it is a small ordered set read on nearly every personalised query,
