@@ -9,6 +9,29 @@ import { winnerCorner, upsetFactor } from "@/lib/intelligence/scoring";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
 
+/**
+ * Interactive-transaction limits for the settlement fan-out.
+ *
+ * Prisma defaults to a 5-second timeout — generous in-region, and nowhere near enough
+ * from a laptop against a remote database. Grading ONE pick does a claim, a user
+ * update, a reputation ledger write, a collectible award, two activity rows and a
+ * notification: seven round-trips, and at ~300ms each that is over budget before the
+ * notification is even attempted.
+ *
+ * A repair run showed exactly that — "Transaction not found. Transaction ID is
+ * invalid, refers to an old closed transaction" thrown from notify(), the whole payout
+ * rolled back, settlement:FAILED. The result still landed (settlement never blocks the
+ * write) and the reconciler would have retried into the same timeout, forever.
+ *
+ * Nothing here is made faster; the work is given honest room. It stays ONE transaction
+ * because a half-applied payout — reputation without the graded pick — is the outcome
+ * this engine exists to prevent.
+ */
+const SETTLEMENT_TX = {
+  timeout: Number(process.env.SETTLEMENT_TX_TIMEOUT_MS ?? 30_000),
+  maxWait: Number(process.env.SETTLEMENT_TX_MAX_WAIT_MS ?? 15_000),
+} as const;
+
 // ════════════════════════════════════════════════════════════════════════════
 //  Combat Intelligence Engine — the resolution pipeline.
 //
@@ -164,7 +187,7 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
         });
       }
       return true;
-    });
+    }, SETTLEMENT_TX);
 
     if (claimed) resolved += 1;
   }

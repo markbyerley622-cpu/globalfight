@@ -5,6 +5,14 @@ import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
 import { recordActivity } from "@/lib/activity";
 
+/** Same exposure as the settlement fan-out: several writes plus notifications per
+ *  battle, against a database that may be a continent away. Prisma's 5s default
+ *  aborts the lot and rolls back a resolved battle. See intelligence/resolve.ts. */
+const BATTLE_TX = {
+  timeout: Number(process.env.SETTLEMENT_TX_TIMEOUT_MS ?? 30_000),
+  maxWait: Number(process.env.SETTLEMENT_TX_MAX_WAIT_MS ?? 15_000),
+} as const;
+
 // ════════════════════════════════════════════════════════════════════════════
 //  Prediction Battles — the domain service.
 //
@@ -302,7 +310,7 @@ export async function resolveFightBattles(fightId: string, winnerCorner: Corner 
       await notify(tx, loserId, { type: "BATTLE_RESULT", title: "You lost the battle", body: `${winner?.name ?? "Your rival"} called it. Rematch next card.`, url: boutUrl, icon: "❌" });
 
       resolved += 1;
-    });
+    }, BATTLE_TX);
   }
   return { resolved };
 }
