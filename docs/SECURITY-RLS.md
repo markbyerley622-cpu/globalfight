@@ -1,9 +1,18 @@
 # Database hardening: Row-Level Security (RLS) plan
 
-> Status: **PLAN + reviewable template — NOT yet applied.** Enabling RLS wrong is
-> a total-outage risk (see "Why this isn't just switched on"). This document is
-> the safe path to get there. The immediate, already-in-place protection is
-> application-layer authorization (every private read is scoped `where: { userId }`).
+> Status: **STAGED + reviewable + sandbox-proven — NOT yet applied to prod.**
+> Enabling RLS wrong is a total-outage risk (see "Why this isn't just switched
+> on"). The immediate, already-in-place protection is application-layer
+> authorization (every private read is scoped `where: { userId }`).
+>
+> Concrete artifacts now exist (2026-07-26): `prisma/rls/policies.sql` (the
+> policies), `src/lib/db-rls.ts` (`withUser()` session-context wrapper, gated
+> behind `RLS_SESSION_CONTEXT=1`, bound-parameter `set_config`), and
+> `prisma/rls/verify.sql` (post-apply assertions). The policy logic was proven in
+> an isolated sandbox DB with a non-owner role: cross-user reads (including an
+> explicit `WHERE userId='<other>'`) return zero; anonymous sees no private rows;
+> public tables still render. The access-control matrix these back is in
+> `CLAUDE.md`.
 
 ## The framing correction
 
