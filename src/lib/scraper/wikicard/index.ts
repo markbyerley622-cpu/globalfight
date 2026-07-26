@@ -13,7 +13,7 @@ export { syncWikiCards } from "./sync";
 export { parseWikiCard, type WikiBout } from "./extract";
 export { toNormalizedWikiEvent, toFightStub, WIKI_SOURCE } from "./map";
 export {
-  findWikiTargets, countWikiGaps, RESULT_BACKFILL_DAYS,
+  findWikiTargets, findWikiTargetForFight, countWikiGaps, RESULT_BACKFILL_DAYS,
   type WikiGap, type WikiMode, type FindTargetsOpts,
 } from "./targets";
 export {
@@ -22,5 +22,5 @@ export {
 } from "./search-strategies";
 export { verifyCard, isAcceptable, type ExpectedBout, type VerifiedMatch } from "./verify";
 export type {
-  WikiTarget, EventIdentity, WikiHarvest, WikiHarvestReport, WikiTargetOutcome,
+  WikiTarget, EventIdentity, WikiHarvest, WikiHarvestReport, WikiTargetOutcome, TraceStep,
 } from "./types";

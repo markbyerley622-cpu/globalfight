@@ -214,6 +214,40 @@ async function buildTargets(rows: { row: EventRow; gap: WikiGap }[]): Promise<Wi
   return targets;
 }
 
+/**
+ * The target for ONE named bout — the `--fight "X vs Y" --explain` entry point.
+ *
+ * Same target-building path as a normal run, so what it traces is what a real run
+ * would do. Matches on either fighter's name, newest first.
+ */
+export async function findWikiTargetForFight(query: string): Promise<WikiTarget | null> {
+  const fight = await prisma.fight.findFirst({
+    where: {
+      result: "SCHEDULED",
+      OR: [
+        { slug: { contains: slugish(query), mode: "insensitive" } },
+        { red: { name: { contains: firstName(query), mode: "insensitive" } } },
+        { blue: { name: { contains: lastName(query), mode: "insensitive" } } },
+      ],
+    },
+    orderBy: { date: "desc" },
+    select: { eventId: true },
+  });
+  if (!fight?.eventId) return null;
+
+  const ev = await prisma.event.findUnique({
+    where: { id: fight.eventId },
+    select: { id: true, name: true, date: true, sport: true, promotion: true },
+  });
+  if (!ev) return null;
+  const built = await buildTargets([{ row: ev as EventRow, gap: "missing_result" }]);
+  return built[0] ?? null;
+}
+
+const slugish = (q: string) => q.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const firstName = (q: string) => q.split(/\s+vs\.?\s+/i)[0]?.trim() ?? q;
+const lastName = (q: string) => q.split(/\s+vs\.?\s+/i)[1]?.trim() ?? q;
+
 /** How many events still carry each gap — for the repair report's before/after. */
 export async function countWikiGaps(now: Date = new Date()): Promise<{
   missingResultEvents: number;

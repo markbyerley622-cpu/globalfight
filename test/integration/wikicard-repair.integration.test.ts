@@ -35,6 +35,16 @@ function cardHtml(rows: { red: string; blue: string; method?: string; round?: nu
   return `<table class="toccolours"><tbody>${tr}</tbody></table>`;
 }
 
+/** A fighter's career-record table, as their Wikipedia biography carries it. */
+function recordHtml(_owner: string, rows: { outcome: string; opponent: string; type: string; roundTime: string; date: string }[]): string {
+  const tr = rows
+    .map((r, i) => `<tr><td>${rows.length - i}</td><td>${r.outcome}</td><td>20-2</td><td>${r.opponent}</td>` +
+      `<td>${r.type}</td><td>${r.roundTime}</td><td>${r.date}</td><td>Venue</td></tr>`)
+    .join("");
+  return `<table class="wikitable"><tr><th>No.</th><th>Result</th><th>Record</th><th>Opponent</th>` +
+    `<th>Type</th><th>Round, time</th><th>Date</th><th>Location</th></tr>${tr}</table>`;
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   const action = url.searchParams.get("action");
@@ -395,16 +405,51 @@ test("unrelated candidates are REFUSED BEFORE any page fetch", async () => {
   assert.equal((await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } })).result, "SCHEDULED");
 });
 
-test("a fighter BIOGRAPHY is not fetched", async () => {
-  const { fight } = await syntheticCard();
-  // The real search for this bout returned the two fighters' own pages.
-  index("Errol Spence Jr vs Tim Tszyu", ["Errol Spence Jr.", "Tim Tszyu"]);
-  index("Errol Spence Jr Tim Tszyu", ["Errol Spence Jr.", "Tim Tszyu"]);
-  pages.set("Errol Spence Jr.", cardHtml([{ red: "Errol Spence Jr", blue: "Tim Tszyu" }]));
-  pages.set("Tim Tszyu", cardHtml([{ red: "Errol Spence Jr", blue: "Tim Tszyu" }]));
+test("OUR fighter's biography IS read, and its career record yields the result", async () => {
+  // The real search for this bout returns the two fighters' own pages and no fight
+  // article — which is true for most of the backlog. The bio carries the record table,
+  // and its row for this bout is the only published result that exists.
+  const { fight, red } = await syntheticCard();
+  const eventDate = (await prisma.event.findFirstOrThrow({ where: { id: fight.eventId! } })).date;
+  const d = `${eventDate.getUTCDate()} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][eventDate.getUTCMonth()]} ${eventDate.getUTCFullYear()}`;
+
+  index("Errol Spence Jr vs Tim Tszyu", ["Tim Tszyu"]);
+  pages.set("Tim Tszyu", recordHtml("Tim Tszyu", [
+    { outcome: "Loss", opponent: "Errol Spence Jr", type: "TKO", roundTime: "9 (12), 1:41", date: d },
+    { outcome: "Win", opponent: "Somebody Else", type: "UD", roundTime: "12 (12)", date: "1 Jan 2025" },
+  ]));
 
   const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
-  assert.match(line, /parses=0/, `a biography must not be fetched: ${line}`);
+  assert.match(line, /verified=1/, line);
+
+  const fresh = await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } });
+  assert.equal(fresh.result, "WIN");
+  assert.equal(fresh.winnerId, red.id, "a LOSS on Tszyu's record means Spence won");
+  assert.equal(fresh.method, "TKO");
+  assert.equal(fresh.roundEnded, 9);
+});
+
+test("a record row for a DIFFERENT date is never used — rematches stay distinct", async () => {
+  const { fight } = await syntheticCard();
+  index("Errol Spence Jr vs Tim Tszyu", ["Tim Tszyu"]);
+  // Right opponent, wrong year.
+  pages.set("Tim Tszyu", recordHtml("Tim Tszyu", [
+    { outcome: "Loss", opponent: "Errol Spence Jr", type: "TKO", roundTime: "9 (12), 1:41", date: "1 Jan 2020" },
+  ]));
+
+  const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
+  assert.match(line, /verified=0/, line);
+  assert.equal((await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } })).result, "SCHEDULED");
+});
+
+test("SOMEONE ELSE's biography is still refused before any fetch", async () => {
+  const { fight } = await syntheticCard();
+  index("Errol Spence Jr vs Tim Tszyu", ["Jermall Charlo", "Sebastian Fundora"]);
+  for (const t of ["Jermall Charlo", "Sebastian Fundora"]) {
+    pages.set(t, recordHtml(t, [{ outcome: "Win", opponent: "Errol Spence Jr", type: "KO", roundTime: "1 (12)", date: "1 Jan 2026" }]));
+  }
+  const line = await harvestWikiTargets({ gap: "missing_result", limit: 10, mode: "historical" });
+  assert.match(line, /parses=0/, `an unrelated bio must not be fetched: ${line}`);
   assert.equal((await prisma.fight.findUniqueOrThrow({ where: { id: fight.id } })).result, "SCHEDULED");
 });
 

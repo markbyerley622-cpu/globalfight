@@ -36,7 +36,9 @@ export type SearchStrategyKind =
   /** Both fighters' names with no separator — a looser sweep. */
   | "fighter_names"
   /** A registry ALIAS or nickname for either corner (Entity Resolution). */
-  | "alias_bout";
+  | "alias_bout"
+  /** A fighter's OWN page — its career-record table carries bouts that have no article. */
+  | "fighter_bio";
 
 export interface SearchStrategy {
   kind: SearchStrategyKind;
@@ -113,6 +115,15 @@ export function buildSearchLadder(input: LadderInput): SearchStrategy[] {
   if (input.promotionName && name && !isSyntheticEventName(name)) {
     const promo = input.promotionName.toLowerCase();
     if (!name.toLowerCase().includes(promo)) add("promotion_event", `${input.promotionName} ${name}`);
+  }
+
+  // 3b — the fighters' own pages. Most bouts never get an article, but both corners
+  // almost always have a biography, and a boxing/MMA bio carries the complete career
+  // record — including the row for this bout, with its date. For the long tail this
+  // is the ONLY source that exists.
+  for (const b of bouts) {
+    add("fighter_bio", b.red.name);
+    add("fighter_bio", b.blue.name);
   }
 
   // 4 — both names, no separator. Catches an article titled some other way

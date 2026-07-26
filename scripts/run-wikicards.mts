@@ -22,7 +22,7 @@
 import { prisma } from "../src/lib/db.ts";
 import { isSourceEnabled } from "../src/lib/ingestion-registry.ts";
 import { harvestWikiTargets, harvestWikiTargetsDetailed } from "../src/lib/scraper/runner.ts";
-import { findWikiTargets, countWikiGaps } from "../src/lib/scraper/wikicard/index.ts";
+import { findWikiTargets, findWikiTargetForFight, countWikiGaps, syncWikiCards } from "../src/lib/scraper/wikicard/index.ts";
 import { resultOps } from "../src/lib/intelligence/result-ops.ts";
 import { PARSE_BUDGET } from "../src/lib/scraper/wikicard/candidates.ts";
 import type { WikiMode } from "../src/lib/scraper/wikicard/targets.ts";
@@ -75,6 +75,53 @@ if (bloated.length) {
   for (const e of bloated) console.log(`      ${e._count.fights} bouts — ${e.name} (${e.slug})`);
   console.log("      A real card is 10-13. This is the season-page over-attach bug;");
   console.log("      inspect before trusting those cards. Nothing is deleted automatically.");
+}
+
+// ── EXPLAIN ONE FIGHT: the permanent debugging tool ─────────────────────────
+// `--fight "Tyson Fury vs Mariusz Wach" --explain` runs the REAL pipeline for one
+// bout and prints every decision. The point is to answer, without guessing, which of
+// these happened: the search found nothing · it found something and scoring refused
+// it · a page parsed to no card · a card parsed but wasn't our bout · it was ours and
+// the page shows no result yet.
+const fightQuery = value("fight");
+if (fightQuery) {
+  const target = await findWikiTargetForFight(fightQuery);
+  if (!target) {
+    console.log(`
+No UNRESOLVED bout matches "${fightQuery}".`);
+    console.log("Either it is already settled, or the name does not match. Try: npm run settlement:doctor -- \"<name>\"");
+    await prisma.$disconnect();
+    process.exit(0);
+  }
+
+  console.log(`
+── explaining: ${fightQuery} ───────────────────────────────`);
+  const h = await syncWikiCards([target]);
+  const o = h.report.outcomes[0];
+
+  for (const t of o.trace) {
+    const mark = t.stage === "target" ? " " : t.ok ? "✓" : "✗";
+    console.log(`  ${mark} ${t.stage.toUpperCase().padEnd(10)} ${t.detail}`);
+  }
+
+  console.log(`
+  VERDICT: ${o.reason}`);
+  const why: Record<string, string> = {
+    verified: "the result was found and will be persisted (and settled) on a non-dry run.",
+    no_candidate: "A. the source has no page for this bout — the search returned nothing at all.",
+    all_rejected: "B/C. the search returned pages, but none scored high enough to be plausibly about this bout.",
+    no_card: "D. a page was read but contained no results table this extractor can parse.",
+    unverified: "C. a card was parsed, but none of its bouts is the one we are looking for.",
+    error: "the source could not be reached.",
+  };
+  console.log(`  ${why[o.reason] ?? o.reason}`);
+  if (o.reason !== "verified") {
+    console.log("
+  This is a SOURCE-COVERAGE limit, not a settlement bug: there is nothing");
+    console.log("  to write. Nothing is fabricated to close it.");
+  }
+  await prisma.$disconnect();
+  process.exit(0);
 }
 
 // ── DRY RUN: show what would be searched, fetch nothing ─────────────────────

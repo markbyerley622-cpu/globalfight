@@ -65,7 +65,8 @@ const SCORE = {
   YEAR: 6,
   EVENT_TITLE_ECHO: 20, // the candidate title IS (or contains) our event's title
   NOT_AN_EVENT: -45, // list / category / disambiguation / franchise page
-  BIOGRAPHY: -20, // a single person's page: no card table we can read
+  OWN_FIGHTER_BIO: 30, // a bio of a fighter ON THIS BOUT — carries their record table
+  BIOGRAPHY: -20, // someone else's page: nothing about our bout
 } as const;
 
 /**
@@ -146,17 +147,42 @@ export function scoreCandidate(title: string, ctx: CandidateContext): ScoredCand
 
   if (NOT_AN_EVENT.some((re) => re.test(title))) { score += SCORE.NOT_AN_EVENT; reasons.push("not_an_event"); }
 
-  // ── biography: a single person's page ──────────────────────────────────────
-  // A boxing/MMA bio carries a career-record table whose columns are
-  // Result|Record|Opponent|… — there is no "def."/"vs." separator cell, so the
-  // extractor reads exactly nothing from it. Fetching Tyson Fury's 914 KB page to
-  // discover that is the single most common waste in the log.
-  if (isBiographyTitle(title, ctx)) { score += SCORE.BIOGRAPHY; reasons.push("biography"); }
+  // ── biography ──────────────────────────────────────────────────────────────
+  // A bio of a fighter ON THIS BOUT is now the single most useful page we can find.
+  // Most bouts never get their own article — searching "Anthony Joshua vs Kristian
+  // Prenga" returns three biographies and no fight page — but the fighter's own page
+  // carries their complete professional record, and the row for this bout holds the
+  // winner, method, round, time AND date. See record-table.ts.
+  //
+  // Someone ELSE's biography is still worthless: "Hughie Fury" shares a surname with
+  // our fighter and has nothing to do with the bout.
+  if (isOwnFighterBio(title, ctx)) {
+    score += SCORE.OWN_FIGHTER_BIO;
+    reasons.push("own_fighter_bio");
+  } else if (isBiographyTitle(title, ctx)) {
+    score += SCORE.BIOGRAPHY;
+    reasons.push("biography");
+  }
 
   return { title, score, reasons };
 }
 
 const surnameOf = (canonical: string) => canonical.split(" ").filter(Boolean).pop() ?? "";
+
+/**
+ * Is this page the biography of a fighter IN one of the bouts we are looking for?
+ *
+ * Exact whole-name match on the title (minus any "(boxer)" qualifier). A surname hit
+ * is not enough — "Hughie Fury" would pass that and is a different person.
+ */
+export function isOwnFighterBio(title: string, ctx: CandidateContext): boolean {
+  if (/\bvs\.?\b|\bversus\b/i.test(title)) return false;
+  const bare = normalizeName(title.replace(/\s*\([^)]*\)\s*$/, ""));
+  if (!bare) return false;
+  return ctx.expectedBouts.some(
+    (b) => normalizeName(b.red.name) === bare || normalizeName(b.blue.name) === bare,
+  );
+}
 
 /**
  * Does this title look like one person's biography rather than an event?

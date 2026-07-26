@@ -61,6 +61,22 @@ export interface StrategyStat {
   verified: number;
 }
 
+/**
+ * One decision the pipeline made, in order. Recorded always (it is a handful of
+ * strings) and printed on demand — `--explain`.
+ *
+ * The reason this exists: a run could report "targets=2 verified=0" and there was no
+ * way to tell WHICH of four very different things had happened — the search found
+ * nothing, it found something and scoring refused it, a page parsed to no card, or a
+ * card parsed but wasn't our bout. Those need opposite responses, and guessing
+ * between them is what turned a data question into an architecture rewrite.
+ */
+export interface TraceStep {
+  stage: "target" | "search" | "candidate" | "fetch" | "parse" | "verify" | "accept" | "reject" | "budget" | "result";
+  ok: boolean;
+  detail: string;
+}
+
 /** What happened to one target — every outcome is nameable, none is silent. */
 export interface WikiTargetOutcome {
   event: string;
@@ -88,6 +104,8 @@ export interface WikiTargetOutcome {
   /** Why it ended as it did. */
   reason: "verified" | "no_candidate" | "all_rejected" | "no_card" | "unverified" | "error";
   note?: string;
+  /** Every decision, in order — the `--explain` trace. */
+  trace: TraceStep[];
 }
 
 export interface WikiHarvestReport {

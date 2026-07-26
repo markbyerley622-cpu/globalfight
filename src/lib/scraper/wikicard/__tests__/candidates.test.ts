@@ -64,15 +64,24 @@ test("a shared single word is not evidence — 'Back 4 Blood' vs the event 'BLOO
   }
 });
 
-test("fighter BIOGRAPHIES are refused — their record tables have no def./vs. cell", () => {
-  // Tyson Fury's page is 914 KB and the extractor reads exactly nothing from it:
-  // a boxing record table is Result|Record|Opponent|…, with no separator column.
-  for (const bio of ["Tyson Fury", "Mariusz Wach", "Hughie Fury"]) {
-    assert.ok(score(bio) < PARSE_THRESHOLD, `${bio} scored ${score(bio)}`);
-  }
-  assert.ok(score("Josh Kelly (boxer)", ctx({
+test("OUR fighter's biography is ACCEPTED — its record table holds the result", () => {
+  // This test used to assert the opposite, on the belief that a bio has no readable
+  // card. It has no def./vs. CARD — but it carries the fighter's complete career
+  // record, and for the long tail of bouts that never get their own article that row
+  // is the only published result there is. See record-table.ts.
+  assert.ok(score("Tyson Fury") >= PARSE_THRESHOLD, `scored ${score("Tyson Fury")}`);
+  assert.ok(score("Mariusz Wach") >= PARSE_THRESHOLD);
+  assert.ok(scoreCandidate("Josh Kelly (boxer)", ctx({
     expectedBouts: [{ red: ent("a", "Josh Kelly"), blue: ent("b", "Caoimhin Agyarko") }],
-  })) < PARSE_THRESHOLD);
+  })).score >= PARSE_THRESHOLD, "a disambiguated bio is still our fighter");
+});
+
+test("SOMEONE ELSE's biography is still refused", () => {
+  // "Hughie Fury" shares a surname with our fighter and has nothing to do with the
+  // bout — exactly the page that made the first run fetch 200 KB for nothing.
+  assert.ok(score("Hughie Fury") < PARSE_THRESHOLD, `scored ${score("Hughie Fury")}`);
+  assert.ok(score("Moses Itauma") < PARSE_THRESHOLD);
+  assert.ok(score("Jermall Charlo") < PARSE_THRESHOLD);
 });
 
 // ── the pages we DO need, still accepted ────────────────────────────────────

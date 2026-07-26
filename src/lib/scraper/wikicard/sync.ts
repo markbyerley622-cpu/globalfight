@@ -32,10 +32,13 @@ import { searchPages, fetchPageHtml } from "./client";
 import { parseWikiCard, type WikiBout } from "./extract";
 import { toNormalizedWikiEvent } from "./map";
 import { verifyCard, verifyTitle, isAcceptable } from "./verify";
+import { parseRecordTable, findRecordRow, recordRowToBout, type RecordRow } from "./record-table";
+import { resolveName } from "@/lib/entities/resolve";
 import { rankCandidates, PARSE_BUDGET, type CandidateContext } from "./candidates";
 import type { NormalizedEvent } from "@/services/providers/types";
+import type { ExpectedBout } from "./verify";
 import type {
-  WikiTarget, WikiHarvest, WikiHarvestReport, WikiTargetOutcome, StrategyStat,
+  WikiTarget, WikiHarvest, WikiHarvestReport, WikiTargetOutcome, StrategyStat, TraceStep,
 } from "./types";
 
 const CONCURRENCY = Number(process.env.WIKICARD_CONCURRENCY ?? 2);
@@ -54,23 +57,66 @@ const MAX_REJECT_DETAIL = 8;
  * one parse. Parsed bouts are cached rather than HTML — parseWikiCard is pure, so
  * re-running it is pure waste too.
  */
+interface ParsedPage {
+  /** Rows from an EVENT results table ("X def. Y"). */
+  bouts: WikiBout[];
+  /** Rows from a FIGHTER's career-record table ("Loss | Anthony Joshua | KO | 2 …"). */
+  records: RecordRow[];
+}
+
 class PageCache {
-  private readonly pages = new Map<string, WikiBout[] | null>();
+  private readonly pages = new Map<string, ParsedPage | null>();
   fetches = 0;
   parses = 0;
   hits = 0;
 
-  async bouts(title: string): Promise<WikiBout[] | null> {
+  async page(title: string): Promise<ParsedPage | null> {
     const cached = this.pages.get(title);
     if (cached !== undefined) { this.hits += 1; return cached; }
     this.fetches += 1;
     const html = await fetchPageHtml(title);
     if (!html) { this.pages.set(title, null); return null; }
     this.parses += 1;
-    const bouts = parseWikiCard(html);
-    this.pages.set(title, bouts);
-    return bouts;
+    // BOTH shapes, from one fetch. A page is either an event card or a fighter's
+    // record; parsing for both costs nothing extra and means the pipeline never has
+    // to fetch the same page twice to try the other reader.
+    const parsed = { bouts: parseWikiCard(html), records: parseRecordTable(html) };
+    this.pages.set(title, parsed);
+    return parsed;
   }
+}
+
+/**
+ * Find our bout in a FIGHTER'S CAREER RECORD.
+ *
+ * The page is one of our own fighters' biographies; their record table has a row per
+ * bout. We accept a row only when its opponent resolves — through Entity Resolution,
+ * against the closed set of this card's corners — to the OTHER fighter in one of our
+ * expected bouts, AND the row's date matches the event. The date is what stops a
+ * rematch overwriting the earlier meeting's result.
+ */
+function matchFromRecord(
+  pageTitle: string,
+  records: RecordRow[],
+  expected: ExpectedBout[],
+  eventDate: Date,
+): WikiBout[] {
+  if (!records.length) return [];
+  const owner = expected
+    .flatMap((b) => [b.red, b.blue])
+    .find((e) => resolveName(pageTitle, [e]).ok);
+  if (!owner) return [];
+
+  const out: WikiBout[] = [];
+  for (const bout of expected) {
+    const isRed = bout.red.id === owner.id;
+    const other = isRed ? bout.blue : bout.red;
+    if ((isRed ? bout.red.id : bout.blue.id) !== owner.id) continue;
+
+    const row = findRecordRow(records, eventDate, (name) => resolveName(name, [other]).ok);
+    if (row) out.push(recordRowToBout(row, owner.name));
+  }
+  return out;
 }
 
 interface Attempt {
@@ -94,8 +140,12 @@ async function harvestTarget(
   const outcome: WikiTargetOutcome = {
     event: eventIdentity.name,
     strategy: null, page: null, matched: 0, bouts: 0,
-    queries: 0, parses: 0, rejected: 0, rejectedDetail: [], reason: "no_candidate",
+    queries: 0, parses: 0, rejected: 0, rejectedDetail: [], reason: "no_candidate", trace: [],
   };
+  const step = (stage: TraceStep["stage"], ok: boolean, detail: string) =>
+    outcome.trace.push({ stage, ok, detail });
+  step("target", true, `${eventIdentity.name} (${eventIdentity.date.slice(0, 10)}) gap=${gap}`);
+  for (const b of expectedBouts) step("target", true, `  expects: ${b.red.name} vs ${b.blue.name}`);
 
   const ctx: CandidateContext = {
     eventName: eventIdentity.name,
@@ -111,7 +161,11 @@ async function harvestTarget(
   let parses = 0; // the per-target parse budget
 
   for (const strategy of searchIdentity) {
-    if (parses >= PARSE_BUDGET) { outcome.note = "parse budget exhausted"; break; }
+    if (parses >= PARSE_BUDGET) {
+      outcome.note = "parse budget exhausted";
+      step("budget", false, `parse budget ${PARSE_BUDGET} exhausted — stopping`);
+      break;
+    }
     const stat = (stats[strategy.kind] ??= emptyStat());
     stat.searched += 1;
 
@@ -122,8 +176,10 @@ async function harvestTarget(
     } catch (e) {
       outcome.reason = "error";
       outcome.note = `${strategy.kind}: ${(e as Error).message}`;
+      step("search", false, `${strategy.kind} "${strategy.query}" — ERROR ${(e as Error).message}`);
       return { outcome, event: null };
     }
+    step("search", titles.length > 0, `${strategy.kind} "${strategy.query}" → ${titles.length} result(s)`);
     if (titles.length) { sawCandidate = true; stat.candidates += titles.length; }
 
     // SCORE BEFORE FETCHING. This is where the wasted megabytes are refused.
@@ -135,9 +191,11 @@ async function harvestTarget(
     // "rejected X, score N, because …" is actually read. Capped so a pathological
     // target can't grow the report without bound.
     for (const r of rejected) {
-      if (outcome.rejectedDetail.length >= MAX_REJECT_DETAIL) break;
+      step("reject", false, `"${r.title}" score=${r.score} — ${r.reasons.join(",") || "no positive signal"}`);
+      if (outcome.rejectedDetail.length >= MAX_REJECT_DETAIL) continue;
       outcome.rejectedDetail.push({ title: r.title, score: r.score, reasons: r.reasons });
     }
+    for (const c of parse) step("candidate", true, `"${c.title}" score=${c.score} — ${c.reasons.join(",")}`);
 
     for (const cand of parse) {
       if (parses >= PARSE_BUDGET) break;
@@ -146,14 +204,34 @@ async function harvestTarget(
       outcome.parses += 1;
       stat.parsed += 1;
 
-      let bouts: WikiBout[] | null;
+      let page: ParsedPage | null;
       try {
-        bouts = await cache.bouts(cand.title);
+        page = await cache.page(cand.title);
       } catch (e) {
         outcome.note = `${cand.title}: ${(e as Error).message}`;
+        step("fetch", false, `"${cand.title}" — ERROR ${(e as Error).message}`);
         continue;
       }
-      if (!bouts || !bouts.length) continue;
+      if (!page) { step("fetch", false, `"${cand.title}" — page not found`); continue; }
+      step("fetch", true, `"${cand.title}" fetched`);
+
+      // An event page yields a card; a fighter's page yields their record. Try the
+      // card first, then fall back to the record — which is the ONLY source for the
+      // long tail of bouts that never get an article of their own.
+      let bouts = page.bouts;
+      let fromRecord = false;
+      if (gap === "missing_result") {
+        const viaRecord = matchFromRecord(cand.title, page.records, expectedBouts, new Date(eventIdentity.date));
+        if (viaRecord.length && !verifyCard(page.bouts, expectedBouts).matched) {
+          bouts = viaRecord;
+          fromRecord = true;
+        }
+      }
+      step("parse", bouts.length > 0,
+        fromRecord
+          ? `${bouts.length} bout(s) matched in this fighter's career record (${page.records.length} rows)`
+          : `${bouts.length} bout row(s) extracted from the page card`);
+      if (!bouts.length) continue;
       sawCard = true;
 
       // ── THE GATE ──────────────────────────────────────────────────────────
@@ -175,7 +253,19 @@ async function harvestTarget(
         persist = match.bouts; // verified bouts ONLY — never a season page's superset
         matched = match.matched;
       }
-      if (!accept || !persist.length) continue;
+      if (!accept || !persist.length) {
+        step("verify", false,
+          gap === "missing_card"
+            ? `title does not match "${eventIdentity.name}" — refused`
+            : `none of the ${bouts.length} bout(s) on this page is one we are looking for`);
+        continue;
+      }
+      step("verify", true, `${matched} of our bout(s) found on this page`);
+      for (const b of persist) {
+        step("result", b.decided, b.decided
+          ? `${b.redName} def. ${b.blueName}${b.method ? ` by ${b.method}` : ""}${b.round ? ` R${b.round}` : ""}`
+          : `${b.redName} vs ${b.blueName} — page shows NO result yet`);
+      }
 
       stat.verified += 1;
       outcome.strategy = strategy.kind;
@@ -186,6 +276,7 @@ async function harvestTarget(
       outcome.bouts = persist.length;
       outcome.parsedOnPage = bouts.length;
       outcome.reason = "verified";
+      step("accept", true, `"${cand.title}" via ${strategy.kind} — persisting ${persist.length} bout(s)`);
       log.info(
         { op: "wikicard.accept", event: eventIdentity.name, page: cand.title, score: cand.score,
           reasons: cand.reasons, strategy: strategy.kind, matched, persisted: persist.length, onPage: bouts.length },
@@ -202,6 +293,7 @@ async function harvestTarget(
   //   no_card        we parsed pages but none contained a readable results table
   //   unverified     we parsed a card but it wasn't our bout (the source has no
   //                  coverage of this fight — nothing to fix)
+  step("result", false, `gave up after ${outcome.queries} search(es) and ${outcome.parses} parse(s)`);
   outcome.reason = sawCard
     ? "unverified"
     : outcome.parses > 0
@@ -250,7 +342,7 @@ export async function syncWikiCards(targets: WikiTarget[]): Promise<WikiHarvest>
           outcomes.push({
             event: target.eventIdentity.name, strategy: null, page: null,
             matched: 0, bouts: 0, queries: 0, parses: 0, rejected: 0, rejectedDetail: [],
-            reason: "error", note: (e as Error).message,
+            reason: "error", note: (e as Error).message, trace: [],
           });
           warnings.push(`${target.eventIdentity.name}: ${(e as Error).message}`);
         }
