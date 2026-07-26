@@ -32,6 +32,18 @@ const args = process.argv.slice(2);
 const repair = args.includes("--repair");
 const query = args.find((a) => !a.startsWith("--"));
 
+// ── Which database am I actually looking at? ────────────────────────────────
+// Printed FIRST, always. This tool is meant to be pointed at production, and the
+// single easiest way to draw a wrong conclusion about a data bug is to diagnose the
+// wrong database — local dev and the deployed site hold different picks, different
+// users and different results. An explicit DATABASE_URL in the environment takes
+// precedence over --env-file, so the banner is the only reliable confirmation of
+// where a --repair is about to write.
+const [conn] = await prisma.$queryRaw<{ db: string; host: string | null }[]>`
+  SELECT current_database() AS db, inet_server_addr()::text AS host`;
+console.log(`── database: ${conn.db}${conn.host ? ` @ ${conn.host}` : ""} ─────────────────`);
+if (repair) console.log(`   REPAIR MODE — this run WILL write to "${conn.db}".`);
+
 // ── Whole-DB invariant report ───────────────────────────────────────────────
 const ops = await resultOps();
 console.log("── settlement health ────────────────────────────────────────");
