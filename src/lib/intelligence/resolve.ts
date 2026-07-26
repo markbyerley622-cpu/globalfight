@@ -96,15 +96,22 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   for (const pick of fight.picks) {
     const correct = pick.corner === corner;
 
-    await prisma.$transaction(async (tx) => {
+    // The transaction REPORTS whether it claimed, because `resolved` is what the
+    // cron and onResultWritten log. Incrementing it unconditionally made every
+    // concurrent runner claim credit for the same payout — five racing runs on a
+    // three-pick bout reported fifteen settlements. The payouts were still
+    // exactly-once (the claim below guarantees that); the TELEMETRY lied, which on
+    // a metric whose whole job is to prove this pipeline converged is its own bug.
+    const claimed = await prisma.$transaction(async (tx) => {
       // ATOMIC CLAIM. Only the runner whose updateMany actually flips this row
-      // from NULL owns the payout below; a concurrent runner sees count 0 and
-      // skips, so reputation, cards and notifications happen exactly once.
+      // from NULL owns the payout below; a concurrent runner blocks on the row,
+      // re-evaluates `correct IS NULL` after the first commits, and gets count 0 —
+      // so reputation, cards and notifications happen exactly once.
       const claim = await tx.fightPick.updateMany({
         where: { userId: pick.userId, fightId, correct: null },
         data: { correct },
       });
-      if (claim.count !== 1) return;
+      if (claim.count !== 1) return false;
 
       const user = await tx.user.update({
         where: { id: pick.userId },
@@ -156,9 +163,10 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
           tag: fight.eventId ? `picks:${fight.eventId}` : undefined,
         });
       }
+      return true;
     });
 
-    resolved += 1;
+    if (claimed) resolved += 1;
   }
 
   // The fight is the referee: resolve every open battle on this bout now that each
