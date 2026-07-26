@@ -8104,7 +8104,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 95,
+      "line": 101,
       "fn": "getMilestones",
       "model": "User",
       "method": "findUnique",
@@ -8117,7 +8117,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 99,
+      "line": 105,
       "fn": "getMilestones",
       "model": "FightPick",
       "method": "count",
@@ -8130,7 +8130,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 100,
+      "line": 106,
       "fn": "getMilestones",
       "model": "FightPick",
       "method": "count",
@@ -8143,7 +8143,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 101,
+      "line": 107,
       "fn": "getMilestones",
       "model": "FavoriteFighter",
       "method": "count",
@@ -8156,7 +8156,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 102,
+      "line": 108,
       "fn": "getMilestones",
       "model": "UserFollow",
       "method": "count",
@@ -8169,7 +8169,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 105,
+      "line": 111,
       "fn": "getMilestones",
       "model": "Gym",
       "method": "count",
@@ -8182,7 +8182,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 106,
+      "line": 112,
       "fn": "getMilestones",
       "model": "Event",
       "method": "count",
@@ -8195,7 +8195,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 107,
+      "line": 113,
       "fn": "getMilestones",
       "model": "GymReview",
       "method": "count",
@@ -8208,7 +8208,7 @@
     },
     {
       "file": "src/lib/identity/milestones.ts",
-      "line": 108,
+      "line": 114,
       "fn": "getMilestones",
       "model": "CardAward",
       "method": "count",
@@ -8247,7 +8247,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 81,
+      "line": 88,
       "fn": "getTodayBriefing",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -8260,7 +8260,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 87,
+      "line": 94,
       "fn": "getTodayBriefing",
       "model": "UserFollow",
       "method": "findMany",
@@ -8273,7 +8273,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 104,
+      "line": 111,
       "fn": "getTodayBriefing",
       "model": "FightPick",
       "method": "findMany",
@@ -8286,7 +8286,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 121,
+      "line": 128,
       "fn": "getTodayBriefing",
       "model": "Fight",
       "method": "findMany",
@@ -8299,7 +8299,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 139,
+      "line": 146,
       "fn": "getTodayBriefing",
       "model": "Ranking",
       "method": "findMany",
@@ -8312,7 +8312,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 152,
+      "line": 159,
       "fn": "getTodayBriefing",
       "model": "Activity",
       "method": "findMany",
@@ -8325,7 +8325,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 164,
+      "line": 171,
       "fn": "getTodayBriefing",
       "model": "GymMember",
       "method": "findFirst",
@@ -8338,7 +8338,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 171,
+      "line": 178,
       "fn": "getTodayBriefing",
       "model": "Fight",
       "method": "findMany",
@@ -8351,7 +8351,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 187,
+      "line": 194,
       "fn": "getTodayBriefing",
       "model": "ReputationEvent",
       "method": "aggregate",
@@ -8364,7 +8364,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 188,
+      "line": 195,
       "fn": "getTodayBriefing",
       "model": "User",
       "method": "findUnique",
@@ -8377,7 +8377,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 193,
+      "line": 200,
       "fn": "rank",
       "model": "User",
       "method": "count",
@@ -8390,7 +8390,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 200,
+      "line": 207,
       "fn": "here",
       "model": "CheckIn",
       "method": "count",

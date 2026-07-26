@@ -24,6 +24,12 @@ export interface Ladder {
   title: string;
   /** Plural noun for the count: "42 gyms visited". */
   unit: string;
+  /**
+   * Singular form, for a target of exactly 1. Every ladder's FIRST rung is 1,
+   * so without this every brand-new user reads twelve lines of "that's 1
+   * fights called" — the first impression of the collections board.
+   */
+  unitOne: string;
   tiers: readonly number[];
   /** Where to go to move this number. */
   href: string;
@@ -35,18 +41,18 @@ export interface Ladder {
 // the last one takes years. The top rung of every ladder is deliberately a
 // number a twenty-year member would hold, not a number a busy month would.
 export const LADDERS: readonly Ladder[] = [
-  { id: "callsMade", group: "Predict", title: "Calls made", unit: "fights called", tiers: [1, 10, 50, 150, 500, 1500], href: "/events", cta: "Call a fight on the next card" },
-  { id: "callsCorrect", group: "Predict", title: "Calls landed", unit: "correct calls", tiers: [1, 10, 50, 150, 500], href: "/predictions/mine", cta: "Your open calls settle on fight night" },
-  { id: "mainEvents", group: "Predict", title: "Main events", unit: "main events called", tiers: [1, 10, 25, 50, 100, 250], href: "/events", cta: "Call the next main event" },
-  { id: "pickStreak", group: "Predict", title: "Best streak", unit: "in a row", tiers: [3, 5, 10, 15, 25], href: "/events", cta: "Start a new run" },
-  { id: "fightersFollowed", group: "Connect", title: "Fighters followed", unit: "fighters followed", tiers: [1, 5, 20, 50, 150, 400], href: "/fighters", cta: "Follow a fighter you rate" },
-  { id: "peopleFollowed", group: "Connect", title: "Your corner", unit: "people followed", tiers: [1, 5, 15, 40, 100], href: "/leaderboard", cta: "Follow a caller worth watching" },
-  { id: "battlesWon", group: "Connect", title: "Battles won", unit: "battles won", tiers: [1, 5, 15, 40, 100], href: "/events", cta: "Take the other side of someone's call" },
-  { id: "gymsVisited", group: "Train", title: "Gyms visited", unit: "gyms", tiers: [1, 3, 10, 25, 50], href: "/gyms", cta: "Check in where you train" },
-  { id: "eventsAttended", group: "Train", title: "Events attended", unit: "events live", tiers: [1, 3, 10, 25, 50], href: "/events", cta: "Check in at a live card" },
-  { id: "reviewsWritten", group: "Train", title: "Gyms reviewed", unit: "reviews written", tiers: [1, 3, 10, 25, 50], href: "/gyms", cta: "Review a gym you've trained at" },
-  { id: "cardsCollected", group: "Collect", title: "Cards earned", unit: "cards", tiers: [1, 10, 50, 150, 500], href: "/collection", cta: "Cards drop when your calls land" },
-  { id: "daysActive", group: "Collect", title: "Days here", unit: "days active", tiers: [7, 30, 100, 365, 1000, 3650], href: "/today", cta: "Show up tomorrow" },
+  { id: "callsMade", group: "Predict", title: "Calls made", unit: "fights called", unitOne: "fight called", tiers: [1, 10, 50, 150, 500, 1500], href: "/events", cta: "Call a fight on the next card" },
+  { id: "callsCorrect", group: "Predict", title: "Calls landed", unit: "correct calls", unitOne: "correct call", tiers: [1, 10, 50, 150, 500], href: "/predictions/mine", cta: "Your open calls settle on fight night" },
+  { id: "mainEvents", group: "Predict", title: "Main events", unit: "main events called", unitOne: "main event called", tiers: [1, 10, 25, 50, 100, 250], href: "/events", cta: "Call the next main event" },
+  { id: "pickStreak", group: "Predict", title: "Best streak", unit: "in a row", unitOne: "in a row", tiers: [3, 5, 10, 15, 25], href: "/events", cta: "Start a new run" },
+  { id: "fightersFollowed", group: "Connect", title: "Fighters followed", unit: "fighters followed", unitOne: "fighter followed", tiers: [1, 5, 20, 50, 150, 400], href: "/fighters", cta: "Follow a fighter you rate" },
+  { id: "peopleFollowed", group: "Connect", title: "Your corner", unit: "people followed", unitOne: "person followed", tiers: [1, 5, 15, 40, 100], href: "/leaderboard", cta: "Follow a caller worth watching" },
+  { id: "battlesWon", group: "Connect", title: "Battles won", unit: "battles won", unitOne: "battle won", tiers: [1, 5, 15, 40, 100], href: "/events", cta: "Take the other side of someone's call" },
+  { id: "gymsVisited", group: "Train", title: "Gyms visited", unit: "gyms", unitOne: "gym", tiers: [1, 3, 10, 25, 50], href: "/gyms", cta: "Check in where you train" },
+  { id: "eventsAttended", group: "Train", title: "Events attended", unit: "events live", unitOne: "event live", tiers: [1, 3, 10, 25, 50], href: "/events", cta: "Check in at a live card" },
+  { id: "reviewsWritten", group: "Train", title: "Gyms reviewed", unit: "reviews written", unitOne: "review written", tiers: [1, 3, 10, 25, 50], href: "/gyms", cta: "Review a gym you've trained at" },
+  { id: "cardsCollected", group: "Collect", title: "Cards earned", unit: "cards", unitOne: "card", tiers: [1, 10, 50, 150, 500], href: "/collection", cta: "Cards drop when your calls land" },
+  { id: "daysActive", group: "Collect", title: "Days here", unit: "days active", unitOne: "day active", tiers: [7, 30, 100, 365, 1000, 3650], href: "/today", cta: "Show up tomorrow" },
 ] as const;
 
 export interface LadderProgress extends Ladder {
@@ -148,4 +154,9 @@ export function totalEarned(all: LadderProgress[]): number {
 
 export function totalRungs(): number {
   return LADDERS.reduce((s, l) => s + l.tiers.length, 0);
+}
+
+/** The right noun for a count — "1 fight called" vs "10 fights called". */
+export function unitFor(l: Ladder, n: number): string {
+  return n === 1 ? l.unitOne : l.unit;
 }

@@ -46,6 +46,13 @@ export interface TodayBriefing {
   firstVisit: boolean;
   changed: TodayItem[];
   act: TodayItem[];
+  /**
+   * How many fighters this user follows. The act/digest empty states read very
+   * differently for "you follow nobody" and "nobody you follow is fighting
+   * soon", and telling the first group that "every fighter you follow is
+   * called" is a claim about an empty set.
+   */
+  followedFighters: number;
   /** Every ladder, for the collections board. */
   allMilestones: LadderProgress[];
   /** The three worth putting in front of them today. */
@@ -279,6 +286,7 @@ export async function getTodayBriefing(userId: string): Promise<TodayBriefing> {
     firstVisit: streak.previousActiveOn === null,
     changed: changed.slice(0, 12),
     act,
+    followedFighters: fighterIds.length,
     allMilestones: milestones,
     milestones: nearest(milestones, 3),
     milestonesEarned: totalEarned(milestones),

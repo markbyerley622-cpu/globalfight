@@ -22,8 +22,17 @@ const nextConfig: NextConfig = {
   // streaming by the time it redirects, so Next falls back to a 200 + meta
   // refresh — a weak signal that leaves the old URL indexable. This is a real
   // 308 issued before any React renders.
+  //
+  // `mine` is EXCLUDED: /predictions/mine is not a bout, it is the signed-in
+  // user's own prediction record (src/app/predictions/mine/page.tsx). Without
+  // the exclusion this rule 308'd it to /fights/mine, which /fights/[slug]
+  // resolves to notFound() — so every "My Predictions" entry point in the app
+  // (profile, profile stats, account menu, home rail) landed on a soft-404 and
+  // the page itself was unreachable code.
   async redirects() {
-    return [{ source: "/predictions/:slug", destination: "/fights/:slug", permanent: true }];
+    return [
+      { source: "/predictions/:slug((?!mine$)[^/]+)", destination: "/fights/:slug", permanent: true },
+    ];
   },
   // Global security headers. The hard ones (frame/nosniff/referrer/HSTS) are
   // enforced immediately — they are safe and non-breaking. CSP ships as

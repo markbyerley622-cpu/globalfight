@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getTodayBriefing, type TodayItem } from "@/lib/identity/today";
-import type { LadderProgress } from "@/lib/identity/milestones";
+import { unitFor, type LadderProgress } from "@/lib/identity/milestones";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { timeAgo, cn } from "@/lib/utils";
@@ -128,14 +128,25 @@ export default async function TodayPage() {
         {/* ── Act: a digest with nothing to do is a newsletter. ── */}
         <Section title="Do this today">
           {brief.act.length === 0 ? (
-            <EmptyState
-              compact
-              icon={<Swords className="size-5" />}
-              accent="#e11d2a"
-              title="You're up to date"
-              body="Every fighter you follow is called. Follow someone new and this fills itself."
-              action={{ href: "/fighters", label: "Find fighters" }}
-            />
+            brief.followedFighters === 0 ? (
+              <EmptyState
+                compact
+                icon={<Swords className="size-5" />}
+                accent="#e11d2a"
+                title="Nothing here yet"
+                body="Follow a fighter and this fills with the calls you haven't made."
+                action={{ href: "/fighters", label: "Find fighters" }}
+              />
+            ) : (
+              <EmptyState
+                compact
+                icon={<Swords className="size-5" />}
+                accent="#e11d2a"
+                title="Nothing to call right now"
+                body="None of the fighters you follow are booked in the next two weeks. The rest of the card is still open."
+                action={{ href: "/events", label: "Browse the schedule" }}
+              />
+            )
           ) : (
             <ItemList items={brief.act} />
           )}
@@ -148,7 +159,9 @@ export default async function TodayPage() {
               compact
               icon={<Users className="size-5" />}
               accent="#38bdf8"
-              title="Quiet since your last visit"
+              // There is no "last visit" on a first visit — claiming it has been
+              // quiet since one is the page's first sentence being untrue.
+              title={brief.firstVisit ? "Nothing to catch up on" : "Quiet since your last visit"}
               body="Follow fighters and callers, and this becomes your morning read: bookings, rank moves and the calls your corner is making."
               action={{ href: "/leaderboard", label: "Find callers to follow" }}
             />
@@ -275,10 +288,10 @@ function LadderRow({ ladder: l, featured }: { ladder: LadderProgress; featured?:
 
       <p className="mt-2 text-[0.72rem] text-fog">
         {done
-          ? `${l.value} ${l.unit} — every rung cleared.`
+          ? `${l.value} ${unitFor(l, l.value)} — every rung cleared.`
           : l.remaining === 1
-            ? `One more and that's ${l.next} ${l.unit}.`
-            : `${l.remaining} more to ${l.next} ${l.unit}.`}
+            ? `One more and that's ${l.next} ${unitFor(l, l.next!)}.`
+            : `${l.remaining} more to ${l.next} ${unitFor(l, l.next!)}.`}
       </p>
 
       {featured && !done && (
