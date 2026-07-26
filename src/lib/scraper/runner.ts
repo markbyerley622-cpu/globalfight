@@ -23,7 +23,7 @@ import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
-import { syncWikiCards } from "@/lib/scraper/wikicard";
+import { syncWikiCards, findWikiTargets, type WikiGap } from "@/lib/scraper/wikicard";
 import { persistAggregated } from "@/services/sync/persist";
 import { isSourceEnabled } from "@/lib/ingestion-registry";
 import type { Sport } from "@/lib/types";
@@ -35,8 +35,42 @@ export type RefreshKind =
 const ENRICH_BATCH = Number(process.env.ENRICH_BATCH ?? 50);
 /** Past events per wikicards run (each costs a search + a page fetch). */
 const WIKICARD_BATCH = Number(process.env.WIKICARD_BATCH ?? 40);
+/** Pending-result events per `results` run. Smaller — this one runs hourly. */
+const RESULT_BATCH = Number(process.env.RESULT_BATCH ?? 12);
 
 const CONCURRENCY = Number(process.env.SCRAPER_CONCURRENCY ?? 2);
+
+/**
+ * Harvest Wikipedia cards/results for the events that still need them, and
+ * persist through the shared pipeline.
+ *
+ * Shared by `wikicards` (both gaps, twice-weekly) and `results` (result gap only,
+ * hourly), because they are the same operation with a different target query —
+ * and because the report has to SAY which gap it worked. A run that returns
+ * "written=0" tells you nothing; "targets=8 gap=missing_result matched=6 written=5"
+ * tells you whether the problem is the query, Wikipedia, or the extractor.
+ */
+async function harvestWikiTargets(opts: { gap?: WikiGap; limit: number }): Promise<string> {
+  const targets = await findWikiTargets({ gap: opts.gap, limit: opts.limit });
+  if (!targets.length) return `targets=0 gap=${opts.gap ?? "all"}`;
+
+  const h = await syncWikiCards(
+    targets.map((t) => ({ name: t.name, date: t.date, sport: t.sport })),
+  );
+
+  let written = 0;
+  const bySport = new Map<Sport, typeof h.events>();
+  for (const e of h.events) {
+    const s = e.sport as Sport;
+    if (!bySport.has(s)) bySport.set(s, []);
+    bySport.get(s)!.push(e);
+  }
+  for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
+
+  const pending = targets.filter((t) => t.gap === "missing_result").length;
+  log.info({ ...h.report, gap: opts.gap ?? "all", pending, written }, "wikicards:runner:done");
+  return `targets=${targets.length} pendingResults=${pending} matched=${h.report.matched} withCard=${h.report.withCard} written=${written}`;
+}
 
 /** Run one target end-to-end inside a ScrapeJob lifecycle. */
 // `number | string`: most jobs report a row count, but some report a short status
@@ -96,11 +130,25 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
         (await ingestAllRankings()).reduce((n, r) => n + r.imported, 0),
       );
       break;
-    case "champions":
     case "results":
+      // RESULTS BACKFILL — the job that closes "Result pending".
+      //
+      // This was a no-op, and combined with the wikicards target query only
+      // looking at events with NO card, nothing in the system ever went back for
+      // the outcome of a card that was created ahead of time. An event whose bell
+      // rang last night showed its matchup and "results aren't in yet" — forever.
+      //
+      // It runs the same licensed Wikipedia path as `wikicards`, but targeted at
+      // the RESULT gap only and over a tight recent window, so it is cheap enough
+      // to run hourly. Card backfill stays on the wikicards schedule.
+      await safe("results:wikicard", () =>
+        harvestWikiTargets({ gap: "missing_result", limit: RESULT_BATCH }),
+      );
+      break;
+    case "champions":
     case "people":
-      // Champions/results/people still need per-fighter data (most imported
-      // fighters lack it) — no-op until that lands.
+      // Champions/people still need per-fighter data (most imported fighters lack
+      // it) — no-op until that lands.
       log.info({ kind }, "refresh:noop (curated — served by API providers)");
       break;
     case "events":
@@ -185,30 +233,11 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
       });
       break;
     case "wikicards":
-      // Backfill fight cards + RESULTS from Wikipedia (CC BY-SA) for past events
-      // that have no card. Promotion-agnostic — it's the only source carrying
-      // bout winners/method for BKFC/ONE (their sites render those client-side).
-      await safe("wikicards", async () => {
-        const rows = await prisma.event.findMany({
-          where: { fights: { none: {} }, date: { lt: new Date() } },
-          orderBy: { date: "desc" },
-          take: WIKICARD_BATCH,
-          select: { name: true, date: true, sport: true },
-        });
-        const h = await syncWikiCards(
-          rows.map((r) => ({ name: r.name, date: r.date.toISOString(), sport: r.sport as Sport })),
-        );
-        let written = 0;
-        const bySport = new Map<Sport, typeof h.events>();
-        for (const e of h.events) {
-          const s = e.sport as Sport;
-          if (!bySport.has(s)) bySport.set(s, []);
-          bySport.get(s)!.push(e);
-        }
-        for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
-        log.info({ ...h.report, written }, "wikicards:runner:done");
-        return written;
-      });
+      // Backfill fight cards + RESULTS from Wikipedia (CC BY-SA) for past events.
+      // Promotion-agnostic — it's the only source carrying bout winners/method for
+      // BKFC/ONE (their sites render those client-side). findWikiTargets covers
+      // BOTH gaps (missing card, missing result), results first.
+      await safe("wikicards", () => harvestWikiTargets({ limit: WIKICARD_BATCH }));
       break;
     case "enrich":
       // Profile enrichment: photos + bio for new/stale fighters.

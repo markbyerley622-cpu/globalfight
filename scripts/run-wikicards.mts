@@ -1,38 +1,51 @@
-// Backfill fight cards + results from Wikipedia (CC BY-SA) for events that have
-// no card yet. Promotion-agnostic.
-//   node --import tsx scripts/run-wikicards.mts [limit] [promotionFilter]
+// Backfill fight cards + RESULTS from Wikipedia (CC BY-SA). Promotion-agnostic.
+//
+//   node --import tsx scripts/run-wikicards.mts [limit] [promotionFilter] [gap]
+//
+//   gap = results | cards | all   (default: all — results first)
+//
+// Two gaps exist, and only chasing one of them is what left completed cards on
+// "Result pending" forever:
+//   results — the card is there, the bouts have no outcome (the common case for
+//             boxing/MMA events created ahead of time by the odds pipeline)
+//   cards   — a past event with no bouts at all
+//
+// Target selection lives in src/lib/scraper/wikicard/targets.ts so this script
+// and the cron runner ask the same question.
 import { prisma } from "../src/lib/db.ts";
 import { isSourceEnabled } from "../src/lib/ingestion-registry.ts";
 import { persistAggregated } from "../src/services/sync/persist.ts";
-import { syncWikiCards } from "../src/lib/scraper/wikicard/index.ts";
+import { syncWikiCards, findWikiTargets } from "../src/lib/scraper/wikicard/index.ts";
 import type { Sport } from "../src/lib/types.ts";
-import type { WikiTarget } from "../src/lib/scraper/wikicard/types.ts";
+import type { WikiGap } from "../src/lib/scraper/wikicard/targets.ts";
 
 const limit = Number(process.argv[2] ?? 25);
 const promo = process.argv[3];
+const gapArg = process.argv[4];
+const gap: WikiGap | undefined =
+  gapArg === "results" ? "missing_result" : gapArg === "cards" ? "missing_card" : undefined;
 
 if (!isSourceEnabled("wikipedia-facts")) {
   console.error("wikipedia-facts is DISABLED in the ingestion registry — aborting.");
   process.exit(1);
 }
 
-// Events with NO card yet. Only PAST events: Wikipedia rarely has a page (let
-// alone a results table) for an event that hasn't happened, so targeting future
-// dates just burns requests for nothing.
-const rows = await prisma.event.findMany({
-  where: {
-    fights: { none: {} },
-    date: { lt: new Date() },
-    ...(promo ? { promotion: { contains: promo, mode: "insensitive" } } : {}),
-  },
-  orderBy: { date: "desc" }, // most recent past first
-  take: limit,
-  select: { name: true, date: true, sport: true, promotion: true },
-});
-console.log(`past events missing a card: ${rows.length}${promo ? ` (promotion~${promo})` : ""}`);
+const targets = await findWikiTargets({ limit, promotion: promo, gap });
+const pending = targets.filter((t) => t.gap === "missing_result");
+console.log(
+  `targets: ${targets.length}${promo ? ` (promotion~${promo})` : ""} — ` +
+    `${pending.length} awaiting results, ${targets.length - pending.length} missing a card`,
+);
+for (const t of pending) console.log(`  pending: ${t.date.slice(0, 10)}  ${t.name}`);
 
-const targets: WikiTarget[] = rows.map((r) => ({ name: r.name, date: r.date.toISOString(), sport: r.sport as Sport }));
-const h = await syncWikiCards(targets);
+if (!targets.length) {
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
+const h = await syncWikiCards(
+  targets.map((t) => ({ name: t.name, date: t.date, sport: t.sport })),
+);
 console.log("wiki:", JSON.stringify(h.report));
 
 // Persist grouped by sport (persistAggregated applies one sport per call).

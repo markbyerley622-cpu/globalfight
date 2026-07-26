@@ -138,13 +138,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // section — a bout's prediction, battle and discussion live inside that bout's
   // module, because that is the scope a fan actually thinks in. "Card talk" is
   // the event-wide room for everything that belongs to no single bout.
-  const spy: SpySection[] = [
-    { id: "card", label: "Fight card", badge: fights.length },
-    { id: "card-talk", label: "Card talk" },
-    ...(enrichment.coverageCount || enrichment.videoCount
-      ? [{ id: "coverage", label: "Coverage", badge: enrichment.coverageCount + enrichment.videoCount } satisfies SpySection]
-      : []),
-  ];
+  // The section list is DERIVED by the enrichment engine (navigation.sections),
+  // not recomputed here: a "Coverage" anchor exists only when enrichment actually
+  // found coverage or videos, and that rule now lives in one place for every
+  // surface that needs it.
+  const spy: SpySection[] = enrichment.navigation.sections;
 
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>

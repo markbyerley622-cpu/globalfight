@@ -450,7 +450,8 @@ function mapEvent(e: PEvent & { fights: PFightFull[] }): FightEvent {
     // stored a country *name* in countryCode, newer ones may only have country.
     countryCode: toCountryCode(e.countryCode) ?? toCountryCode(e.country) ?? undefined,
     broadcaster: e.broadcaster ?? undefined,
-    posterUrl: e.posterUrl ?? undefined, date: isoReq(e.date),
+    posterUrl: e.posterUrl ?? undefined, heroUrl: e.heroUrl ?? undefined,
+    date: isoReq(e.date),
     status: e.status as EventStatus,
     fights: e.fights.map(mapFight),
   };

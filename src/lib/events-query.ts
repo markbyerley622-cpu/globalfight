@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
-import { safeFighterImageOrNull, imageProxyUrl } from "@/lib/media-safe";
+import { cardFighterImage } from "@/lib/events/media-resolver";
 import { decodeHtmlEntities } from "@/lib/text/entities";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -137,16 +137,6 @@ function cardFighterRank(f: { rankings: { rank: number; source: string; isPoundF
   const r = f.rankings[0];
   if (!r) return null;
   return { rank: r.rank, kind: r.isPoundForPound ? "p4p" : "division", source: r.source };
-}
-
-/** Card fighter image: own storage → proxied licensed Wikimedia photo → null. */
-function cardFighterImage(f: {
-  imageUrl: string | null; thumbUrl: string | null; photoUrl: string | null; photoLicense: string | null;
-}): string | null {
-  return (
-    safeFighterImageOrNull(f.imageUrl ?? f.thumbUrl) ??
-    (!f.imageUrl && f.photoLicense ? imageProxyUrl(f.photoUrl) : null)
-  );
 }
 
 const CARD_SELECT = {

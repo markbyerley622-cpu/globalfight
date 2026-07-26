@@ -12,4 +12,5 @@
 export { syncWikiCards } from "./sync";
 export { parseWikiCard, type WikiBout } from "./extract";
 export { toNormalizedWikiEvent, toFightStub, WIKI_SOURCE } from "./map";
+export { findWikiTargets, RESULT_BACKFILL_DAYS, type WikiGap, type WikiTargetRow } from "./targets";
 export type { WikiTarget, WikiHarvest, WikiHarvestReport } from "./types";

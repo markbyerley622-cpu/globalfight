@@ -1,4 +1,5 @@
 import type { Article, Fight, FightEvent } from "@/lib/types";
+import { mentionOf, type ResolvedEntity } from "@/lib/entities/resolve";
 
 /**
  * Google Maps deep link for a venue. Uses the Maps URL API `search` form, which
@@ -181,6 +182,25 @@ export interface CoverageContext {
   /** The event's date (ISO) — powers freshness: a post-fight report outranks a
    *  three-week-old preview of equal relevance. */
   eventDate: string;
+  /**
+   * REGISTRY-FIRST matching, when the caller has resolved the card's entities
+   * (lib/entities). Present ⇒ relevance is scored against each fighter's full
+   * registry surface — canonical name, aliases, nickname, surname — instead of
+   * the single string on the fight row. That is what makes "AJ stops Prenga" and
+   * "The Gypsy King returns" count as coverage.
+   *
+   * Absent ⇒ the `fighters`/`mainFighters` string path below runs unchanged. The
+   * fallback is deterministic too; it is just blind to everything the registry
+   * knows.
+   */
+  entities?: CoverageEntities;
+}
+
+/** The resolved card entities relevance is scored against. */
+export interface CoverageEntities {
+  fighters: ResolvedEntity[];
+  /** The headline bout's corners — an article naming both is about the bout. */
+  main: ResolvedEntity[];
 }
 
 // ── Source authority ────────────────────────────────────────────────────────
@@ -243,27 +263,50 @@ function nameHit(name: string, title: string, body: string): "title" | "body" | 
 /**
  * How relevant an article is to THIS event, from names alone. Deterministic and
  * explainable: no model, no fabrication. Zero means "names nothing on this card".
+ *
+ * Registry-first: with `ctx.entities` present, each fighter is matched on their
+ * whole resolved surface (aliases and nickname included). Without it, the
+ * original single-string path runs — same scoring, narrower surface.
  */
 export function scoreArticleRelevance(a: Article, ctx: CoverageContext): number {
   const title = a.title.toLowerCase();
   const body = `${a.excerpt ?? ""} ${a.content ?? ""}`.toLowerCase();
-  const mainSet = new Set(ctx.mainFighters);
-  const named = new Set<string>();
   let rel = 0;
 
-  for (const name of ctx.fighters) {
-    const hit = nameHit(name, title, body);
-    if (!hit) continue;
-    named.add(name);
-    if (hit === "title") rel += REL.TITLE + (mainSet.has(name) ? REL.MAIN_TITLE : 0);
-    else rel += REL.BODY;
+  if (ctx.entities) {
+    const mainIds = new Set(ctx.entities.main.map(entityKey));
+    const named = new Set<string>();
+    for (const entity of ctx.entities.fighters) {
+      // Closed set: these are the fighters on THIS card, so the weak forms
+      // (initials, "AJ") are legal here — that is exactly what a closed set buys.
+      const m = mentionOf(entity, { title: a.title, body: `${a.excerpt ?? ""} ${a.content ?? ""}` });
+      if (!m) continue;
+      const key = entityKey(entity);
+      named.add(key);
+      if (m.where === "title") rel += REL.TITLE + (mainIds.has(key) ? REL.MAIN_TITLE : 0);
+      else rel += REL.BODY;
+    }
+    if (mainIds.size === 2 && [...mainIds].every((k) => named.has(k))) rel += REL.BOTH_MAIN;
+  } else {
+    const mainSet = new Set(ctx.mainFighters);
+    const named = new Set<string>();
+    for (const name of ctx.fighters) {
+      const hit = nameHit(name, title, body);
+      if (!hit) continue;
+      named.add(name);
+      if (hit === "title") rel += REL.TITLE + (mainSet.has(name) ? REL.MAIN_TITLE : 0);
+      else rel += REL.BODY;
+    }
+    if (ctx.mainFighters.length === 2 && ctx.mainFighters.every((n) => named.has(n))) rel += REL.BOTH_MAIN;
   }
-  if (ctx.mainFighters.length === 2 && ctx.mainFighters.every((n) => named.has(n))) rel += REL.BOTH_MAIN;
 
   const ev = ctx.eventName.toLowerCase().trim();
   if (ev.length > 4 && title.includes(ev)) rel += REL.EVENT_TITLE;
   return rel;
 }
+
+/** Identity for dedup/main-event comparison: the registry id when there is one. */
+const entityKey = (e: ResolvedEntity) => e.id ?? `name:${e.name.toLowerCase()}`;
 
 /**
  * Rank event coverage by RELEVANCE to this card, blended with source authority

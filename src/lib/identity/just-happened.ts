@@ -53,6 +53,12 @@ export interface JustHappenedEvent {
   name: string;
   date: string;
   promotion: string | null;
+  /** Prisma Sport enum value — drives the card's accent, sport tag and poster art. */
+  sport: string;
+  /** Bouts on the card, so a result card can say what else is on it. */
+  boutCount: number;
+  /** Bouts still carrying no outcome. >0 is the honest "results aren't all in" number. */
+  pendingBouts: number;
   main: JustHappenedMain | null;
   /** The viewer's delta on this card — null when signed out or they didn't pick. */
   viewer: JustHappenedViewer | null;
@@ -85,7 +91,11 @@ async function _getJustHappened(
     orderBy: { date: "desc" },
     take: limit,
     select: {
-      id: true, slug: true, name: true, date: true, promotion: true,
+      id: true, slug: true, name: true, date: true, promotion: true, sport: true,
+      // Card size + how much of it is still unresolved. Two counts, no extra
+      // round-trip: "results aren't in yet" is only honest if we can say how many
+      // bouts that covers.
+      _count: { select: { fights: true } },
       fights: {
         // Headline bout: main event first, else the top of the card — regardless
         // of whether it's resolved, so a pending card still shows its matchup.
@@ -108,7 +118,10 @@ async function _getJustHappened(
 
   // 2 — crowd split on each headline bout (difficulty).
   // 3 — the viewer's graded picks across these cards (their record delta).
-  const [crowd, picks] = await Promise.all([
+  // 4 — how many bouts on each card are STILL undecided. One bounded groupBy: the
+  //     card can then say "3 of 9 results still landing" instead of implying the
+  //     whole event is a mystery because its main event hasn't been ingested.
+  const [crowd, picks, unresolved] = await Promise.all([
     mainFightIds.length
       ? prisma.fightPick.groupBy({ by: ["fightId", "corner"], where: { fightId: { in: mainFightIds } }, _count: { _all: true } })
       : Promise.resolve([] as { fightId: string; corner: string; _count: { _all: number } }[]),
@@ -118,7 +131,14 @@ async function _getJustHappened(
           select: { correct: true, corner: true, fightId: true, fight: { select: { eventId: true } } },
         })
       : Promise.resolve([] as { correct: boolean | null; corner: string; fightId: string; fight: { eventId: string | null } }[]),
+    prisma.fight.groupBy({
+      by: ["eventId"],
+      where: { eventId: { in: eventIds }, result: "SCHEDULED" },
+      _count: { _all: true },
+    }),
   ]);
+  const pendingByEvent = new Map<string, number>();
+  for (const u of unresolved) if (u.eventId) pendingByEvent.set(u.eventId, u._count._all);
 
   // 4 — exact reputation the viewer earned on those cards (ledger, per fight).
   const correctFightIds = picks.filter((p) => p.correct).map((p) => p.fightId);
@@ -194,6 +214,9 @@ async function _getJustHappened(
 
     return {
       slug: e.slug, name: e.name, date: e.date.toISOString(), promotion: e.promotion,
+      sport: e.sport,
+      boutCount: e._count.fights,
+      pendingBouts: pendingByEvent.get(e.id) ?? 0,
       main, viewer,
     };
   });

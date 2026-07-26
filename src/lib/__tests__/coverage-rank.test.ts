@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { scoreArticleRelevance, rankCoverage, sourceAuthority, freshnessScore, groupCoverage, type CoverageContext } from "../event-format";
+import { candidate } from "@/lib/entities/resolve";
 import type { Article } from "@/lib/types";
 
 // Coverage ranking decides which stories a completed event surfaces. The bug it
@@ -132,4 +133,60 @@ test("groupCoverage routes post-fight stories into the right sections", () => {
   assert.ok(byKey.result >= 1, "a recap lands in Official result");
   assert.ok(byKey.interview >= 1, "an interview lands in Interviews");
   assert.ok(byKey.next >= 1, "a callout lands in What's next");
+});
+
+// ── Registry-first relevance ───────────────────────────────────────────────
+// With ctx.entities present, relevance is scored against each fighter's RESOLVED
+// registry surface instead of the single name string on the fight row. These pin
+// the accuracy the entity layer buys — and pin that it is still deterministic.
+
+const FURY = candidate("fighter", {
+  id: "f_fury", slug: "tyson-fury", name: "Tyson Fury", nickname: "The Gypsy King",
+});
+const WACH = candidate("fighter", { id: "f_wach", slug: "mariusz-wach", name: "Mariusz Wach" });
+const CHISORA = candidate("fighter", { id: "f_chi", slug: "derek-chisora", name: "Derek Chisora" });
+
+const registryCtx: CoverageContext = {
+  ...ctx,
+  entities: { fighters: [FURY, WACH, CHISORA], main: [FURY, WACH] },
+};
+
+test("a NICKNAME headline is coverage — the string path misses it entirely", () => {
+  const headline = art({ title: "The Gypsy King is ready for Saturday" });
+  assert.equal(
+    scoreArticleRelevance(headline, ctx),
+    0,
+    "string-first scoring cannot know Fury is the Gypsy King",
+  );
+  assert.ok(
+    scoreArticleRelevance(headline, registryCtx) > 0,
+    "registry-first scoring resolves the nickname to the fighter",
+  );
+});
+
+test("registry-first still refuses a story about a different card", () => {
+  assert.equal(scoreArticleRelevance(art({ title: "Canelo Alvarez plots next move" }), registryCtx), 0);
+});
+
+test("registry-first keeps the main-event hierarchy", () => {
+  const bothMain = scoreArticleRelevance(art({ title: "Tyson Fury stops Mariusz Wach" }), registryCtx);
+  const undercard = scoreArticleRelevance(art({ title: "Derek Chisora wins on the undercard" }), registryCtx);
+  assert.ok(bothMain > undercard);
+});
+
+test("registry-first holds word boundaries — 'furious' is not Fury", () => {
+  assert.equal(scoreArticleRelevance(art({ title: "A furious finish in Manchester" }), registryCtx), 0);
+});
+
+test("rankCoverage drops the off-card story under registry-first scoring too", () => {
+  const ranked = rankCoverage(
+    [
+      art({ title: "Anthony Joshua resumes training camp" }),
+      art({ title: "The Gypsy King stops Mariusz Wach" }),
+    ],
+    registryCtx,
+    8,
+  );
+  assert.equal(ranked.length, 1);
+  assert.equal(ranked[0].title, "The Gypsy King stops Mariusz Wach");
 });

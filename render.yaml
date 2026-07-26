@@ -64,6 +64,9 @@ envVarGroups:
         value: "0"
       - key: WIKICARD_BATCH
         value: "40"
+      # Pending-result events per hourly `refresh-results` run — small on purpose.
+      - key: RESULT_BATCH
+        value: "12"
       - key: WIKICARD_CONCURRENCY
         value: "2"
       - key: MEDIA_INGESTION_ENABLED
@@ -183,19 +186,24 @@ services:
     envVars:
       - fromGroup: globalfight
 
-  # ── Cron: results + pick resolution (every 3h) ───────────────────────────
+  # ── Cron: results + pick resolution (HOURLY) ─────────────────────────────
   # The reward step of the habit loop — "you called it, card earned" — only fires
   # once a bout's result is ingested AND picks are graded. Running this daily meant
   # a Sunday-afternoon card's reward could wait ~a day, long after the dopamine
-  # window. Every 3h ingests results then grades picks in the same run, so the
-  # payoff lands within hours of the final bell. Cheap off-event: the results
-  # scrape is polite (8×/day) and resolve-picks only touches decided, ungraded
-  # bouts, scanning 0 rows when nothing new has finished.
+  # window. This run ingests results then grades picks together, so the payoff
+  # lands within the hour of the final bell.
+  #
+  # `refresh-results` was a NO-OP until the results backfill landed (see
+  # runner.ts, case "results"), which is why completed cards sat on "Result
+  # pending" indefinitely no matter how often this fired. It is now a real job:
+  # RESULT_BATCH (12) recently-finished events per run, two Wikipedia requests
+  # each — ~24 requests an hour, polite by any measure. resolve-picks only touches
+  # decided, ungraded bouts, so it scans 0 rows when nothing new has finished.
   - type: cron
     name: gf-cron-results
     runtime: node
     plan: starter
-    schedule: "0 */3 * * *"
+    schedule: "20 * * * *"
     buildCommand: "true"
     startCommand: >-
       for p in refresh-results resolve-picks; do

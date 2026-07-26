@@ -109,6 +109,8 @@ export interface FightEvent {
   countryCode?: string;
   broadcaster?: string;
   posterUrl?: string;
+  /** 16:9 event artwork, when the promotion supplied one. Drives the media resolver. */
+  heroUrl?: string;
   date: string;
   status: EventStatus;
   fights: Fight[];

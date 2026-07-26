@@ -1,6 +1,7 @@
 import { pickEventArtwork } from "@/lib/event-artwork";
 import { ownedPromotionImage, ownedCardImage } from "@/lib/event-card-image";
 import { resolvePromotion } from "@/lib/promotions";
+import { safeFighterImageOrNull, imageProxyUrl } from "@/lib/media-safe";
 import type { EventCard } from "@/lib/events-query";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -41,4 +42,22 @@ export function resolveEventMedia(event: MediaInput): EventMedia {
   if (sport) return { kind: "image", src: sport, source: "sport", position: "center" };
 
   return { kind: "generated" };
+}
+
+/**
+ * A fighter's display image for card media: own storage → proxied licensed
+ * Wikimedia photo → null. Lives beside the resolver because every surface that
+ * builds a MediaInput needs it, and two copies of this precedence is how the
+ * event page and the event card start disagreeing about what a card looks like.
+ */
+export function cardFighterImage(f: {
+  imageUrl?: string | null;
+  thumbUrl?: string | null;
+  photoUrl?: string | null;
+  photoLicense?: string | null;
+}): string | null {
+  return (
+    safeFighterImageOrNull(f.imageUrl ?? f.thumbUrl) ??
+    (!f.imageUrl && f.photoLicense ? imageProxyUrl(f.photoUrl) : null)
+  );
 }
