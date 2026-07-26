@@ -17,11 +17,17 @@ import { QUORUM } from "@/lib/identity/victory-headline";
 // independent of how many events or picks exist; cache()'d for the page.
 
 export interface JustHappenedMain {
-  winnerName: string;
-  loserName: string;
+  /** The headline matchup, shown whether or not the result is in yet. */
+  redName: string;
+  blueName: string;
+  titleFight: boolean;
+  /** False when the bout happened but results aren't ingested — "Result pending". */
+  resolved: boolean;
+  // ── Resolved-only (null while pending) ──
+  winnerName: string | null;
+  loserName: string | null;
   method: string | null;
   roundEnded: number | null;
-  titleFight: boolean;
   /** Share of the crowd (0..100) that called the winner, or null below quorum. */
   calledByPct: number | null;
 }
@@ -59,20 +65,22 @@ async function _getJustHappened(
 ): Promise<JustHappenedEvent[]> {
   const since = new Date(now.getTime() - DEFAULT_DAYS * 86_400_000);
 
-  // 1 — recent cards that actually have a result in, with their headline bout.
+  // 1 — cards that JUST HAPPENED (date in the window), whether or not results
+  // are ingested yet. A boxing card whose results lag by a day must still appear
+  // the morning after — it shows "Result pending" and fills in when the resolve
+  // cron runs. Requiring a graded fight here is what made recent events vanish.
   const events = await prisma.event.findMany({
     where: {
       date: { gte: since, lt: now },
       status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] },
-      fights: { some: { result: { not: "SCHEDULED" } } },
     },
     orderBy: { date: "desc" },
     take: limit,
     select: {
       id: true, slug: true, name: true, date: true, promotion: true,
       fights: {
-        // Headline bout: main event first, else the top of the card.
-        where: { result: { not: "SCHEDULED" } },
+        // Headline bout: main event first, else the top of the card — regardless
+        // of whether it's resolved, so a pending card still shows its matchup.
         orderBy: [{ mainEvent: "desc" }, { coMain: "desc" }, { orderOnCard: "asc" }],
         take: 1,
         select: {
@@ -142,15 +150,22 @@ async function _getJustHappened(
     const f = e.fights[0];
     let main: JustHappenedMain | null = null;
     if (f) {
-      const corner = winnerCorner(f); // "RED" | "BLUE" | null
-      if (corner) {
-        const winnerName = corner === "RED" ? f.red.name : f.blue.name;
-        const loserName = corner === "RED" ? f.blue.name : f.red.name;
-        const c = crowdByFight.get(f.id);
-        const onWinner = c?.byCorner.get(corner) ?? 0;
-        const calledByPct = c && c.total >= QUORUM ? Math.round((onWinner / c.total) * 100) : null;
-        main = { winnerName, loserName, method: f.method, roundEnded: f.roundEnded, titleFight: f.titleFight, calledByPct };
-      }
+      const corner = winnerCorner(f); // "RED" | "BLUE" | null (null while pending)
+      const resolved = corner !== null;
+      const c = crowdByFight.get(f.id);
+      const onWinner = resolved ? c?.byCorner.get(corner) ?? 0 : 0;
+      const calledByPct = resolved && c && c.total >= QUORUM ? Math.round((onWinner / c.total) * 100) : null;
+      main = {
+        redName: f.red.name,
+        blueName: f.blue.name,
+        titleFight: f.titleFight,
+        resolved,
+        winnerName: resolved ? (corner === "RED" ? f.red.name : f.blue.name) : null,
+        loserName: resolved ? (corner === "RED" ? f.blue.name : f.red.name) : null,
+        method: resolved ? f.method : null,
+        roundEnded: resolved ? f.roundEnded : null,
+        calledByPct,
+      };
     }
 
     const vg = viewerByEvent.get(e.id);

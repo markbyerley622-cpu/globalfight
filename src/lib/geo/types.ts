@@ -16,9 +16,12 @@ export type MapLayer = "events" | "gyms" | "people" | "clubs";
 // from the UI (RC-6); the types/providers stay so the layers can return later
 // without a schema change. Events + Gyms are the surfaced families.
 export const MAP_LAYERS: { id: MapLayer; label: string; short: string }[] = [
-  // Events only for now — Gyms (and other layers) return behind a feature flag
-  // once their datasets are real, rather than shipping a sparse/empty layer.
+  // Events + Gyms are live layers. getMapData already supplies gym pins
+  // (lib/geo/gyms.ts); this is the UI surface — the filter chip, the legend and
+  // the empty state. People/Clubs stay out until their datasets are real, so the
+  // map never ships a permanently-empty layer.
   { id: "events", label: "Events", short: "Event" },
+  { id: "gyms", label: "Gyms", short: "Gym" },
 ];
 
 export interface MapPin {

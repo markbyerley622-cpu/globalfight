@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Flame, ArrowRight } from "lucide-react";
+import { Check, Flame, ArrowRight, Clock } from "lucide-react";
 import type { JustHappenedEvent } from "@/lib/identity/just-happened";
 import { methodLabel } from "@/components/forums/pick-identity";
 import { timeAgo, cn } from "@/lib/utils";
@@ -46,7 +46,7 @@ function Card({ e }: { e: JustHappenedEvent }) {
           <span className="shrink-0">{timeAgo(e.date)}</span>
         </div>
 
-        {m ? (
+        {m && m.resolved ? (
           <>
             <p className="mt-2 font-display text-base font-black leading-tight text-chalk">
               {m.winnerName} <span className="text-fog">def.</span> {m.loserName}
@@ -60,6 +60,17 @@ function Card({ e }: { e: JustHappenedEvent }) {
                 {hard ? `Only ${m.calledByPct}% called it` : `${m.calledByPct}% called it`}
               </p>
             )}
+          </>
+        ) : m ? (
+          // The card happened but results aren't in yet — show the matchup, mark
+          // it pending. It fills in with the winner once the resolve cron runs.
+          <>
+            <p className="mt-2 font-display text-base font-black leading-tight text-chalk">
+              {m.redName} <span className="text-fog">vs</span> {m.blueName}
+            </p>
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800/60 px-2 py-0.5 text-[0.68rem] font-bold text-fog">
+              <Clock className="size-3" /> Result pending{m.titleFight ? <span className="text-gold-400"> · Title</span> : null}
+            </p>
           </>
         ) : (
           <p className="mt-2 font-display text-base font-black text-chalk">{e.name}</p>
