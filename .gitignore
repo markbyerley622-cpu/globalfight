@@ -25,3 +25,6 @@ og-preview.png
 /test/lighthouse/reports/
 /playwright-report/
 /test-results/
+
+# cleanup rollback exports (contain fight rows — never commit)
+wikicard-cleanup-backup-*.json

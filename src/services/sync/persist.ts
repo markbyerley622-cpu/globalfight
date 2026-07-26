@@ -258,6 +258,32 @@ async function planCorner(
   return { slug, name, create: true };
 }
 
+/**
+ * Record WHERE this bout came from. Best-effort: the table is additive and a
+ * database that hasn't run `db:push` must still get the bout itself.
+ *
+ * `created` is the field that matters for cleanup — a row this import CREATED can be
+ * removed if the import turns out to be wrong; a row it merely updated predates it
+ * and must not be.
+ */
+async function recordFightImport(
+  fightId: string,
+  source: string,
+  sourceRef: string | undefined,
+  created: boolean,
+): Promise<void> {
+  try {
+    await prisma.fightImport.upsert({
+      where: { fightId_source: { fightId, source } },
+      // A later touch of the same bout by the same source never re-claims authorship.
+      update: { sourceRef: sourceRef ?? null, importedAt: new Date() },
+      create: { fightId, source, sourceRef: sourceRef ?? null, created },
+    });
+  } catch {
+    /* additive table not migrated yet — the bout itself already landed */
+  }
+}
+
 /** Best-effort provenance link. Kept OUTSIDE the fight transaction: this touches
  *  an additive table that may not be migrated, and inside a transaction that
  *  error would abort (poison) the whole write. */
@@ -423,6 +449,12 @@ async function upsertFight(
   if (outcome.existing) {
     await recordConflicts("Fight", outcome.fightId, outcome.data, outcome.existing.lockedFields, outcome.existing as unknown as Record<string, unknown>, source);
   }
+
+  // PROVENANCE. Best-effort and outside the transaction, like every other additive
+  // table here. Without it a repair cannot be audited afterwards: "which bouts did
+  // this job write, and from which page?" had no answer, so cleaning up a bad import
+  // meant inferring intent from slug shapes.
+  await recordFightImport(outcome.fightId, source, ev.externalId, outcome.existing === null);
 
   // SETTLEMENT, fired by the write that caused it. Ingest used to stop at
   // Fight.result and leave every prediction on the bout open until a cron happened

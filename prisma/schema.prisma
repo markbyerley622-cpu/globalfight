@@ -588,6 +588,8 @@ model Fight {
   // Set once by the resolution engine after a decided bout's picks are graded
   // and consequences fanned out — the idempotency guard so it never double-awards.
   picksResolvedAt DateTime?
+  /// Provenance: which provider wrote this bout, from which page. See FightImport.
+  imports         FightImport[]
 
   @@index([date, result])
   @@index([redId])
@@ -729,15 +731,15 @@ model ArticleTag {
 // ownerId. Membership lives in CommunityMember; avatar/banner/memberCount are
 // the community-presentation fields.
 model ForumCategory {
-  id          String            @id @default(cuid())
-  name        String            @unique
-  slug        String            @unique
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
   description String?
-  order       Int               @default(0)
+  order       Int     @default(0)
   icon        String?
   avatarUrl   String?
   bannerUrl   String?
-  memberCount Int               @default(0)
+  memberCount Int     @default(0)
 
   // ── Fight clubs ────────────────────────────────────────────────────────
   // A fight club IS a community that happens to meet somewhere. Rather than
@@ -746,7 +748,7 @@ model ForumCategory {
   // coordinates is a fight club. Everything it already has (threads, members,
   // roles, clips) comes along for free, and `kind` is the only branch.
   /// forum | fight_club
-  kind        String            @default("forum")
+  kind        String  @default("forum")
   city        String?
   country     String?
   countryCode String?
@@ -755,8 +757,8 @@ model ForumCategory {
   /// When they train together — "Open sparring, Saturdays 11am".
   meetsOn     String?
 
-  threads     ForumThread[]
-  members     CommunityMember[]
+  threads ForumThread[]
+  members CommunityMember[]
 
   @@index([kind])
 }
@@ -989,7 +991,6 @@ model CopyrightReport {
 // A user-uploaded fight clip. Stored as a native video file (R2/blob), so it
 // autoplays reliably on mobile (unlike YouTube embeds). Rated by the community.
 
-
 // ─── Community Predictions (native to Combat Register) ───────────────────
 // Distinct from the live external market feed (Polymarket/Kalshi, which is
 // read-only and lives entirely in src/features/predictions). These are our
@@ -1132,28 +1133,28 @@ model User {
   // Defaults are ON for everything a user opted into by following something,
   // because the notification is the thing they asked for. Push still requires
   // an explicit browser permission on top — see PushSubscription.
-  notifyFights      Boolean @default(true)  // reminders, going live, card changes
-  notifyPredictions Boolean @default(true)  // lock deadlines, results, rank moves
-  notifySocial      Boolean @default(true)  // replies, mentions, follows, battles
-  notifyGym         Boolean @default(true)  // check-ins, membership, verification
+  notifyFights      Boolean @default(true) // reminders, going live, card changes
+  notifyPredictions Boolean @default(true) // lock deadlines, results, rank moves
+  notifySocial      Boolean @default(true) // replies, mentions, follows, battles
+  notifyGym         Boolean @default(true) // check-ins, membership, verification
   /// Local hours [start, end) during which push is withheld. Null = always on.
   /// Stored as plain hours + an IANA zone rather than UTC instants: "no pings
   /// before 8am" has to survive the user travelling.
-  quietHoursStart Int?
-  quietHoursEnd   Int?
-  timezone        String?
+  quietHoursStart   Int?
+  quietHoursEnd     Int?
+  timezone          String?
 
   // ── Public identity ───────────────────────────────────────────────────
   // Flat columns rather than a UserSocial join table (the shape Fighter uses):
   // a fixed set of five known platforms is read on every profile render, so a
   // join would cost a round trip to model nothing extra. Fighter's table earns
   // its keep because a fighter's links are editorially curated and open-ended.
-  website     String?
-  instagram   String?
-  twitter     String?
-  youtube     String?
-  tiktok      String?
-  facebook    String?
+  website         String?
+  instagram       String?
+  twitter         String?
+  youtube         String?
+  tiktok          String?
+  facebook        String?
   /// Fighters only, and self-declared — never presented as a verified record.
   weightClassPref String?
   yearsTraining   Int?
@@ -1416,6 +1417,33 @@ model FighterAlias {
 
   @@index([normalized])
   @@index([fighterId])
+}
+
+/// Where a BOUT came from. A separate table, not columns on Fight, deliberately:
+/// every `fight.findMany` without an explicit select would pull new scalars and 500
+/// against a database that has not run `db:push` yet — and scripts are routinely
+/// pointed at production from a developer's machine, ahead of the deploy. A missing
+/// TABLE only breaks the queries that touch it, and those are all best-effort.
+///
+/// This exists because a historical repair could not be audited: `Fight` recorded
+/// createdAt and nothing else, so "which bouts did the Wikipedia repair write, from
+/// which page?" was unanswerable and cleanup had to be inferred from slug shapes.
+/// Every future import answers it directly.
+model FightImport {
+  id         String   @id @default(cuid())
+  fightId    String
+  fight      Fight    @relation(fields: [fightId], references: [id], onDelete: Cascade)
+  /// Provider key: "wikipedia" | "bkfc" | "one" | "adcc" | "odds" | …
+  source     String
+  /// The source's own reference — for Wikipedia, the page title the card came from.
+  sourceRef  String?
+  /// True when this row CREATED the bout; false when it only updated one.
+  created    Boolean  @default(false)
+  importedAt DateTime @default(now())
+
+  @@unique([fightId, source])
+  @@index([source, importedAt])
+  @@index([fightId])
 }
 
 // ─── Promotion Registry ─────────────────────────────────────────────────
@@ -1907,16 +1935,16 @@ model Gym {
   hoursNote String?
 
   /// Set by a reviewed GymClaim. Never by the owner directly.
-  verified   Boolean @default(false)
-  ownerId    String?
-  owner      User?   @relation("GymOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  verified    Boolean @default(false)
+  ownerId     String?
+  owner       User?   @relation("GymOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   /// Denormalised so a map pin never counts rows.
-  memberCount Int    @default(0)
+  memberCount Int     @default(0)
   /// Denormalised review aggregate — same reasoning as memberCount: a map pin,
   /// a list row and a search result show the rating without loading a single
   /// review row. Recomputed in a transaction whenever a review changes.
   ratingAvg   Float? // 1..5, null until the first review
-  ratingCount Int    @default(0)
+  ratingCount Int     @default(0)
 
   createdById String?
   createdAt   DateTime @default(now())
@@ -1935,13 +1963,13 @@ model Gym {
 /// Membership. `isHome` is the one a fighter calls their home gym — at most
 /// one per user, enforced in the service layer.
 model GymMember {
-  id     String @id @default(cuid())
+  id     String  @id @default(cuid())
   gymId  String
-  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  gym    Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// member | coach | owner
-  role   String @default("member")
+  role   String  @default("member")
   isHome Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -1953,14 +1981,14 @@ model GymMember {
 /// Ownership claim over a gym page. Mirrors FighterClaim's shape deliberately:
 /// same review vocabulary, same admin habits, no second concept to learn.
 model GymClaim {
-  id        String @id @default(cuid())
-  gymId     String
-  gym       Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  id         String @id @default(cuid())
+  gymId      String
+  gym        Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
   claimantId String
-  claimant  User   @relation("GymClaimsMade", fields: [claimantId], references: [id], onDelete: Cascade)
+  claimant   User   @relation("GymClaimsMade", fields: [claimantId], references: [id], onDelete: Cascade)
 
   /// pending | approved | rejected | info_requested
-  status  String  @default("pending")
+  status   String  @default("pending")
   /// How they say they can prove it (role, website email, socials).
   evidence String?
   note     String?
@@ -2033,14 +2061,14 @@ model UserFollow {
 /// pipeline returns, plus the intrinsic dimensions — a gallery that renders
 /// without width/height reflows the whole page as each image lands.
 model GymPhoto {
-  id      String @id @default(cuid())
-  gymId   String
-  gym     Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  id    String @id @default(cuid())
+  gymId String
+  gym   Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
   url      String
   thumbUrl String
-  width    Int    @default(0)
-  height   Int    @default(0)
+  width    Int       @default(0)
+  height   Int       @default(0)
   /// Shown under the image in the viewer.
   caption  String?
   /// Screen-reader description. Distinct from caption on purpose: a caption is
@@ -2053,7 +2081,7 @@ model GymPhoto {
   takenAt  DateTime?
 
   /// Manual ordering; ties break on createdAt.
-  sortOrder Int   @default(0)
+  sortOrder Int @default(0)
 
   uploadedById String?
   createdAt    DateTime @default(now())
@@ -2146,9 +2174,9 @@ model PushSubscription {
   auth     String
 
   userAgent   String?
-  failedCount Int      @default(0)
+  failedCount Int       @default(0)
   lastUsedAt  DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([userId])
 }

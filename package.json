@@ -13,6 +13,8 @@
     "security:audit": "node --import tsx scripts/security-audit.mts",
     "settlement:doctor": "node --conditions=react-server --env-file=.env --import tsx scripts/settlement-doctor.mts",
     "results:backfill": "node --conditions=react-server --env-file=.env --import tsx scripts/run-wikicards.mts",
+    "audit:wikicards": "node --conditions=react-server --env-file=.env --import tsx scripts/audit-wikicards.mts",
+    "cleanup:wikicards": "node --conditions=react-server --env-file=.env --import tsx scripts/cleanup-wikicards.mts",
     "test": "node --import tsx --test \"src/lib/**/__tests__/**/*.test.ts\"",
     "test:integration": "node --conditions=react-server --test-concurrency=1 --import tsx --test \"test/integration/**/*.integration.test.ts\"",
     "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
