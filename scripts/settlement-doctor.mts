@@ -1,8 +1,13 @@
 // Settlement doctor — answers "why is this prediction still open?" with data.
 //
-//   node --env-file=.env --import tsx scripts/settlement-doctor.mts            # whole-DB report
-//   node --env-file=.env --import tsx scripts/settlement-doctor.mts "fury"     # one bout
-//   node --env-file=.env --import tsx scripts/settlement-doctor.mts --repair    # reconcile drift
+//   npm run settlement:doctor                  # whole-DB report
+//   npm run settlement:doctor -- fury          # one bout
+//   npm run settlement:doctor -- fury --repair # reconcile the drift it finds
+//
+// `--conditions=react-server` is REQUIRED (the npm script supplies it): this pulls
+// in the real settlement engine, which is marked `import "server-only"`, and that
+// module throws on load without the flag. Same reason test:integration sets it.
+//   node --conditions=react-server --env-file=.env --import tsx scripts/settlement-doctor.mts
 //
 // There are exactly TWO reasons a prediction can be unsettled, and they need
 // opposite responses — which is precisely what "Open" hid:

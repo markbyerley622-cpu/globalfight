@@ -11,6 +11,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "security:audit": "node --import tsx scripts/security-audit.mts",
+    "settlement:doctor": "node --conditions=react-server --env-file=.env --import tsx scripts/settlement-doctor.mts",
     "test": "node --import tsx --test \"src/lib/**/__tests__/**/*.test.ts\"",
     "test:integration": "node --conditions=react-server --test-concurrency=1 --import tsx --test \"test/integration/**/*.integration.test.ts\"",
     "test:bkfc": "node --import tsx --test \"src/lib/scraper/bkfc/__tests__/**/*.test.ts\"",
