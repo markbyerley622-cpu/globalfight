@@ -4152,7 +4152,7 @@
     },
     {
       "file": "src/app/events/[slug]/page.tsx",
-      "line": 150,
+      "line": 128,
       "fn": "EventPage",
       "model": "User",
       "method": "findUnique",

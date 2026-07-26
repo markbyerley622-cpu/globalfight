@@ -18,13 +18,13 @@ const COVERAGE_ICON: Record<string, LucideIcon> = {
   reactions: Flame,
   news: Newspaper,
 };
-import { getEvent, getEventCoverage, getOddsForFight } from "@/lib/repo";
+import { getEvent, getOddsForFight } from "@/lib/repo";
 import { marketProbability, type MarketProb } from "@/lib/market";
 import { safeNewsCover } from "@/lib/media-safe";
 import type { Article, Fight } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { orderFights, rankCoverage, groupCoverage, winningCorner } from "@/lib/event-format";
-import { recommendVideos } from "@/lib/feed/recommend";
+import { orderFights, groupCoverage, winningCorner } from "@/lib/event-format";
+import { getEventEnrichment } from "@/lib/events/enrichment";
 import { VideoRail } from "@/components/feed/video-rail";
 import { resolvePromotion } from "@/lib/promotions";
 import { getCurrentUser } from "@/lib/auth";
@@ -79,42 +79,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // Resolve the viewer once up front (cache-deduped) and reuse it below.
   const viewer = await getCurrentUser();
 
-  // These three reads are independent of one another, so run them concurrently
-  // instead of in a waterfall — page latency becomes the slowest single read,
+  // Two independent reads run concurrently — page latency is the slower of them,
   // not their sum.
   //  - odds: real market-implied probability per bout, from the licensed feed.
-  //  - coverage: articles naming a fighter on this card or the promotion, pulled
-  //    wide from the WHOLE news table (not just the recent 60) then ranked toward
-  //    high-value stories; no match → empty panel, never the generic firehose.
-  //  - video: highlights/embedded for THIS card, windowed hard around the date so
-  //    a promotion-slug match can't attach last year's video to next month's card.
-  const [oddsList, coveragePool, eventVideos] = await Promise.all([
+  //  - enrichment: the ONE event-intelligence object — ranked coverage, matched
+  //    videos, the verified result and the hero selections — composed by
+  //    getEventEnrichment so this page (and fighter/promotion/search later) never
+  //    re-derive the taxonomy. See lib/events/enrichment.ts.
+  const [oddsList, enrichment] = await Promise.all([
     Promise.all(fights.map((f) => getOddsForFight(f.slug))),
-    getEventCoverage(coverageTerms(event.promotion, fights, event.name), 30),
-    recommendVideos({
-      promotions: [resolvePromotion(event.promotion).slug],
-      fighterNames: fights.flatMap((f) => [f.red.name, f.blue.name]),
-      publishedAfter: new Date(eventDate.getTime() - 21 * 86_400_000),
-      publishedBefore: new Date(eventDate.getTime() + 10 * 86_400_000),
-      viewerId: viewer?.id ?? null,
-      // A card that has already happened leads with highlights/recap/reaction;
-      // an upcoming one leads with fight-week build-up.
-      phase: eventDate.getTime() < Date.now() ? "post" : "pre",
-      limit: 4,
-    }),
+    getEventEnrichment(event, fights, { viewerId: viewer?.id ?? null }),
   ]);
   const marketBySlug = new Map<string, MarketProb | null>(
     fights.map((f, i) => [f.slug, marketProbability(oddsList[i])]),
   );
-  // Rank coverage by relevance to THIS card's fighters — the main event weighs
-  // most — so a promotion-wide story that names nobody on the card is dropped
-  // rather than surfaced (the "Fury card shows Joshua articles" bug).
-  const coverage = rankCoverage(coveragePool, {
-    fighters: fights.flatMap((f) => [f.red.name, f.blue.name]),
-    mainFighters: headline ? [headline.red.name, headline.blue.name] : [],
-    eventName: event.name,
-    eventDate: event.date,
-  }, 8);
 
   // Promotion personality: every event uses the SAME layout, but its promotion's
   // brand colour flows through the hero/schedule/main-event accents via --accent.
@@ -163,8 +141,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const spy: SpySection[] = [
     { id: "card", label: "Fight card", badge: fights.length },
     { id: "card-talk", label: "Card talk" },
-    ...(coverage.length || eventVideos.length
-      ? [{ id: "coverage", label: "Coverage", badge: coverage.length + eventVideos.length } satisfies SpySection]
+    ...(enrichment.coverageCount || enrichment.videoCount
+      ? [{ id: "coverage", label: "Coverage", badge: enrichment.coverageCount + enrichment.videoCount } satisfies SpySection]
       : []),
   ];
 
@@ -244,13 +222,18 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </WhenVisible>
       </ScrollSection>
 
-      {coverage.length > 0 && (
+      {(enrichment.coverage.length > 0 || enrichment.videos.length > 0) && (
         <ScrollSection id="coverage" title="Related coverage">
           {/* Video sits INSIDE the coverage section rather than claiming a
               scroll-spy section of its own: it is the same job as the articles
-              below it — what else there is to consume about this card. */}
-          <VideoRail videos={eventVideos} title="Watch" moreHref="/clips" />
-          <CoveragePanel articles={coverage} />
+              below it — what else there is to consume about this card. Each panel
+              guards itself so the section shows whenever EITHER exists (matching
+              the scroll-spy badge, which was previously reachable-but-empty when a
+              card had videos but no articles). */}
+          {enrichment.videos.length > 0 && (
+            <VideoRail videos={enrichment.videos} title="Watch" moreHref="/clips" />
+          )}
+          {enrichment.coverage.length > 0 && <CoveragePanel articles={enrichment.coverage} />}
         </ScrollSection>
       )}
 
@@ -357,45 +340,6 @@ function BoutPrediction({ fight, crowd, myPick, market }: { fight: Fight; crowd:
 // ── Coverage relevance ────────────────────────────────────────────────────
 // Promotion → the title phrases that signal a story is about that promotion.
 // (Bare "one" is deliberately excluded — it matches half of all headlines.)
-const PROMO_ALIASES: Record<string, string[]> = {
-  "one championship": ["one championship", "one fight night", "one friday fights", "onefc", "one fc"],
-  bkfc: ["bkfc", "bare knuckle", "bare-knuckle"],
-  adcc: ["adcc", "submission fighting"],
-  ufc: ["ufc"],
-  pfl: ["pfl", "professional fighters league"],
-};
-
-/**
- * The title-search terms that make an article "coverage" for this event: fighter
- * surnames on the card, the promotion (+ its aliases), and the event name. The
- * DB query (getEventCoverage) matches ANY term and returns [] when nothing
- * matches — so an event shows its own coverage or none, never a generic firehose.
- */
-function coverageTerms(promotion: string | undefined, fights: Fight[], eventName: string): string[] {
-  const terms = new Set<string>();
-
-  // Fighter surnames on the card.
-  for (const f of fights) {
-    for (const name of [f.red.name, f.blue.name]) {
-      const surname = name.split(" ").pop()?.toLowerCase() ?? "";
-      if (surname.length > 2) terms.add(surname);
-    }
-  }
-
-  // Promotion + its aliases.
-  const promo = promotion?.toLowerCase().trim();
-  if (promo && promo !== "various") {
-    terms.add(promo);
-    for (const alias of PROMO_ALIASES[promo] ?? []) terms.add(alias);
-  }
-
-  // The event's own name (e.g. "one fight night 50", "bkfc 91").
-  const evName = eventName.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-  if (evName.length > 4) terms.add(evName);
-
-  return [...terms].filter(Boolean);
-}
-
 // ── Panels ────────────────────────────────────────────────────────────────
 function CoveragePanel({ articles }: { articles: Article[] }) {
   if (!articles.length) {
