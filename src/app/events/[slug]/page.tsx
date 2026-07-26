@@ -88,7 +88,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const marketBySlug = new Map<string, MarketProb | null>(
     fights.map((f, i) => [f.slug, marketProbability(oddsList[i])]),
   );
-  const coverage = rankCoverage(coveragePool, 8);
+  // Rank coverage by relevance to THIS card's fighters — the main event weighs
+  // most — so a promotion-wide story that names nobody on the card is dropped
+  // rather than surfaced (the "Fury card shows Joshua articles" bug).
+  const coverage = rankCoverage(coveragePool, {
+    fighters: fights.flatMap((f) => [f.red.name, f.blue.name]),
+    mainFighters: headline ? [headline.red.name, headline.blue.name] : [],
+    eventName: event.name,
+  }, 8);
 
   // Promotion personality: every event uses the SAME layout, but its promotion's
   // brand colour flows through the hero/schedule/main-event accents via --accent.

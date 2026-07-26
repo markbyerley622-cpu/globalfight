@@ -142,22 +142,91 @@ function titleKey(title: string): string {
     .split(" ").slice(0, 6).join(" ");
 }
 
+// ── Coverage relevance ──────────────────────────────────────────────────────
+// The event page pulls a POOL of articles matched loosely on fighter surnames,
+// the promotion, or the event name (see coverageTerms). "Loosely on the
+// promotion" is why a Tyson Fury card used to surface Anthony Joshua stories:
+// same promotion, no shared fighter. Relevance fixes that DETERMINISTICALLY —
+// an article scores by which of THIS card's fighters it actually names, the main
+// event weighing most, with the loose editorial signals demoted to a tiebreak.
+// Anything that names no fighter on the card scores zero and is dropped.
+
+export interface CoverageContext {
+  /** Every fighter name on the card. */
+  fighters: string[];
+  /** The two main-event names — an article naming both is clearly about the bout. */
+  mainFighters: string[];
+  /** The event's own name, e.g. "BKFC 91". */
+  eventName: string;
+}
+
+const REL = {
+  TITLE: 40,     // a card fighter named in the headline — the strongest signal
+  BODY: 10,      // named only in the excerpt/body
+  MAIN_TITLE: 20,// bonus when that headline name is a MAIN-event fighter
+  BOTH_MAIN: 30, // both main-event fighters present → about the actual bout
+  EVENT_TITLE: 25, // the event's own name in the headline
+  EDITORIAL_CAP: 8, // presser/weigh-in/etc. only break ties among relevant stories
+} as const;
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Whole-word match, so "Fury" doesn't hit "furious" and "Lee" doesn't hit "sleep". */
+const wordIn = (word: string, text: string) =>
+  word.length > 2 && new RegExp(`\\b${escapeRe(word)}\\b`, "i").test(text);
+
+function nameHit(name: string, title: string, body: string): "title" | "body" | null {
+  const full = name.toLowerCase();
+  const last = name.split(/\s+/).pop()?.toLowerCase() ?? "";
+  if (title.includes(full) || wordIn(last, title)) return "title";
+  if (body.includes(full) || wordIn(last, body)) return "body";
+  return null;
+}
+
 /**
- * Rank event coverage by editorial value and trim to `limit`, dropping
- * near-duplicate headlines. Input is assumed newest-first, so equal scores keep
- * their recency order (stable sort). Quality over quantity — item #14.
+ * How relevant an article is to THIS event, from names alone. Deterministic and
+ * explainable: no model, no fabrication. Zero means "names nothing on this card".
  */
-export function rankCoverage(articles: Article[], limit = 8): Article[] {
-  const seen = new Set<string>();
+export function scoreArticleRelevance(a: Article, ctx: CoverageContext): number {
+  const title = a.title.toLowerCase();
+  const body = `${a.excerpt ?? ""} ${a.content ?? ""}`.toLowerCase();
+  const mainSet = new Set(ctx.mainFighters);
+  const named = new Set<string>();
+  let rel = 0;
+
+  for (const name of ctx.fighters) {
+    const hit = nameHit(name, title, body);
+    if (!hit) continue;
+    named.add(name);
+    if (hit === "title") rel += REL.TITLE + (mainSet.has(name) ? REL.MAIN_TITLE : 0);
+    else rel += REL.BODY;
+  }
+  if (ctx.mainFighters.length === 2 && ctx.mainFighters.every((n) => named.has(n))) rel += REL.BOTH_MAIN;
+
+  const ev = ctx.eventName.toLowerCase().trim();
+  if (ev.length > 4 && title.includes(ev)) rel += REL.EVENT_TITLE;
+  return rel;
+}
+
+/**
+ * Rank event coverage by RELEVANCE to this card first, editorial value second,
+ * dropping near-duplicate headlines and — critically — anything that names no
+ * fighter on the card (the cross-promotion noise). Input is newest-first so
+ * equal scores keep recency order (stable sort).
+ */
+export function rankCoverage(articles: Article[], ctx: CoverageContext, limit = 8): Article[] {
   const scored = articles
     .map((a, i) => {
-      let score = 0;
+      const rel = scoreArticleRelevance(a, ctx);
+      let ed = 0;
       const hay = `${a.title} ${a.category ?? ""}`;
-      for (const [re, w] of COVERAGE_SIGNALS) if (re.test(hay)) score += w;
-      return { a, score, i };
+      for (const [re, w] of COVERAGE_SIGNALS) if (re.test(hay)) ed += w;
+      return { a, rel, score: rel + Math.min(ed, REL.EDITORIAL_CAP), i };
     })
+    // A story about this card's fighters, not merely its promotion.
+    .filter((x) => x.rel > 0)
     .sort((x, y) => y.score - x.score || x.i - y.i);
 
+  const seen = new Set<string>();
   const out: Article[] = [];
   for (const { a } of scored) {
     const key = titleKey(a.title);
