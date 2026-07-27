@@ -17,7 +17,12 @@
 //  engine, which is the only thing that scores a candidate.
 // ════════════════════════════════════════════════════════════════════════════
 
-export type SourceKind = "WIKIPEDIA" | "OFFICIAL" | "MAJOR" | "TRADE" | "AGGREGATOR" | "UNKNOWN";
+// OPERATOR is included because a stored evidence row may carry it (a human
+// entering a result). It is never SCORED — the pipeline strips it before handing
+// evidence to the confidence engine, since a human decision does not need a
+// confidence estimate.
+export type SourceKind =
+  | "WIKIPEDIA" | "OFFICIAL" | "MAJOR" | "TRADE" | "AGGREGATOR" | "UNKNOWN" | "OPERATOR";
 
 export interface SourceProfile {
   kind: SourceKind;
@@ -43,6 +48,8 @@ const PROFILES: Record<SourceKind, SourceProfile> = {
   TRADE: { kind: "TRADE", reliability: 0.6, independent: true },
   AGGREGATOR: { kind: "AGGREGATOR", reliability: 0.35, independent: false, group: "aggregator" },
   UNKNOWN: { kind: "UNKNOWN", reliability: 0.25, independent: false, group: "unknown" },
+  // A human is authoritative, but this value is never used for scoring.
+  OPERATOR: { kind: "OPERATOR", reliability: 1, independent: true },
 };
 
 /**

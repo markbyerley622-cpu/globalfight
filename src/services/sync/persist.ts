@@ -7,11 +7,13 @@
 // a database that hasn't run `db:push` for the additive models still gets the
 // core enrichment (the visible fix) without throwing.
 
+import type { FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
 import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { onResultWritten } from "@/lib/intelligence/resolve";
+import { recordIngestEvidence } from "@/lib/results/pipeline";
 import { notifyEventChanges, snapshotEvent } from "@/lib/social/event-triggers";
 import { notifyFightAnnounced, notifyFightChanges } from "@/lib/social/fighter-triggers";
 import { slugify } from "@/lib/utils";
@@ -501,5 +503,26 @@ async function upsertFight(
   // to run — the gap that let a decided fight coexist with an open prediction.
   // onResultWritten never throws: the result is the fact, settlement is a
   // consequence, and resolveDuePicks re-tries anything that fails here.
-  if (outcome.decided) await onResultWritten(outcome.fightId, source);
+  if (outcome.decided) {
+    // AUDIT TRAIL, before settlement. Wikipedia and the official providers write
+    // results directly and always have; this records what they said as evidence and
+    // stamps the bout as published-by-them, so every verified result in the product —
+    // whether it came from an ingest or from the intelligence pipeline — has the same
+    // history behind it in /admin/results. Bookkeeping only: it never gates the write
+    // and never throws.
+    const decidedWinner =
+      outcome.data.winnerId === outcome.redId ? "RED"
+        : outcome.data.winnerId === outcome.blueId ? "BLUE"
+          : null;
+    const decidedResult = String(outcome.data.result ?? "WIN");
+    await recordIngestEvidence(outcome.fightId, source, {
+      outcome: decidedResult === "DRAW" ? "DRAW" : decidedResult === "NO_CONTEST" ? "NO_CONTEST" : "WIN",
+      winnerCorner: decidedWinner,
+      method: (outcome.data.method as FightMethod | undefined) ?? null,
+      roundEnded: (outcome.data.roundEnded as number | undefined) ?? null,
+      sourceRef: ev.externalId ?? null,
+    });
+
+    await onResultWritten(outcome.fightId, source);
+  }
 }

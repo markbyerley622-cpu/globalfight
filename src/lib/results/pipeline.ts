@@ -134,9 +134,13 @@ export async function rescoreCandidate(fightId: string) {
 
   const evidence: EvidenceInput[] = rows.map((r) => ({
     sourceUrl: r.sourceUrl,
-    // OPERATOR is not a scoring kind — an operator decision does not go through the
-    // confidence engine at all, it goes straight to VERIFIED.
-    sourceKind: r.sourceKind === "OPERATOR" ? undefined : r.sourceKind,
+    // `sourceKind` is ONLY for evidence with no real URL — the Wikipedia sync, an
+    // operator entry. Passing it for every row was a serious bug: the engine uses an
+    // explicit kind as the VOICE IDENTITY, so ESPN, the BBC and Sky all collapsed
+    // into a single `kind:MAJOR` voice. Nothing sourced from news could ever reach
+    // the two-voice bar, and the whole pipeline would have sat in review forever
+    // while reporting "1 independent voice" for three independent outlets.
+    sourceKind: r.sourceUrl?.startsWith("http") ? undefined : r.sourceKind,
     outcome: r.outcome as EvidenceInput["outcome"],
     winner: (r.winnerCorner as Corner | null) ?? null,
     method: (r.method as Method | null) ?? null,
@@ -151,10 +155,10 @@ export async function rescoreCandidate(fightId: string) {
   // A candidate a human already decided is NOT overwritten by a later rescore.
   // Otherwise an operator's rejection would be undone by the next cron tick, and a
   // verified result could silently revert to PENDING_REVIEW.
-  const existing = await prisma.resultCandidate.findUnique({
-    where: { fightId },
-    select: { status: true, reviewedAt: true },
-  });
+  //
+  // Returns the FULL row, not a narrow select: both paths of this function must have
+  // the same shape or every caller has to narrow a union before reading `confidence`.
+  const existing = await prisma.resultCandidate.findUnique({ where: { fightId } });
   if (existing?.reviewedAt) return existing;
 
   return prisma.resultCandidate.upsert({
@@ -244,6 +248,95 @@ export async function publishCandidate(fightId: string): Promise<{ published: bo
   await onResultWritten(fightId, "results-intelligence");
 
   return { published: true, reason: "published" };
+}
+
+/**
+ * Record a result an INGEST wrote as evidence, and stamp it as already-published.
+ *
+ * Wikipedia (and BKFC/ONE/ADCC) write `Fight.result` directly and always have. That
+ * stays — this only gives those writes the same audit trail as a pipeline result, so
+ * every verified outcome in the product can answer "why do we believe this" through
+ * one interface. Without it, half the results in the review UI would have no history
+ * and an investigation would have to switch tools halfway through.
+ *
+ * The candidate is created with status VERIFIED and `publishedAt` already set, which
+ * is what stops publishCandidate from ever touching the bout again — the result is
+ * already on it, written by the ingest.
+ *
+ * Never throws. This is bookkeeping attached to a write that has already succeeded.
+ */
+export async function recordIngestEvidence(
+  fightId: string,
+  source: string,
+  reading: {
+    outcome: "WIN" | "DRAW" | "NO_CONTEST";
+    winnerCorner: Corner | null;
+    method: FightMethod | null;
+    roundEnded: number | null;
+    sourceRef?: string | null;
+  },
+): Promise<void> {
+  try {
+    // Provider name → evidence tier. An unrecognised provider is UNKNOWN rather than
+    // trusted, the same rule the URL classifier uses.
+    const kind =
+      source.startsWith("wikipedia") || source.includes("wikicard")
+        ? "WIKIPEDIA"
+        : source.startsWith("admin:")
+          ? "OPERATOR"
+          : ["bkfc", "one", "adcc", "ufc"].some((p) => source.startsWith(p))
+            ? "OFFICIAL"
+            : "UNKNOWN";
+
+    await prisma.resultEvidence.upsert({
+      where: { fightId_sourceUrl: { fightId, sourceUrl: reading.sourceRef ?? `ingest:${source}` } },
+      update: {
+        outcome: reading.outcome,
+        winnerCorner: reading.winnerCorner,
+        method: reading.method,
+        roundEnded: reading.roundEnded,
+      },
+      create: {
+        fightId,
+        sourceKind: kind,
+        sourceName: source,
+        sourceUrl: reading.sourceRef ?? `ingest:${source}`,
+        headline: null,
+        // Structured data, not prose — there is nothing to quote and nothing that
+        // needed interpreting, which is exactly why these sources rate highest.
+        snippet: null,
+        outcome: reading.outcome,
+        winnerCorner: reading.winnerCorner,
+        method: reading.method,
+        roundEnded: reading.roundEnded,
+        // 1.0: the reading was not extracted from text, it was reported as fields.
+        quality: 1,
+        observedAt: new Date(),
+      },
+    });
+
+    // Mark the bout as settled BY that source, so the queue shows a complete history
+    // and the automatic path treats it as done.
+    await prisma.resultCandidate.upsert({
+      where: { fightId },
+      update: {},
+      create: {
+        fightId,
+        outcome: reading.outcome,
+        winnerCorner: reading.winnerCorner,
+        method: reading.method,
+        roundEnded: reading.roundEnded,
+        confidence: kind === "WIKIPEDIA" || kind === "OFFICIAL" ? 0.95 : 0.6,
+        status: "VERIFIED",
+        agreeing: 1,
+        disagreeing: 0,
+        reasons: [`Written directly by ${source} (${kind})`] as unknown as Prisma.InputJsonValue,
+        publishedAt: new Date(),
+      },
+    });
+  } catch (e) {
+    log.warn({ op: "results.ingestEvidence", fightId, source, err: (e as Error).message }, "audit record failed");
+  }
 }
 
 /**

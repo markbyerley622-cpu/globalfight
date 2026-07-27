@@ -233,6 +233,7 @@ export function scoreCandidate(
 /** Reliability for an explicit source kind (no URL to classify). */
 function kindReliability(kind: SourceKind): number {
   switch (kind) {
+    case "OPERATOR": return 1;
     case "WIKIPEDIA": return 0.95;
     case "OFFICIAL": return 0.9;
     case "MAJOR": return 0.75;

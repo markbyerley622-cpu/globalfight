@@ -309,11 +309,19 @@ export function extractOutcome(text: string, bout: Bout): Extraction | null {
   else reasons.push("Method not stated");
   if (round) reasons.push(`Round ${round}`);
 
-  // 6. Quality: a complete reading is worth more than a bare assertion. This is NOT
-  //    source reliability — the confidence engine combines the two.
-  let quality = 0.5;
-  if (method) quality += 0.2;
-  if (round) quality += 0.1;
+  // 6. Quality: how COMPLETE this reading is. Not source reliability — the confidence
+  //    engine combines the two.
+  //
+  //    Calibrated so a complete reading reaches ~1.0. The first scale topped out at
+  //    0.8 for a perfect extraction, which quietly capped everything downstream: a
+  //    major outlet became 0.75 × 0.8 = 0.6, two of them combined to 0.84, and the
+  //    auto-publish bar is 0.85. Two unambiguous reports from ESPN and the BBC
+  //    naming the same winner, method and round missed by 0.01 — so the queue filled
+  //    with results no human would have questioned. Raising the ceiling is the honest
+  //    fix; lowering the threshold would have made single weak sources cheaper too.
+  let quality = 0.6;
+  if (method) quality += 0.25;
+  if (round) quality += 0.15;
   // A stoppage method with no round is slightly suspect: reports of stoppages almost
   // always say when.
   if (method && ["KO", "TKO", "SUB", "RTD"].includes(method) && !round) quality -= 0.1;
