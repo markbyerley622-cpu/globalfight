@@ -7,6 +7,7 @@ import { FighterCard } from "./fighter-card";
 import type { FeedItem } from "@/lib/following";
 import { safeNewsCover } from "@/lib/media-safe";
 import { timeAgo, cn } from "@/lib/utils";
+import { NotificationIcon } from "@/components/notifications/notification-icon";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  ONE feed card.
@@ -140,9 +141,16 @@ function CompactCard({ item }: { item: FeedItem }) {
         "transition-colors hover:border-blood-500/40",
       )}
     >
-      <span aria-hidden className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-blood-500/12 text-base">
-        {item.icon ?? "•"}
-      </span>
+      {/* The SAME icon resolver the notification centre uses. This printed
+          `item.icon` as raw TEXT, which worked only while producers wrote emoji —
+          and emoji are what made this feed look unlike the rest of the product
+          (and rendered differently per OS). It also resolves the historical
+          Notification rows this feed reads through, so a months-old "🏆" row and a
+          new "victory" row draw the same icon. */}
+      <NotificationIcon
+        notification={{ icon: item.icon, type: item.kind }}
+        className="mt-0.5 size-9 rounded-full border-transparent bg-blood-500/12"
+      />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-sm font-bold leading-snug text-chalk">{item.title}</span>
         {item.body && <span className="mt-0.5 block line-clamp-2 text-xs text-mist">{item.body}</span>}

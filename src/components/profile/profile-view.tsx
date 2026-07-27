@@ -3,12 +3,13 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, Pencil, Flame } from "lucide-react";
+import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, Pencil, Flame, UserPlus } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
 import { ProfileSettings } from "./profile-settings";
 import { ProfileStats } from "./profile-stats";
 import { EditProfileLink } from "./profile-editor";
+import { ShareMenu, CopyLinkButton } from "@/components/share-menu";
 
 const initials = (u: { name: string | null; username: string | null }) =>
   (u.name ?? u.username ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -149,15 +150,24 @@ export function ProfileView() {
       {/* Identity: reputation, accuracy, streak, prediction history, activity */}
       <ProfileStats />
 
+      {/* INVITES. This lived only at /invite, which nothing linked to — a growth
+          feature reachable exclusively by typing the URL. It belongs in the account
+          area, and the two actions people actually want (copy, share) are here
+          rather than one navigation away. The full centre — preview card, stats —
+          is still one tap on the heading, so this is an entry point and not a
+          second implementation of it. */}
+      {user.username && <InviteCard username={user.username} name={user.name ?? user.username} />}
+
       {/* Account shortcuts */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
         <Row href="/predictions/mine" icon={Star} name="My Predictions" desc="Your picks and how they landed" />
+        <Row href="/invite" icon={UserPlus} name="Invite friends" desc="Your link, your card, who's joined" />
+        {/* Was pointing at /profile/edit — the notification PREFERENCES — while the
+            notification centre itself had no entry point in the profile at all. */}
+        <Row href="/notifications" icon={Bell} name="Notifications" desc="Results, cards and fight-week news" />
         <Row href="/profile/edit" icon={Pencil} name="Edit profile" desc="Role, disciplines, links, map presence" />
         <Row href="/gyms" icon={Dumbbell} name="Gyms" desc="Where you train, and who trains there" />
-        <Row href="/profile/edit" icon={Bell} name="Notifications" desc="Fight-week reminders & breaking news" />
       </div>
-
-
 
       {/* Settings */}
       <div className="mt-5 flex items-center gap-2 px-1">
@@ -168,6 +178,41 @@ export function ProfileView() {
         <ProfileSettings />
       </div>
     </div>
+  );
+}
+
+/**
+ * The invite entry point, with the two actions that get used.
+ *
+ * Deliberately NOT a copy of the /invite centre: no preview image (it is a 1200x630
+ * fetch that would compete with the profile's own content) and no stats. It gives
+ * the link, copy, share, and a way through to the rest.
+ */
+function InviteCard({ username, name }: { username: string; name: string }) {
+  const path = `/invite/${username}`;
+  return (
+    <section className="mt-6 rounded-2xl border border-blood-500/25 bg-gradient-to-b from-blood-500/10 to-transparent p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-chalk">
+            <UserPlus aria-hidden className="size-4 text-blood-400" /> Invite friends
+          </h3>
+          <p className="mt-1 text-[0.72rem] leading-relaxed text-fog">
+            Your record travels with the invitation. Find out who can actually read a fight.
+          </p>
+        </div>
+        <Link
+          href="/invite"
+          className="shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-mist underline underline-offset-2 transition-colors hover:text-chalk"
+        >
+          Open
+        </Link>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <CopyLinkButton path={path} />
+        <ShareMenu path={path} title={`${name} invited you to Combat Reviews`} label="Share invite" />
+      </div>
+    </section>
   );
 }
 

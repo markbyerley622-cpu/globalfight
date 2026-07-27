@@ -98,6 +98,19 @@ const LEGACY_EMOJI: Record<string, NotificationIconKey> = {
  * forgets to pass an icon.
  */
 const BY_TYPE: Record<string, NotificationIconKey> = {
+  // ── FeedKind (lib/following) ─────────────────────────────────────────────
+  // The Following feed draws through the same resolver, and its `kind` values are
+  // feed-specific rather than NotificationTypes. Mapped here so an item with no
+  // icon degrades to something meaningful instead of a generic bell — the feed
+  // reads historical Notification rows whose icon may be null.
+  event_upcoming: "scheduled",
+  fighter: "fight",
+  result: "results",
+  personal: "victory",
+  coverage: "news",
+  video: "video",
+
+  // ── NotificationType ────────────────────────────────────────────────────
   PICK_RESULT: "correct",
   CARD_EARNED: "card",
   REP_MILESTONE: "reputation",

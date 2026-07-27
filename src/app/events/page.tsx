@@ -15,6 +15,43 @@ export const dynamic = "force-dynamic";
 
 type SP = Promise<{ page?: string; sport?: string; promotion?: string; status?: string; country?: string; when?: string }>;
 
+/** The status filter's own words, so the heading and the chip cannot disagree. */
+const STATUS_HEADING: Record<string, string> = {
+  upcoming: "Upcoming events",
+  live: "Live now",
+  completed: "Results",
+  cancelled: "Cancelled & postponed",
+};
+
+/** Date-window headings, for when no status is chosen. */
+const WHEN_HEADING: Record<string, string> = {
+  week: "Next 7 days",
+  month: "Next 30 days",
+  quarter: "Next 90 days",
+};
+
+/**
+ * Name the list the reader is actually looking at.
+ *
+ * Status wins over the date window, because "Results" and "Next 7 days" together
+ * would need to read "Results in the next 7 days", which is nonsense — a result is
+ * in the past. The promotion and sport are appended as context so a filtered view
+ * announces itself ("UFC — upcoming events") instead of looking identical to the
+ * unfiltered one.
+ */
+function listHeading(sp: Awaited<SP>): string {
+  const base =
+    (sp.status && STATUS_HEADING[sp.status]) ??
+    (sp.when && WHEN_HEADING[sp.when]) ??
+    "Upcoming events";
+
+  const promo = sp.promotion ? promotionBySlug(sp.promotion)?.name : null;
+  const sport = sp.sport ? SPORT_BY_SLUG[sp.sport]?.label : null;
+  const qualifier = promo ?? sport;
+  // Lower-cased when it follows a qualifier so it reads as one phrase.
+  return qualifier ? `${qualifier} — ${base[0].toLowerCase()}${base.slice(1)}` : base;
+}
+
 /** Every filter combination gets its own honest title/description, so a shared
  *  or indexed URL describes what it actually shows. */
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
@@ -60,10 +97,21 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
 
         <EventFilters facets={facets} />
 
-        <p className="text-xs text-fog">
-          {total === 0 ? "No events match" : `${total.toLocaleString()} event${total === 1 ? "" : "s"}`}
-          {pages > 1 && total > 0 ? ` · page ${page + 1} of ${pages}` : ""}
-        </p>
+        {/* A HEADING for the list, not just a count. "129 events · page 1 of 11" told
+            the reader how many rows there were but never what they were looking AT —
+            and after filtering to results or to a promotion, the grid below is a
+            different thing with identical framing.
+            Derived from the active filter rather than hardcoded to "Upcoming
+            events": a fixed label would be wrong the moment someone taps Results. */}
+        <div>
+          <h2 className="font-display text-lg font-bold uppercase tracking-tight text-chalk">
+            {listHeading(sp)}
+          </h2>
+          <p className="mt-0.5 text-xs text-fog">
+            {total === 0 ? "No events match" : `${total.toLocaleString()} event${total === 1 ? "" : "s"}`}
+            {pages > 1 && total > 0 ? ` · page ${page + 1} of ${pages}` : ""}
+          </p>
+        </div>
 
         {events.length === 0 ? (
           <div className="card-surface p-10 text-center">

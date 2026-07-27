@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/category-icon";
+import { ArticleReader } from "@/components/news/article-reader";
 import { cn, formatDate } from "@/lib/utils";
 import { safeNewsCover } from "@/lib/media-safe";
 
@@ -14,12 +15,43 @@ export type NewsItem = {
   coverImageUrl?: string; ogImageUrl?: string; sourceUrl?: string; author?: string; views: number; publishedAt: string;
 };
 
-/** Article link: opens the original source in a new tab when we have its URL,
- *  otherwise falls back to the internal article page. */
-function ArticleLink({ item, className, children }: { item: NewsItem; className?: string; children: React.ReactNode }) {
+/**
+ * Article link.
+ *
+ * A syndicated story (one with a sourceUrl) opens the IN-APP READER rather than
+ * target="_blank". Sending the reader to another tab ended their session with us
+ * and lost their place in the feed; the reader keeps this page mounted behind a
+ * modal, so closing it returns to the same scroll position for free.
+ *
+ * It is still a real anchor with a real href — middle-click, ctrl-click and "open
+ * in new tab" keep working, and a reader who prefers the publisher's site is not
+ * trapped. Only the plain left-click is intercepted.
+ *
+ * An article with no sourceUrl is ours, and links to our own page as before.
+ */
+function ArticleLink({
+  item, className, children, onRead,
+}: {
+  item: NewsItem;
+  className?: string;
+  children: React.ReactNode;
+  onRead: (item: NewsItem) => void;
+}) {
   if (item.sourceUrl) {
     return (
-      <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={item.sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={(e) => {
+          // Respect every modifier the browser gives meaning to, plus non-primary
+          // buttons. Swallowing a ctrl-click would break a habit people rely on.
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+          e.preventDefault();
+          onRead(item);
+        }}
+      >
         {children}
       </a>
     );
@@ -44,6 +76,10 @@ const DISCIPLINES = ["Boxing", "MMA", "Muay Thai", "Kickboxing", "Bare Knuckle",
 export function NewsFeed({ articles }: { articles: NewsItem[] }) {
   const [cat, setCat] = useState("All");
   const [visible, setVisible] = useState(CHUNK);
+  // The article being read, or null. Holding it here rather than in each card
+  // means ONE reader is mounted at a time — and because this page stays mounted
+  // behind it, closing the reader restores the scroll position with no work.
+  const [reading, setReading] = useState<NewsItem | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
   const categories = useMemo(
@@ -101,7 +137,7 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
       ) : (
         <>
           {lead && (
-            <ArticleLink item={lead} className="group mb-8 block">
+            <ArticleLink item={lead} onRead={setReading} className="group mb-8 block">
               <div className="relative flex min-h-[18rem] flex-col justify-end overflow-hidden rounded-card border border-ink-700 p-8">
                 <div className="absolute inset-0 bg-cover bg-center opacity-70 transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${safeNewsCover(lead.slug, lead.coverImageUrl ?? lead.ogImageUrl)})` }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-ink-950/20" />
@@ -119,7 +155,7 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((a) => (
-              <ArticleLink key={a.id} item={a} className="group card-surface flex flex-col overflow-hidden transition-all hover:border-blood-500/40">
+              <ArticleLink key={a.id} item={a} onRead={setReading} className="group card-surface flex flex-col overflow-hidden transition-all hover:border-blood-500/40">
                 <div className="relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br from-ink-800 to-ink-900">
                   <Image src={safeNewsCover(a.slug, a.coverImageUrl ?? a.ogImageUrl)} alt="" fill className="object-cover object-center opacity-80 transition-transform duration-500 group-hover:scale-105" sizes="(max-width:1024px) 50vw, 33vw" unoptimized />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/45 to-transparent" />
@@ -140,6 +176,28 @@ export function NewsFeed({ articles }: { articles: NewsItem[] }) {
 
           {visible < filtered.length && <div ref={sentinel} className="h-10" />}
         </>
+      )}
+
+      {/* Mounted only while reading, so the iframe is created on open and torn
+          down on close — an idle reader costs nothing, and a publisher's page is
+          not left running scripts behind the feed. */}
+      {reading?.sourceUrl && (
+        <ArticleReader
+          article={{
+            id: reading.slug,
+            title: reading.title,
+            excerpt: reading.excerpt,
+            category: reading.category,
+            coverImageUrl: reading.coverImageUrl ?? reading.ogImageUrl,
+            sourceUrl: reading.sourceUrl,
+            author: reading.author,
+            publishedAt: reading.publishedAt,
+            // Share OUR page for the story, never the publisher's URL — a share
+            // should bring people to GlobalFight.
+            sharePath: `/news/${reading.slug}`,
+          }}
+          onClose={() => setReading(null)}
+        />
       )}
     </>
   );

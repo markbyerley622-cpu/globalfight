@@ -245,6 +245,30 @@ export default function AccountPage() {
             <Field icon={Mail} label="Email" type="email" placeholder="you@example.com" value={email} onChange={setEmail} required autoComplete="email" />
             <Field icon={Lock} label="Password" type="password" placeholder={isSignup ? `At least ${MIN_PASSWORD_LENGTH} characters` : "Your password"} value={password} onChange={setPassword} required autoComplete={isSignup ? "new-password" : "current-password"} />
 
+            {/* RECOVERY. The whole reset pipeline already existed — hashed
+                single-use tokens, expiry, rate limits, no enumeration, session
+                revocation — and nothing in the product linked to it. A recovery
+                flow nobody can find is the same as not having one: the user's only
+                remaining option is to email support, and at launch there is no
+                support inbox. Sign-in only: during signup there is no account to
+                recover yet. */}
+            {!isSignup && (
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <Link
+                  href="/account/forgot"
+                  className="font-semibold text-mist underline underline-offset-2 transition-colors hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+                >
+                  {t("Forgot password?")}
+                </Link>
+                <Link
+                  href="/account/forgot?mode=username"
+                  className="text-fog underline underline-offset-2 transition-colors hover:text-mist focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+                >
+                  {t("Forgot username?")}
+                </Link>
+              </div>
+            )}
+
             {isSignup && (
               <>
                 <label className="flex items-start gap-2 text-xs text-mist">
