@@ -10,12 +10,15 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { LOCALES, DEFAULT_LOCALE, type Locale } from "@/lib/config";
-import { translate } from "@/lib/i18n-dict";
+import { translate, translatePlural } from "@/lib/i18n-dict";
 
 interface I18nValue {
   locale: Locale;
   setLocale: (l: Locale) => void;
-  t: (key: string) => string;
+  /** Translate, with optional {placeholder} values. Values are data, never translated. */
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  /** Translate a COUNTED string: tn("{n} fight", 3). Never build these by hand. */
+  tn: (key: string, n: number) => string;
 }
 
 const I18nContext = createContext<I18nValue | null>(null);
@@ -51,9 +54,13 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     router.refresh(); // re-render server components (cards) with the new locale
   }, [router]);
 
-  const t = useCallback((key: string) => translate(locale, key), [locale]);
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars),
+    [locale],
+  );
+  const tn = useCallback((key: string, n: number) => translatePlural(locale, key, n), [locale]);
 
-  return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
+  return <I18nContext.Provider value={{ locale, setLocale, t, tn }}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n(): I18nValue {
@@ -63,6 +70,11 @@ export function useI18n(): I18nValue {
 }
 
 /** Convenience hook returning just the translate function. */
-export function useT(): (key: string) => string {
+export function useT(): I18nValue["t"] {
   return useI18n().t;
+}
+
+/** Counted strings: `const tn = useTn(); tn("{n} fight", fights.length)`. */
+export function useTn(): I18nValue["tn"] {
+  return useI18n().tn;
 }

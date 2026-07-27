@@ -13,9 +13,12 @@ export function Footer({ demoMode = false }: { demoMode?: boolean }) {
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <Logo sizeClass="h-14" />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-mist">{SITE.description}</p>
+            {/* Both blurbs go through t(): they were the last English text left in an
+                otherwise fully-Spanish footer, which is exactly the mixed-language
+                look this sprint exists to remove. */}
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-mist">{t(SITE.description)}</p>
             <p className="mt-4 text-xs text-fog">
-              Independent platform. Data sourced and cached from public records. Not affiliated with any sanctioning body.
+              {t("Independent platform. Data sourced and cached from public records. Not affiliated with any sanctioning body.")}
             </p>
           </div>
 

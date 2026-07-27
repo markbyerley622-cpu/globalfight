@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Globe, Check } from "lucide-react";
-import { LOCALES, type Locale } from "@/lib/config";
+import { LOCALES, RELEASED_LOCALES, type Locale } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -38,7 +38,11 @@ export function LanguageSwitcher() {
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-ink-700 bg-ink-850 p-1.5 shadow-2xl">
-          {LOCALES.map((l) => (
+          {/* RELEASED_LOCALES, not LOCALES: the switcher must only offer languages
+              the dictionary can actually deliver. `current` still resolves against
+              the full list so a user who already chose French sees "FR" rather than
+              being silently reset. See lib/config. */}
+          {RELEASED_LOCALES.map((l) => (
             <button
               key={l.code}
               onClick={() => choose(l.code)}

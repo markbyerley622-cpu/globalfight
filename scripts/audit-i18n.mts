@@ -126,4 +126,53 @@ console.log("\n── a sample from the top area ──────────�
 for (const h of (ranked[0]?.[1] ?? []).slice(0, 12)) {
   console.log(`  ${h.file}: "${h.text.slice(0, 70)}"`);
 }
+
+// ── per-area coverage, and the CI guard ───────────────────────────────────
+//
+// A raw debt count cannot tell you whether an AREA is finished, and "finished" is
+// what a launch decision needs: shipping Spanish means specific surfaces are
+// complete, not that the total dropped a bit. So coverage is reported per area, and
+// the areas at 100% are listed separately — those are the only ones safe to claim.
+const tByArea = new Map<string, number>();
+for (const file of files) {
+  const rel = relative(ROOT, file);
+  const n = (readFileSync(file, "utf8").match(/\bt\(\s*["'`]/g) ?? []).length;
+  if (n) tByArea.set(areaOf(rel), (tByArea.get(areaOf(rel)) ?? 0) + n);
+}
+
+const areas = new Set<string>([...byArea.keys(), ...tByArea.keys()]);
+const coverage = [...areas]
+  .map((a) => {
+    const missing = byArea.get(a)?.length ?? 0;
+    const done = tByArea.get(a) ?? 0;
+    const total = done + missing;
+    return { area: a, done, missing, pct: total === 0 ? 100 : (done / total) * 100 };
+  })
+  .sort((x, y) => y.pct - x.pct);
+
+console.log("\n── coverage by area ─────────────────────────────────────────");
+for (const c of coverage) {
+  const bar = "#".repeat(Math.round(c.pct / 10)).padEnd(10, ".");
+  console.log(`  ${bar} ${c.pct.toFixed(0).padStart(3)}%  ${c.area}  (${c.done} done / ${c.missing} left)`);
+}
+
+const complete = coverage.filter((c) => c.pct === 100).map((c) => c.area);
+console.log(`\nAREAS AT 100%: ${complete.length ? complete.join(", ") : "none"}`);
+
+// ── CI mode ───────────────────────────────────────────────────────────────
+// `--max=N` fails when the debt GROWS. A ratchet rather than a target: it cannot be
+// satisfied by deleting the audit, and it lets a long migration land incrementally
+// instead of needing a flag day.
+const maxArg = process.argv.find((a) => a.startsWith("--max="));
+if (maxArg) {
+  const max = Number(maxArg.split("=")[1]);
+  if (Number.isFinite(max) && unique > max) {
+    console.error(
+      `\nFAIL i18n debt grew: ${unique} unique untranslated strings > allowed ${max}.\n` +
+        `  Wrap new user-facing text in t() (or tn() for counts), or raise --max deliberately.\n`,
+    );
+    process.exit(1);
+  }
+  console.log(`\nOK i18n debt within budget (${unique} <= ${max})`);
+}
 console.log("");

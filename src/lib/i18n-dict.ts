@@ -123,17 +123,224 @@ const EXTRA: Record<string, Partial<Record<Lang, string>>> = {
   Sponsors: { es: "Patrocinadores", fr: "Sponsors", de: "Sponsoren", pt: "Patrocinadores", it: "Sponsor", ar: "الرعاة", ja: "スポンサー", zh: "赞助商" },
   Contact: { es: "Contacto", fr: "Contact", de: "Kontakt", pt: "Contato", it: "Contatti", ar: "تواصل", ja: "連絡先", zh: "联系" },
   Champions: { es: "Campeones", fr: "Champions", de: "Champions", pt: "Campeões", it: "Campioni", ar: "الأبطال", ja: "チャンピオン", zh: "冠军" },
+
+  // ── FOOTER + SHELL, complete for Spanish ────────────────────────────────
+  // These were already wrapped in t() — the footer calls t(item.label) — so the
+  // gap was never missing plumbing, it was missing ENTRIES. Worth knowing before
+  // migrating anything: some of the audit's 961 are un-wrapped strings, but
+  // surfaces like this one are wired and simply had no Spanish.
+  //
+  // Spanish only from here down. Adding a half-finished French column is what
+  // produced nine broken locales in the first place; a language gets filled in
+  // when it is being released, not speculatively.
+  Fights: { es: "Combates" },
+  "Gyms & Coaches": { es: "Gimnasios y entrenadores" },
+  Promoters: { es: "Promotores" },
+  Federations: { es: "Federaciones" },
+  Commissions: { es: "Comisiones" },
+  Community: { es: "Comunidad" },
+  Feed: { es: "Novedades" },
+  Communities: { es: "Comunidades" },
+  "Join / Sign up": { es: "Únete / Registrarse" },
+  Legal: { es: "Legal" },
+  Privacy: { es: "Privacidad" },
+  Terms: { es: "Términos" },
+  Cookies: { es: "Cookies" },
+  "Community Guidelines": { es: "Normas de la comunidad" },
+  "Copyright / Takedown": { es: "Derechos de autor / Retirada" },
+  "Data Sources": { es: "Fuentes de datos" },
+  Leaderboard: { es: "Clasificación general" },
+  Following: { es: "Siguiendo" },
+  Events: { es: "Eventos" },
+  Notifications: { es: "Notificaciones" },
+  Settings: { es: "Ajustes" },
+  Security: { es: "Seguridad" },
+  Invites: { es: "Invitaciones" },
+  Followers: { es: "Seguidores" },
+  online: { es: "en línea" },
+
+  // ── Account recovery + auth ─────────────────────────────────────────────
+  "Forgot password?": { es: "¿Olvidaste tu contraseña?" },
+  "Forgot username?": { es: "¿Olvidaste tu usuario?" },
+  "Back to sign in": { es: "Volver a iniciar sesión" },
+  "Reset your password": { es: "Restablece tu contraseña" },
+  "Recover your username": { es: "Recupera tu usuario" },
+  "Send reset link": { es: "Enviar enlace" },
+  "Send my username": { es: "Enviar mi usuario" },
+  "Email address": { es: "Correo electrónico" },
+  "you@example.com": { es: "tu@ejemplo.com" },
+  Password: { es: "Contraseña" },
+  "Display name": { es: "Nombre visible" },
+  "Create account": { es: "Crear cuenta" },
+  "Sending…": { es: "Enviando…" },
+  "Something went wrong.": { es: "Algo salió mal." },
+  "Recovery is temporarily unavailable.": { es: "La recuperación no está disponible temporalmente." },
+  "What do you need to recover?": { es: "¿Qué necesitas recuperar?" },
+  Username: { es: "Usuario" },
+  "Enter your email and we'll send you a link to set a new password.": {
+    es: "Introduce tu correo y te enviaremos un enlace para crear una contraseña nueva.",
+  },
+  "If that email is registered, we've sent a reset link. It expires in 30 minutes and works once.": {
+    es: "Si ese correo está registrado, hemos enviado un enlace. Caduca en 30 minutos y solo funciona una vez.",
+  },
+  "If that email is registered, we've sent the username to it.": {
+    es: "Si ese correo está registrado, le hemos enviado el usuario.",
+  },
+  "Enter your email and we'll send your username to it. You sign in with your email, so you only need this to find your public profile link.": {
+    es: "Introduce tu correo y te enviaremos tu usuario. Inicias sesión con el correo, así que esto solo sirve para encontrar el enlace de tu perfil público.",
+  },
+  "What should people call you?": { es: "¿Cómo quieres que te llamen?" },
+  "Shown on your profile, the leaderboard and anything you share.": {
+    es: "Se muestra en tu perfil, en la clasificación y en todo lo que compartas.",
+  },
+  "That's an email address — pick a name other people will see.": {
+    es: "Ese es un correo electrónico — elige un nombre que verán los demás.",
+  },
+
+  // ── Event / card states ─────────────────────────────────────────────────
+  "Fight card": { es: "Cartelera" },
+  "Card talk": { es: "Charla de la cartelera" },
+  Coverage: { es: "Cobertura" },
+  "First bell in": { es: "Primera campana en" },
+  "Happening now": { es: "Sucediendo ahora" },
+  "Starting soon": { es: "Empieza pronto" },
+  "Event complete": { es: "Evento finalizado" },
+  "Awaiting results": { es: "Esperando resultados" },
+  "Results pending": { es: "Resultados pendientes" },
+  "Sources are checked hourly.": { es: "Las fuentes se revisan cada hora." },
+  "Live now": { es: "En directo" },
+  Final: { es: "Final" },
+  "Bout card has not been announced yet": { es: "La cartelera aún no se ha anunciado" },
+  "This event was cancelled": { es: "Este evento fue cancelado" },
+  "We're still importing this card": { es: "Todavía estamos importando esta cartelera" },
+  "We couldn't load this card": { es: "No pudimos cargar esta cartelera" },
+  "This promotion isn't fully supported yet": { es: "Esta promotora aún no está totalmente soportada" },
+  "Follow this event": { es: "Seguir este evento" },
+  "Remind me": { es: "Recordármelo" },
+  "Add to calendar": { es: "Añadir al calendario" },
+  Share: { es: "Compartir" },
+  Watch: { es: "Ver" },
+  Tickets: { es: "Entradas" },
+  "Upcoming events": { es: "Próximos eventos" },
+  "Recent events": { es: "Eventos recientes" },
+  "All results →": { es: "Todos los resultados →" },
+  "Market implied probability": { es: "Probabilidad implícita del mercado" },
+  "Awaiting live betting lines for this bout.": { es: "Esperando líneas de apuestas para este combate." },
+
+  // ── Notifications + empty states ────────────────────────────────────────
+  "Mark all read": { es: "Marcar todo como leído" },
+  "See all": { es: "Ver todo" },
+  "Load older": { es: "Cargar anteriores" },
+  "You're all caught up": { es: "Estás al día" },
+  "Refresh notifications": { es: "Actualizar notificaciones" },
+  "Nothing unread": { es: "Nada sin leer" },
+  "Loading…": { es: "Cargando…" },
+  "just now": { es: "ahora mismo" },
+  "Find fighters": { es: "Buscar luchadores" },
+  "Find cards to follow": { es: "Encuentra carteleras para seguir" },
+  "Follow fighters, events, promotions and gyms and this is where their news lands.": {
+    es: "Sigue luchadores, eventos, promotoras y gimnasios: sus novedades llegan aquí.",
+  },
+
+  // ── Invites ─────────────────────────────────────────────────────────────
+  "Invite friends": { es: "Invita a tus amigos" },
+  "You're invited": { es: "Estás invitado" },
+  "Share invite": { es: "Compartir invitación" },
+  "Copy link": { es: "Copiar enlace" },
+  Copied: { es: "Copiado" },
+  "Create your account": { es: "Crea tu cuenta" },
+  "See their record": { es: "Ver su récord" },
+
+  // The footer blurbs — the last English text in an otherwise Spanish footer.
+  "Independent platform. Data sourced and cached from public records. Not affiliated with any sanctioning body.": {
+    es: "Plataforma independiente. Datos obtenidos y almacenados de registros públicos. Sin afiliación a ningún organismo sancionador.",
+  },
+  "The combat-sports ecosystem registry — fighters, gyms, coaches, promoters, federations, commissions, officials, venues and events across boxing, MMA, Muay Thai and more. Source-backed rankings, records, schedules, results and community.": {
+    es: "El registro del ecosistema de los deportes de combate: luchadores, gimnasios, entrenadores, promotores, federaciones, comisiones, oficiales, recintos y eventos de boxeo, MMA, Muay Thai y más. Clasificaciones, récords, calendarios, resultados y comunidad con fuentes verificables.",
+  },
 };
+
+// ── Plurals ────────────────────────────────────────────────────────────────
+//  Keyed "one|other", because a count is the single most common reason a UI string
+//  gets built by concatenation — and concatenation is what makes a sentence
+//  untranslatable. "3" + " " + t("fights") cannot be Spanish: word order, gender
+//  and agreement all live in the sentence, not in the noun.
+//
+//  English and Spanish share the same one/other split, so two forms is correct for
+//  both. A language needing more (Arabic has six) gets a wider shape when it is
+//  actually released — the API here does not have to change for that.
+const PLURALS: Record<string, Partial<Record<Lang, { one: string; other: string }>>> = {
+  "{n} fight": { es: { one: "{n} combate", other: "{n} combates" } },
+  "{n} bout": { es: { one: "{n} combate", other: "{n} combates" } },
+  "{n} fighter": { es: { one: "{n} luchador", other: "{n} luchadores" } },
+  "{n} event": { es: { one: "{n} evento", other: "{n} eventos" } },
+  "{n} follower": { es: { one: "{n} seguidor", other: "{n} seguidores" } },
+  "{n} prediction": { es: { one: "{n} pronóstico", other: "{n} pronósticos" } },
+  "{n} notification": { es: { one: "{n} notificación", other: "{n} notificaciones" } },
+  "{n} update": { es: { one: "{n} actualización", other: "{n} actualizaciones" } },
+  "{n} book": { es: { one: "{n} casa de apuestas", other: "{n} casas de apuestas" } },
+  "{n} result": { es: { one: "{n} resultado", other: "{n} resultados" } },
+};
+
+/** English fallback for a plural key, so `en` needs no dictionary entry. */
+function englishPlural(key: string, n: number): string {
+  // "{n} fight" -> "3 fights". Naive -s is correct for every key above; a key whose
+  // English plural is irregular gets an explicit entry rather than a rule.
+  const singular = key.replace("{n} ", "");
+  const word = n === 1 ? singular : `${singular}s`;
+  return `${n.toLocaleString()} ${word}`;
+}
+
+/** Replace {name} placeholders. Values are inserted verbatim — never re-translated. */
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
+    name in vars ? String(vars[name]) : whole,
+  );
+}
 
 // Warn once per missing (locale,key) in dev so the dictionary can be completed.
 const warned = new Set<string>();
-export function translate(locale: Locale, key: string): string {
-  if (locale === "en") return key;
-  const hit = MESSAGES[locale]?.[key] ?? EXTRA[key]?.[locale as Lang];
-  if (hit) return hit;
-  if (process.env.NODE_ENV !== "production") {
-    const tag = `${locale}::${key}`;
-    if (!warned.has(tag)) { warned.add(tag); console.warn(`[i18n] missing ${locale} translation: ${JSON.stringify(key)}`); }
+
+function missing(locale: Locale, key: string): void {
+  if (process.env.NODE_ENV === "production") return;
+  const tag = `${locale}::${key}`;
+  if (!warned.has(tag)) {
+    warned.add(tag);
+    console.warn(`[i18n] missing ${locale} translation: ${JSON.stringify(key)}`);
   }
-  return key; // clean English fallback
+}
+
+/**
+ * Translate a key, with optional interpolation.
+ *
+ * `vars` values are DATA — a fighter name, a venue, a count — and are inserted
+ * without translation. That is the rule that keeps "Berlanga" from being localised
+ * while the sentence around it is.
+ */
+export function translate(
+  locale: Locale,
+  key: string,
+  vars?: Record<string, string | number>,
+): string {
+  const template = locale === "en" ? key : MESSAGES[locale]?.[key] ?? EXTRA[key]?.[locale as Lang];
+  if (locale !== "en" && !template) missing(locale, key);
+  const resolved = template ?? key; // clean English fallback
+  return vars ? interpolate(resolved, vars) : resolved;
+}
+
+/**
+ * Translate a COUNTED string. `key` carries the {n} placeholder, e.g. "{n} fight".
+ *
+ * Exists so no caller ever writes `${n} ${t("fights")}` — that reads fine in English
+ * and cannot be translated into a language where the number changes the noun's form
+ * or its position.
+ */
+export function translatePlural(locale: Locale, key: string, n: number): string {
+  if (locale === "en") return englishPlural(key, n);
+  const forms = PLURALS[key]?.[locale as Lang];
+  if (!forms) {
+    missing(locale, key);
+    return englishPlural(key, n);
+  }
+  return interpolate(n === 1 ? forms.one : forms.other, { n: n.toLocaleString(locale) });
 }

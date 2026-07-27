@@ -171,20 +171,48 @@ export const FOOTER_NAV: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+// ── Locales ────────────────────────────────────────────────────────────────
+//  `released` is the difference between what the ARCHITECTURE supports and what
+//  the product PROMISES. Every locale below still works end to end — the cookie,
+//  the dictionary lookup, the RTL flag, the server translator — but only released
+//  ones appear in the switcher.
+//
+//  Why: an audit (`npm run audit:i18n`) measured ~10.5% string coverage against
+//  nine advertised languages. Picking Japanese changed the navigation and left the
+//  rest of the page in English. Arabic was worse than that — it flipped the entire
+//  layout to RTL while ninety per cent of the text stayed English, which reads as
+//  broken rather than partial.
+//
+//  Two complete languages are worth more than nine incomplete ones. Releasing a
+//  locale is a one-word change here, and the honest gate is: run the audit, and
+//  only flip it when that locale's coverage is actually 100%.
 export const LOCALES = [
-  { code: "en", name: "English", native: "English", rtl: false },
-  { code: "es", name: "Spanish", native: "Español", rtl: false },
-  { code: "fr", name: "French", native: "Français", rtl: false },
-  { code: "de", name: "German", native: "Deutsch", rtl: false },
-  { code: "pt", name: "Portuguese", native: "Português", rtl: false },
-  { code: "it", name: "Italian", native: "Italiano", rtl: false },
-  { code: "ar", name: "Arabic", native: "العربية", rtl: true },
-  { code: "ja", name: "Japanese", native: "日本語", rtl: false },
-  { code: "zh", name: "Chinese", native: "中文", rtl: false },
+  { code: "en", name: "English", native: "English", rtl: false, released: true },
+  { code: "es", name: "Spanish", native: "Español", rtl: false, released: true },
+  { code: "fr", name: "French", native: "Français", rtl: false, released: false },
+  { code: "de", name: "German", native: "Deutsch", rtl: false, released: false },
+  { code: "pt", name: "Portuguese", native: "Português", rtl: false, released: false },
+  { code: "it", name: "Italian", native: "Italiano", rtl: false, released: false },
+  { code: "ar", name: "Arabic", native: "العربية", rtl: true, released: false },
+  { code: "ja", name: "Japanese", native: "日本語", rtl: false, released: false },
+  { code: "zh", name: "Chinese", native: "中文", rtl: false, released: false },
 ] as const;
 
 export type Locale = (typeof LOCALES)[number]["code"];
 export const DEFAULT_LOCALE: Locale = "en";
+
+/**
+ * The locales a user may actually choose.
+ *
+ * Everything that renders a language CHOICE reads this, never LOCALES — that is
+ * what stops the switcher advertising a language the dictionary cannot deliver.
+ * Code that VALIDATES a stored preference still reads LOCALES, so someone who
+ * already picked French keeps working rather than being silently reset.
+ */
+export const RELEASED_LOCALES = LOCALES.filter((l) => l.released);
+
+export const isReleasedLocale = (code: string): boolean =>
+  RELEASED_LOCALES.some((l) => l.code === code);
 
 export const BODY_LABELS: Record<string, { full: string; color: string }> = {
   WBA: { full: "World Boxing Association", color: "text-gold-400" },
