@@ -1,7 +1,7 @@
 import { test, expect, expectHealthy } from "./fixtures";
 
 /**
- * Just Happened — the identity-first post-fight band on /events.
+ * Recent Events — the identity-first post-fight band on /events.
  *
  * A completed card is evidence of what changed for the viewer, not a headline.
  * These lock in: the band leads the default view; a signed-in picker sees their
@@ -17,13 +17,13 @@ async function loginGrace(page: import("@playwright/test").Page): Promise<boolea
   return res.status() === 200;
 }
 
-test("just happened: leads the default events view and links into the recap @xbrowser", async ({ page, health }) => {
+test("recent events: leads the default events view and links into the recap @xbrowser", async ({ page, health }) => {
   await page.goto("/events", { waitUntil: "domcontentloaded" });
-  const band = page.locator("section[aria-label='Just happened']");
+  const band = page.locator("section[aria-label='Recent events']");
   // The band only renders when recent completed cards exist; skip on an empty DB.
   test.skip((await band.count()) === 0, "no recently-completed events seeded");
 
-  await expect(band.getByRole("heading", { name: /just happened/i })).toBeVisible();
+  await expect(band.getByRole("heading", { name: /recent events/i })).toBeVisible();
   // Every card links to an event page (the existing recap), never a new route.
   const links = band.locator('a[href^="/events/"]');
   expect(await links.count()).toBeGreaterThan(0);
@@ -31,10 +31,10 @@ test("just happened: leads the default events view and links into the recap @xbr
   expectHealthy(health);
 });
 
-test("just happened: a signed-in picker sees their record delta", async ({ page, health }) => {
+test("recent events: a signed-in picker sees their record delta", async ({ page, health }) => {
   test.skip(!(await loginGrace(page)), "grace fixture not seeded");
   await page.goto("/events", { waitUntil: "domcontentloaded" });
-  const band = page.locator("section[aria-label='Just happened']");
+  const band = page.locator("section[aria-label='Recent events']");
   test.skip((await band.count()) === 0, "no recently-completed events seeded");
 
   // Grace has a graded pick on the seeded card → the identity strip shows a
@@ -43,7 +43,7 @@ test("just happened: a signed-in picker sees their record delta", async ({ page,
   expectHealthy(health);
 });
 
-test("just happened: absent on a filtered view (does not fight the query)", async ({ page }) => {
+test("recent events: absent on a filtered view (does not fight the query)", async ({ page }) => {
   await page.goto("/events?status=completed", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("section[aria-label='Just happened']")).toHaveCount(0);
+  await expect(page.locator("section[aria-label='Recent events']")).toHaveCount(0);
 });

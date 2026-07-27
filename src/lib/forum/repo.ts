@@ -20,6 +20,7 @@ import {
 import { publish } from "@/lib/forum/realtime";
 import { extractMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notifications-store";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ─── Visibility ─────────────────────────────────────────────────────────────
 // Battle rooms are ForumThreads with visibility="battle": same posts, reactions,
@@ -489,7 +490,7 @@ async function notifyReplyTargets(
   quotedId?: string,
 ): Promise<void> {
   try {
-    const who = author.name ?? author.username ?? "Someone";
+    const who = publicDisplayName(author);
     const url = `/forums/${thread.categorySlug}/${threadSlug}#post-${postId}`;
     const excerpt = excerptOf(content, 120);
 
@@ -514,18 +515,18 @@ async function notifyReplyTargets(
         select: { id: true, username: true },
       });
       for (const u of mentioned) {
-        if (u.id !== author.id) targets.set(u.id, { title: `${who} mentioned you`, icon: "@" });
+        if (u.id !== author.id) targets.set(u.id, { title: `${who} mentioned you`, icon: "mention" });
       }
     }
 
     for (const p of posts) {
       if (targets.has(p.authorId)) continue;
       if (p.authorId !== author.id) {
-        targets.set(p.authorId, { title: `${who} quoted you`, icon: "❝" });
+        targets.set(p.authorId, { title: `${who} quoted you`, icon: "reply" });
       }
     }
     if (thread.authorId !== author.id && !targets.has(thread.authorId)) {
-      targets.set(thread.authorId, { title: `${who} replied to your thread`, icon: "💬" });
+      targets.set(thread.authorId, { title: `${who} replied to your thread`, icon: "reply" });
     }
     if (targets.size === 0) return;
 
@@ -561,10 +562,10 @@ async function onBattleRoomMessage(battle: BattleRef, authorId: string, content:
     const fight = await prisma.fight.findUnique({ where: { id: battle.fightId }, select: { slug: true, event: { select: { slug: true } } } });
     await notify(prisma, rivalId, {
       type: "BATTLE_REPLY",
-      title: `${me?.name ?? me?.username ?? "Your rival"} hit back`,
+      title: `${me ? publicDisplayName(me) : "Your rival"} hit back`,
       body: content.slice(0, 120),
       url: fight?.event ? `/events/${fight.event.slug}#fight-${fight.slug}` : "/",
-      icon: "🥊",
+      icon: "fight",
     });
   } catch { /* non-fatal */ }
 }

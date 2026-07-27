@@ -89,8 +89,8 @@ type NewNotif = {
 // already closed. 24h gives time to research, 1h is the "last call". Each
 // window carries its own dedupeKey so a user gets each at most once, ever.
 const DEADLINE_WINDOWS = [
-  { key: "24h", hours: 24, title: "Picks close tomorrow", icon: "⏳" },
-  { key: "1h", hours: 1, title: "Last call — picks close in an hour", icon: "⏰" },
+  { key: "24h", hours: 24, title: "Picks close tomorrow", icon: "scheduled" },
+  { key: "1h", hours: 1, title: "Last call — picks close in an hour", icon: "scheduled" },
 ] as const;
 
 /**
@@ -248,7 +248,7 @@ export async function runReturnEngine(): Promise<{ eventsSoon: number; eventsLiv
       title: `${e.name} is almost here`,
       body: soonBody(m),
       url: `/events/${e.slug}`,
-      icon: "🔔",
+      icon: "bell",
       dedupeKey: `event_soon:${e.id}`,
     })));
   }
@@ -261,7 +261,7 @@ export async function runReturnEngine(): Promise<{ eventsSoon: number; eventsLiv
       title: `${e.name} is LIVE`,
       body: "Picks are locked — jump into the live discussion.",
       url: `/events/${e.slug}`,
-      icon: "🔴",
+      icon: "live",
       dedupeKey: `event_live:${e.id}`,
     })));
   }
@@ -362,7 +362,7 @@ async function emitStreakWarnings(now: Date): Promise<number> {
       // so the copy stays true in every zone.
       body: `You haven't opened Combat Reviews today — drop in to keep your ${u.dayStreak}-day streak alive.`,
       url: "/today",
-      icon: "🔥",
+      icon: "streak",
       dedupeKey: `streak_warn:${dayTag}`,
     })),
   );
@@ -426,7 +426,7 @@ async function emitFighterBookings(now: Date): Promise<number> {
           title: `${name} is booked`,
           body: opponent ? `vs ${opponent} · ${f.event.name}` : f.event.name,
           url: `/events/${f.event.slug}`,
-          icon: "🥊",
+          icon: "fight",
           // Per fighter, not per fight: someone following BOTH corners of the
           // same bout is told once about each, never twice about the bout.
           dedupeKey: `booked:${f.id}:${fighterId}`,
@@ -474,7 +474,7 @@ async function emitRankMilestones(): Promise<number> {
       title: tier.title,
       body: tier.body,
       url: "/leaderboard",
-      icon: "🏅",
+      icon: "milestone",
       dedupeKey: `rank_top:${tier.n}`,
     };
   });
@@ -533,7 +533,7 @@ async function emitDormantNudge(now: Date): Promise<number> {
     title: "You've got picks waiting",
     body: `${e.name} is coming up and you haven't called it yet.`,
     url: `/events/${e.slug}`,
-    icon: "👋",
+    icon: "welcome",
     // Per card, not per day: they are nudged about a given event once, ever.
     dedupeKey: `nudge:${e.id}`,
   }));

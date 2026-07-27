@@ -129,7 +129,7 @@ export async function notifyFightResult(fightId: string): Promise<{ notified: nu
       // Deep link into the BOUT on the event page, not the event — the reader came
       // for this result, and the module opens itself on the #fight- hash.
       url: `/events/${fight.event.slug}#fight-${fight.id}`,
-      icon: "🏆",
+      icon: "victory",
       // The FACT is "this bout has a result", so every audience shares one key.
       dedupeKey: `fight_result:${fight.id}`,
       tag: `event:${fight.event.id}`,

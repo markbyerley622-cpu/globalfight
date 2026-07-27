@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
 import { recordActivity } from "@/lib/activity";
+import { publicDisplayName } from "@/lib/display-name";
 
 /** Same exposure as the settlement fan-out: several writes plus notifications per
  *  battle, against a database that may be a continent away. Prisma's 5s default
@@ -85,14 +86,14 @@ async function announceMatch(fightId: string, aId: string, bId: string): Promise
     const users = await prisma.user.findMany({ where: { id: { in: [aId, bId] } }, select: { id: true, name: true, username: true } });
     const nameOf = (id: string) => {
       const u = users.find((x) => x.id === id);
-      return u?.name ?? u?.username ?? "Someone";
+      return u ? publicDisplayName(u) : "Someone";
     };
     for (const [me, them] of [[aId, bId], [bId, aId]] as const) {
       await notify(prisma, me, {
         type: "BATTLE_MATCHED",
         title: `${nameOf(them)} took the other side`,
         body: `${bout} settles it. Your battle room is open.`,
-        url, icon: "⚔️",
+        url, icon: "fight",
       });
     }
   } catch { /* non-fatal */ }
@@ -282,7 +283,7 @@ export async function resolveFightBattles(fightId: string, winnerCorner: Corner 
         await tx.user.update({ where: { id: challengerId }, data: { battleDraws: { increment: 1 } } });
         await tx.user.update({ where: { id: oppId }, data: { battleDraws: { increment: 1 } } });
         for (const uid of [challengerId, oppId]) {
-          await notify(tx, uid, { type: "BATTLE_RESULT", title: "Battle drawn", body: "Neither call landed — no result this time.", url: boutUrl, icon: "🤝" });
+          await notify(tx, uid, { type: "BATTLE_RESULT", title: "Battle drawn", body: "Neither call landed — no result this time.", url: boutUrl, icon: "community" });
         }
         resolved += 1;
         return;
@@ -303,11 +304,11 @@ export async function resolveFightBattles(fightId: string, winnerCorner: Corner 
         data: { battleWins: { increment: 1 }, battleStreak: newStreak, bestBattleStreak: Math.max(newStreak, winner?.bestBattleStreak ?? 0) },
       });
       await recordActivity(tx, winnerId, { type: "BATTLE_WON", title: `Won a battle vs ${loser?.name ?? "a rival"}`, url: boutUrl });
-      await notify(tx, winnerId, { type: "BATTLE_RESULT", title: "You won the battle", body: `+${bonus} reputation · beat ${loser?.name ?? "your rival"}`, url: boutUrl, icon: "🏆" });
+      await notify(tx, winnerId, { type: "BATTLE_RESULT", title: "You won the battle", body: `+${bonus} reputation · beat ${loser?.name ?? "your rival"}`, url: boutUrl, icon: "victory" });
 
       await awardReputation(tx, loserId, -BATTLE.LOSS, "battle_loss", { type: "battle", id: b.id });
       await tx.user.update({ where: { id: loserId }, data: { battleLosses: { increment: 1 }, battleStreak: 0 } });
-      await notify(tx, loserId, { type: "BATTLE_RESULT", title: "You lost the battle", body: `${winner?.name ?? "Your rival"} called it. Rematch next card.`, url: boutUrl, icon: "❌" });
+      await notify(tx, loserId, { type: "BATTLE_RESULT", title: "You lost the battle", body: `${winner?.name ?? "Your rival"} called it. Rematch next card.`, url: boutUrl, icon: "missed" });
 
       resolved += 1;
     }, BATTLE_TX);

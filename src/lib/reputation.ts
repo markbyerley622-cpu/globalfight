@@ -93,7 +93,7 @@ async function notifyRepMilestone(db: Db, userId: string, before: number, after:
     title: `${top.toLocaleString()} reputation`,
     body: "Your calls are paying off. See where that puts you on the board.",
     url: "/leaderboard",
-    icon: "⭐",
+    icon: "reputation",
     dedupeKey: `rep:${top}`,
   });
 }

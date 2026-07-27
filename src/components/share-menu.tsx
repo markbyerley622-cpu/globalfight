@@ -14,12 +14,17 @@ type Channel = { key: string; label: string; href: (u: string, t: string) => str
 
 const enc = encodeURIComponent;
 
+// WhatsApp first: it is where a fight card actually gets shared, and the order of
+// this list is the order of the menu.
 const CHANNELS: Channel[] = [
+  { key: "whatsapp", label: "WhatsApp", href: (u, t) => `https://wa.me/?text=${enc(`${t} ${u}`)}` },
   { key: "x", label: "X", href: (u, t) => `https://twitter.com/intent/tweet?url=${enc(u)}&text=${enc(t)}` },
   { key: "facebook", label: "Facebook", href: (u) => `https://www.facebook.com/sharer/sharer.php?u=${enc(u)}` },
   { key: "reddit", label: "Reddit", href: (u, t) => `https://www.reddit.com/submit?url=${enc(u)}&title=${enc(t)}` },
-  { key: "whatsapp", label: "WhatsApp", href: (u, t) => `https://wa.me/?text=${enc(`${t} ${u}`)}` },
   { key: "telegram", label: "Telegram", href: (u, t) => `https://t.me/share/url?url=${enc(u)}&text=${enc(t)}` },
+  { key: "linkedin", label: "LinkedIn", href: (u) => `https://www.linkedin.com/sharing/share-offsite/?url=${enc(u)}` },
+  // Discord has no web share intent, so the honest option is a pre-composed message
+  // on the clipboard rather than a button that opens nothing.
 ];
 
 const absolute = (path: string): string =>

@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getLeaderboard, LEADER_WINDOWS, type Leader, type LeaderWindow } from "@/lib/reputation";
 import { flags } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
+import { publicDisplayName } from "@/lib/display-name";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -162,7 +163,7 @@ function Podium({ leaders }: { leaders: Leader[] }) {
               </span>
             </span>
             <span className={cn("mt-2.5 max-w-full truncate font-display font-bold text-chalk", first ? "text-sm" : "text-[0.78rem]")}>
-              {u.name ?? u.username ?? "Anonymous"}
+              {publicDisplayName(u)}
             </span>
             <span className="mt-0.5 inline-flex items-center gap-1 font-display text-[0.8rem] font-black tabular-nums text-gold-300">
               <Trophy className="size-3" /> {u.points.toLocaleString()}

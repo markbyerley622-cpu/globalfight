@@ -8,6 +8,7 @@ import {
   type CardFacts, type Headline,
 } from "@/lib/identity/victory-headline";
 import { predictionBadges, type Badge, type BadgeContext } from "@/lib/identity/victory-badges";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ── Prediction Victory Card — data ──────────────────────────────────────────
 // The public artifact generated when a prediction resolves: the thing a user
@@ -187,7 +188,7 @@ async function _getVictoryCard(username: string, fightSlug: string): Promise<Vic
     badges,
     socialProof: socialProofLine(facts),
     user: {
-      name: user.name ?? `@${user.username}`,
+      name: publicDisplayName(user),
       username: user.username,
       image: user.image,
       reputation: user.reputation,

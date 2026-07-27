@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { touchDailyStreak, type StreakState } from "@/lib/identity/streak";
 import { getMilestones, nearest, totalEarned, totalRungs, type LadderProgress } from "@/lib/identity/milestones";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ── Today ───────────────────────────────────────────────────────────────────
 // The answer to "why would I open this on a Tuesday".
@@ -259,7 +260,7 @@ export async function getTodayBriefing(userId: string): Promise<TodayBriefing> {
     ...cornerActivity.map((a): TodayItem => ({
       id: `act:${a.id}`,
       kind: "corner",
-      title: `${a.user.name ?? `@${a.user.username ?? "someone"}`} — ${a.title}`,
+      title: `${publicDisplayName(a.user)} — ${a.title}`,
       detail: a.user.username ? `@${a.user.username}` : null,
       href: a.url ?? (a.user.username ? `/u/${a.user.username}` : null),
       when: a.createdAt,

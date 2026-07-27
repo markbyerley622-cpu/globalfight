@@ -40,6 +40,63 @@ const VOLT = "#38bdf8";
 // Read once per process, not per request.
 const FONT = readFileSync(join(process.cwd(), "public", "fonts", "og-noto-sans-400.ttf"));
 
+// ── The CR mark ─────────────────────────────────────────────────────────────
+// Read from disk at module load and inlined as a data URI. next/og cannot fetch a
+// relative path (there is no origin during render) and MUST NOT make a network
+// request per image — a share card that depends on an HTTP call has a failure mode
+// where the card renders blank. Same reasoning as the font above.
+//
+// Wrapped because a missing file must degrade to the wordmark rather than 500 every
+// share image in the product.
+const LOGO: string | null = (() => {
+  try {
+    const buf = readFileSync(join(process.cwd(), "public", "cr-logo.png"));
+    return `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * The brand lock-up: mark + wordmark. Appears on every card, top right.
+ *
+ * A shared card is an advert, and the previous cards carried the wordmark as bare
+ * grey text — indistinguishable from a caption. The mark is what makes a link in a
+ * group chat recognisable at thumbnail size.
+ */
+function BrandLockup() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ display: "flex", fontSize: 25, letterSpacing: 4, color: FOG, textTransform: "uppercase" }}>
+        Combat Reviews
+      </div>
+      {/* A raw <img> on purpose: satori renders this tree to a static PNG, so
+          next/image (lazy loading, srcset, the optimiser endpoint) has no meaning
+          here and cannot run. */}
+      {LOGO ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={LOGO} width={64} height={44} alt="" style={{ objectFit: "contain" }} />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Force a long unbroken token to wrap.
+ *
+ * Satori will NOT break a word with no break opportunity, so a 25-character
+ * single-token headline (an email address, a slug) blew straight through its
+ * container and printed over the badge — which is precisely how a live profile card
+ * ended up with text laid across the reputation tile. Zero-width spaces after
+ * punctuation and every 12th character give it somewhere to break; they are
+ * invisible and are not copied as content by any renderer that matters here.
+ */
+function breakable(text: string): string {
+  return text
+    .replace(/([@._/-])/g, "$1​")
+    .replace(/(\S{12})(?=\S)/g, "$1​");
+}
+
 export interface OgCard {
   /** Small uppercase label — "Main event", "Rankings", the promotion. */
   eyebrow?: string;
@@ -53,13 +110,28 @@ export interface OgCard {
   accent?: string | null;
   /** Right-hand emphasis — a record, a reputation score, "VS". */
   badge?: string | null;
+  /** What the badge number MEANS. A bare "1" told the reader nothing. */
+  badgeLabel?: string | null;
+  /** Initials tile beside the headline, for cards about a person. */
+  avatarInitials?: string | null;
 }
 
-function headlineSize(text: string): number {
-  if (text.length <= 22) return 96;
-  if (text.length <= 34) return 80;
-  if (text.length <= 50) return 64;
-  if (text.length <= 68) return 54;
+/**
+ * Headline size, from the text length AND the width it actually has.
+ *
+ * Sizing on length alone was fine while the headline always had the full canvas.
+ * Now an avatar tile and a badge can take ~390px between them, and a string that
+ * fits on two lines at 1072px wide runs to three at 684px — which pushes the sub
+ * line into the chips. `available` is the real column width, and the ratio scales
+ * the step-down thresholds with it.
+ */
+function headlineSize(text: string, available = 1072): number {
+  const scale = available / 1072;
+  const n = text.length / scale;
+  if (n <= 22) return 96;
+  if (n <= 34) return 80;
+  if (n <= 50) return 64;
+  if (n <= 68) return 54;
   return 46;
 }
 
@@ -118,7 +190,7 @@ export function renderVictoryOg(v: VictoryOg): ImageResponse {
               {v.verdict ?? (v.win ? "Called it" : "Missed")}
             </div>
           </div>
-          <div style={{ display: "flex", fontSize: 26, letterSpacing: 5, color: FOG, textTransform: "uppercase" }}>Combat Reviews</div>
+          <BrandLockup />
         </div>
 
         {/* Middle — headline + who called what, with the reputation badge on the right */}
@@ -127,8 +199,8 @@ export function renderVictoryOg(v: VictoryOg): ImageResponse {
             {v.eyebrow ? (
               <div style={{ display: "flex", fontSize: 24, letterSpacing: 3, color: accent, textTransform: "uppercase", marginBottom: 14 }}>{v.eyebrow}</div>
             ) : null}
-            <div style={{ display: "flex", fontSize: vHeadlineSize(v.headline), lineHeight: 1.0, color: CHALK, letterSpacing: -2 }}>{v.headline}</div>
-            <div style={{ display: "flex", marginTop: 18, fontSize: 32, color: MIST }}>{v.sub}</div>
+            <div style={{ display: "flex", fontSize: vHeadlineSize(v.headline), lineHeight: 1.0, color: CHALK, letterSpacing: -2 }}>{breakable(v.headline)}</div>
+            <div style={{ display: "flex", marginTop: 18, fontSize: 32, color: MIST }}>{breakable(v.sub)}</div>
           </div>
           {v.repGained ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 210, height: 210, borderRadius: 28, background: `${GOLD}1f`, border: `4px solid ${GOLD}` }}>
@@ -160,6 +232,9 @@ export function renderVictoryOg(v: VictoryOg): ImageResponse {
 export function renderOgCard(card: OgCard): ImageResponse {
   const accent = card.accent || BLOOD;
   const chips = (card.chips ?? []).filter((c): c is string => !!c).slice(0, 4);
+  // The width the headline genuinely has, once the badge and avatar have taken
+  // theirs. Used for BOTH the container and the type scale so the two agree.
+  const textWidth = 1200 - 128 - (card.badge ? 244 : 0) - (card.avatarInitials ? 144 : 0);
 
   return new ImageResponse(
     (
@@ -184,29 +259,62 @@ export function renderOgCard(card: OgCard): ImageResponse {
           <div style={{ display: "flex", fontSize: 25, letterSpacing: 5, color: accent, textTransform: "uppercase" }}>
             {card.eyebrow ?? ""}
           </div>
-          <div style={{ display: "flex", fontSize: 25, letterSpacing: 4, color: FOG, textTransform: "uppercase" }}>
-            Combat Reviews
-          </div>
+          <BrandLockup />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 44 }}>
-          <div style={{ display: "flex", flexDirection: "column", maxWidth: card.badge ? 780 : 1072 }}>
-            <div style={{ display: "flex", fontSize: headlineSize(card.headline), lineHeight: 1.06, color: CHALK, letterSpacing: -2 }}>
-              {card.headline}
-            </div>
-            {card.sub ? (
-              <div style={{ display: "flex", marginTop: 20, fontSize: 33, color: MIST }}>{card.sub}</div>
+          {/* flex:1 + minWidth:0 rather than a fixed maxWidth. A hard maxWidth does
+              not stop satori overflowing an unbreakable token, and the badge had no
+              way to defend its own space — the two collided. Now the text column
+              yields and the badge keeps its box. */}
+          {/* EXPLICIT width budget, not flex:1. Satori honours maxWidth when it
+              decides where to wrap, but it does not clip a flex child that overruns
+              — so with flex alone the sub-line wrapped against the FULL canvas and
+              printed its last word underneath the badge. The arithmetic is the
+              canvas minus the padding, the badge and the avatar, so the text can
+              never reach either tile. */}
+          <div
+            style={{
+              display: "flex", alignItems: "center", gap: 28, minWidth: 0,
+              maxWidth: textWidth,
+            }}
+          >
+            {card.avatarInitials ? (
+              <div
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 116, height: 116, borderRadius: 24, flexShrink: 0,
+                  background: "#16181d", border: `3px solid ${accent}66`,
+                  color: CHALK, fontSize: 46, letterSpacing: 1,
+                }}
+              >
+                {card.avatarInitials}
+              </div>
             ) : null}
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div style={{ display: "flex", fontSize: headlineSize(card.headline, textWidth), lineHeight: 1.06, color: CHALK, letterSpacing: -2 }}>
+                {breakable(card.headline)}
+              </div>
+              {card.sub ? (
+                <div style={{ display: "flex", marginTop: 20, fontSize: 33, color: MIST }}>{card.sub}</div>
+              ) : null}
+            </div>
           </div>
           {card.badge ? (
             <div
               style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 minWidth: 200, height: 200, borderRadius: 28, background: `${accent}26`,
-                border: `4px solid ${accent}`, color: CHALK, fontSize: 68, padding: "0 26px", letterSpacing: -1,
+                border: `4px solid ${accent}`, color: CHALK, padding: "0 26px", letterSpacing: -1,
+                flexShrink: 0,
               }}
             >
-              {card.badge}
+              <div style={{ display: "flex", fontSize: 68, lineHeight: 1 }}>{card.badge}</div>
+              {card.badgeLabel ? (
+                <div style={{ display: "flex", marginTop: 8, fontSize: 22, letterSpacing: 4, color: accent, textTransform: "uppercase" }}>
+                  {card.badgeLabel}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

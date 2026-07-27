@@ -17,7 +17,7 @@ function n(over: Partial<GroupableNotification> = {}): GroupableNotification {
     title: "Something happened",
     body: null,
     url: "/gyms/gracie#reviews",
-    icon: "⭐",
+    icon: "review",
     dedupeKey: `gym_review:gym1:${seq}`,
     readAt: null,
     createdAt: at(seq),

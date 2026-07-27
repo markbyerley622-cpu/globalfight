@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, Flame, ArrowRight, Zap, Swords, Hourglass } from "lucide-react";
-import type { JustHappenedEvent } from "@/lib/identity/just-happened";
+import type { RecentEvent } from "@/lib/identity/recent-events";
 import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { PromotionLogo } from "@/components/promotion-logo";
 import { resolvePromotion } from "@/lib/promotions";
@@ -29,7 +29,7 @@ function Badge({ children, cls }: { children: React.ReactNode; cls: string }) {
   return <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wide", cls)}>{children}</span>;
 }
 
-// ── Just Happened band ──────────────────────────────────────────────────────
+// ── Recent Events band ──────────────────────────────────────────────────────
 // Sits above the upcoming list. Each card answers who won · how · how hard the
 // call was · and — for a signed-in viewer — what it did to their record. The
 // viewer delta is the payload: a completed card is evidence of what changed, not
@@ -42,12 +42,12 @@ function Badge({ children, cls }: { children: React.ReactNode; cls: string }) {
 // products. What changes is the payload in the artwork: an upcoming card puts the
 // matchup there, a finished one puts the WINNER there.
 
-export function JustHappened({ events }: { events: JustHappenedEvent[] }) {
+export function RecentEvents({ events }: { events: RecentEvent[] }) {
   if (events.length === 0) return null;
   return (
-    <section aria-label="Just happened" className="space-y-3">
+    <section aria-label="Recent events" className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-display text-sm font-black uppercase tracking-[0.18em] text-chalk">Just happened</h2>
+        <h2 className="font-display text-sm font-black uppercase tracking-[0.18em] text-chalk">Recent events</h2>
         <Link href="/events?status=completed" className="text-[0.7rem] font-semibold text-fog transition-colors hover:text-chalk">
           All results →
         </Link>
@@ -62,7 +62,7 @@ export function JustHappened({ events }: { events: JustHappenedEvent[] }) {
   );
 }
 
-function Card({ e }: { e: JustHappenedEvent }) {
+function Card({ e }: { e: RecentEvent }) {
   const m = e.main;
   const method = m?.method ? METHOD_BADGE[m.method] : null;
   const roundTime = m?.roundEnded ? `R${m.roundEnded}${m.timeEnded ? ` · ${m.timeEnded}` : ""}` : null;

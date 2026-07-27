@@ -4,6 +4,7 @@ import type { FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { winnerCorner } from "@/lib/intelligence/scoring";
 import { methodFamily, QUORUM, type MethodFamily } from "@/lib/identity/victory-headline";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ── The Room — how the community called it ──────────────────────────────────
 // The community complement to ResultReveal: after a headline bout resolves, how
@@ -108,6 +109,6 @@ async function _getEventRoom(headlineFightId: string): Promise<EventRoom | null>
     perfectCount,
     avgConfidence: confW.n > 0 ? Math.round((confW.sum / confW.n) * 10) / 10 : null,
     correctCount: onWinner,
-    topCaller: u ? { name: u.name ?? `@${u.username ?? "caller"}`, username: u.username, image: u.image, reputation: u.reputation } : null,
+    topCaller: u ? { name: publicDisplayName(u), username: u.username, image: u.image, reputation: u.reputation } : null,
   };
 }

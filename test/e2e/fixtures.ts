@@ -103,7 +103,7 @@ export async function signUp(page: Page, email: string): Promise<void> {
   // Default mode is "signup". Ensure it.
   const createTab = page.getByRole("button", { name: /^Create account$/i }).first();
   await createTab.click().catch(() => {});
-  await page.getByLabel("Username").fill(`Cert User ${Date.now() % 100000}`);
+  await page.getByLabel("Display name").fill(`Cert User ${Date.now() % 100000}`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(STRONG_PASSWORD);
   // Two required checkboxes: age + registry consent.

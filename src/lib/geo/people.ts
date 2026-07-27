@@ -5,6 +5,7 @@ import { resolvePoint } from "./gazetteer";
 import { getTrainingNow } from "./presence";
 import type { MapPin, UnmappedPin } from "./types";
 import { notify } from "@/lib/notifications-store";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The People layer — and its privacy gate.
@@ -141,7 +142,7 @@ export async function peoplePins(viewer: PeopleViewer | null): Promise<PeopleRes
     pins.push({
       id: `u-${u.id}`,
       layer: "people",
-      name: u.name ?? u.username ?? "Anonymous",
+      name: publicDisplayName(u),
       subtitle: now ? `Training at ${now.gymName}` : [role, sport].filter(Boolean).join(" · ") || "Fan",
       address: [homeGym?.name, u.mapCity].filter(Boolean).join(" · ") || u.mapCity,
       lat: u.mapLat,
@@ -200,10 +201,10 @@ export async function setFollow(followerId: string, followingId: string, on: boo
     });
     await notify(prisma, followingId, {
       type: "FOLLOW",
-      title: `${me?.name ?? me?.username ?? "Someone"} followed you`,
+      title: `${me ? publicDisplayName(me) : "Someone"} followed you`,
       body: me?.username ? "Tap to see their profile." : undefined,
       url: me?.username ? `/u/${me.username}` : "/following",
-      icon: "👤",
+      icon: "person",
       dedupeKey: `follow:${followerId}`,
     });
   } catch { /* non-fatal */ }

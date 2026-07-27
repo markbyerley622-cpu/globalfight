@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { notify } from "@/lib/notifications-store";
 import { followerIdsToNotify, filterByPreference } from "@/lib/follow-targets";
 import { log } from "@/lib/scraper/logger";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Gym review → notifications. One deterministic pipeline.
@@ -61,7 +62,7 @@ export async function notifyGymReview(
       where: { id: authorId },
       select: { username: true, name: true },
     });
-    const who = author?.name || author?.username || "Someone";
+    const who = author ? publicDisplayName(author) : "Someone";
 
     // ── the owner ────────────────────────────────────────────────────────────
     // Told about every action, including edits and deletions: a review changing
@@ -72,9 +73,9 @@ export async function notifyGymReview(
       const [allowed] = await filterByPreference([gym.ownerId], "gym");
       if (allowed) {
         const copy = {
-          created: { title: `New review of ${gym.name}`, body: `${who} left a review.`, icon: "⭐" },
-          edited: { title: `A review of ${gym.name} was edited`, body: `${who} updated their review.`, icon: "✏️" },
-          deleted: { title: `A review of ${gym.name} was removed`, body: `${who} deleted their review.`, icon: "🗑️" },
+          created: { title: `New review of ${gym.name}`, body: `${who} left a review.`, icon: "review" },
+          edited: { title: `A review of ${gym.name} was edited`, body: `${who} updated their review.`, icon: "edit" },
+          deleted: { title: `A review of ${gym.name} was removed`, body: `${who} deleted their review.`, icon: "removed" },
         }[action];
         await notify(prisma, gym.ownerId, {
           type: "GYM_REVIEW",
@@ -105,7 +106,7 @@ export async function notifyGymReview(
           title: `${gym.name} has a new review`,
           body: `${who} rated a gym you follow.`,
           url: reviewsUrl(gym.slug),
-          icon: "⭐",
+          icon: "review",
           dedupeKey: `gym_review:${gymId}:${authorId}:created`,
           // One lit phone per gym, not one per review — the same tag rule the
           // per-card pick results use.

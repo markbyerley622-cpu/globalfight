@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-client";
 import { track } from "@/lib/analytics-client";
 import { AGE_STATEMENT, MINIMUM_AGE } from "@/lib/age-policy";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
+import { isPublishableName } from "@/lib/display-name";
 import { cn } from "@/lib/utils";
 import { REGISTRY_ROLE_DEFS, roleLabel } from "@/lib/roles";
 import { FighterProfilePanel } from "@/components/fighters/fighter-profile-panel";
@@ -38,6 +39,11 @@ export default function AccountPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const isSignup = mode === "signup";
+
+  // Caught as they type, not on submit: a browser autofilling their email into
+  // this field is exactly the case that shipped a live user's inbox onto their
+  // public share card, and they need to see it before they press the button.
+  const nameLooksLikeEmail = isSignup && name.trim().length > 0 && !isPublishableName(name);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -208,7 +214,31 @@ export default function AccountPage() {
                     })}
                   </div>
                 </div>
-                <Field icon={User} label="Username" type="text" placeholder="Choose a username" value={name} onChange={setName} autoComplete="username" />
+                {/* DISPLAY NAME, and every attribute here is load-bearing.
+                    This field was labelled "Username" with autoComplete="username",
+                    which is the token browsers fill with the account identifier —
+                    i.e. the EMAIL ADDRESS. So password managers helpfully typed a
+                    live user's email into their public display name, and it was then
+                    published on their share card, in their page title, in their meta
+                    description and in their handle (/u/markbyerley6221gmail).
+                    "nickname" is the correct token for a name shown to others, and
+                    the label now says what the value actually is. */}
+                <Field
+                  icon={User}
+                  label="Display name"
+                  type="text"
+                  placeholder="What should people call you?"
+                  value={name}
+                  onChange={setName}
+                  required
+                  autoComplete="nickname"
+                  hint={
+                    nameLooksLikeEmail
+                      ? "That's an email address — pick a name other people will see."
+                      : "Shown on your profile, the leaderboard and anything you share."
+                  }
+                  invalid={nameLooksLikeEmail}
+                />
               </>
             )}
 
@@ -237,7 +267,7 @@ export default function AccountPage() {
               </>
             )}
 
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting || nameLooksLikeEmail}>
               {submitting ? (
                 <span className="flex items-center justify-center gap-2"><Loader2 className="size-4 animate-spin" /> {isSignup ? "Creating…" : "Signing in…"}</span>
               ) : (
@@ -279,15 +309,24 @@ export default function AccountPage() {
 }
 
 function Field({
-  icon: Icon, label, type, placeholder, value, onChange, required, autoComplete,
+  icon: Icon, label, type, placeholder, value, onChange, required, autoComplete, hint, invalid,
 }: {
   icon: typeof Mail; label: string; type: string; placeholder: string;
   value: string; onChange: (v: string) => void; required?: boolean; autoComplete?: string;
+  /** Guidance under the field. Always rendered when given, so it reads as help
+   *  rather than appearing only once something is wrong. */
+  hint?: string;
+  invalid?: boolean;
 }) {
   return (
     <label className="block">
       <span className="text-xs font-semibold uppercase tracking-wide text-fog">{label}</span>
-      <div className="mt-1 flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-950/50 px-3 focus-within:border-blood-500/50">
+      <div
+        className={cn(
+          "mt-1 flex items-center gap-2 rounded-lg border bg-ink-950/50 px-3",
+          invalid ? "border-blood-500/70" : "border-ink-700 focus-within:border-blood-500/50",
+        )}
+      >
         <Icon className="size-4 text-fog" />
         <input
           type={type}
@@ -296,9 +335,17 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
           required={required}
           autoComplete={autoComplete}
+          // Announced to a screen reader, not just coloured — a red border is not
+          // available to someone who cannot see it.
+          aria-invalid={invalid || undefined}
           className="h-11 flex-1 bg-transparent text-sm text-chalk outline-none placeholder:text-fog"
         />
       </div>
+      {hint && (
+        <span className={cn("mt-1 block text-[0.7rem]", invalid ? "text-blood-300" : "text-fog")}>
+          {hint}
+        </span>
+      )}
     </label>
   );
 }

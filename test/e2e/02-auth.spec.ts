@@ -72,7 +72,7 @@ test("forgot-password page loads and accepts an email", async ({ page, health })
 test("password-weakness is enforced on the signup form", async ({ page }) => {
   await page.goto("/account");
   await page.getByRole("button", { name: /^Create account$/i }).first().click().catch(() => {});
-  await page.getByLabel("Username").fill("Weak Pw Tester");
+  await page.getByLabel("Display name").fill("Weak Pw Tester");
   await page.getByLabel("Email").fill(uniqueEmail("weak"));
   await page.getByLabel("Password").fill("short"); // < 10 chars → client-blocked, no POST
   const boxes = page.locator('input[type="checkbox"]');

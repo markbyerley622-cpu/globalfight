@@ -2,6 +2,7 @@ import "server-only";
 import type { Sport } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { createThread } from "@/lib/forum/repo";
+import { publicDisplayName } from "@/lib/display-name";
 import type {
   BattleRoomDTO, BattleRoomState, Corner, FightRoomDTO, RoomIdentity, RoomThreadRef,
 } from "@/lib/community/room-types";
@@ -164,7 +165,7 @@ function identity(
   const corner = pick && isCorner(pick.corner) ? pick.corner : null;
   return {
     userId: u.id,
-    name: u.name ?? u.username ?? "Member",
+    name: publicDisplayName(u),
     username: u.username,
     image: u.image,
     corner,

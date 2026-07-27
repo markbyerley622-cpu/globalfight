@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { BellOff, Check, Loader2, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { NotificationIcon } from "@/components/notifications/notification-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/analytics-client";
@@ -69,7 +70,7 @@ function GroupRow({
           : "border-ink-800 bg-ink-900 hover:border-ink-700",
       )}
     >
-      <span aria-hidden className="text-base leading-none">{group.icon ?? "🔔"}</span>
+      <NotificationIcon notification={group} />
       <div className="min-w-0 flex-1">
         <p className={cn("text-sm", group.unread ? "font-semibold text-chalk" : "text-mist")}>
           {group.title}

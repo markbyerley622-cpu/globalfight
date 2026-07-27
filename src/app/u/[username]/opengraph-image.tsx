@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { renderOgCard, OG_SIZE, OG_CONTENT_TYPE } from "@/lib/og";
+import { publicDisplayName, initialsFor } from "@/lib/display-name";
 
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
@@ -28,9 +29,14 @@ export default async function Image({ params }: { params: { username: string } }
 
   return renderOgCard({
     eyebrow: "Predictor",
-    headline: u.name ?? `@${u.username}`,
+    // publicDisplayName, NOT u.name: people type their email into the display-name
+    // field at signup, and this card was publishing it — at 80px, straight into a
+    // group chat. See lib/display-name.
+    headline: publicDisplayName(u),
     sub: u.picksResolved > 0 ? `${u.picksCorrect} of ${u.picksResolved} calls landed` : "Making their first calls",
     badge: `${u.reputation}`,
+    badgeLabel: "Rep",
+    avatarInitials: initialsFor(u),
     chips: [
       accuracy !== null ? `${accuracy}% accuracy` : null,
       battles > 0 ? `${u.battleWins}-${u.battleLosses} in battles` : null,

@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { log } from "@/lib/scraper/logger";
 import { notifyFollowers } from "./triggers";
+import { publicDisplayName } from "@/lib/display-name";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  "Someone you follow just did something." Milestones ONLY.
@@ -39,8 +40,10 @@ async function personRef(userId: string) {
   });
 }
 
+// publicDisplayName, because these notifications are read by OTHER PEOPLE. A raw
+// `name` here would put the milestone-holder's email into every follower's bell.
 const who = (p: { username: string | null; name: string | null } | null) =>
-  p?.name || p?.username || "Someone you follow";
+  p ? publicDisplayName(p) : "Someone you follow";
 
 /** A person's public page, or the follow hub when they have no username yet. */
 const personUrl = (p: { username: string | null } | null) => (p?.username ? `/u/${p.username}` : "/following");
@@ -88,7 +91,7 @@ export async function notifyCardMilestone(
   return announce(userId, {
     title: `pulled a ${input.rarity.toLowerCase()} card`,
     body: `${input.fighterName} — ${input.rarity.toLowerCase()} tier.`,
-    icon: "🃏",
+    icon: "card",
     // Per AWARD, so a re-run of the resolution engine cannot re-announce it.
     dedupeKey: `person_card:${input.cardId}`,
   });
@@ -114,7 +117,7 @@ export async function notifyStreakMilestone(
   return announce(userId, {
     title: `is on a ${top}-pick streak`,
     body: `${top} correct calls in a row. Think you can read the card better?`,
-    icon: "🔥",
+    icon: "streak",
     dedupeKey: `person_streak:${userId}:${top}`,
   });
 }
@@ -127,7 +130,7 @@ export async function notifyPersonVerified(userId: string, role: string): Promis
   return announce(userId, {
     title: "is now verified",
     body: `Verified ${role.toLowerCase()} on GlobalFight.`,
-    icon: "✅",
+    icon: "verified",
     dedupeKey: `person_verified:${userId}`,
   });
 }
@@ -149,7 +152,7 @@ export async function notifyCommunityMilestone(
   return announce(userId, {
     title: `passed ${top.toLocaleString()} reputation`,
     body: "One of the sharpest readers of a card in the community.",
-    icon: "⭐",
+    icon: "reputation",
     url: "/leaderboard",
     dedupeKey: `person_rep:${userId}:${top}`,
   });

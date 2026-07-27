@@ -16,7 +16,7 @@ type Results = {
   fighters: FighterHit[];
   events: { slug: string; name: string; city: string | null }[];
   gyms: { slug: string; name: string; place: string | null; verified: boolean; memberCount: number; disciplines: string[] }[];
-  people: { username: string; name: string | null; image: string | null; role: string; reputation: number }[];
+  people: { username: string; name: string | null; image: string | null; role: string; reputation: number; self?: boolean }[];
   promotions: { slug: string; name: string }[];
   follow: SearchFollowMaps | null;
 };
@@ -164,8 +164,10 @@ export default function SearchPage() {
           <SearchHit
             key={u.username}
             href={`/u/${u.username}`}
-            kind="person"
-            slug={u.username}
+            // No follow control on your OWN row: self-follow is refused by the
+            // API, so a button there is a guaranteed dead end.
+            kind={u.self ? undefined : "person"}
+            slug={u.self ? undefined : u.username}
             name={u.name ?? u.username}
             image={u.image}
             fallbackIcon={<User className="size-4 text-gold-400" />}

@@ -131,8 +131,13 @@ test("search returns followable entities with working follow buttons", async ({ 
 // not part of this sprint.
 
 test("following from search survives a reload — it is persisted, not just optimistic", async ({ page, health }) => {
+  // ONE query, used for both passes. Two different strings meant the entity followed
+  // in the first result set was simply absent from the second, and the assertion
+  // timed out looking for a button that was never going to be there — a test bug
+  // that looked exactly like a persistence failure.
+  const QUERY = "e";
   await page.goto("/search");
-  await page.getByRole("searchbox").fill("a");
+  await page.getByRole("searchbox").fill(QUERY);
   await page.waitForResponse((r) => /\/api\/search\?q=/.test(r.url()), { timeout: 15_000 });
 
   const buttons = page.getByRole("button", { name: /^(Not following|Following) / });
@@ -158,7 +163,7 @@ test("following from search survives a reload — it is persisted, not just opti
   // Reload and re-run the same query: the server must now report the new state,
   // which is what proves the write landed rather than the button lying locally.
   await page.reload();
-  await page.getByRole("searchbox").fill("a");
+  await page.getByRole("searchbox").fill(QUERY);
   await page.waitForResponse((r) => /\/api\/search\?q=/.test(r.url()), { timeout: 15_000 });
 
   const again = page

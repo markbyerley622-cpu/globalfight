@@ -102,27 +102,27 @@ const VIEWER_SCOPED = new Set(["rep", "streak_warn", "streak_reminder"]);
  */
 const KIND_GROUPS: Record<string, { icon: string; label: (n: number) => string; body: string }> = {
   FIGHT_ANNOUNCED: {
-    icon: "🥊",
+    icon: "fight",
     label: (n) => `${n} cards you follow have updates`,
     body: "New bouts, changes and announcements.",
   },
   GYM_REVIEW: {
-    icon: "⭐",
+    icon: "review",
     label: (n) => `${n} gyms you follow have new reviews`,
     body: "Tap to see what people are saying.",
   },
   PICK_RESULT: {
-    icon: "🏆",
+    icon: "victory",
     label: (n) => `${n} results are in`,
     body: "Bouts you were following have finished.",
   },
   COMMUNITY_REPLY: {
-    icon: "💬",
+    icon: "reply",
     label: (n) => `${n} people you follow hit milestones`,
     body: "Streaks, cards and community milestones.",
   },
   FOLLOW: {
-    icon: "👤",
+    icon: "person",
     label: (n) => `${n} new followers`,
     body: "Tap to see who.",
   },

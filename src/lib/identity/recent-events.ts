@@ -5,7 +5,7 @@ import { winnerCorner } from "@/lib/intelligence/scoring";
 import { QUORUM } from "@/lib/identity/victory-headline";
 import { decodeHtmlEntities } from "@/lib/text/entities";
 
-// ── Just Happened — the identity-first post-fight surface ────────────────────
+// ── Recent Events — the identity-first post-fight surface ────────────────────
 // A recently-completed card is NOT news here; it is EVIDENCE of what changed for
 // the viewer. Each item answers, in order: who won · how · how hard the call was
 // · what it did to YOUR record. The result and difficulty are public facts; the
@@ -17,7 +17,7 @@ import { decodeHtmlEntities } from "@/lib/text/entities";
 // reputation ledger the resolution engine writes. Four bounded queries total,
 // independent of how many events or picks exist; cache()'d for the page.
 
-export interface JustHappenedMain {
+export interface RecentEventMain {
   /** The headline matchup, shown whether or not the result is in yet. */
   redName: string;
   blueName: string;
@@ -41,7 +41,7 @@ export interface JustHappenedMain {
   upset: boolean;
 }
 
-export interface JustHappenedViewer {
+export interface RecentEventViewer {
   graded: number;
   correct: number;
   repGained: number;
@@ -49,7 +49,7 @@ export interface JustHappenedViewer {
   calledMain: boolean;
 }
 
-export interface JustHappenedEvent {
+export interface RecentEvent {
   slug: string;
   name: string;
   date: string;
@@ -60,27 +60,27 @@ export interface JustHappenedEvent {
   boutCount: number;
   /** Bouts still carrying no outcome. >0 is the honest "results aren't all in" number. */
   pendingBouts: number;
-  main: JustHappenedMain | null;
+  main: RecentEventMain | null;
   /** The viewer's delta on this card — null when signed out or they didn't pick. */
-  viewer: JustHappenedViewer | null;
+  viewer: RecentEventViewer | null;
 }
 
-const DEFAULT_DAYS = 12; // a result older than this is history, not "just happened"
+const DEFAULT_DAYS = 12; // a result older than this is history, not "recent events"
 
 /**
  * Recently-completed cards with their headline result, prediction difficulty and
  * — for a signed-in viewer — what the card did to their record.
  */
-export const getJustHappened = cache(_getJustHappened);
+export const getRecentEvents = cache(_getRecentEvents);
 
-async function _getJustHappened(
+async function _getRecentEvents(
   viewerId: string | null,
   limit = 6,
   now: Date = new Date(),
-): Promise<JustHappenedEvent[]> {
+): Promise<RecentEvent[]> {
   const since = new Date(now.getTime() - DEFAULT_DAYS * 86_400_000);
 
-  // 1 — cards that JUST HAPPENED (date in the window), whether or not results
+  // 1 — cards that have RECENTLY FINISHED (date in the window), whether or not results
   // are ingested yet. A boxing card whose results lag by a day must still appear
   // the morning after — it shows "Result pending" and fills in when the resolve
   // cron runs. Requiring a graded fight here is what made recent events vanish.
@@ -176,9 +176,9 @@ async function _getJustHappened(
   const pickCornerByFight = new Map<string, string>();
   for (const p of picks) pickCornerByFight.set(p.fightId, p.corner);
 
-  return events.map((e): JustHappenedEvent => {
+  return events.map((e): RecentEvent => {
     const f = e.fights[0];
-    let main: JustHappenedMain | null = null;
+    let main: RecentEventMain | null = null;
     if (f) {
       const corner = winnerCorner(f); // "RED" | "BLUE" | null (null while pending)
       const resolved = corner !== null;
@@ -207,7 +207,7 @@ async function _getJustHappened(
     }
 
     const vg = viewerByEvent.get(e.id);
-    const viewer: JustHappenedViewer | null = vg
+    const viewer: RecentEventViewer | null = vg
       ? {
           graded: vg.graded,
           correct: vg.correct,

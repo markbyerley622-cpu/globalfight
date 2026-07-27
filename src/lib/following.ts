@@ -373,7 +373,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       title: e.name,
       body: `${e._count.fights} bout${e._count.fights === 1 ? "" : "s"}${e.venue ? ` · ${e.venue}` : ""}`,
       url: `/events/${e.slug}`,
-      icon: "📅",
+      icon: "scheduled",
       meta: [whenLabel(e.date), e.city].filter(Boolean).join(" · "),
       media: eventMedia(e),
     });
@@ -387,7 +387,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       title: `${e.name} — results`,
       body: `${e._count.fights} bout${e._count.fights === 1 ? "" : "s"} settled. See how your picks landed.`,
       url: `/events/${e.slug}`,
-      icon: "🏁",
+      icon: "results",
       meta: e.promotion ?? null,
       media: eventMedia(e),
     });
@@ -449,7 +449,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       title: fr.name,
       body: null,
       url: `/fighters/${fr.slug}`,
-      icon: "🥊",
+      icon: "fight",
       meta: nf ? whenLabel(nf.date) : null,
       fighter: {
         slug: fr.slug,
@@ -527,7 +527,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       title: a.title,
       body: null,
       url: `/news/${a.slug}`,
-      icon: "📰",
+      icon: "news",
       meta: a.author?.name ?? null,
       media: {
         // safeNewsCover keeps the deliberate legal line: a publisher image is
@@ -559,7 +559,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     title: v.title,
     body: null,
     url: `/clips${v.promotion ? `?promotion=${v.promotion}` : ""}`,
-    icon: "▶️",
+    icon: "video",
     meta: null,
     reason: v.reason,
     video: { channel: v.channel, promotion: v.promotion, promotionName: v.promotionName },
@@ -749,7 +749,7 @@ export async function getCornerMen(limit = 12): Promise<FeedItem[]> {
           title: a.title,
           body: a.excerpt,
           url: `/news/${a.slug}`,
-          icon: "🎙️",
+          icon: "podcast",
           meta: a.author?.name ?? a.author?.username ?? "Combat Reviews",
         }]
       : [],

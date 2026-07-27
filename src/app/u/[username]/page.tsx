@@ -12,6 +12,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { ShareMenu } from "@/components/share-menu";
 import { timeAgo } from "@/lib/utils";
+import { publicDisplayName } from "@/lib/display-name";
 
 const ROLE_LABEL: Record<string, string> = {
   fighter: "Fighter", coach: "Coach", gym: "Gym", promoter: "Promoter",
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   const u = await loadUser(username);
   if (!u?.username) return {};
   const stats = await getProfileStats(u.id);
-  const who = u.name ?? `@${u.username}`;
+  const who = publicDisplayName(u);
   const desc = stats && stats.picksResolved
     ? `${who} — ${stats.reputation.toLocaleString()} reputation · ${stats.accuracy}% accuracy · best ${stats.bestPickStreak}-fight streak on Combat Reviews.`
     : `${who} on Combat Reviews.`;
@@ -56,7 +57,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
     getTrainingNowFor(u.id),
   ]);
 
-  const displayName = u.name ?? `@${u.username}`;
+  const displayName = publicDisplayName(u);
   const rep = stats?.reputation ?? 0;
   const acc = stats?.accuracy ?? 0;
   const streak = stats?.pickStreak ?? 0;

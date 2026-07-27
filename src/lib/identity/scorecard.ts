@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { prisma } from "@/lib/db";
+import { publicDisplayName } from "@/lib/display-name";
 import {
   scorecardHeadline, scorecardBadges, isPerfect,
   type ScorecardBadge, type ScorecardFacts,
@@ -107,7 +108,7 @@ async function _getEventScorecard(username: string, eventSlug: string): Promise<
     perfect: isPerfect(facts),
     badges: scorecardBadges(facts),
     user: {
-      name: user.name ?? `@${user.username}`,
+      name: publicDisplayName(user),
       username: user.username,
       image: user.image,
       reputation: user.reputation,

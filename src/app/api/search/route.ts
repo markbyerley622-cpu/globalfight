@@ -7,6 +7,7 @@ import { recommendVideos } from "@/lib/feed/recommend";
 import { getCurrentUser } from "@/lib/auth";
 import { PROMOTIONS } from "@/lib/promotions";
 import { searchFollowState } from "@/lib/search-follow";
+import { publicDisplayName } from "@/lib/display-name";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,7 +81,9 @@ export async function GET(req: Request) {
         },
         orderBy: { reputation: "desc" },
         take: 6,
-        select: { username: true, name: true, image: true, registryRole: true, reputation: true },
+        // `id` is selected only to compare against the viewer (the `self` flag) and
+        // is never returned in the response.
+        select: { id: true, username: true, name: true, image: true, registryRole: true, reputation: true },
       })
       .catch(() => []),
     // Video results come from the SAME recommender every other surface uses, so
@@ -134,9 +137,25 @@ export async function GET(req: Request) {
       verified: g.verified, memberCount: g.memberCount,
       disciplines: g.disciplines.slice(0, 3),
     })),
+    // Sanitised at the API BOUNDARY, not in the component: search results are
+    // consumed by the overlay, the search page and anything added later, and a raw
+    // `name` in this payload is one careless render away from publishing an email.
+    // The client never receives an unsafe name.
     people: people.flatMap((u) =>
       u.username
-        ? [{ username: u.username, name: u.name, image: u.image, role: u.registryRole, reputation: u.reputation }]
+        ? [{
+            username: u.username,
+            name: publicDisplayName(u),
+            image: u.image,
+            role: u.registryRole,
+            reputation: u.reputation,
+            // You cannot follow yourself — toggleFollow throws SelfFollowError — so
+            // the row must not offer a button that is guaranteed to fail. Decided on
+            // the SERVER because that is where the viewer's identity already is;
+            // comparing ids in the component would mean shipping the viewer's id to
+            // every search result to do it.
+            self: u.id === viewer?.id,
+          }]
         : [],
     ),
     articles: articles.filter((a) => has(a.title) || has(a.category)).slice(0, 6)

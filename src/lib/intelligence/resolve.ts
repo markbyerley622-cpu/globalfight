@@ -107,7 +107,7 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
   // A void bout (draw / no-contest) has no winner to have called. Previously every
   // pick on one was stored as `correct = false`, which made it render as a MISS
   // while `picksResolved` was deliberately NOT incremented — so the profile said
-  // 0/0 while the list showed a red X, and getJustHappened counted the pick as
+  // 0/0 while the list showed a red X, and getRecentEvents counted the pick as
   // graded when the user's record didn't. Void picks now stay `correct = null` and
   // are recognised by the fight's own result (pickStatus → VOID). The fight's
   // `picksResolvedAt` stamp is what stops reprocessing, not a false grade.
@@ -189,7 +189,7 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
           title: `You called it — ${winnerName} won`,
           body: `+${rep} reputation · ${user.pickStreak}-pick streak${winnerFighterId ? ` · ${rarity.toLowerCase()} card earned` : ""}`,
           url: cardUrl,
-          icon: "✅",
+          icon: "correct",
           // One card = one lit phone. The device replaces the previous bout's
           // push instead of stacking twelve; all twelve rows still land in the
           // in-app list, where re-reading them is the point.
@@ -201,7 +201,7 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
           title: `Tough one — ${winnerName ?? "the other corner"} took it`,
           body: `Your pick didn't land — streak reset.`,
           url: boutUrl,
-          icon: "❌",
+          icon: "missed",
           tag: fight.eventId ? `picks:${fight.eventId}` : undefined,
         });
       }

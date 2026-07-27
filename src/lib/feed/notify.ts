@@ -70,7 +70,7 @@ export async function notifyNewVideos(videos: FeedVideo[]): Promise<number> {
             title: `${name} posted a new video`,
             body: video.title.slice(0, 140),
             url: `/clips?promotion=${promotion}`,
-            icon: "▶️",
+            icon: "video",
             // Per VIDEO, so a re-ingest cannot re-notify, and per user via the
             // (userId, dedupeKey) unique.
             dedupeKey: `video:${video.id}`,

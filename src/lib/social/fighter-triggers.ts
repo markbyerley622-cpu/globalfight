@@ -83,7 +83,7 @@ export async function notifyFightAnnounced(fightId: string): Promise<number> {
       title: `${fight.red.name} vs ${fight.blue.name}`,
       body: `Booked for ${fight.event.name}.`,
       url: boutUrl(fight.event.slug, fight.id),
-      icon: "🥊",
+      icon: "fight",
       dedupeKey: `fight_announced:${fight.id}`,
       tag: `event:${fight.event.id}`,
     });
@@ -110,7 +110,7 @@ export async function notifyFightCancelled(fightId: string): Promise<number> {
       // strictly better than anything generated here.
       body: fight.cardNote ?? `Pulled from ${fight.event.name}.`,
       url: boutUrl(fight.event.slug, fight.id),
-      icon: "🚫",
+      icon: "cancelled",
       dedupeKey: `fight_cancelled:${fight.id}`,
       tag: `event:${fight.event.id}`,
     });
@@ -131,7 +131,7 @@ export async function notifyFightRescheduled(fightId: string): Promise<number> {
       title: `${fight.red.name} vs ${fight.blue.name} has moved`,
       body: `Now on ${fight.event.name}.`,
       url: boutUrl(fight.event.slug, fight.id),
-      icon: "🗓️",
+      icon: "rescheduled",
       // Keyed by the destination: a bout moved twice is two facts.
       dedupeKey: `fight_rescheduled:${fight.id}:${fight.date.toISOString().slice(0, 10)}`,
       tag: `event:${fight.event.id}`,
@@ -254,7 +254,7 @@ export async function notifyFighterVerified(fighterId: string): Promise<number> 
       title: `${fighter.name} is verified`,
       body: "They've claimed their profile — it's them posting now.",
       url: `/fighters/${fighter.slug}`,
-      icon: "✅",
+      icon: "verified",
       dedupeKey: `fighter_verified:${fighterId}`,
       tag: `fighter:${fighterId}`,
     }, { exclude: [fighter.ownerId] });
@@ -311,7 +311,7 @@ export async function notifyFighterProfileUpdate(
       title: `${fighter.name} updated their profile`,
       body: copy[field],
       url: `/fighters/${fighter.slug}`,
-      icon: "📝",
+      icon: "edit",
       dedupeKey: `fighter_profile:${fighterId}:${field}:${value.slice(0, 40)}`,
       tag: `fighter:${fighterId}`,
     }, { exclude: [fighter.ownerId] });
