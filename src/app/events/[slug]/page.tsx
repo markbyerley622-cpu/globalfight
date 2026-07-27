@@ -28,6 +28,7 @@ import { orderFights, groupCoverage, winningCorner } from "@/lib/event-format";
 import { getEventEnrichment } from "@/lib/events/enrichment";
 import { VideoRail } from "@/components/feed/video-rail";
 import { resolvePromotion } from "@/lib/promotions";
+import { classifyCard, cardStateCopy, promotionCoveredBySlug } from "@/lib/events/card-completeness";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowingPromotion, isFollowingEvent } from "@/lib/follows";
 import { getEventPickSummary } from "@/lib/profile-stats";
@@ -98,7 +99,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   // Promotion personality: every event uses the SAME layout, but its promotion's
   // brand colour flows through the hero/schedule/main-event accents via --accent.
-  const accent = resolvePromotion(event.promotion).brand;
+  const resolvedPromo = resolvePromotion(event.promotion);
+  const accent = resolvedPromo.brand;
+  // "combat" is the neutral fallback for an unknown/"Various" promotion — not an
+  // organisation, and never something we can claim coverage for.
+  const promoSlug = resolvedPromo.slug === "combat" ? null : resolvedPromo.slug;
 
   // Is the viewer following this promotion? (drives the header follow button)
   const [promotionFollowing, eventFollowing] = viewer
@@ -136,6 +141,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // result. Null when the crowd was below quorum or the bout was a draw/NC.
   const room = isCompleted && headline ? await getEventRoom(headline.id) : null;
 
+  // Did a PROVIDER hand us this event? Only asked when there are no bouts, because
+  // that is the only case where the answer changes what the reader is told — and it
+  // is the difference between "the promotion hasn't announced it" and "a source gave
+  // us this event and we lost its card", which is our bug to own.
+  const hasProviderProvenance =
+    fights.length === 0 &&
+    (await prisma.eventExternalId.count({ where: { eventId: event.id } }).catch(() => 0)) > 0;
+
   // One scroll: card → card talk → coverage. There is no separate Predictions
   // section — a bout's prediction, battle and discussion live inside that bout's
   // module, because that is the scope a fan actually thinks in. "Card talk" is
@@ -145,6 +158,23 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // found coverage or videos, and that rule now lives in one place for every
   // surface that needs it.
   const spy: SpySection[] = enrichment.navigation.sections;
+
+  // WHY the card is empty, decided once. `covered` asks the ingestion registry
+  // whether any ENABLED source reaches this promotion — a promotion we deliberately
+  // do not ingest must say so rather than implying the card is merely late.
+  // `hasProviderProvenance` distinguishes our failure from the promotion's silence: a
+  // source that handed us the event should have handed us its bouts.
+  const cardState = classifyCard({
+    boutCount: fights.length,
+    status: event.status,
+    date: new Date(event.date),
+    promotionSlug: promoSlug,
+    covered: promotionCoveredBySlug(promoSlug),
+    // Provenance = a provider handed us this event. If it did and there are no
+    // bouts, the card was lost on our side.
+    hasProviderProvenance: hasProviderProvenance,
+  });
+  const cardCopy = cardStateCopy(cardState);
 
   return (
     <div style={{ "--accent": accent } as React.CSSProperties}>
@@ -183,21 +213,19 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           carrying its own prediction, battle and discussion. */}
       <ScrollSection id="card" title="Fight card" seam={false}>
         {fights.length === 0 ? (
-          /* AN EMPTY CARD IS A REAL STATE, not a failure to render.
-             A card is created as soon as a date is announced — often weeks before a
-             single bout is — and this section previously rendered CollapsibleFights
-             with no children: a heading above nothing, which reads as the page being
-             broken rather than the card being unannounced. Saying so is both true and
-             the difference between "come back" and "this site doesn't work". */
+          /* AN EMPTY CARD IS SEVERAL DIFFERENT STATES, not one.
+             "The promotion hasn't announced it", "we don't cover this promotion" and
+             "our importer dropped the card" are three different truths with three
+             different next actions — and rendering the same sentence for all of them
+             (or nothing at all, as this did) makes our own bug look like the
+             promotion's silence. classifyCard decides which one applies; the copy
+             never blames the promotion for our gap or vice versa. */
           <EmptyState
             compact
             icon={<Swords className="size-5" />}
-            title="Bout card has not been announced yet"
-            body={
-              event.status === "CANCELLED"
-                ? "This event was called off before a card was announced."
-                : "The date is confirmed but the matchups aren't. Follow the event and we'll tell you the moment bouts are added."
-            }
+            title={cardCopy.title}
+            body={cardCopy.body}
+            action={cardCopy.offerFollow ? { href: "#top", label: "Follow this event" } : undefined}
           />
         ) : (
         <>

@@ -25,6 +25,7 @@
     "seed:wipe": "node --env-file=.env --import tsx prisma/seed/demo.mts wipe",
     "seed:status": "node --env-file=.env --import tsx prisma/seed/status.mts",
     "seed:boot": "node --import tsx prisma/seed/boot.mts",
+    "audit:i18n": "node --import tsx scripts/audit-i18n.mts",
     "typecheck:scripts": "node scripts/check-scripts.mjs"
   },
   "dependencies": {
