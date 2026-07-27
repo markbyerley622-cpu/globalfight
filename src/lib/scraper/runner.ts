@@ -29,6 +29,7 @@ import {
 } from "@/lib/scraper/wikicard";
 import { persistAggregated } from "@/services/sync/persist";
 import { isSourceEnabled } from "@/lib/ingestion-registry";
+import { runResultsIntelligence } from "@/lib/results/pipeline";
 import type { Sport } from "@/lib/types";
 
 export type RefreshKind =
@@ -40,6 +41,10 @@ const ENRICH_BATCH = Number(process.env.ENRICH_BATCH ?? 50);
 const WIKICARD_BATCH = Number(process.env.WIKICARD_BATCH ?? 40);
 /** Pending-result events per `results` run. Smaller — this one runs hourly. */
 const RESULT_BATCH = Number(process.env.RESULT_BATCH ?? 12);
+/** Bouts scanned per Results-Intelligence pass. Cheap — it reads already-ingested
+ *  articles and makes no outbound requests, so this can be larger than the
+ *  Wikipedia batch above. */
+const RESULT_INTEL_BATCH = Number(process.env.RESULT_INTEL_BATCH ?? 40);
 
 const CONCURRENCY = Number(process.env.SCRAPER_CONCURRENCY ?? 2);
 
@@ -194,6 +199,31 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
       await safe("results:wikicard", () =>
         harvestWikiTargets({ gap: "missing_result", limit: RESULT_BATCH }),
       );
+
+      // RESULTS INTELLIGENCE, second and deliberately after Wikipedia.
+      //
+      // Wikipedia is authoritative but slow — a card that finished last night is
+      // often not on Wikipedia for hours, while the news feeds we already ingest
+      // carry the outcome within minutes. This pass reads those feeds as EVIDENCE
+      // and scores a candidate per bout.
+      //
+      // Running it second means any bout Wikipedia just settled is already decided
+      // and gets skipped, so the fast path only ever fills the gap the slow path
+      // has not reached. It cannot itself publish anything the confidence engine
+      // did not mark VERIFIED, and everything else waits for an operator — see
+      // lib/results/pipeline for the settlement gate.
+      // Reported as a LINE, not a count, for the same reason the Wikipedia harvest
+      // is: "0" is uninterpretable, while these five numbers each point at a
+      // different place to look — no evidence means the news pass has not run or the
+      // extractor rejected everything, queued means it is working and waiting on a
+      // human, conflicted means sources disagree.
+      await safe("results:intelligence", async () => {
+        const r = await runResultsIntelligence(RESULT_INTEL_BATCH);
+        return (
+          `scanned=${r.scanned} evidence=${r.evidence} verified=${r.verified} ` +
+          `queued=${r.queued} conflicted=${r.conflicted}`
+        );
+      });
       break;
     case "champions":
     case "people":

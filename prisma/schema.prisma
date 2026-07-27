@@ -590,6 +590,10 @@ model Fight {
   picksResolvedAt DateTime?
   /// Provenance: which provider wrote this bout, from which page. See FightImport.
   imports         FightImport[]
+  /// Results Intelligence: what sources SAID, and the one scored reading derived
+  /// from them. Neither writes `result` — only a VERIFIED candidate does.
+  resultEvidence  ResultEvidence[]
+  resultCandidate ResultCandidate?
 
   @@index([date, result])
   @@index([redId])
@@ -1177,6 +1181,8 @@ model User {
   eventFollows      FavoriteEvent[]
   fightPicks        FightPick[]
   reputationEvents  ReputationEvent[]
+  /// Result candidates this operator has approved, rejected or edited.
+  resultsReviewed   ResultCandidate[]    @relation("ResultReviewer")
   notifications     Notification[]
   activities        Activity[]
   cardAwards        CardAward[]
@@ -2212,4 +2218,102 @@ model PushSubscription {
   createdAt   DateTime  @default(now())
 
   @@index([userId])
+}
+
+// ─── Results Intelligence ─────────────────────────────────────────────────
+// Evidence-based verification, so a bout's result is explainable and never
+// settled on a guess. Settlement reads Fight.result, and the ONLY thing that may
+// write it from this subsystem is a candidate an operator (or a high-confidence
+// consensus) has moved to VERIFIED. See src/lib/results/*.
+
+enum EvidenceSourceKind {
+  WIKIPEDIA
+  OFFICIAL
+  MAJOR
+  TRADE
+  AGGREGATOR
+  UNKNOWN
+  OPERATOR
+}
+
+/// One source's reading of one bout. Append-only, and never authoritative.
+model ResultEvidence {
+  id      String @id @default(cuid())
+  fightId String
+  fight   Fight  @relation(fields: [fightId], references: [id], onDelete: Cascade)
+
+  sourceKind EvidenceSourceKind
+  /// Publisher name for the operator queue ("Boxing News 24").
+  sourceName String
+  sourceUrl  String?
+  headline   String?
+  /// The text the reading came from, kept so an operator can judge it without
+  /// re-fetching a page that may since have been edited.
+  snippet    String? @db.Text
+
+  /// What we read. `outcome` is "WIN" | "DRAW" | "NO_CONTEST"; winnerCorner is
+  /// "RED" | "BLUE" and null for a draw or no contest.
+  outcome      String
+  winnerCorner String?
+  method       FightMethod?
+  roundEnded   Int?
+  /// Extraction quality (0..1) BEFORE source reliability is applied.
+  quality      Float
+
+  /// When the SOURCE published — not when we read it. Late reports carry detail.
+  observedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  /// One reading per source article per bout, so re-running the pass is a no-op
+  /// rather than a way to manufacture agreement with yourself.
+  @@unique([fightId, sourceUrl])
+  @@index([fightId, createdAt])
+}
+
+enum ResultCandidateStatus {
+  /// Stored, too weak to act on.
+  INCONCLUSIVE
+  /// Plausible; a human must confirm before it can settle anything.
+  PENDING_REVIEW
+  /// Sources disagree about the WINNER, or about the method. Always human.
+  CONFLICTED
+  /// Confirmed. This is the ONLY status that may write Fight.result.
+  VERIFIED
+  /// A human said no.
+  REJECTED
+}
+
+/// The single current reading for a bout, derived from its evidence.
+model ResultCandidate {
+  id      String @id @default(cuid())
+  /// One live candidate per bout — a rescore replaces it rather than accumulating.
+  fightId String @unique
+  fight   Fight  @relation(fields: [fightId], references: [id], onDelete: Cascade)
+
+  outcome      String
+  winnerCorner String?
+  method       FightMethod?
+  roundEnded   Int?
+
+  confidence Float
+  status     ResultCandidateStatus @default(PENDING_REVIEW)
+  /// Distinct independent voices for and against this reading.
+  agreeing    Int @default(0)
+  disagreeing Int @default(0)
+  /// Why we believe this — rendered verbatim in the operator queue.
+  reasons     Json
+
+  reviewedById String?
+  reviewedBy   User?     @relation("ResultReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  reviewNote   String?
+  /// Set when this candidate actually wrote Fight.result, so a re-run cannot
+  /// settle the same bout twice.
+  publishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The operator queue reads by status, newest first.
+  @@index([status, updatedAt])
 }
