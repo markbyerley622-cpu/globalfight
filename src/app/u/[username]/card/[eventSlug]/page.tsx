@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { username, eventSlug } = await params;
   const card = await getEventScorecard(username, eventSlug);
   if (!card) return {};
-  const title = `${card.user.name}: ${card.correct}/${card.graded} on ${card.event.name} — Combat Reviews`;
+  const title = `${card.user.name}: ${card.correct}/${card.graded} on ${card.event.name}`;
   const desc = `${card.headline} ${card.user.name} went ${card.correct} of ${card.graded} (${card.accuracy}%) on ${card.event.name}.`;
   return {
     title,

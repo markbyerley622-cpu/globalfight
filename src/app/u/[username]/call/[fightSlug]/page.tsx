@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const desc = card.socialProof
     ? `${card.headline.text} ${card.socialProof} — ${who} on Combat Reviews.`
     : `${card.headline.text} ${who} called ${card.pick.calledName} on ${card.fight.eventName ?? "the card"}.`;
-  const title = `${who}: ${card.headline.text} — Combat Reviews`;
+  const title = `${who}: ${card.headline.text}`;
   return {
     title,
     description: desc,

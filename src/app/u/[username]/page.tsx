@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   const desc = stats && stats.picksResolved
     ? `${who} — ${stats.reputation.toLocaleString()} reputation · ${stats.accuracy}% accuracy · best ${stats.bestPickStreak}-fight streak on Combat Reviews.`
     : `${who} on Combat Reviews.`;
-  return { title: `${who} — Combat Reviews`, description: desc, alternates: { canonical: `/u/${u.username}` } };
+  return { title: who, description: desc, alternates: { canonical: `/u/${u.username}` } };
 }
 
 export default async function PublicProfile({ params }: { params: Promise<{ username: string }> }) {

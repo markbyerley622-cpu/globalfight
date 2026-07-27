@@ -79,7 +79,18 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: OG_TITLE,
     description: OG_DESCRIPTION,
-    images: [OG_IMAGE.url],
+    // NO `images` here, deliberately.
+    //
+    // A root-level twitter.images is INHERITED by every page, and the
+    // opengraph-image.tsx convention does not override it — so every share on X
+    // carried the generic og-default.png while og:image (WhatsApp, iMessage,
+    // Facebook, Slack) carried the real card. Six OG routes — profiles, events,
+    // fighters, fights, victory cards, scorecards — were all rendering the default
+    // image on X, which is the platform a share card exists for.
+    //
+    // Omitting it lets each page's opengraph-image populate twitter:image too, and
+    // pages without one still preview correctly: X falls back to og:image when
+    // twitter:image is absent, and openGraph.images above supplies that.
   },
   robots: { index: true, follow: true },
   alternates: { canonical: "/" },

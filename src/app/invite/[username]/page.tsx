@@ -31,11 +31,13 @@ async function loadInviter(username: string) {
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params;
   const u = await loadInviter(username);
-  if (!u) return { title: "Join Combat Reviews" };
+  // "Join Combat Reviews" would render as "Join Combat Reviews · Combat Reviews"
+  // once the root layout's title template appends the brand.
+  if (!u) return { title: "You're invited" };
 
   const who = publicDisplayName(u);
   return {
-    title: `${who} invited you — Combat Reviews`,
+    title: `${who} invited you`,
     description: `${who} wants you calling fights on Combat Reviews. Predict every card, build a record, and settle it in the room.`,
     alternates: { canonical: `/invite/${u.username}` },
     // Explicit openGraph + twitter blocks. Next infers og:image from the sibling
