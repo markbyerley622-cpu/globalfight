@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { SPORT_LABEL } from "@/lib/sports";
 import { fighterSlug, movementFor } from "@/lib/rankings/ingest-rules";
+import { notifyRankingChange } from "@/lib/social/fighter-triggers";
 import { CURATED_P4P, type CuratedList } from "./lists";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -76,6 +77,15 @@ async function ingestList(list: CuratedList): Promise<CuratedIngestStat> {
     });
     await prisma.rankSnapshot.create({
       data: { fighterId, weightClass: `${list.sport} P4P`, isPoundForPound: true, rank: entry.rank },
+    });
+    // Followers, on meaningful movement only — the same gate the divisional ingest
+    // uses. Entering a pound-for-pound list is the biggest ranking fact there is.
+    await notifyRankingChange({
+      fighterId,
+      weightClass: `${list.sport} pound-for-pound`,
+      rank: entry.rank,
+      previousRank,
+      isPoundForPound: true,
     });
   }
 

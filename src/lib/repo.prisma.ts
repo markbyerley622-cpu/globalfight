@@ -53,6 +53,7 @@ export function mapFighter(f: PFighter & { titles?: { body: string; weight: stri
     photoLicense: f.photoLicense ?? undefined,
     photoLicenseUrl: f.photoLicenseUrl ?? undefined,
     active: f.active, bio: f.bio ?? undefined,
+    claimed: f.claimed,
     titles: f.titles?.map((t) => ({ body: t.body as SanctioningBody, weight: t.weight, current: t.current })),
   };
 }

@@ -48,6 +48,11 @@ export interface Fighter {
   photoLicenseUrl?: string;
   active: boolean;
   bio?: string;
+  /// The profile has been CLAIMED and verified by its owner — what the badge in
+  /// search results and on cards renders from. Optional so every existing mapper
+  /// stays valid; FighterListItem already carried it and Fighter did not, which is
+  /// why a search row could not show the badge a directory row could.
+  claimed?: boolean;
   titles?: { body: SanctioningBody; weight: string; current: boolean }[];
 }
 

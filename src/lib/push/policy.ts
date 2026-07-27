@@ -27,6 +27,10 @@ export const CATEGORY_OF: Record<string, NotifCategory> = {
   BATTLE_REPLY: "social",
   COMMUNITY_REPLY: "social",
   FOLLOW: "social",
+  // Was missing, and the default is "social" — so a gym review's PUSH was gated by
+  // the replies toggle while its in-app row was gated by the gym toggle. Two
+  // switches for one notification, and neither one did what it said.
+  GYM_REVIEW: "gym",
   // A streak is earned by predicting and lives in the same habit loop as rank
   // and results, so it rides the "predictions" toggle rather than adding a fifth
   // category (and a migration). A user who muted predictions muting this too is

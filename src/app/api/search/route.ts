@@ -4,6 +4,9 @@ import { getCommunities } from "@/lib/community/repo";
 import { getThreads } from "@/lib/forum/repo";
 import { prisma } from "@/lib/db";
 import { recommendVideos } from "@/lib/feed/recommend";
+import { getCurrentUser } from "@/lib/auth";
+import { PROMOTIONS } from "@/lib/promotions";
+import { searchFollowState } from "@/lib/search-follow";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,12 +38,20 @@ const PAGES = [
 // people who have chosen a public username, and nothing about where they are.
 export async function GET(req: Request) {
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim();
-  const empty = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], videos: [], pages: [] };
+  const empty = {
+    fighters: [], events: [], gyms: [], people: [], promotions: [],
+    articles: [], communities: [], threads: [], videos: [], pages: [],
+    follow: null,
+  };
   if (!q) return NextResponse.json(empty);
 
   const ql = q.toLowerCase();
   const has = (s?: string | null) => (s ?? "").toLowerCase().includes(ql);
   const contains = { contains: q, mode: "insensitive" as const };
+
+  // The viewer, for follow state. Search stays fully functional signed out — a null
+  // viewer just means every follow map comes back empty.
+  const viewer = await getCurrentUser().catch(() => null);
 
   const [fighters, upcoming, results, articles, communities, threadsPage, gyms, people, videos] = await Promise.all([
     searchFighters(q).catch(() => []),
@@ -83,13 +94,40 @@ export async function GET(req: Request) {
     .slice(0, 6)
     .map((e) => ({ slug: e.slug, name: e.name, city: e.city ?? null, status: e.status }));
 
+  // PROMOTIONS are a followable entity with no table to search: the registry is a
+  // static, curated list, so it is matched in memory. That is not the compromise it
+  // would be for a user-generated table — there are a few dozen organisations and
+  // the list ships with the bundle.
+  const promotions = PROMOTIONS.filter((p) => has(p.name) || has(p.slug))
+    .slice(0, 5)
+    .map((p) => ({ slug: p.slug, name: p.name }));
+
+  const topFighters = fighters.slice(0, 6);
+
+  // ONE batched resolution for every family's follow state and follower counts —
+  // never a query per row. See lib/search-follow: this route fires every 180ms as
+  // somebody types.
+  const follow = await searchFollowState(viewer?.id ?? null, {
+    fighterSlugs: topFighters.map((f) => f.slug),
+    eventSlugs: events.map((e) => e.slug),
+    gymSlugs: gyms.map((g) => g.slug),
+    promotionSlugs: promotions.map((p) => p.slug),
+    usernames: people.flatMap((u) => (u.username ? [u.username] : [])),
+  }).catch(() => null);
+
   return NextResponse.json({
-    fighters: fighters.slice(0, 6).map((f) => ({
+    fighters: topFighters.map((f) => ({
       slug: f.slug, name: f.name, nickname: f.nickname ?? null,
       countryCode: f.countryCode ?? null, nationality: f.nationality ?? null,
       record: `${f.wins}-${f.losses}-${f.draws}`,
+      // The fighter's own avatar, so a search row shows a face rather than a flag
+      // alone. Already-processed variants only — never a hotlinked source URL.
+      image: f.thumbUrl ?? f.imageUrl ?? null,
+      verified: f.claimed ?? false,
     })),
     events,
+    promotions,
+    follow,
     gyms: gyms.map((g) => ({
       slug: g.slug, name: g.name,
       place: [g.city, g.country].filter(Boolean).join(", ") || null,

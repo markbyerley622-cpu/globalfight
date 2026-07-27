@@ -10,6 +10,7 @@ import { imageProxyUrl } from "@/lib/media-safe";
 import {
   deleteClaimEvidence, daysFromNow, APPEAL_WINDOW_DAYS, PENDING_TTL_DAYS,
 } from "@/lib/evidence/lifecycle";
+import { notifyFighterProfileUpdate, notifyFighterVerified } from "@/lib/social/fighter-triggers";
 
 const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 
@@ -80,6 +81,10 @@ export async function updateProfileMeta(userId: string, slug: string, data: {
   imageUrl?: string; heroImageUrl?: string; website?: string; instagram?: string; twitter?: string;
 }) {
   const id = await ownedFighter(userId, slug);
+  const before = await prisma.fighter.findUnique({
+    where: { id },
+    select: { tagline: true, instagram: true },
+  });
   await prisma.fighter.update({
     where: { id },
     data: {
@@ -92,6 +97,17 @@ export async function updateProfileMeta(userId: string, slug: string, data: {
       instagram: data.instagram?.trim() || null,
       twitter: data.twitter?.trim() || null,
     },
+  });
+
+  // FOLLOWERS, for the two fields worth reading about — and only where the value
+  // actually CHANGED. This is an autosaving form: without the diff, every keystroke
+  // batch would look like a fresh update, and the dedupeKey (which is keyed on the
+  // value) would happily let each intermediate string through as its own fact.
+  const tagline = data.tagline?.trim() || null;
+  const instagram = data.instagram?.trim() || null;
+  await notifyFighterProfileUpdate(id, {
+    ...(tagline && tagline !== before?.tagline ? { tagline } : {}),
+    ...(instagram && instagram !== before?.instagram ? { instagram } : {}),
   });
 }
 
@@ -288,6 +304,11 @@ export async function reviewClaim(reviewerId: string, claimId: string, action: "
     await deleteClaimEvidence(claimId, "claim.approved");
     // Losing claimants' documents are equally done with.
     for (const s of superseded) await deleteClaimEvidence(s.id, "claim.superseded");
+
+    // FOLLOWERS. "The fighter you follow is verified and it's now them posting" is
+    // the most valuable follow notification in the app, and it was silent. The new
+    // owner is excluded — they know. Never throws: the claim is approved either way.
+    await notifyFighterVerified(claim.fighter.id);
 
   } else if (action === "reject") {
     await prisma.fighterClaim.update({

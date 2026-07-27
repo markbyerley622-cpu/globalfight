@@ -2,22 +2,33 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass, Dumbbell, BadgeCheck, User, Play } from "lucide-react";
+import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass, Dumbbell, Shield, User, Play } from "lucide-react";
 import { Flag } from "@/components/flag";
+import { SearchHit, type SearchFollowMaps } from "@/components/search/search-hit";
 
-type FighterHit = { slug: string; name: string; nickname?: string | null; countryCode?: string | null; nationality?: string | null; record: string };
+type FighterHit = {
+  slug: string; name: string; nickname?: string | null;
+  countryCode?: string | null; nationality?: string | null; record: string;
+  image?: string | null; verified?: boolean;
+};
 type Results = {
   fighters: FighterHit[];
   events: { slug: string; name: string; city: string | null }[];
   gyms: { slug: string; name: string; place: string | null; verified: boolean; memberCount: number; disciplines: string[] }[];
   people: { username: string; name: string | null; image: string | null; role: string; reputation: number }[];
+  promotions: { slug: string; name: string }[];
   articles: { slug: string; title: string; category: string }[];
   videos: { id: string; title: string; channel: string; promotion: string | null; reason: string }[];
   communities: { slug: string; name: string }[];
   threads: { slug: string; categorySlug: string; title: string; categoryName: string }[];
   pages: { label: string; href: string }[];
+  /** Batched follow state + counts for every followable family. Null when unavailable. */
+  follow: SearchFollowMaps | null;
 };
-const EMPTY: Results = { fighters: [], events: [], gyms: [], people: [], articles: [], communities: [], threads: [], videos: [], pages: [] };
+const EMPTY: Results = {
+  fighters: [], events: [], gyms: [], people: [], promotions: [],
+  articles: [], communities: [], threads: [], videos: [], pages: [], follow: null,
+};
 
 export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");
@@ -56,7 +67,12 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   // renders "No results for …" ABOVE its own visible rows.
   const total =
     res.fighters.length + res.events.length + res.gyms.length + res.people.length +
-    res.articles.length + res.videos.length + res.communities.length + res.threads.length + res.pages.length;
+    res.promotions.length + res.articles.length + res.videos.length +
+    res.communities.length + res.threads.length + res.pages.length;
+
+  // Follow state is a batch from the server; absent maps read as "not following",
+  // which is the correct rendering for a signed-out reader too.
+  const f = res.follow;
 
   const row = (key: string, href: string, icon: React.ReactNode, title: React.ReactNode, sub?: React.ReactNode) => (
     <Link key={key} href={href} onClick={onClose} className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-ink-700/70">
@@ -91,25 +107,101 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           {!q && <p className="px-4 py-8 text-center text-sm text-fog">Start typing to search across the whole site.</p>}
           {q && !loading && total === 0 && <p className="px-4 py-8 text-center text-sm text-fog">No results for “{q}”.</p>}
 
+          {/* The followable families render through SearchHit — one row with the
+              avatar, the verification badge, the follower count and the SAME
+              FollowButton the profile pages use, so following from search behaves
+              identically to following from anywhere else. */}
           {res.fighters.length > 0 && head("Fighters")}
-          {res.fighters.map((h) => row(`f-${h.slug}`, `/fighters/${h.slug}`, <Flag code={h.countryCode} size="lg" />,
-            <>{h.name}{h.nickname ? <span className="ml-2 text-sm font-normal text-mist">“{h.nickname}”</span> : null}</>,
-            `${h.nationality ?? ""}${h.nationality ? " · " : ""}${h.record}`))}
+          {res.fighters.map((h) => (
+            <SearchHit
+              key={`f-${h.slug}`}
+              href={`/fighters/${h.slug}`}
+              kind="fighter"
+              slug={h.slug}
+              name={h.name}
+              image={h.image}
+              verified={h.verified}
+              fallbackIcon={<Flag code={h.countryCode} size="lg" />}
+              meta={
+                <>
+                  {h.nickname ? `“${h.nickname}” · ` : ""}
+                  {h.nationality ? `${h.nationality} · ` : ""}
+                  {h.record}
+                </>
+              }
+              following={f?.following.fighters[h.slug]}
+              followers={f?.followers.fighters[h.slug]}
+              onNavigate={onClose}
+            />
+          ))}
 
           {res.events.length > 0 && head("Events")}
-          {res.events.map((e) => row(`e-${e.slug}`, `/schedule/${e.slug}`, <CalendarDays className="size-4" />, e.name, e.city ?? undefined))}
+          {res.events.map((e) => (
+            <SearchHit
+              key={`e-${e.slug}`}
+              href={`/events/${e.slug}`}
+              kind="event"
+              slug={e.slug}
+              name={e.name}
+              meta={e.city ?? undefined}
+              fallbackIcon={<CalendarDays className="size-4" />}
+              following={f?.following.events[e.slug]}
+              onNavigate={onClose}
+            />
+          ))}
+
+          {res.promotions.length > 0 && head("Promotions")}
+          {res.promotions.map((p) => (
+            <SearchHit
+              key={`pr-${p.slug}`}
+              // There is no per-promotion page in this app, so the destination is
+              // the events list filtered to that organisation — which is what
+              // someone searching for "ONE" actually wants. /registry/<slug> would
+              // have been a 404: the registry is a single index page.
+              href={`/events?promotion=${p.slug}`}
+              kind="promotion"
+              slug={p.slug}
+              name={p.name}
+              fallbackIcon={<Shield className="size-4 text-blood-300" />}
+              following={f?.following.promotions[p.slug]}
+              followers={f?.followers.promotions[p.slug]}
+              onNavigate={onClose}
+            />
+          ))}
 
           {res.gyms.length > 0 && head("Gyms")}
-          {res.gyms.map((g) => row(`g-${g.slug}`, `/gyms/${g.slug}`,
-            <Dumbbell className="size-4 text-volt-400" />,
-            <>{g.name}{g.verified ? <BadgeCheck className="ml-1.5 inline size-3.5 align-[-2px] text-volt-400" /> : null}</>,
-            [g.place, g.disciplines.join(", "), `${g.memberCount} member${g.memberCount === 1 ? "" : "s"}`].filter(Boolean).join(" · ")))}
+          {res.gyms.map((g) => (
+            <SearchHit
+              key={`g-${g.slug}`}
+              href={`/gyms/${g.slug}`}
+              kind="gym"
+              slug={g.slug}
+              name={g.name}
+              verified={g.verified}
+              fallbackIcon={<Dumbbell className="size-4 text-volt-400" />}
+              meta={[g.place, g.disciplines.join(", ")].filter(Boolean).join(" · ")}
+              following={f?.following.gyms[g.slug]}
+              followers={f?.followers.gyms[g.slug]}
+              onNavigate={onClose}
+            />
+          ))}
 
           {res.people.length > 0 && head("People")}
-          {res.people.map((u) => row(`u-${u.username}`, `/u/${u.username}`,
-            <User className="size-4 text-gold-400" />,
-            u.name ?? u.username,
-            `@${u.username}${u.role && u.role !== "fan" ? ` · ${u.role}` : ""}`))}
+          {res.people.map((u) => (
+            <SearchHit
+              key={`u-${u.username}`}
+              href={`/u/${u.username}`}
+              kind="person"
+              slug={u.username}
+              name={u.name ?? u.username}
+              image={u.image}
+              fallbackIcon={<User className="size-4 text-gold-400" />}
+              meta={`@${u.username}${u.role && u.role !== "fan" ? ` · ${u.role}` : ""}`}
+              following={f?.following.people[u.username]}
+              followers={f?.followers.people[u.username]}
+              onNavigate={onClose}
+            />
+          ))}
 
           {res.articles.length > 0 && head("News")}
           {res.articles.map((a) => row(`a-${a.slug}`, `/news/${a.slug}`, <Newspaper className="size-4" />, a.title, a.category))}

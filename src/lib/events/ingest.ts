@@ -13,6 +13,7 @@ import { slugify } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
 import { getEventAdapters } from "./registry";
+import { notifyEventChanges, snapshotEvent } from "@/lib/social/event-triggers";
 import { promotionFromText } from "@/lib/promotions";
 import type { AdapterBout, AdapterEvent, SportEnum } from "./adapters/types";
 
@@ -60,6 +61,12 @@ async function upsertAdapterEvent(ev: AdapterEvent): Promise<number> {
   if (PRO_WRESTLING.test(ev.name)) return 0;   // scripted wrestling — not a combat sport
   const slug = eventSlug(ev);
 
+  // BEFORE the upsert. An upsert knows the row's new value and nothing about its
+  // old one, so "this card was just announced" and "the main event changed" are
+  // not observable from inside it — which is why those notifications did not
+  // exist. Null here means the event is new, which is the announcement itself.
+  const before = await snapshotEvent({ slug });
+
   // Prefer the adapter's promotion; otherwise try to read a known org out of the
   // event title ("UFC Fight Night: …" → "UFC") before settling for the neutral
   // "Various" placeholder. This is what stops most events showing the grey mark.
@@ -81,6 +88,11 @@ async function upsertAdapterEvent(ev: AdapterEvent): Promise<number> {
       await upsertBout(event.id, ev.sport, ev.bouts[i], i, date);
     }
   }
+
+  // The bouts are attached, so the diff sees the finished card rather than an
+  // event that momentarily had none. Never throws — an ingested event is the fact
+  // and the notification is a consequence.
+  await notifyEventChanges(before, event.id);
   return 1;
 }
 

@@ -6,6 +6,7 @@ import { ingestConnectors, INGEST_BLOCKLIST } from "./connectors";
 import {
   fighterSlug, weightClassSlug, divisionOrder, shouldWriteRanking, movementFor,
 } from "./ingest-rules";
+import { notifyRankingChange } from "@/lib/social/fighter-triggers";
 
 // ════════════════════════════════════════════════════════════════════════
 //  Ranking ingest — Layer 3+4. Takes a connector's normalized RankingEntry[]
@@ -113,6 +114,17 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
       // Append-only history point (movement graphs, "highest ranking", weekly deltas).
       await prisma.rankSnapshot.create({
         data: { fighterId, weightClass: entry.weightClass, isPoundForPound: false, rank: entry.rank },
+      });
+
+      // FOLLOWERS. Gated inside the trigger on movement being MEANINGFUL — entering
+      // the list, or two places or more. This runs on cron and a one-place shuffle
+      // caused by somebody else's fight is not news about this fighter, so notifying
+      // on every delta would make the rankings the noisiest producer in the app.
+      await notifyRankingChange({
+        fighterId,
+        weightClass: entry.weightClass,
+        rank: entry.rank,
+        previousRank,
       });
 
       stat.imported++;

@@ -1,20 +1,20 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { notify } from "@/lib/notifications-store";
+import { notifyMany } from "@/lib/notifications-store";
 import { followerIdsToNotify, type FollowTarget } from "@/lib/follow-targets";
 import { log } from "@/lib/scraper/logger";
-import { resolvePromotion } from "@/lib/promotions";
+import { EVENT_REF_SELECT, fightTargets } from "./audience";
 import type { NotificationType } from "@prisma/client";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Follower fan-out — ONE function every trigger goes through.
 //
 //  The gym review pipeline proved the shape: resolve followers, drop the actor,
-//  apply preferences, then hand each one to the EXISTING notify(), which already
+//  apply preferences, then hand the batch to the EXISTING store, which already
 //  owns dedupe, push policy and the unread count. Every other trigger — a fight
 //  result, a new event, a cancellation — is the same operation with different copy.
 //
-//  Writing them as one function rather than five is what stops the fifth trigger
+//  Writing them as one function rather than fifteen is what stops the fifteenth
 //  quietly forgetting the preference check or the actor exclusion.
 //
 //  It NEVER throws. A notification is a consequence of something that already
@@ -45,19 +45,44 @@ export async function notifyFollowers(
   payload: FanOutPayload,
   opts: { exclude?: (string | null | undefined)[] } = {},
 ): Promise<number> {
+  return fanOut([target], payload, opts);
+}
+
+/**
+ * Fan ONE payload out across SEVERAL targets — the shape almost every trigger
+ * actually wants.
+ *
+ * The audiences are unioned in memory before a single row is written, so a reader
+ * following the fighter AND the event AND the promotion is one entry in one insert
+ * rather than three inserts the database has to reject two of. The (userId,
+ * dedupeKey) unique is still the guarantee; this just stops us relying on it for
+ * the common case.
+ *
+ * ONE insert and ONE push for the whole audience, however many targets it spans.
+ */
+export async function fanOut(
+  targets: FollowTarget[],
+  payload: FanOutPayload,
+  opts: { exclude?: (string | null | undefined)[] } = {},
+): Promise<number> {
+  if (!targets.length) return 0;
   try {
-    const ids = await followerIdsToNotify(target, opts);
-    let sent = 0;
-    // Sequential: notify() writes and may push, and a promotion with thousands of
-    // followers should not open thousands of concurrent connections.
-    for (const userId of ids) {
-      await notify(prisma, userId, payload);
-      sent += 1;
+    // Per target: one query for followers, one for their preferences. Never one
+    // per follower — a promotion with 5,000 followers must not be 5,000 lookups.
+    const perTarget = await Promise.all(targets.map((t) => followerIdsToNotify(t, opts)));
+    const userIds = [...new Set(perTarget.flat())];
+    if (!userIds.length) return 0;
+
+    const sent = await notifyMany(userIds, payload);
+    if (sent) {
+      log.info(
+        { op: "social.fanout", targets: targets.map((t) => t.type).join("+"), audience: userIds.length, sent, type: payload.type },
+        "followers notified",
+      );
     }
-    if (sent) log.info({ op: "social.fanout", target: target.type, sent, type: payload.type }, "followers notified");
     return sent;
   } catch (e) {
-    log.error({ op: "social.fanout", target: target.type, err: (e as Error).message }, "fan-out FAILED");
+    log.error({ op: "social.fanout", targets: targets.map((t) => t.type).join("+"), err: (e as Error).message }, "fan-out FAILED");
     return 0;
   }
 }
@@ -80,7 +105,7 @@ export async function notifyFightResult(fightId: string): Promise<{ notified: nu
         redId: true, blueId: true,
         red: { select: { name: true } },
         blue: { select: { name: true } },
-        event: { select: { id: true, slug: true, name: true, promotion: true } },
+        event: { select: EVENT_REF_SELECT },
       },
     });
     if (!fight || fight.result === "SCHEDULED" || !fight.event) return { notified: 0 };
@@ -97,7 +122,7 @@ export async function notifyFightResult(fightId: string): Promise<{ notified: nu
     const title = winner ? `${winner} def. ${loser}` : `${fight.red.name} vs ${fight.blue.name} — ${fight.result === "DRAW" ? "draw" : "no contest"}`;
     const detail = [fight.method, fight.roundEnded ? `R${fight.roundEnded}` : null].filter(Boolean).join(" · ");
 
-    const payload: FanOutPayload = {
+    const notified = await fanOut(fightTargets(fight), {
       type: "PICK_RESULT",
       title,
       body: detail ? `${fight.event.name} · ${detail}` : fight.event.name,
@@ -108,23 +133,7 @@ export async function notifyFightResult(fightId: string): Promise<{ notified: nu
       // The FACT is "this bout has a result", so every audience shares one key.
       dedupeKey: `fight_result:${fight.id}`,
       tag: `event:${fight.event.id}`,
-    };
-
-    const targets: FollowTarget[] = [
-      { type: "fighter", id: fight.redId },
-      { type: "fighter", id: fight.blueId },
-      { type: "event", id: fight.event.id },
-    ];
-    // Promotion follows are keyed by REGISTRY SLUG ("ufc"), not the free-text name
-    // an event carries ("UFC", "UFC Fight Night"). Passing the raw name matches no
-    // follower and fails silently — the fan-out just reaches one audience fewer.
-    // A generic/unknown promotion resolves to the neutral fallback, which is not an
-    // organisation anyone can follow, so it contributes no target.
-    const promo = fight.event.promotion ? resolvePromotion(fight.event.promotion) : null;
-    if (promo && promo.slug !== "combat") targets.push({ type: "promotion", id: promo.slug });
-
-    let notified = 0;
-    for (const t of targets) notified += await notifyFollowers(t, payload);
+    });
     return { notified };
   } catch (e) {
     log.error({ op: "social.fightResult", fightId, err: (e as Error).message }, "result fan-out FAILED");

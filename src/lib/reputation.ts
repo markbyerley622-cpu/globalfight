@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { notify } from "@/lib/notifications-store";
+import { notifyCommunityMilestone } from "@/lib/social/person-triggers";
 
 // ── Reputation ──────────────────────────────────────────────────────────────
 // ONE score, many sources. `User.reputation` is the running total; every change
@@ -53,6 +54,15 @@ export async function awardReputation(
     select: { reputation: true },
   });
   await notifyRepMilestone(db, userId, after.reputation - delta, after.reputation);
+
+  // …and tell this user's FOLLOWERS, at a deliberately higher bar (see
+  // person-triggers): being told your own score passed 100 is encouragement, and
+  // telling twenty other people about it is noise.
+  //
+  // Fire-and-forget rather than awaited: `db` is usually the settlement
+  // transaction, and this fans out to other users' rows — work that has no business
+  // holding a lock on the payout, and no business failing it either.
+  void notifyCommunityMilestone(userId, after.reputation - delta, after.reputation).catch(() => {});
 }
 
 // ── Milestones ──────────────────────────────────────────────────────────────

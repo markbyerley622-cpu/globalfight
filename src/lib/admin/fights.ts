@@ -5,6 +5,7 @@ import { slugify } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
 import { lockableFightFields, withLocked } from "@/lib/admin/provenance";
 import { onResultWritten } from "@/lib/intelligence/resolve";
+import { notifyFightChanges } from "@/lib/social/fighter-triggers";
 import type { ValidationIssue } from "@/lib/admin/events";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -203,6 +204,16 @@ export async function saveFight(
   const resultChanged = "result" in finalData || "winnerId" in finalData;
   const nowDecided = String(finalData.result ?? before.result) !== "SCHEDULED";
   if (resultChanged && nowDecided) await onResultWritten(fightId, `admin:${actorId}`);
+
+  // FOLLOWERS. An operator scratching a bout ("Jones out — injury") or moving it is
+  // exactly the news a fan who picked it needs, and the cardNote they typed travels
+  // with the notification. The RESULT case is deliberately not here — settlement
+  // above already fans results out, and doing it twice is how one fact becomes two
+  // notifications. Never throws.
+  await notifyFightChanges(
+    { id: before.id, cancelled: before.cancelled, date: before.date, eventId: before.eventId, result: before.result },
+    fightId,
+  );
 
   return { ok: true, fight: { id: updated.id, updatedAt: updated.updatedAt.toISOString(), lockedFields: updated.lockedFields } };
 }

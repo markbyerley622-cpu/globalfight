@@ -2,6 +2,8 @@ import "server-only";
 import type { NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { pushToUsers } from "@/lib/push/send";
+import { CATEGORY_OF, type NotifCategory } from "@/lib/push/policy";
+import { filterByPreference } from "@/lib/follow-targets";
 import { resolvePromotion } from "@/lib/promotions";
 import { dayKey, STREAK_WARN_MIN } from "@/lib/identity/streak-math";
 
@@ -25,9 +27,9 @@ const HOUR = 3_600_000;
 
 interface AudienceMember { userId: string; picks: number; fighters: number }
 
-/** Everyone who should hear about this event: promotion followers, followers of
- *  a fighter on the card, and anyone who already made a pick — merged, with the
- *  per-user signal used to personalise the copy. */
+/** Everyone who should hear about this event: the EVENT's own followers, the
+ *  promotion's, followers of a fighter on the card, and anyone who already made a
+ *  pick — merged, with the per-user signal used to personalise the copy. */
 async function audienceFor(event: { id: string; promotion: string | null }): Promise<AudienceMember[]> {
   const fights = await prisma.fight.findMany({
     where: { eventId: event.id },
@@ -38,7 +40,12 @@ async function audienceFor(event: { id: string; promotion: string | null }): Pro
 
   const promoSlug = event.promotion ? resolvePromotion(event.promotion).slug : null;
 
-  const [promoFollowers, fighterFollowers, pickers] = await Promise.all([
+  const [eventFollowers, promoFollowers, fighterFollowers, pickers] = await Promise.all([
+    // The EVENT's own followers were missing entirely. Tapping "Remind me" on a card
+    // is the most explicit request for exactly these two notifications in the app,
+    // and it was the one audience that did not receive them — unless the user also
+    // happened to follow the promotion or a fighter on it.
+    prisma.favoriteEvent.findMany({ where: { eventId: event.id }, select: { userId: true } }),
     promoSlug
       ? prisma.favoritePromotion.findMany({ where: { promotion: promoSlug }, select: { userId: true } })
       : Promise.resolve([]),
@@ -56,6 +63,7 @@ async function audienceFor(event: { id: string; promotion: string | null }): Pro
     if (!m) { m = { userId: id, picks: 0, fighters: 0 }; map.set(id, m); }
     return m;
   };
+  for (const r of eventFollowers) get(r.userId);
   for (const r of promoFollowers) get(r.userId);
   for (const r of fighterFollowers) get(r.userId).fighters += 1;
   for (const r of pickers) get(r.userId).picks = r._count.userId;
@@ -116,7 +124,40 @@ function soonBody(m: AudienceMember): string {
   return bits.length ? bits.join(" · ") : "Make your picks before the first bell.";
 }
 
-async function emit(rows: NewNotif[]): Promise<number> {
+/**
+ * Drop rows whose recipient muted that notification's category.
+ *
+ * This engine wrote its in-app rows unconditionally and gated only the PUSH, so a
+ * user who turned "Fights & events" off still accumulated every reminder in their
+ * bell — the toggle hid the buzz and not the notification. Everywhere else in the
+ * app a disabled category GENERATES NOTHING (see followerIdsToNotify), and the
+ * scheduler was the one path that disagreed.
+ *
+ * Batched by category — one query per distinct category in the batch, never one
+ * per row, and typically exactly one.
+ */
+async function allowedByPreference(rows: NewNotif[]): Promise<NewNotif[]> {
+  const byCategory = new Map<NotifCategory, Set<string>>();
+  for (const r of rows) {
+    const category = CATEGORY_OF[r.type] ?? "social";
+    const set = byCategory.get(category) ?? new Set<string>();
+    set.add(r.userId);
+    byCategory.set(category, set);
+  }
+
+  const allowed = new Map<NotifCategory, Set<string>>();
+  await Promise.all(
+    [...byCategory].map(async ([category, userIds]) => {
+      allowed.set(category, new Set(await filterByPreference([...userIds], category)));
+    }),
+  );
+
+  return rows.filter((r) => allowed.get(CATEGORY_OF[r.type] ?? "social")?.has(r.userId));
+}
+
+async function emit(all: NewNotif[]): Promise<number> {
+  if (!all.length) return 0;
+  const rows = await allowedByPreference(all);
   if (!rows.length) return 0;
   const keys = [...new Set(rows.map((r) => r.dedupeKey))];
 

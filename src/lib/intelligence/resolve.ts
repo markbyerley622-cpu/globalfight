@@ -9,6 +9,8 @@ import { winnerCorner, upsetFactor } from "@/lib/intelligence/scoring";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
 import { notifyFightResult } from "@/lib/social/triggers";
+import { notifyOfficialResults } from "@/lib/social/event-triggers";
+import { notifyCardMilestone, notifyStreakMilestone } from "@/lib/social/person-triggers";
 
 /**
  * Interactive-transaction limits for the settlement fan-out.
@@ -152,12 +154,28 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
         if (user.pickStreak > user.bestPickStreak) {
           await tx.user.update({ where: { id: pick.userId }, data: { bestPickStreak: user.pickStreak } });
         }
+        // FOLLOWERS, on a streak crossing a bragging line only (5/10/25/50/100).
+        // Fire-and-forget: this writes to OTHER users' rows and has no business
+        // holding a lock on this payout — or failing it. `pickStreak` was just
+        // incremented, so the pre-increment value is the "before".
+        void notifyStreakMilestone(pick.userId, user.pickStreak - 1, user.pickStreak).catch(() => {});
         const rep = pickReputation({ upsetFactor: upset, confidence: pick.confidence, streak: user.pickStreak });
         await awardReputation(tx, pick.userId, rep, "pick_correct", { type: "fight", id: fightId });
 
         if (winnerFighterId) {
           await awardCard(tx, pick.userId, winnerFighterId, { rarity, reason: "correct_pick", fightId });
           await recordActivity(tx, pick.userId, { type: "CARD_EARNED", title: `Earned a ${rarity.toLowerCase()} ${winnerName} card`, url: boutUrl });
+          // Followers hear about the rare tiers only — the collection grows with
+          // every correct pick, and a BASE card is a Tuesday. Keyed on the
+          // (user, fight) pair, which is what a card award is unique on.
+          void notifyCardMilestone(pick.userId, {
+            rarity,
+            // Non-null in practice inside this branch (a winning fighter id implies a
+            // name), but the type does not know that and a crash here would take the
+            // payout with it.
+            fighterName: winnerName ?? "a fighter",
+            cardId: `${pick.userId}:${fightId}`,
+          }).catch(() => {});
         }
         // A correct call now has a shareable Victory Card — send the win straight
         // to it (the peak moment to share). Falls back to the bout for the rare
@@ -213,7 +231,15 @@ export async function resolveFightPicks(fightId: string): Promise<{ resolved: nu
 
   // If that was the last graded bout on the card, close the loop with one
   // scoreline. Best-effort: the payouts above are the real work.
-  if (fight.eventId) await notifyCardSummary(fight.eventId).catch(() => {});
+  if (fight.eventId) {
+    await notifyCardSummary(fight.eventId).catch(() => {});
+    // …and tell the card's FOLLOWERS the official results are in. Distinct from the
+    // summary above, which scores the reader's own picks: this is the card-level
+    // fact for someone who follows the event or the promotion and predicted nothing.
+    // Self-guarding on the card being genuinely complete, so it fires exactly once
+    // whichever bout happens to be decided last.
+    await notifyOfficialResults(fight.eventId);
+  }
 
   return { resolved };
 }

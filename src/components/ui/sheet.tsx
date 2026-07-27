@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScrollLock } from "@/lib/use-scroll-lock";
@@ -18,6 +19,21 @@ const FOCUSABLE =
  * Escape, safe-area) but shared. Sits at `z-[100]` — above the shell chrome
  * (`z-40`) and level with `SearchOverlay`, but BELOW the feed immersive band
  * (`z-[120–150]`) so reels/player/upload still cover it as intended.
+ *
+ * ── WHY THIS PORTALS TO document.body ─────────────────────────────────────
+ * `position: fixed` is only relative to the VIEWPORT while no ancestor
+ * establishes a containing block — and `backdrop-filter` does, exactly like
+ * `transform` does. The app header is `backdrop-blur-xl`, and the notification
+ * bell renders inside it, so this overlay's `fixed inset-0` was resolving
+ * against the ~98px-tall header instead of the screen: with `items-center`, a
+ * 485px panel centred in a 98px box sat 194px ABOVE the top of the window, and
+ * everything in its top third — the title, and any toolbar above the list — was
+ * scrolled off-screen and unclickable.
+ *
+ * Measured, not guessed: the overlay's own computed height was 97.6px. A portal
+ * to `document.body` puts the overlay outside every filtered ancestor, so
+ * `fixed` means the viewport again. Fixing it here rather than in the bell fixes
+ * it for every Sheet mounted anywhere inside filtered or transformed chrome.
  */
 export function Sheet({
   open,
@@ -74,8 +90,12 @@ export function Sheet({
   }, [open, onClose]);
 
   if (!open) return null;
+  // Nothing to portal into during SSR. Every Sheet in the app opens from a user
+  // interaction, so `open` is false on the server and this renders null there
+  // either way — there is no hydration mismatch to manage.
+  if (typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-ink-950/70 backdrop-blur-sm sm:items-center"
       role="dialog"
@@ -109,6 +129,7 @@ export function Sheet({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

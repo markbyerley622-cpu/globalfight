@@ -12,6 +12,8 @@ import { stripLocked } from "@/lib/admin/provenance";
 import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { onResultWritten } from "@/lib/intelligence/resolve";
+import { notifyEventChanges, snapshotEvent } from "@/lib/social/event-triggers";
+import { notifyFightAnnounced, notifyFightChanges } from "@/lib/social/fighter-triggers";
 import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
@@ -162,6 +164,15 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
 
   const match = await resolveEvent({ source: ev._meta.source, externalId: ev.externalId, name: ev.name, sport, date: ev.date });
 
+  // The card's shape BEFORE this write, so the notification layer can tell an
+  // announcement from a re-ingest. Taken here rather than inside the branches
+  // below because an unmatched event may still resolve to an existing row via its
+  // slug in the upsert — in which case it is an update, not an announcement, and a
+  // snapshot taken only on the `match.eventId` path would have called it new.
+  const before = match.eventId
+    ? await snapshotEvent({ id: match.eventId })
+    : await snapshotEvent({ slug: slugify(ev.name) || slugify(`${ev.name}-${ev.date.slice(0, 10)}`) });
+
   const fill = defined({
     name: ev.name,
     promotion: ev.promotion,
@@ -221,6 +232,12 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
       log.warn({ event: ev.name, err: (e as Error).message }, "persist:fight-failed");
     }
   }
+
+  // FOLLOWERS, after the whole card has landed. One diff for the event and its
+  // card, so a twelve-bout import is "the card is live", not twelve notifications.
+  // The per-BOUT facts (a fighter booked, a bout scratched) are fired by
+  // upsertFight, which is the only place that knows whether a given bout is new.
+  await notifyEventChanges(before, eventId);
 
   await invalidate(`event:${slugify(ev.name)}`);
 }
@@ -455,6 +472,29 @@ async function upsertFight(
   // this job write, and from which page?" had no answer, so cleaning up a bad import
   // meant inferring intent from slug shapes.
   await recordFightImport(outcome.fightId, source, ev.externalId, outcome.existing === null);
+
+  // FOLLOWER-FACING BOUT FACTS. The transaction above is the only place that knows
+  // whether this bout already existed, so the diff is built from what it returned
+  // rather than re-read (a re-read would see the post-write state and could never
+  // tell a booking from a re-ingest).
+  //
+  // Guarded inside the triggers: a bout that arrives already decided is history
+  // being backfilled, not a booking, and announcing it would be the single fastest
+  // way to destroy trust in the category.
+  if (outcome.existing === null) {
+    await notifyFightAnnounced(outcome.fightId);
+  } else {
+    await notifyFightChanges(
+      {
+        id: outcome.existing.id,
+        cancelled: outcome.existing.cancelled,
+        date: outcome.existing.date,
+        eventId: outcome.existing.eventId,
+        result: outcome.existing.result,
+      },
+      outcome.fightId,
+    );
+  }
 
   // SETTLEMENT, fired by the write that caused it. Ingest used to stop at
   // Fight.result and leave every prediction on the bout open until a cron happened

@@ -6,6 +6,7 @@ import { invalidate } from "@/lib/cache";
 import {
   lockableEventFields, withLocked, LOCKABLE_EVENT_FIELDS,
 } from "@/lib/admin/provenance";
+import { notifyEventChanges, snapshotFromRow } from "@/lib/social/event-triggers";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Admin — event mutations.
@@ -204,6 +205,12 @@ export async function saveEvent(
     lockableEventFields(changed.map((c) => (c as { field: string }).field)),
   );
 
+  // Snapshot for the follower notifications, from the row already in hand. Taken
+  // before the write for the obvious reason: afterwards there is nothing left to
+  // compare against, and "the operator just announced this card" is a diff, not a
+  // property of the new row.
+  const socialBefore = await snapshotFromRow(before);
+
   const [updated] = await prisma.$transaction([
     prisma.event.update({
       where: { id: eventId },
@@ -226,6 +233,11 @@ export async function saveEvent(
   await invalidate("events:results");
   await invalidate(`event:${updated.slug}`);
   if (before.slug !== updated.slug) await invalidate(`event:${before.slug}`);
+
+  // FOLLOWERS. An operator publishing a DRAFT, cancelling a card, moving it or
+  // swapping the main event are the most important notifications in the app —
+  // they are facts a human decided, not a scraper's guess. Never throws.
+  await notifyEventChanges(socialBefore, eventId);
 
   return {
     ok: true,
