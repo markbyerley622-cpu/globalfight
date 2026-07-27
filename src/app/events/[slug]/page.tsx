@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ArrowRight, Play, Trophy, Mic, TrendingUp, Megaphone, Scale, Swords, BarChart3, Siren, Flame, Newspaper, type LucideIcon } from "lucide-react";
 
 // Clean monochrome section icons — one per coverage group key (no emoji).
@@ -181,6 +182,25 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {/* The card IS the product surface: every bout is an independent module
           carrying its own prediction, battle and discussion. */}
       <ScrollSection id="card" title="Fight card" seam={false}>
+        {fights.length === 0 ? (
+          /* AN EMPTY CARD IS A REAL STATE, not a failure to render.
+             A card is created as soon as a date is announced — often weeks before a
+             single bout is — and this section previously rendered CollapsibleFights
+             with no children: a heading above nothing, which reads as the page being
+             broken rather than the card being unannounced. Saying so is both true and
+             the difference between "come back" and "this site doesn't work". */
+          <EmptyState
+            compact
+            icon={<Swords className="size-5" />}
+            title="Bout card has not been announced yet"
+            body={
+              event.status === "CANCELLED"
+                ? "This event was called off before a card was announced."
+                : "The date is confirmed but the matchups aren't. Follow the event and we'll tell you the moment bouts are added."
+            }
+          />
+        ) : (
+        <>
         {/* Compressed: the top bouts (main event + co-main + one) render; the
             rest tuck behind a "View N more predictions" toggle so a reader reaches
             the card talk + coverage without scrolling past every bout. */}
@@ -212,6 +232,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                   />
           ))}
         </CollapsibleFights>
+        </>
+        )}
       </ScrollSection>
 
       {/* Card-wide talk. Provisioned only when the reader reaches it, so the

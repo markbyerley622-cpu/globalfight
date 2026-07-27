@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn, formatRecord } from "@/lib/utils";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
+import { OddsDisclosure } from "@/components/odds-disclosure";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { Flag } from "@/components/flag";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,9 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
             <span>{market.books} book{market.books === 1 ? "" : "s"}</span>
           </div>
           <ProbabilityBar redLabel={red.name} blueLabel={blue.name} redProbability={market.redP} />
+          {/* Non-negotiable: the licence for this data requires attribution and
+              18+/RG messaging on every surface that shows it. */}
+          <OddsDisclosure />
         </div>
       ) : (
         <p className="mt-5 rounded-lg bg-ink-800 px-3 py-2 text-center text-xs text-fog">

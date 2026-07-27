@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Send, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OddsDisclosure } from "@/components/odds-disclosure";
 import type { PredictionMarket } from "@/features/predictions/types";
 import type { CommunityOption, MarketVote } from "@/features/predictions/community/types";
 import { Chip, CloseTimer, ConsensusBar, Portrait, fmtNum, initials, pct, marketDivergence, sharePrediction } from "@/components/predictions/shared";
@@ -105,6 +106,9 @@ export function MarketCard({
           <span className="text-[0.58rem] text-fog/80">Bookmaker implied probability</span>
         </div>
         <ConsensusBar leftLabel={fav?.label ?? "—"} leftPct={favPct} rightLabel={under.label} rightPct={underPct} size="lg" />
+        {/* The licence for bookmaker data requires attribution and 18+/RG messaging
+            on EVERY surface that shows it — see components/odds-disclosure. */}
+        <OddsDisclosure />
       </div>
 
       {/* Combat Register community vote (fills to the bottom) */}
