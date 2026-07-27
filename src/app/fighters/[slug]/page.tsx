@@ -34,12 +34,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const sportLabel = SPORT_LABEL[f.sport] ?? f.sport;
   const title = `${f.name}${f.nickname ? ` "${f.nickname}"` : ""} — ${sportLabel} profile`;
   const description = `${f.name}: ${formatSportRecord(f)} · ${sportLabel} · ${f.nationality ?? ""}. ${f.tagline ?? "Official profile, record, achievements, gallery and contact on Combat Reviews."}`.trim();
-  const image = f.imageUrl ?? f.heroImageUrl ?? "/cr-logo.png";
+  // NO `images` override. There is a designed card at ./opengraph-image (name,
+  // record in the badge, nationality/gym/KO-rate chips, CR mark), and setting
+  // `images` here SHADOWED it: this route advertised the fighter's portrait
+  // instead — or, for the majority of fighters who have no photo, a bare
+  // /cr-logo.png. Both are wrong for a 1200×630 slot: a portrait is the wrong
+  // aspect and gets cropped through the face by every network, and a lone logo
+  // tells a reader nothing about who they are being shown.
+  //
+  // The photo still belongs on the PAGE. It does not belong in the share card.
   return {
     title, description,
     alternates: { canonical: `/fighters/${slug}` },
-    openGraph: { title, description, type: "profile", url: `${SITE.url}/fighters/${slug}`, images: [{ url: image }] },
-    twitter: { card: "summary_large_image", title, description, images: [image] },
+    openGraph: { title, description, type: "profile", url: `${SITE.url}/fighters/${slug}` },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 

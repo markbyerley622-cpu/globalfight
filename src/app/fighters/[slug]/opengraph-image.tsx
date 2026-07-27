@@ -27,6 +27,7 @@ export default async function Image({ params }: { params: { slug: string } }) {
     sub: f.nickname ? `"${f.nickname}"` : null,
     // The record IS the headline stat for a fighter — it earns the badge slot.
     badge: record,
+    badgeLabel: record ? "Record" : null,
     chips: [
       f.nationality,
       f.gym,
