@@ -13,6 +13,7 @@ import { BackButton } from "@/components/back-button";
 import { ShareMenu } from "@/components/share-menu";
 import { timeAgo } from "@/lib/utils";
 import { publicDisplayName } from "@/lib/display-name";
+import { getFollowCounts } from "@/lib/geo/people";
 
 const ROLE_LABEL: Record<string, string> = {
   fighter: "Fighter", coach: "Coach", gym: "Gym", promoter: "Promoter",
@@ -47,7 +48,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const u = await loadUser(username);
   if (!u?.username) notFound();
 
-  const [stats, activity, rankedTotal, trainingNow] = await Promise.all([
+  const [stats, activity, rankedTotal, trainingNow, followCounts] = await Promise.all([
     getProfileStats(u.id),
     getUserActivity(u.id, 8),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
@@ -55,6 +56,8 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
     // field, so it cannot disagree with the check-in that produced it and it
     // expires on its own.
     getTrainingNowFor(u.id),
+    // Added to the EXISTING parallel wave rather than a new round-trip.
+    getFollowCounts(u.id),
   ]);
 
   const displayName = publicDisplayName(u);
@@ -117,6 +120,33 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             </p>
             <p className="text-[0.65rem] uppercase tracking-wider text-fog">Reputation</p>
           </div>
+        </div>
+
+        {/* SOCIAL PROOF. The profile led with prediction stats and showed nothing
+            about the person's standing in the community — so following someone was
+            a capability with no visible consequence anywhere. Followers first,
+            because it is the number that tells a stranger whether this person is
+            worth reading. Both counts are LINKS: a count you cannot open is
+            decoration. */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+          <Link
+            href={`/u/${u.username}/followers`}
+            className="tap inline-flex items-baseline gap-1.5 rounded-lg border border-ink-800 bg-ink-900 px-3 py-1.5 transition-colors hover:border-ink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+          >
+            <span className="font-display text-sm font-bold tabular-nums text-chalk">
+              {followCounts.followers.toLocaleString()}
+            </span>
+            <span className="text-[0.7rem] uppercase tracking-wide text-fog">Followers</span>
+          </Link>
+          <Link
+            href={`/u/${u.username}/following`}
+            className="tap inline-flex items-baseline gap-1.5 rounded-lg border border-ink-800 bg-ink-900 px-3 py-1.5 transition-colors hover:border-ink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+          >
+            <span className="font-display text-sm font-bold tabular-nums text-chalk">
+              {followCounts.following.toLocaleString()}
+            </span>
+            <span className="text-[0.7rem] uppercase tracking-wide text-fog">Following</span>
+          </Link>
         </div>
 
         {/* Status chips */}

@@ -218,6 +218,63 @@ export async function getFollowCounts(userId: string) {
   return { followers, following };
 }
 
+/** A person as they appear in a follower list. */
+export interface FollowListPerson {
+  username: string;
+  name: string;
+  image: string | null;
+  reputation: number;
+}
+
+/**
+ * The people who follow this user, or the people they follow.
+ *
+ * Names go through publicDisplayName here rather than at the call site: these lists
+ * are public pages, and a raw `name` is one careless render away from publishing
+ * somebody's email address (see lib/display-name).
+ *
+ * Anyone without a handle is dropped — the row's whole purpose is to link to a
+ * profile, and /u/undefined is not one.
+ */
+export async function listFollows(
+  userId: string,
+  direction: "followers" | "following",
+  limit = 100,
+): Promise<FollowListPerson[]> {
+  const take = Math.min(Math.max(limit, 1), 200);
+  const person = { select: { username: true, name: true, image: true, reputation: true } } as const;
+
+  // TWO explicit queries rather than one with a conditional `select`. Passing
+  // `follower: undefined` inside a select is the kind of thing TypeScript accepts
+  // and Prisma may reject at RUNTIME, which would mean discovering it on a
+  // deployed page rather than in a build.
+  const rows =
+    direction === "followers"
+      ? await prisma.userFollow.findMany({
+          where: { followingId: userId },
+          orderBy: { createdAt: "desc" },
+          take,
+          select: { follower: person },
+        })
+      : await prisma.userFollow.findMany({
+          where: { followerId: userId },
+          orderBy: { createdAt: "desc" },
+          take,
+          select: { following: person },
+        });
+
+  return rows.flatMap((r) => {
+    const p = "follower" in r ? r.follower : r.following;
+    if (!p?.username) return [];
+    return [{
+      username: p.username,
+      name: publicDisplayName(p),
+      image: p.image,
+      reputation: p.reputation,
+    }];
+  });
+}
+
 /** Resolve a user's chosen city into the point the map will plot. Called on
  *  every write of mapCity so the layer never geocodes at read time. */
 export function resolveUserPoint(city: string | null, countryCode: string | null) {

@@ -43,22 +43,50 @@ export function EventSchedule({
 }) {
   const target = new Date(date).getTime();
   const [t, setT] = useState<ReturnType<typeof diff>>(null);
+  // Has first bell passed? `null` means "not measured yet".
+  //
+  // This CANNOT be derived from `t` being null, which is what the component used to
+  // do, and it produced two separate wrong states:
+  //
+  //  • A card whose date has passed while its status is still SCHEDULED — i.e. every
+  //    card between the final bell and the results landing — rendered the eyebrow
+  //    "First bell in" ABOVE the words "Card finished". Both from the same render.
+  //  • `t` is also null on the FIRST render of an upcoming card, before the effect
+  //    runs, so every future event flashed "Card finished" before hydration.
+  //
+  // Measured in the effect rather than inline so server and client cannot disagree
+  // about the current time and trip a hydration mismatch.
+  const [started, setStarted] = useState<boolean | null>(null);
   const [local, setLocal] = useState<string>("");
 
   useEffect(() => {
     setT(diff(target));
+    setStarted(target <= Date.now());
     setLocal(
       new Intl.DateTimeFormat(undefined, {
         weekday: "long", month: "short", day: "numeric",
         hour: "numeric", minute: "2-digit", timeZoneName: "short",
       }).format(new Date(target)),
     );
-    const id = setInterval(() => setT(diff(target)), 1000);
+    const id = setInterval(() => {
+      setT(diff(target));
+      setStarted(target <= Date.now());
+    }, 1000);
     return () => clearInterval(id);
   }, [target]);
 
   const isLive = status === "LIVE";
   const isDone = status === "COMPLETED";
+  /**
+   * The card has happened, but no result has been recorded yet.
+   *
+   * This is a REAL state, not an edge case: results arrive from an ingest that runs
+   * hourly, so every card sits here for a while after the final bell. Saying
+   * "Results pending" is both true and actionable; saying "Card finished" next to
+   * "First bell in" told the reader two contradictory things and neither of them was
+   * that we are still waiting on sources.
+   */
+  const awaitingResults = started === true && !isLive && !isDone;
   const urgent = !!t && t.ms < 86400000; // inside 24h
   const soon = !!t && t.ms < 3600000; // inside the hour
 
@@ -85,18 +113,31 @@ export function EventSchedule({
     >
       <div className="mb-3 flex items-center justify-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-fog">
         <CalendarClock className="size-3.5" />
-        {isLive ? "Happening now" : isDone ? "Event complete" : soon ? "Starting soon" : "First bell in"}
+        {isLive
+          ? "Happening now"
+          : isDone
+            ? "Event complete"
+            : awaitingResults
+              ? "Awaiting results"
+              : soon
+                ? "Starting soon"
+                : "First bell in"}
       </div>
 
       {isLive ? (
         <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-blood-400">
           <span className="live-dot mr-2 inline-block align-middle" aria-hidden /> Live now
         </p>
-      ) : isDone || !t ? (
+      ) : isDone ? (
+        <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-mist">Final</p>
+      ) : awaitingResults ? (
         <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-mist">
-          {isDone ? "Final" : "Card finished"}
+          Results pending
+          <span className="mt-1 block font-sans text-[0.68rem] font-normal normal-case tracking-normal text-fog">
+            Sources are checked hourly.
+          </span>
         </p>
-      ) : (
+      ) : t ? (
         <div className={`flex items-center justify-center gap-3 sm:gap-5 ${urgent ? "text-blood-300" : ""}`}>
           {cell(t.days, "Days")}
           <span className="pb-4 text-2xl text-ink-700">:</span>
@@ -105,6 +146,20 @@ export function EventSchedule({
           {cell(t.minutes, "Min")}
           <span className="pb-4 text-2xl text-ink-700">:</span>
           {cell(t.seconds, "Sec", soon)}
+        </div>
+      ) : (
+        // Pre-hydration only: the clock has not been measured yet. Zeroed cells hold
+        // the exact layout the real countdown will occupy, so the number swaps in
+        // without shifting anything. Previously this branch printed "Card finished"
+        // on every upcoming event for one frame.
+        <div aria-hidden className="flex items-center justify-center gap-3 opacity-40 sm:gap-5">
+          {cell(0, "Days")}
+          <span className="pb-4 text-2xl text-ink-700">:</span>
+          {cell(0, "Hrs")}
+          <span className="pb-4 text-2xl text-ink-700">:</span>
+          {cell(0, "Min")}
+          <span className="pb-4 text-2xl text-ink-700">:</span>
+          {cell(0, "Sec")}
         </div>
       )}
 
