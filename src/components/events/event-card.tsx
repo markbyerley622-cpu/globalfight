@@ -131,7 +131,10 @@ export function EventCard({ event }: { event: EventCardData }) {
           {location && (
             <span className="inline-flex min-w-0 items-center gap-1 text-fog">
               <MapPin className="size-3.5 text-blood-400" />
-              <span className="truncate">{location}</span> <Flag code={event.countryCode} />
+              {/* `name` fallback: countryCode is often null on ingested events while
+                  `country` is set, which rendered the name in text beside a grey
+                  placeholder box. See components/flag.tsx. */}
+              <span className="truncate">{location}</span> <Flag code={event.countryCode} name={event.country} />
             </span>
           )}
         </div>

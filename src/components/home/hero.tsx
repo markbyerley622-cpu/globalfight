@@ -123,7 +123,7 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
                 <span className="flex items-center gap-1.5"><Calendar className="size-4 text-blood-400" />{new Date(slide.date).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric" })}</span>
               )}
               {slide.venue && (
-                <span className="flex items-center gap-1.5"><MapPin className="size-4 text-blood-400" />{slide.venue}{slide.country ? `, ${slide.country}` : ""} <Flag code={slide.countryCode} /></span>
+                <span className="flex items-center gap-1.5"><MapPin className="size-4 text-blood-400" />{slide.venue}{slide.country ? `, ${slide.country}` : ""} <Flag code={slide.countryCode} name={slide.country} /></span>
               )}
             </div>
 

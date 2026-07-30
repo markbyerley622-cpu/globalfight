@@ -85,7 +85,7 @@ export function DiscoveryEventCard({ event }: { event: UpcomingEvent }) {
         <span>{formatDate(event.date, { weekday: "short" })}</span>
         {location && (
           <span className="inline-flex items-center gap-1">
-            <MapPin className="size-3" /> {location} <Flag code={event.countryCode} />
+            <MapPin className="size-3" /> {location} <Flag code={event.countryCode} name={event.country} />
           </span>
         )}
         <span className="inline-flex items-center gap-1">

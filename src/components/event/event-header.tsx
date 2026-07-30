@@ -133,7 +133,7 @@ export function EventHeader({
                   href={inAppMap}
                   className="inline-flex items-center gap-1.5 text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400"
                 >
-                  {location} <Flag code={event.countryCode} />
+                  {location} <Flag code={event.countryCode} name={event.country} />
                   <span className="text-[11px] font-medium text-blood-400">· View on map</span>
                 </Link>
                 {/* Secondary: external directions (final fallback). */}
@@ -155,12 +155,12 @@ export function EventHeader({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-chalk underline decoration-ink-700 underline-offset-4 transition-colors hover:text-blood-300 hover:decoration-blood-400"
               >
-                {location} <Flag code={event.countryCode} />
+                {location} <Flag code={event.countryCode} name={event.country} />
                 <span className="text-[11px] font-medium text-blood-400">· Directions ↗</span>
               </a>
             ) : (
               <span className="inline-flex items-center gap-1.5">
-                {location} <Flag code={event.countryCode} />
+                {location} <Flag code={event.countryCode} name={event.country} />
               </span>
             )}
           </Meta>
