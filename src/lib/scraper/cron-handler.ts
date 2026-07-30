@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { refresh, type RefreshKind } from "./runner";
+import { refreshDetailed, type RefreshKind } from "./runner";
 import { log } from "./logger";
 
 /**
@@ -26,12 +26,35 @@ export function makeCronHandler(kind: RefreshKind) {
 
     const started = Date.now();
     try {
-      const results = await refresh(kind);
+      const { results, failed } = await refreshDetailed(kind);
       const durationMs = Date.now() - started;
+
+      // A run in which EVERY target threw is a failed run, and must answer with an
+      // HTTP error. Previously this returned 200 `ok:true` with the error text
+      // hidden inside `results`, so `curl -fsS` in render.yaml saw success and the
+      // scheduled job showed green while doing literally nothing. 502 (not 500) so
+      // the curl `--retry-all-errors` in the cron services actually retries it.
+      const total = Object.keys(results).length;
+      if (total > 0 && failed.length === total) {
+        log.error({ kind, durationMs, failed }, "cron:all-targets-failed");
+        return NextResponse.json(
+          { ok: false, kind, durationMs, results, failed, error: failed[0].error },
+          { status: 502 },
+        );
+      }
+
+      // A PARTIAL failure still returns 200 — the run did useful work and retrying
+      // it would repeat that work — but `ok` is false and `failed` is populated, so
+      // the health dashboard and the logs can both see it.
+      if (failed.length) {
+        log.warn({ kind, durationMs, failed }, "cron:partial-failure");
+        return NextResponse.json({ ok: false, kind, durationMs, results, failed });
+      }
+
       log.info({ kind, durationMs }, "cron:done");
-      return NextResponse.json({ ok: true, kind, durationMs, results });
+      return NextResponse.json({ ok: true, kind, durationMs, results, failed: [] });
     } catch (e) {
-      return NextResponse.json({ ok: false, kind, error: (e as Error).message }, { status: 500 });
+      return NextResponse.json({ ok: false, kind, error: (e as Error).message }, { status: 502 });
     }
   };
 }

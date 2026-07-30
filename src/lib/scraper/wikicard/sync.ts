@@ -138,6 +138,7 @@ async function harvestTarget(
 ): Promise<Attempt> {
   const { eventIdentity, searchIdentity, expectedBouts, gap } = target;
   const outcome: WikiTargetOutcome = {
+    eventId: target.eventId,
     event: eventIdentity.name,
     strategy: null, page: null, matched: 0, bouts: 0,
     queries: 0, parses: 0, rejected: 0, rejectedDetail: [], reason: "no_candidate", trace: [],
@@ -353,6 +354,7 @@ export async function syncWikiCards(targets: WikiTarget[]): Promise<WikiHarvest>
           if (outcome.note) warnings.push(`${outcome.event}: ${outcome.note}`);
         } catch (e) {
           outcomes.push({
+            eventId: target.eventId,
             event: target.eventIdentity.name, strategy: null, page: null,
             matched: 0, bouts: 0, queries: 0, parses: 0, rejected: 0, rejectedDetail: [],
             reason: "error", note: (e as Error).message, trace: [],

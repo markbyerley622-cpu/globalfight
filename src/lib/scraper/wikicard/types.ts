@@ -25,6 +25,13 @@ export interface EventIdentity {
  * it. See search-strategies.ts.
  */
 export interface WikiTarget {
+  /**
+   * The Event row this target came from. Carried so a run can write its OUTCOME back
+   * to that row (Event.resultAttempt*) — the harvester used to identify a target only
+   * by event NAME, which is neither unique nor a key, so a per-event result could not
+   * be recorded even though it was computed.
+   */
+  eventId: string;
   /** For OUR database. */
   eventIdentity: EventIdentity;
   /** For the SOURCE — an ordered ladder, tried until one verifies. */
@@ -79,6 +86,8 @@ export interface TraceStep {
 
 /** What happened to one target — every outcome is nameable, none is silent. */
 export interface WikiTargetOutcome {
+  /** The Event row, so the outcome can be written back to it. */
+  eventId: string;
   event: string;
   /** The strategy that produced a verified match, or null when none did. */
   strategy: SearchStrategyKind | null;

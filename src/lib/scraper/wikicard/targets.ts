@@ -110,7 +110,21 @@ export async function findWikiTargets(opts: FindTargetsOpts = {}): Promise<WikiT
         fights: { some: { result: "SCHEDULED" } },
         ...filter,
       },
-      orderBy: { date: "desc" },
+      // LEAST-RECENTLY-ATTEMPTED FIRST — a rotation, not a leaderboard.
+      //
+      // This was `orderBy: { date: "desc" }`, which is why "some events resolve and
+      // some stay Pending forever" was the observed behaviour. The hourly job takes
+      // `limit` (RESULT_BATCH, 12) events from a 21-day window. Ordered by date
+      // descending, that is the 12 NEWEST — so with 13+ unresolved events in the
+      // window the same head was re-attempted every hour and the tail was never
+      // attempted ONCE, then aged past 21 days and became unreachable to the
+      // incremental mode entirely. Nothing was broken about the scraper, the parser
+      // or the matching: which events got a result was decided by queue position.
+      //
+      // nulls-first means a never-attempted event always outranks one we have already
+      // tried, so a new card is picked up promptly AND the backlog drains. `date:
+      // desc` only breaks ties within the same attempt timestamp.
+      orderBy: [{ resultAttemptAt: { sort: "asc", nulls: "first" } }, { date: "desc" }],
       skip,
       take: limit,
       select,
@@ -203,6 +217,7 @@ async function buildTargets(rows: { row: EventRow; gap: WikiGap }[]): Promise<Wi
     if (!searchIdentity.length) continue;
 
     targets.push({
+      eventId: row.id,
       eventIdentity: { name: row.name, date: row.date.toISOString(), sport: row.sport as Sport },
       searchIdentity,
       expectedBouts: bouts,
@@ -247,6 +262,48 @@ export async function findWikiTargetForFight(query: string): Promise<WikiTarget 
 const slugish = (q: string) => q.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const firstName = (q: string) => q.split(/\s+vs\.?\s+/i)[0]?.trim() ?? q;
 const lastName = (q: string) => q.split(/\s+vs\.?\s+/i)[1]?.trim() ?? q;
+
+/**
+ * Record what happened to each attempted event.
+ *
+ * This is the other half of the starvation fix. Two things depend on it:
+ *
+ *   • the queue rotation in findWikiTargets — without a written `resultAttemptAt`
+ *     the ordering has nothing to sort by and every run picks the same head again;
+ *   • diagnosis — the harvester computes an exact per-event reason
+ *     ("no_candidate", "all_rejected", "unverified", …) and runner.ts logged
+ *     `outcomes: undefined`, discarding it. So production could report that three
+ *     events failed with no candidate page but never which three, and the only way
+ *     to find out was to re-run the repair script locally against prod data.
+ *
+ * One UPDATE per attempted event. Best-effort as a whole: this is bookkeeping, and
+ * it must never be the reason a successfully harvested result fails to persist.
+ */
+export async function recordResultAttempts(
+  outcomes: { eventId: string; reason: string; note?: string }[],
+  now: Date = new Date(),
+): Promise<void> {
+  if (!outcomes.length) return;
+  await Promise.all(
+    outcomes
+      .filter((o) => o.eventId)
+      .map((o) =>
+        prisma.event
+          .update({
+            where: { id: o.eventId },
+            data: {
+              resultAttemptAt: now,
+              resultAttempts: { increment: 1 },
+              // The note carries the useful specifics for an error ("fetch 429"), so
+              // keep it when there is one — `reason` alone is a category.
+              resultAttemptReason: o.note ? `${o.reason}: ${o.note}`.slice(0, 500) : o.reason,
+            },
+          })
+          // An event deleted mid-run is not an error worth failing the harvest for.
+          .catch(() => undefined),
+      ),
+  );
+}
 
 /** How many events still carry each gap — for the repair report's before/after. */
 export async function countWikiGaps(now: Date = new Date()): Promise<{

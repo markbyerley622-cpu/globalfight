@@ -24,7 +24,7 @@ import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
 import {
-  syncWikiCards, findWikiTargets,
+  syncWikiCards, findWikiTargets, recordResultAttempts,
   type WikiGap, type WikiMode, type WikiHarvestReport,
 } from "@/lib/scraper/wikicard";
 import { persistAggregated } from "@/services/sync/persist";
@@ -88,7 +88,27 @@ export async function harvestWikiTargets(
     .join(",");
   const per = (n: number) => (targets.length ? (n / targets.length).toFixed(1) : "0");
 
-  log.info({ ...h.report, outcomes: undefined, gap: opts.gap ?? "all", mode: opts.mode ?? "incremental", written }, "wikicards:runner:done");
+  // Write each event's outcome to its own row BEFORE returning. This is what makes
+  // the queue in findWikiTargets a rotation (see targets.ts) — without it the hourly
+  // job re-attempts the same newest 12 events forever and the rest are never tried.
+  await recordResultAttempts(h.report.outcomes);
+
+  // Name the events that did NOT resolve, not just the count.
+  //
+  // This log line carried `outcomes: undefined` — the harvester computes a precise
+  // per-event reason and it was explicitly stripped here, so production could say
+  // "noCandidate=3" and never which 3. Aggregates tell you a subsystem is unhappy;
+  // only the event names let you check the actual Wikipedia page and find out why.
+  // Capped at 25 so one bad batch cannot write an unbounded log line.
+  const unresolved = h.report.outcomes
+    .filter((o) => o.reason !== "verified")
+    .slice(0, 25)
+    .map((o) => ({ event: o.event, reason: o.reason, page: o.page, note: o.note }));
+
+  log.info(
+    { ...h.report, outcomes: undefined, unresolved, gap: opts.gap ?? "all", mode: opts.mode ?? "incremental", written },
+    "wikicards:runner:done",
+  );
   return (
     `targets=${targets.length} verified=${h.report.withCard} written=${written} bouts=${h.report.bouts} ` +
     `searches=${h.report.queries}(${per(h.report.queries)}/t) parses=${h.report.parses}(${per(h.report.parses)}/t) ` +
@@ -116,6 +136,11 @@ export async function harvestWikiTargetsDetailed(
     bySport.get(s)!.push(e);
   }
   for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
+
+  // Same bookkeeping as the cron path — a `--historical` repair walking the backlog in
+  // batches depends on it, or every batch re-selects the same head.
+  await recordResultAttempts(h.report.outcomes);
+
   const per = (n: number) => (targets.length ? (n / targets.length).toFixed(1) : "0");
   return {
     line:
@@ -127,16 +152,22 @@ export async function harvestWikiTargetsDetailed(
   };
 }
 
-/** Run one target end-to-end inside a ScrapeJob lifecycle. */
-// `number | string`: most jobs report a row count, but some report a short status
-// ("scanned=30 enriched=8 photos=0"). `results` has always been
-// Record<string, number | string> — only this signature was narrower.
-async function runJob(target: string, fn: () => Promise<number | string>): Promise<number | string> {
+/**
+ * Run one target end-to-end inside a ScrapeJob lifecycle.
+ *
+ * Generic in the return value so cron routes that do NOT go through `refresh()`
+ * can record a run too. `resolve-picks` and `ingest-feed` both hand-rolled their
+ * own handler and so wrote no ScrapeJob row at all — meaning the two jobs closest
+ * to the user-visible reward loop ("you called it") were the only ones with no run
+ * history whatsoever, and a scheduler that quietly stopped firing them left no
+ * trace. See lib/admin/cron-health.ts, which reads these rows.
+ */
+export async function runJob<T>(target: string, fn: () => Promise<T>): Promise<T> {
   const job = await prisma.scrapeJob.create({ data: { target, status: "RUNNING", startedAt: new Date(), attempts: 1 } });
   try {
-    const count = await fn();
+    const out = await fn();
     await prisma.scrapeJob.update({ where: { id: job.id }, data: { status: "SUCCESS", finishedAt: new Date() } });
-    return count;
+    return out;
   } catch (e) {
     await prisma.scrapeJob.update({
       where: { id: job.id },
@@ -147,14 +178,43 @@ async function runJob(target: string, fn: () => Promise<number | string>): Promi
   }
 }
 
-/** Refresh a whole entity-kind. Returns a per-target result map. */
-export async function refresh(kind: RefreshKind): Promise<Record<string, number | string>> {
+/** One target that threw. Kept separate from `results` so a caller can tell a
+ *  failure from a success whose report happens to be a string. */
+export interface RefreshFailure { target: string; error: string }
+
+export interface RefreshOutcome {
+  results: Record<string, number | string>;
+  failed: RefreshFailure[];
+}
+
+/**
+ * Refresh a whole entity-kind. Returns the per-target result map AND the list of
+ * targets that threw.
+ *
+ * The failure list exists because `safe()` writes the error MESSAGE into
+ * `results[target]`, which is indistinguishable from a legitimate string report
+ * ("scanned=30 enriched=8"). The cron handler consequently answered 200 `ok:true`
+ * for a run in which every single job had failed — and `curl -fsS --retry` in
+ * render.yaml only reacts to an HTTP error, so Render showed the job green.
+ *
+ * That is how the results pipeline could be dead in production for weeks while
+ * every dashboard said healthy: ENABLE_SCRAPER was "false", so the Wikipedia
+ * fetch threw on the first call, the error was captured as a "result", and the
+ * run was reported as a success. A silent no-op is the one outcome a scheduled
+ * job must never be able to report.
+ */
+export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome> {
   const queue = new PQueue({ concurrency: CONCURRENCY });
   const results: Record<string, number | string> = {};
+  const failed: RefreshFailure[] = [];
   const safe = (target: string, fn: () => Promise<number | string>) =>
     queue.add(async () => {
       try { results[target] = await runJob(target, fn); }
-      catch (e) { results[target] = (e as Error).message; }
+      catch (e) {
+        const error = (e as Error).message;
+        results[target] = error;
+        failed.push({ target, error });
+      }
     });
 
   switch (kind) {
@@ -335,5 +395,10 @@ export async function refresh(kind: RefreshKind): Promise<Record<string, number 
   }
 
   await queue.onIdle();
-  return results;
+  return { results, failed };
+}
+
+/** Back-compatible shape for callers that only want the report map. */
+export async function refresh(kind: RefreshKind): Promise<Record<string, number | string>> {
+  return (await refreshDetailed(kind)).results;
 }

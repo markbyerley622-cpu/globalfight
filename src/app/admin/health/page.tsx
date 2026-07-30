@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, HeartPulse, AlertOctagon, AlertTriangle, Info, ArrowRight, RefreshCw, Wrench, GitMerge, ImageDown, Trophy, ListOrdered } from "lucide-react";
+import { ShieldCheck, HeartPulse, AlertOctagon, AlertTriangle, Info, ArrowRight, RefreshCw, Wrench, GitMerge, ImageDown, Trophy, ListOrdered, Clock, CheckCircle2, XCircle, CircleSlash } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import type { DataHealthReport, HealthCheck, Severity } from "@/lib/admin/data-health";
+import type { CronHealthReport, JobHealth, JobState } from "@/lib/admin/cron-health";
 
 const SEV: Record<Severity, { icon: typeof Info; ring: string; text: string; label: string }> = {
   critical: { icon: AlertOctagon, ring: "border-blood-500/40 bg-blood-500/5", text: "text-blood-400", label: "Critical" },
@@ -12,8 +13,10 @@ const SEV: Record<Severity, { icon: typeof Info; ring: string; text: string; lab
   info: { icon: Info, ring: "border-ink-700 bg-ink-900/40", text: "text-mist", label: "Info" },
 };
 
+type HealthResponse = DataHealthReport & { cron?: CronHealthReport };
+
 export default function DataHealthPage() {
-  const [data, setData] = useState<DataHealthReport | null>(null);
+  const [data, setData] = useState<HealthResponse | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "forbidden" | "error">("loading");
 
   const load = async () => {
@@ -41,7 +44,9 @@ export default function DataHealthPage() {
   }
 
   const criticals = data?.checks.filter((c) => c.severity === "critical").length ?? 0;
-  const clean = state === "ok" && data && data.checks.length === 0;
+  // "All clear" must account for the schedulers too — a dead cron with clean data
+  // is the exact state this dashboard used to call healthy.
+  const clean = state === "ok" && data && data.checks.length === 0 && data.cron?.healthy !== false;
 
   return (
     <>
@@ -67,6 +72,8 @@ export default function DataHealthPage() {
 
         <OpsConsole onDone={load} />
 
+        {state === "ok" && data?.cron && <CronPanel cron={data.cron} />}
+
         {state === "loading" && <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-card bg-ink-850/60" />)}</div>}
         {state === "error" && <p className="card-surface p-6 text-center text-sm text-blood-300">Failed to run the audit. Re-scan to retry.</p>}
 
@@ -83,6 +90,97 @@ export default function DataHealthPage() {
         {data && <p className="text-center text-[0.7rem] text-fog">Scanned {new Date(data.generatedAt).toLocaleString()}</p>}
       </div>
     </>
+  );
+}
+
+// ── Cron health ──────────────────────────────────────────────────────────
+// Answers "is the scheduler working?" from the ScrapeJob run history. The states
+// are deliberately distinct: `overdue`/`never-run` mean the SCHEDULER did not fire
+// (look at Render), `failing` means it fired and the job broke (look at the error).
+
+const JOB_STATE: Record<JobState, { icon: typeof Info; text: string; ring: string; label: string }> = {
+  ok: { icon: CheckCircle2, text: "text-volt-400", ring: "border-ink-700 bg-ink-900/40", label: "OK" },
+  failing: { icon: XCircle, text: "text-blood-400", ring: "border-blood-500/40 bg-blood-500/5", label: "Failing" },
+  overdue: { icon: Clock, text: "text-gold-300", ring: "border-gold-500/40 bg-gold-500/5", label: "Overdue" },
+  "never-run": { icon: CircleSlash, text: "text-gold-300", ring: "border-gold-500/40 bg-gold-500/5", label: "Never run" },
+};
+
+function since(minutes: number | null): string {
+  if (minutes === null) return "never";
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const h = Math.floor(minutes / 60);
+  if (h < 48) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function cadence(minutes: number): string {
+  if (minutes < 60) return `every ${minutes}m`;
+  if (minutes < 1440) return `every ${minutes / 60}h`;
+  return `every ${Math.round(minutes / 1440)}d`;
+}
+
+function CronPanel({ cron }: { cron: CronHealthReport }) {
+  const broken = cron.jobs.filter((j) => j.state !== "ok");
+
+  return (
+    <section className="card-surface overflow-hidden">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-700 px-4 py-3">
+        <h2 className="inline-flex items-center gap-2 font-display text-sm font-bold text-chalk">
+          <Clock className="size-4 text-fog" /> Scheduled jobs
+        </h2>
+        <span className={`text-xs font-semibold ${cron.healthy ? "text-volt-400" : "text-gold-300"}`}>
+          {cron.healthy ? "All firing" : `${broken.length} need attention`}
+        </span>
+      </header>
+
+      {/* The ingestion gate first: when it is off, most rows below fail for this one
+          reason, and reading eight identical errors is slower than reading this. */}
+      {!cron.scraperGate.enabled && (
+        <p className="flex items-start gap-2 border-b border-blood-500/30 bg-blood-500/5 px-4 py-3 text-xs text-blood-200">
+          <AlertOctagon className="mt-px size-4 shrink-0" />
+          <span>
+            <strong className="font-semibold">Ingestion gate is closed.</strong> {cron.scraperGate.note}
+          </span>
+        </p>
+      )}
+
+      <ul className="divide-y divide-ink-800">
+        {cron.jobs.map((j) => <JobRow key={j.route} job={j} />)}
+      </ul>
+    </section>
+  );
+}
+
+function JobRow({ job }: { job: JobHealth }) {
+  const s = JOB_STATE[job.state];
+  const Icon = s.icon;
+  return (
+    <li className="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3 text-xs">
+      <Icon className={`mt-px size-4 shrink-0 ${s.text}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="font-semibold text-chalk">{job.label}</span>
+          <code className="text-[0.7rem] text-fog">/api/cron/{job.route}</code>
+          <span className="text-[0.7rem] text-fog">{cadence(job.everyMinutes)}</span>
+        </div>
+        {/* Consequence, not just status — "overdue" means nothing to a reader who
+            does not already know what this job feeds. */}
+        {job.state !== "ok" && <p className="mt-0.5 text-fog">{job.matters}</p>}
+        {job.lastError && (
+          <p className="mt-1 break-words rounded border border-ink-700 bg-ink-900/60 px-2 py-1 font-mono text-[0.68rem] text-blood-200">
+            {job.lastError}
+          </p>
+        )}
+      </div>
+      <div className="shrink-0 text-right">
+        <p className={`font-semibold ${s.text}`}>{s.label}</p>
+        <p className="text-[0.7rem] text-fog">ran {since(job.minutesSinceLastRun)}</p>
+        {job.recentFailures > 0 && (
+          <p className="text-[0.7rem] text-blood-300">{job.recentFailures}/{job.sampled} failed</p>
+        )}
+      </div>
+    </li>
   );
 }
 

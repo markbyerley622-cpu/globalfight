@@ -13,7 +13,7 @@ export { syncWikiCards } from "./sync";
 export { parseWikiCard, type WikiBout } from "./extract";
 export { toNormalizedWikiEvent, toFightStub, WIKI_SOURCE } from "./map";
 export {
-  findWikiTargets, findWikiTargetForFight, countWikiGaps, RESULT_BACKFILL_DAYS,
+  findWikiTargets, findWikiTargetForFight, countWikiGaps, recordResultAttempts, RESULT_BACKFILL_DAYS,
   type WikiGap, type WikiMode, type FindTargetsOpts,
 } from "./targets";
 export {

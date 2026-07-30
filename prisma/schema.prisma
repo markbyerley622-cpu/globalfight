@@ -504,6 +504,32 @@ model Event {
 
   // provenance scalars deferred — see the note on the Fighter model.
 
+  /// ── Results-ingestion bookkeeping ────────────────────────────────────────
+  /// When the results harvester last ATTEMPTED this event, how many times it has,
+  /// and how the last attempt ended (a WikiTargetOutcome.reason: "no_candidate",
+  /// "all_rejected", "no_card", "unverified", "error", "verified").
+  ///
+  /// These exist to fix a starvation bug and a blindness, both of which produced the
+  /// same symptom — "some events resolve, some stay Pending forever":
+  ///
+  ///  1. The hourly job selected `orderBy: date desc, take: RESULT_BATCH` over a
+  ///     21-day window. With more than RESULT_BATCH (12) unresolved events in that
+  ///     window it re-attempted the same 12 NEWEST every hour, while the 13th-oldest
+  ///     onward were never attempted at all — and then aged out of the window
+  ///     permanently, unreachable except by a manual `--historical` run. Which
+  ///     events resolved was decided purely by queue position. Ordering by
+  ///     `resultAttemptAt` nulls-first makes the queue a rotation instead: nothing
+  ///     can be starved, and a repeatedly-failing event drifts to the back rather
+  ///     than consuming the whole batch forever.
+  ///
+  ///  2. The harvester computes a precise per-event reason and then throws it away —
+  ///     runner.ts logged `outcomes: undefined`, so production knew that 3 events
+  ///     failed with "no_candidate" but never WHICH 3. Persisting the reason turns
+  ///     "why is this event still pending" into one query.
+  resultAttemptAt     DateTime?
+  resultAttempts      Int       @default(0)
+  resultAttemptReason String?
+
   fights           Fight[]
   externalIds      EventExternalId[]
   discussionThread ForumThread?
@@ -511,6 +537,9 @@ model Event {
   checkIns         CheckIn[]
 
   @@index([date, status])
+  /// The results-harvest queue: least-recently-attempted first. Without this the
+  /// rotation above is a sort over every past event on every hourly tick.
+  @@index([resultAttemptAt])
   @@index([country])
   @@index([promotion])
   @@index([promotionId])

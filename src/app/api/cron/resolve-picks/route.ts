@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cronAuthorized } from "@/lib/scraper/cron-handler";
+import { runJob } from "@/lib/scraper/runner";
 import { resolveDuePicks } from "@/lib/intelligence/resolve";
 import { resultOps } from "@/lib/intelligence/result-ops";
 import { log } from "@/lib/scraper/logger";
@@ -19,7 +20,10 @@ export async function GET(req: Request) {
   if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const started = Date.now();
   try {
-    const out = await resolveDuePicks();
+    // Wrapped in runJob so this run appears in the ScrapeJob history that
+    // /admin/health reads. Settlement is the payoff half of the habit loop; it was
+    // the one job with no run record at all.
+    const out = await runJob("picks:resolve", () => resolveDuePicks());
     // Telemetry runs AFTER reconciliation, so the numbers describe what is still
     // broken rather than what this run was about to fix. unsettledPicks is the
     // invariant: a decisive result with an ungraded pick means payouts are owed, and
