@@ -120,6 +120,55 @@ async function main() {
     console.log("    harvest output for `wikicard.recordAttempt` — the write error is logged there.");
   }
 
+  // ── Coverage distribution + the harvest's own pulse ──────────────────────
+  //
+  // "Is the system healthy?" cannot be answered by a list of broken things. These
+  // are the numbers that answer it: how far from complete the pending events are,
+  // when a harvest last SUCCEEDED, and what the failures cluster on.
+  const [band0, band1, band50, band90, lastRun, lastFail, reasons] = await Promise.all([
+    prisma.event.count({ where: { ...where, OR: [{ resultCoverage: null }, { resultCoverage: 0 }] } }),
+    prisma.event.count({ where: { ...where, resultCoverage: { gt: 0, lt: 50 } } }),
+    prisma.event.count({ where: { ...where, resultCoverage: { gte: 50, lt: 90 } } }),
+    prisma.event.count({ where: { ...where, resultCoverage: { gte: 90 } } }),
+    prisma.scrapeJob.findFirst({
+      where: { target: { startsWith: "results:" }, status: "SUCCESS" },
+      orderBy: { createdAt: "desc" }, select: { createdAt: true, target: true },
+    }),
+    prisma.scrapeJob.findFirst({
+      where: { target: { startsWith: "results:" }, status: "FAILED" },
+      orderBy: { createdAt: "desc" }, select: { createdAt: true, target: true, error: true },
+    }),
+    prisma.event.groupBy({
+      by: ["resultAttemptReason"],
+      where: { ...where, resultAttemptReason: { not: null } },
+      _count: { resultAttemptReason: true },
+    }),
+  ]);
+
+  console.log(`\nCoverage of pending events:`);
+  console.log(`  0%        ${band0}   (nothing recovered)`);
+  console.log(`  1-49%     ${band1}`);
+  console.log(`  50-89%    ${band50}   ← one or two bouts short; convergence closes these`);
+  console.log(`  90-99%    ${band90}`);
+
+  console.log(`\nHarvest pulse:`);
+  console.log(`  last SUCCESS : ${lastRun ? `${lastRun.target} · ${ago(lastRun.createdAt)}` : "never"}`);
+  console.log(`  last FAILURE : ${lastFail ? `${lastFail.target} · ${ago(lastFail.createdAt)} · ${lastFail.error ?? ""}`.slice(0, 160) : "none"}`);
+
+  if (reasons.length) {
+    // Grouped on the stored reason, whose first segment is the category — the note
+    // after the colon is per-event detail and would fragment the tally.
+    const tally = new Map<string, number>();
+    for (const r of reasons) {
+      const key = (r.resultAttemptReason ?? "").split(":")[0].trim() || "(none)";
+      tally.set(key, (tally.get(key) ?? 0) + r._count.resultAttemptReason);
+    }
+    console.log(`\nTop failure reasons:`);
+    for (const [k, n] of [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)) {
+      console.log(`  ${String(n).padStart(4)}  ${k}${k === "name_mismatch" ? "   ← OURS to fix" : ""}`);
+    }
+  }
+
   const events = await prisma.event.findMany({
     where,
     orderBy: [{ resultAttemptAt: { sort: "asc", nulls: "first" } }, { date: "desc" }],

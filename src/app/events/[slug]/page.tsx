@@ -40,6 +40,7 @@ import { TheRoom } from "@/components/event/the-room";
 import { getEventRoom } from "@/lib/identity/event-room";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
+import { resultCoverage } from "@/lib/events/result-coverage";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
 import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
 import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress } from "@/lib/card-segments";
@@ -70,6 +71,22 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // official undercard order.
   const fights = orderFights(event.fights);
   const headline = fights.find((f) => f.mainEvent) ?? fights[0];
+
+  // Result completeness, from the ONE shared definition. Passed to the schedule
+  // banner so it cannot contradict the card rendered below it — that banner used to
+  // read "Results pending · sources are checked hourly" directly above a bout showing
+  // "TKO Round 7", because it derived its status from event.status and had no idea
+  // whether any result had landed.
+  //
+  // `attempts`/`lastCoveragePct` are not selected by the repo, so the UI resolves to
+  // AWAITING / UPDATING / CONFIRMED. That is the whole reported bug; the terminal
+  // SOURCE_EXHAUSTED state is a harvester concern and is applied there.
+  const coverage = resultCoverage({
+    total: fights.length,
+    decided: fights.filter((f) => f.result !== "SCHEDULED").length,
+    attempts: 0,
+    lastCoveragePct: null,
+  });
 
   // The card as a fan watches it: broadcast blocks in run order, each bout with
   // an estimated walkout time and where it sits in the night. `derived` is true
@@ -196,6 +213,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       <EventSchedule
         date={event.date}
         status={event.status}
+        coverage={coverage}
         estimated={segmentsDerived}
         blocks={blocks.map((b) => ({
           key: b.meta.key,

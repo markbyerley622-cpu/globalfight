@@ -284,3 +284,51 @@ test("maxYield bounds only biographies", () => {
   assert.equal(scoreCandidate(BIO_PAGE, bigCardCtx).maxYield, 1);
   assert.equal(scoreCandidate(SEASON_PAGE, bigCardCtx).maxYield, null);
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  WRONG-YEAR SEASON PAGE — a correctness guard, not an efficiency one.
+//
+//  verifyCard matches a parsed bout to ours on the CORNER PAIR alone, and WikiBout
+//  carries no date. On a REMATCH the two meetings are therefore indistinguishable,
+//  so a previous-year season page can supply the OLD fight's winner, method and
+//  round for the bout we are asking about.
+//
+//  Observed in production (all matched, all wrong-year):
+//    BKFC FN HAMMOND VANCAMP (2026-06-26) ← "2025 in Bare Knuckle…"  1 bout
+//    BKFC 80 (2025-09-12)                 ← "2022 in Bare Knuckle…"  1 bout
+//    BKFC 79 (2025-08-02)                 ← "2023 in Bare Knuckle…"  2 bouts
+//
+//  Nothing wrong was written only because best-coverage-wins happened to prefer the
+//  right-year page each time. A target whose correct page does not exist yet would
+//  have taken the old result.
+// ════════════════════════════════════════════════════════════════════════════
+
+test("a wrong-year season page is refused before any fetch", () => {
+  const wrong = scoreCandidate("2022 in Bare Knuckle Fighting Championship", bigCardCtx);
+  assert.ok(wrong.reasons.includes("wrong_season_year"));
+  assert.ok(wrong.score < PARSE_THRESHOLD, "must never be fetched");
+
+  const { parse } = rankCandidates(
+    ["2022 in Bare Knuckle Fighting Championship", SEASON_PAGE], bigCardCtx,
+  );
+  assert.equal(parse.length, 1);
+  assert.equal(parse[0]?.title, SEASON_PAGE);
+});
+
+test("the event's own year is accepted, and ±1 is tolerated", () => {
+  // A card on 1 January is routinely listed on the previous year's page.
+  for (const y of ["2025", "2026", "2027"]) {
+    const c = scoreCandidate(`${y} in Bare Knuckle Fighting Championship`, bigCardCtx);
+    assert.ok(!c.reasons.includes("wrong_season_year"), `${y} must be allowed`);
+  }
+  assert.ok(
+    scoreCandidate("2028 in Bare Knuckle Fighting Championship", bigCardCtx)
+      .reasons.includes("wrong_season_year"),
+  );
+});
+
+test("the year guard only applies to season pages", () => {
+  // A biography or event page has no year in its title and must be unaffected.
+  assert.ok(!scoreCandidate("Lorenzo Hunt", bigCardCtx).reasons.includes("wrong_season_year"));
+  assert.ok(!scoreCandidate("BKFC 91", bigCardCtx).reasons.includes("wrong_season_year"));
+});

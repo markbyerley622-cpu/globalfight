@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import type { EventStatus } from "@/lib/types";
+import type { Coverage } from "@/lib/events/result-coverage";
 
 function diff(target: number) {
   const d = target - Date.now();
@@ -32,7 +33,7 @@ export interface ScheduleBlock {
  * Standard across every combat sport: same block, same position, every event.
  */
 export function EventSchedule({
-  date, status, blocks, estimated,
+  date, status, blocks, estimated, coverage,
 }: {
   date: string;
   status: EventStatus;
@@ -40,6 +41,16 @@ export function EventSchedule({
   blocks?: ScheduleBlock[];
   /** True when the blocks were derived rather than supplied by a provider. */
   estimated?: boolean;
+  /**
+   * Result completeness, from the ONE shared calculation
+   * (lib/events/result-coverage). Supplied by the page, which knows the bouts.
+   *
+   * Without it this banner derived its status from `status` alone and had no idea
+   * whether any result had landed — so it announced "Results pending · sources are
+   * checked hourly" directly above a card displaying "TKO Round 7". Two statements
+   * on one screen, contradicting each other, and the wrong one was the loud one.
+   */
+  coverage?: Coverage;
 }) {
   const target = new Date(date).getTime();
   const [t, setT] = useState<ReturnType<typeof diff>>(null);
@@ -87,6 +98,11 @@ export function EventSchedule({
    * that we are still waiting on sources.
    */
   const awaitingResults = started === true && !isLive && !isDone;
+  // Prefer the measured coverage over the crude "started and not marked COMPLETED"
+  // guess. `coverage` knows how many bouts actually carry an outcome; `status` does
+  // not, which is the whole reason the banner could contradict the card below it.
+  const post = awaitingResults || isDone;
+  const cov = post ? coverage : undefined;
   const urgent = !!t && t.ms < 86400000; // inside 24h
   const soon = !!t && t.ms < 3600000; // inside the hour
 
@@ -115,18 +131,32 @@ export function EventSchedule({
         <CalendarClock className="size-3.5" />
         {isLive
           ? "Happening now"
-          : isDone
-            ? "Event complete"
-            : awaitingResults
-              ? "Awaiting results"
-              : soon
-                ? "Starting soon"
-                : "First bell in"}
+          : cov
+            ? cov.label
+            : isDone
+              ? "Event complete"
+              : awaitingResults
+                ? "Awaiting results"
+                : soon
+                  ? "Starting soon"
+                  : "First bell in"}
       </div>
 
       {isLive ? (
         <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-blood-400">
           <span className="live-dot mr-2 inline-block align-middle" aria-hidden /> Live now
+        </p>
+      ) : cov ? (
+        // ONE string set, from lib/events/result-coverage. A 100%-confirmed card reads
+        // "Final"; a partial one says how many of how many and whether more is coming;
+        // an exhausted one stops promising an update that will never arrive.
+        <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-mist">
+          {cov.state === "CONFIRMED" ? "Final" : `${cov.decided} of ${cov.total} confirmed`}
+          {cov.detail && (
+            <span className="mt-1 block font-sans text-[0.68rem] font-normal normal-case tracking-normal text-fog">
+              {cov.detail}
+            </span>
+          )}
         </p>
       ) : isDone ? (
         <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-mist">Final</p>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { log } from "@/lib/scraper/logger";
 import { fanOut } from "./triggers";
 import { eventTargets, type EventRef } from "./audience";
+import { isHistorical } from "./event-timing";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Event + card lifecycle → notifications, driven by DIFFS.
@@ -146,6 +147,29 @@ export async function notifyEventChanges(
     // notify anybody — announcing a card an operator is still building is the one
     // notification that cannot be taken back.
     if (after.status === "DRAFT") return { facts };
+
+    // A card that already happened must never send an ANNOUNCEMENT.
+    //
+    // Every notification below is written in the future tense — "X announced",
+    // "card updated" — and is meant to bring someone back for a fight that has not
+    // happened. A backfill writing results to a 2025 event is not news; it is
+    // bookkeeping. The results sweep fired ~10 of these bursts per run across cards
+    // up to a year old, each one telling followers about a fight that finished
+    // months ago.
+    //
+    // The guard belongs here, at the entry point, rather than on each of the nine
+    // emit sites — a tenth would be added later and would miss it.
+    //
+    // NOT applied to result/settlement notifications: those live in the settlement
+    // path (lib/intelligence), are past-tense by nature ("you called it"), and are
+    // exactly what a user wants when an old pick finally grades.
+    if (isHistorical(after.date)) {
+      log.info(
+        { op: "social.event.skipHistorical", eventId: after.id, date: after.date.toISOString() },
+        "past event — announcement notifications suppressed",
+      );
+      return { facts };
+    }
 
     const ref: EventRef = { id: after.id, slug: await slugOf(after.id), name: after.name, promotion: after.promotion };
     const targets = eventTargets(ref);

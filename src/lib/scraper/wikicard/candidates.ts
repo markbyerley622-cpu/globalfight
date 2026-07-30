@@ -174,6 +174,38 @@ const words = (s: string) => new Set(normalizeName(s).split(" ").filter((w) => w
 const SEASON_SHAPE = /^\d{4}\s+in\s+/i;
 
 /**
+ * A season page states its year in its title. Reject the ones that disagree with the
+ * event — BEFORE fetching, so it costs nothing.
+ *
+ * This closes a real correctness hole, not an efficiency one. `verifyCard` matches a
+ * parsed bout to ours on the CORNER PAIR alone, and WikiBout carries no date, so on a
+ * REMATCH the two meetings are indistinguishable. Observed in production:
+ *
+ *   BKFC FN HAMMOND VANCAMP (2026-06-26) ← "2025 in Bare Knuckle…" matched 1 bout
+ *   BKFC 80 (2025-09-12)                 ← "2022 in Bare Knuckle…" matched 1 bout
+ *   BKFC 79 (2025-08-02)                 ← "2023 in Bare Knuckle…" matched 2 bouts
+ *
+ * Each of those is a previous meeting of a pair that also fought on the target card
+ * — and the card in question, "BKFC 85 … TROUT vs PALOMINO 2", is literally a
+ * rematch. Nothing wrong was written only because best-coverage-wins happened to
+ * prefer the right-year page every time; a target whose correct page does not exist
+ * yet would have taken the old fight's winner, method and round.
+ *
+ * A year is unambiguous, present in the title, and free to check. Tolerance of ±1 is
+ * deliberate: a card on 1 January is routinely listed on the previous year's page.
+ */
+const SEASON_YEAR_TOLERANCE = 1;
+
+export function seasonYearMismatch(title: string, eventYear: string | null): boolean {
+  const m = /^(\d{4})\s+in\s+/i.exec(title);
+  if (!m || !eventYear) return false;
+  const pageYear = Number(m[1]);
+  const target = Number(eventYear);
+  if (!Number.isFinite(pageYear) || !Number.isFinite(target)) return false;
+  return Math.abs(pageYear - target) > SEASON_YEAR_TOLERANCE;
+}
+
+/**
  * Classify a candidate by page shape.
  *
  * Structural only — page-type conventions, never topic. Order matters: the checks run
@@ -238,6 +270,16 @@ export function scoreCandidate(title: string, ctx: CandidateContext): ScoredCand
   if (ctx.eventYear && title.includes(ctx.eventYear)) { score += SCORE.YEAR; reasons.push("year"); }
 
   if (NOT_AN_EVENT.some((re) => re.test(title))) { score += SCORE.NOT_AN_EVENT; reasons.push("not_an_event"); }
+
+  // A season page for the WRONG YEAR is disqualified outright, not merely demoted.
+  // It can only ever contribute a PREVIOUS meeting of the same two fighters, which
+  // pair-based verification cannot distinguish from the bout we want. See
+  // seasonYearMismatch. NOT_AN_EVENT's weight puts it far below PARSE_THRESHOLD, so
+  // it is refused before any fetch.
+  if (seasonYearMismatch(title, ctx.eventYear)) {
+    score += SCORE.NOT_AN_EVENT;
+    reasons.push("wrong_season_year");
+  }
 
   // ── biography ──────────────────────────────────────────────────────────────
   // A bio of a fighter ON THIS BOUT is now the single most useful page we can find.
