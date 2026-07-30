@@ -6,6 +6,7 @@ import { PromotionLogo } from "@/components/promotion-logo";
 import { resolvePromotion } from "@/lib/promotions";
 import { sportAccent } from "@/lib/event-card-image";
 import { SPORT_LABEL } from "@/lib/sports";
+import { resultCoverage } from "@/lib/events/result-coverage";
 import { timeAgo, cn } from "@/lib/utils";
 
 // A finish method mapped to a scannable badge. Colour carries meaning at a
@@ -75,6 +76,16 @@ function Card({ e }: { e: RecentEvent }) {
   const accent = hasRealPromo ? promo.brand : sportAccent(e.sport);
   const sportLabel = SPORT_LABEL[e.sport] ?? "Combat";
   const resolved = !!m?.resolved;
+  // One definition of result completeness, shared with the event header and the
+  // doctor. `attempts`/`lastCoveragePct` are not carried on this rail's payload, so
+  // this resolves to AWAITING / UPDATING / CONFIRMED — enough to stop the badge
+  // contradicting the copy under it.
+  const cov = resultCoverage({
+    total: e.boutCount,
+    decided: Math.max(0, e.boutCount - e.pendingBouts),
+    attempts: 0,
+    lastCoveragePct: null,
+  });
 
   // flex-col + a flex-1 body: the identity strip pins to the BOTTOM, so cards in a
   // row share one baseline however much the bodies differ (a pending card has no
@@ -113,7 +124,17 @@ function Card({ e }: { e: RecentEvent }) {
                 stamping it "Pending" beside "Tszyu def. Spence" contradicts the
                 card's own headline. */}
             {!resolved ? (
-              <Badge cls="border-ink-600 bg-ink-900/80 text-fog drop-shadow"><Hourglass className="size-2.5" />Pending</Badge>
+              // "Pending" ONLY when genuinely nothing has landed. With 2 of 3 bouts
+              // confirmed it is simply false, and it sat directly above a line reading
+              // "1 of 3 bouts still unconfirmed" — the badge contradicting the copy
+              // beneath it. Both now come from the one shared coverage definition.
+              cov.decided > 0 ? (
+                <Badge cls="border-ink-600 bg-ink-900/80 text-mist drop-shadow">
+                  <Hourglass className="size-2.5" />{cov.decided}/{cov.total}
+                </Badge>
+              ) : (
+                <Badge cls="border-ink-600 bg-ink-900/80 text-fog drop-shadow"><Hourglass className="size-2.5" />Pending</Badge>
+              )
             ) : method ? (
               <Badge cls={cn(method.cls, "drop-shadow")}>{method.label}</Badge>
             ) : (
@@ -182,13 +203,13 @@ function Card({ e }: { e: RecentEvent }) {
             )}
           </>
         ) : (
-          // The card happened but the outcome hasn't been ingested. Say what is
-          // missing and what happens next — a reader can act on "checked hourly",
-          // they can't act on "results aren't in yet".
+          // The card happened but the outcome is incomplete. Copy comes from
+          // lib/events/result-coverage — the SAME strings the event header uses. This
+          // block hand-wrote its own, which is how the rail ended up promising
+          // "sources are checked hourly" for cards whose remaining bouts were never
+          // published at all and never will be.
           <p className="mt-2.5 text-[0.68rem] leading-snug text-fog">
-            {e.pendingBouts > 0 && e.boutCount > 0
-              ? `${e.pendingBouts} of ${e.boutCount} bouts still unconfirmed — sources are checked hourly.`
-              : "Awaiting confirmed results — sources are checked hourly."}
+            {cov.detail ?? cov.label}
           </p>
         )}
       </div>
