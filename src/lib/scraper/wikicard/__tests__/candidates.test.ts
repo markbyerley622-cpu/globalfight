@@ -5,6 +5,7 @@ import {
   PARSE_THRESHOLD, PARSE_BUDGET, COVERAGE_THRESHOLD,
 } from "../candidates";
 import { verifyCard, verifyTitle, isAcceptable } from "../verify";
+import { toFightStub } from "../map";
 import { candidate } from "@/lib/entities/resolve";
 import type { WikiBout } from "../extract";
 
@@ -382,4 +383,64 @@ test("the year guard only applies to season pages", () => {
   // A biography or event page has no year in its title and must be unaffected.
   assert.ok(!scoreCandidate("Lorenzo Hunt", bigCardCtx).reasons.includes("wrong_season_year"));
   assert.ok(!scoreCandidate("BKFC 91", bigCardCtx).reasons.includes("wrong_season_year"));
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  DUPLICATE FIGHTER / DUPLICATE FIGHT — the regression the `paternal` rung caused.
+//
+//  verifyCard resolves both corners to OUR entities in order to accept a page at all,
+//  then returned the raw WikiBout and threw that resolution away. Persistence keyed
+//  the fighter on the SOURCE's spelling, so whenever the two differed it created a new
+//  fighter and a new fight instead of updating ours.
+//
+//  Production, immediately after the surname rung shipped: Wikipedia lists "Ricardo
+//  Salas", we hold "Ricardo Salas Rodriguez". The bout verified (correctly) and persist
+//  wrote a SECOND Hitchins bout against a brand-new "Ricardo Salas", leaving the
+//  original pending. The card went from 2 bouts to 3.
+//
+//  Making a missing result into duplicate data is strictly worse than the gap.
+// ════════════════════════════════════════════════════════════════════════════
+
+test("a verified bout carries OUR fighter identity, not the source's spelling", () => {
+  const expected = [{
+    red: ent("f_rh", "Richardson Hitchins"),
+    blue: ent("f_rsr", "Ricardo Salas Rodriguez"),
+  }];
+  // The page uses the short form — the exact case the paternal rung now resolves.
+  const parsed = [bout("Richardson Hitchins", "Ricardo Salas")];
+
+  const m = verifyCard(parsed, expected);
+  assert.equal(m.matched, 1, "the bout must still verify");
+
+  const v = m.bouts[0];
+  assert.equal(v.ourBlueName, "Ricardo Salas Rodriguez", "OUR name, not the page's");
+  assert.equal(v.ourBlueSlug, "f_rsr");
+  assert.equal(v.ourRedName, "Richardson Hitchins");
+  // The SOURCE orientation is preserved — "def." means the source's red won.
+  assert.equal(v.redName, "Richardson Hitchins");
+  assert.equal(v.blueName, "Ricardo Salas");
+});
+
+test("toFightStub persists against OUR fighter, so no duplicate is created", () => {
+  const expected = [{
+    red: ent("f_rh", "Richardson Hitchins"),
+    blue: ent("f_rsr", "Ricardo Salas Rodriguez"),
+  }];
+  const m = verifyCard([bout("Richardson Hitchins", "Ricardo Salas")], expected);
+
+  const stub = toFightStub(m.bouts[0], 0, false);
+  assert.equal(stub.blueName, "Ricardo Salas Rodriguez", "must not write the page's form");
+  assert.equal(stub.blueExternalId, "f_rsr", "must key on OUR fighter");
+});
+
+test("a result-gap harvest never reassigns the main event", () => {
+  // A result run persists only the VERIFIED SUBSET, whose first item is index 0 by
+  // construction — so `mainEvent: index === 0` flagged every harvested bout, and a
+  // 3-bout card rendered "Main event" three times.
+  const expected = [{ red: ent("a", "A Fighter"), blue: ent("b", "B Fighter") }];
+  const m = verifyCard([bout("A Fighter", "B Fighter")], expected);
+
+  assert.equal(toFightStub(m.bouts[0], 0, false).mainEvent, false, "result gap: never");
+  assert.equal(toFightStub(m.bouts[0], 0, true).mainEvent, true, "card gap: index 0 is the main event");
+  assert.equal(toFightStub(m.bouts[0], 3, true).mainEvent, false, "card gap: only index 0");
 });

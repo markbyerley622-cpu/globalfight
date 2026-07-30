@@ -34,6 +34,32 @@ export interface ExpectedBout {
   blue: ResolvedEntity;
 }
 
+/**
+ * A parsed bout, annotated with OUR side of the match.
+ *
+ * verifyCard already resolves both corners to our registry entities — that is what
+ * makes acceptance safe. It then threw that away and returned the raw WikiBout, so
+ * persistence keyed the fighter on `slugify(sourceName)` and, whenever the source
+ * used a different name form, CREATED A NEW FIGHTER AND A NEW FIGHT rather than
+ * updating ours.
+ *
+ * Observed in production immediately after the `paternal` surname rung shipped:
+ * Wikipedia lists "Ricardo Salas", we hold "Ricardo Salas Rodriguez". The bout now
+ * verified (correctly), and persist then wrote a second Hitchins bout against a
+ * brand-new "Ricardo Salas" — leaving the original still pending. The card went from
+ * 2 bouts to 3. The fix made a missing result into duplicate data, which is worse.
+ *
+ * Carrying the resolved identity is what closes it: one resolution, used by both
+ * verification and persistence.
+ */
+export interface VerifiedBout extends WikiBout {
+  /** OUR canonical fighter name for the corner the SOURCE calls red. */
+  ourRedName: string;
+  ourRedSlug: string | null;
+  ourBlueName: string;
+  ourBlueSlug: string | null;
+}
+
 export interface VerifiedMatch {
   /** Bouts on the page that resolve to a bout we were looking for. */
   matched: number;
@@ -51,8 +77,10 @@ export interface VerifiedMatch {
    * onto this one event. A historical run reported 3,803 bouts across 20 events; real
    * cards are 10–13. Attaching a superset is not a performance problem, it is
    * fabricated card data.
+   *
+   * Annotated with OUR resolved identity per corner — see VerifiedBout.
    */
-  bouts: WikiBout[];
+  bouts: VerifiedBout[];
 }
 
 /**
@@ -64,7 +92,7 @@ export interface VerifiedMatch {
  */
 export function verifyCard(bouts: WikiBout[], expected: ExpectedBout[]): VerifiedMatch {
   const matchedPairs: { red: string; blue: string }[] = [];
-  const matchedBouts: WikiBout[] = [];
+  const matchedBouts: VerifiedBout[] = [];
   if (!bouts.length || !expected.length) {
     return { matched: 0, parsed: bouts.length, matchedPairs, bouts: [] };
   }
@@ -95,7 +123,16 @@ export function verifyCard(bouts: WikiBout[], expected: ExpectedBout[]): Verifie
     if (!hit || seen.has(key)) continue;
     seen.add(key);
     matchedPairs.push({ red: hit.red.name, blue: hit.blue.name });
-    matchedBouts.push(bout);
+    // Keep the SOURCE's red/blue orientation — "def." means the source's red won — but
+    // carry OUR identity for each side, so persistence updates our fighter instead of
+    // inventing one from the source's spelling.
+    matchedBouts.push({
+      ...bout,
+      ourRedName: red.entity.name,
+      ourRedSlug: red.entity.slug ?? null,
+      ourBlueName: blue.entity.name,
+      ourBlueSlug: blue.entity.slug ?? null,
+    });
   }
 
   return { matched: matchedPairs.length, parsed: bouts.length, matchedPairs, bouts: matchedBouts };

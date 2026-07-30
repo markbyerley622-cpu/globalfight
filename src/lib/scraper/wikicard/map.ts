@@ -12,6 +12,7 @@ import type {
   SourceMeta,
 } from "@/services/providers/types";
 import type { FightResult, FightMethod } from "@/lib/types";
+import type { VerifiedBout } from "./verify";
 import { slugify } from "@/lib/utils";
 import { parseMethod } from "../bkfc/normalize";
 import type { WikiBout } from "./extract";
@@ -29,22 +30,44 @@ function toMethod(raw: string | null): FightMethod | undefined {
 }
 
 /** One Wikipedia bout row → a canonical fight stub. */
-export function toFightStub(b: WikiBout, index: number): NormalizedFightStub {
-  // Stable per-source ids so persist can match the winner back to a corner.
-  const redExternalId = slugify(b.redName);
-  const blueExternalId = slugify(b.blueName);
+export function toFightStub(b: WikiBout, index: number, isFullCard = true): NormalizedFightStub {
+  // ── Persist against OUR fighter, not the source's spelling ────────────────
+  //
+  // These were `slugify(b.redName)` and `b.redName` — the SOURCE's name form. When
+  // the source spells a fighter differently, resolveFighter() matched neither the
+  // externalId nor the name, so it CREATED A NEW FIGHTER and a new fight, leaving
+  // ours pending. Observed in production: Wikipedia lists "Ricardo Salas", we hold
+  // "Ricardo Salas Rodriguez"; the card went from 2 bouts to 3 with Richardson
+  // Hitchins appearing twice against two different "Salas" records.
+  //
+  // verifyCard already resolved both corners to our entities to accept the page at
+  // all — `ourRedName`/`ourRedSlug` is that same resolution, reused instead of
+  // discarded. Falls back to the source form for a card-gap bout, which by
+  // definition has no expected bout to have been resolved against.
+  const v = b as Partial<VerifiedBout>;
+  const redName = v.ourRedName ?? b.redName;
+  const blueName = v.ourBlueName ?? b.blueName;
+  const redExternalId = v.ourRedSlug ?? slugify(redName);
+  const blueExternalId = v.ourBlueSlug ?? slugify(blueName);
   const isDraw = /draw/i.test(b.method ?? "");
   const isNc = /no contest/i.test(b.method ?? "");
   const result: FightResult = !b.decided ? "SCHEDULED" : isNc ? "NO_CONTEST" : isDraw ? "DRAW" : "WIN";
 
   return {
-    redName: b.redName,
-    blueName: b.blueName,
+    redName,
+    blueName,
     redExternalId,
     blueExternalId,
     weightClass: b.weightClass ?? undefined,
     titleFight: b.titleFight,
-    mainEvent: index === 0, // Wikipedia lists the main event first
+    // Wikipedia lists the main event first — but ONLY when we are taking a whole card.
+    //
+    // A result-gap run persists just the VERIFIED SUBSET, often a single bout, whose
+    // index is 0 by construction. So every harvested bout was flagged mainEvent and a
+    // three-bout card rendered "Main event" three times. `isFullCard` is false for the
+    // result gap, where the event already has its own main event and this run has no
+    // business reassigning it.
+    mainEvent: isFullCard && index === 0,
     result,
     method: toMethod(b.method),
     roundEnded: b.round ?? undefined,
@@ -67,6 +90,12 @@ export function toNormalizedWikiEvent(
   pageTitle: string,
   bouts: WikiBout[],
   lastUpdated: string,
+  /**
+   * True only for a CARD-gap harvest, where the whole parsed card is legitimately
+   * this event's. False for a result gap, which persists a verified subset and must
+   * not reassign the event's main event — see toFightStub.
+   */
+  isFullCard = true,
 ): NormalizedEvent {
   // The source's identifier for THIS EVENT — the page it came from, qualified by the
   // event itself. The page alone is NOT an event id: a Wikipedia season page
@@ -87,7 +116,7 @@ export function toNormalizedWikiEvent(
     name: event.name,
     sport: event.sport,
     date: event.date,
-    fights: bouts.map(toFightStub),
+    fights: bouts.map((b, i) => toFightStub(b, i, isFullCard)),
     _meta: meta,
   };
 }

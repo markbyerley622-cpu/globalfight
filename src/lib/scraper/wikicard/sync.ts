@@ -399,7 +399,12 @@ async function harvestTarget(
     );
     return {
       outcome,
-      event: toNormalizedWikiEvent(eventIdentity, best.page, best.persist, lastUpdated),
+      // `gap === "missing_card"` is the only case where the whole parsed card is this
+      // event's. A result-gap run persists a verified subset and must not claim its
+      // first bout is the main event.
+      event: toNormalizedWikiEvent(
+        eventIdentity, best.page, best.persist, lastUpdated, gap === "missing_card",
+      ),
     };
   }
 
