@@ -6,6 +6,7 @@ import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
 import { cardFighterImage } from "@/lib/events/media-resolver";
 import { decodeHtmlEntities } from "@/lib/text/entities";
+import { formatRecord } from "@/lib/utils";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Event discovery.
@@ -55,6 +56,12 @@ export interface EventCard {
     red: string;
     blue: string;
     titleFight: boolean;
+    /** Profile slugs, so the headline names link to the fighters. */
+    redSlug: string;
+    blueSlug: string;
+    /** Formatted full record ("18-2-1"), or "" when no record is imported. */
+    redRecord: string;
+    blueRecord: string;
     /** Media-safe fighter image URLs (or null) for the composed card background. */
     redImage: string | null;
     blueImage: string | null;
@@ -123,6 +130,13 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
 
 const FIGHTER_CARD_SELECT = {
   name: true, imageUrl: true, thumbUrl: true, countryCode: true,
+  // `slug` makes the card's headline names LINKS to the fighter profile. Without it
+  // the two most prominent words on the card were dead text, and there was no route
+  // from a card to the fighter it advertises.
+  slug: true,
+  // Full professional record, shown under each name. Denormalised on Fighter, so
+  // this costs nothing beyond the columns.
+  wins: true, losses: true, draws: true, noContests: true,
   // Enriched Wikimedia photos live in photoUrl (raw URL) and display through the
   // /api/img proxy — the same resolution repo.prisma uses. Without these the card
   // missed every enriched fighter's photo and fell back to a gradient.
@@ -198,6 +212,9 @@ export async function queryEvents(
         mainEvent: m
           ? {
               red: decodeHtmlEntities(m.red.name), blue: decodeHtmlEntities(m.blue.name), titleFight: m.titleFight,
+              redSlug: m.red.slug, blueSlug: m.blue.slug,
+              redRecord: formatRecord(m.red.wins, m.red.losses, m.red.draws, m.red.noContests),
+              blueRecord: formatRecord(m.blue.wins, m.blue.losses, m.blue.draws, m.blue.noContests),
               redImage: cardFighterImage(m.red),
               blueImage: cardFighterImage(m.blue),
               redRank: cardFighterRank(m.red),

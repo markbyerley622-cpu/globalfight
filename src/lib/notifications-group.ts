@@ -31,6 +31,16 @@ export interface GroupableNotification {
   dedupeKey: string | null;
   readAt: string | null;
   createdAt: string;
+  /**
+   * Who caused this, when that is a person and it matters. Only populated for
+   * FOLLOW today, where it powers the follow-back action in the row — a new
+   * follower is the one notification with an obvious reciprocal act, and making
+   * the reader navigate to a profile to perform it loses most of them.
+   *
+   * `youFollow` is resolved on the server per request rather than guessed in the
+   * UI, so the row cannot offer to "follow back" someone already followed.
+   */
+  actor?: { username: string; youFollow: boolean } | null;
 }
 
 export interface NotificationGroup {

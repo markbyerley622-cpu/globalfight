@@ -2,9 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveEventMedia } from "../media-resolver";
 
+// The resolver reads ONLY the two fighter images off `mainEvent`. Keeping the
+// fixture that narrow is deliberate: it documents the real dependency, and stops a
+// new field on the card's mainEvent (a slug, a record) from breaking a test about
+// artwork selection.
 const base = {
   slug: "ufc-300", sport: "MMA", promotion: "UFC", posterUrl: null, heroUrl: null,
-  mainEvent: null as null | { redImage: string | null; blueImage: string | null; red: string; blue: string; titleFight: boolean; redRank: null; blueRank: null },
+  mainEvent: null as null | { redImage: string | null; blueImage: string | null },
 };
 
 test("official hero wins over everything", () => {
@@ -20,7 +24,7 @@ test("poster beats owned art, cropped from the top", () => {
 });
 
 test("fighter faceoff when a real photo exists (before owned art)", () => {
-  const m = resolveEventMedia({ ...base, mainEvent: { red: "A", blue: "B", titleFight: false, redImage: "/a.jpg", blueImage: null, redRank: null, blueRank: null } });
+  const m = resolveEventMedia({ ...base, mainEvent: { redImage: "/a.jpg", blueImage: null } });
   assert.deepEqual(m, { kind: "faceoff", red: "/a.jpg", blue: null });
 });
 

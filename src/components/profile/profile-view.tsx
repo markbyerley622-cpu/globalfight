@@ -20,17 +20,34 @@ export function ProfileView() {
   const t = useT();
   const { user, loading, refresh } = useAuth();
   const [uploading, setUploading] = useState<null | "avatar" | "banner">(null);
+  // A failed upload used to be COMPLETELY silent: the handler was
+  // `if (res.ok) await refresh()` with no else branch, so a 503 (uploads gated), a
+  // 413 (too large) or a 415 (corrupt file) all looked identical to the user — the
+  // spinner stopped and the picture simply did not change. There was no way to tell
+  // "this is switched off" from "your file is too big" from "it worked but the image
+  // is cached", which is most of why this read as permanently broken.
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
 
   async function upload(kind: "avatar" | "banner", file: File) {
     setUploading(kind);
+    setUploadError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("kind", kind);
       const res = await fetch("/api/profile/image", { method: "POST", body: fd });
-      if (res.ok) await refresh();
+      if (res.ok) {
+        await refresh();
+        return;
+      }
+      // Every failure path on this route returns { error }, so show the server's own
+      // sentence rather than inventing a vaguer one.
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setUploadError(data?.error ?? "That upload didn't go through. Please try again.");
+    } catch {
+      setUploadError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setUploading(null);
     }
@@ -118,6 +135,15 @@ export function ProfileView() {
         </button>
         <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload("avatar", f); }} />
       </div>
+
+      {/* Why the last upload failed. `role="alert"` so it is announced rather than
+          only seen — the control that triggered it is an icon button, and a silent
+          failure next to a camera icon is indistinguishable from a no-op. */}
+      {uploadError && (
+        <p role="alert" className="mt-3 rounded-lg border border-blood-500/40 bg-blood-500/10 px-3 py-2 text-xs text-blood-200">
+          {uploadError}
+        </p>
+      )}
 
       {/* Name + role */}
       <h1 className="mt-3 font-display text-2xl font-bold tracking-tight text-chalk">

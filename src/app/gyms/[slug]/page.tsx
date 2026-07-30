@@ -15,6 +15,7 @@ import { GymReviews } from "@/components/gyms/gym-reviews";
 import { getGymReviewData } from "@/lib/gym-reviews";
 import { isFollowing, followerCount } from "@/lib/follow-targets";
 import { FollowButton } from "@/components/follow-button";
+import { BackButton } from "@/components/back-button";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,14 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
           <div className="absolute inset-0 bg-[radial-gradient(500px_240px_at_20%_0%,rgba(56,189,248,0.28),transparent_62%),linear-gradient(140deg,#141923,#0a0d12)]" />
         )}
         <div className="absolute inset-0 vignette" />
+        {/* Return to the map.
+            A gym page is almost always reached from the Location map or the gyms
+            list, and it had no way back at all — on mobile the bottom bar only
+            jumps between top-level pillars, so the only exit was the browser's own
+            gesture. BackButton prefers real history-back (which restores the map's
+            scroll/viewport instead of rebuilding it) and falls back to /map for
+            anyone who arrived on a shared link. */}
+        <BackButton fallback="/map" label="Back to map" className="absolute left-4 top-4 z-20" />
       </div>
 
       <div className="px-4">

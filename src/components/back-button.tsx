@@ -4,13 +4,31 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useCanGoBack } from "@/lib/navigation-history";
 
 /**
- * Back control for leaf pages (event / fighter detail) that sit OUTSIDE the
- * section tabs, where the bottom bar only jumps between sections and mobile
- * users would otherwise be stuck. Prefers real history-back; on a cold entry
- * (shared link, new tab — nothing to go back to) it falls to a sane in-app
- * destination instead of leaving the app.
+ * Back control for leaf pages (event / fighter / prediction detail) that sit OUTSIDE
+ * the section tabs, where the bottom bar only jumps between sections and a mobile
+ * user would otherwise be stuck.
+ *
+ * It prefers real history-back — that is the ONLY path that restores the previous
+ * page's scroll position (see layout/scroll-restoration.tsx) — and falls back to a
+ * sane in-app destination only when there is genuinely nothing to go back to.
+ *
+ * The old test for "is there in-app history" was:
+ *
+ *     window.history.length > 1 && document.referrer.startsWith(origin)
+ *
+ * `document.referrer` describes the DOCUMENT, and in an App Router SPA the document
+ * is only loaded once. Client-side navigation never updates it. So for anyone who
+ * arrived by typing the URL, from a bookmark, or through the installed PWA — all of
+ * which leave `document.referrer` empty — the condition was false forever, no matter
+ * how many pages deep they had browsed. Every Back press ran `router.push(fallback)`
+ * instead: a fresh forward navigation, to a page they hadn't come from, landing at
+ * the top. That is precisely the reported "Back to Leaderboard sends me to the top".
+ *
+ * `useCanGoBack` tracks in-app navigations in this document instead, which is the
+ * thing actually being asked about.
  */
 export function BackButton({
   fallback = "/events",
@@ -22,6 +40,7 @@ export function BackButton({
   className?: string;
 }) {
   const router = useRouter();
+  const canGoBack = useCanGoBack();
   const t = useT();
   const text = label ?? t("Back");
 
@@ -29,19 +48,10 @@ export function BackButton({
     <button
       type="button"
       onClick={() => {
-        // Only step back through IN-APP history. If the user arrived cold (shared
-        // link, new tab) or from another site, router.back() would leave the app —
-        // so we route to a sane in-app fallback instead.
-        if (
-          typeof window !== "undefined" &&
-          window.history.length > 1 &&
-          document.referrer &&
-          document.referrer.startsWith(window.location.origin)
-        ) {
-          router.back();
-        } else {
-          router.push(fallback);
-        }
+        // router.back() triggers popstate, which is what lets scroll-restoration
+        // recognise the navigation and put the user back where they were.
+        if (canGoBack) router.back();
+        else router.push(fallback);
       }}
       aria-label={text}
       className={cn(

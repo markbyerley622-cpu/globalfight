@@ -3,8 +3,9 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, ArrowLeft } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { BackButton } from "@/components/back-button";
 import { CategoryIcon } from "@/components/category-icon";
 import { getArticle, getArticles } from "@/lib/repo";
 import { SITE } from "@/lib/config";
@@ -61,9 +62,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <>
       <JsonLd data={jsonLd} />
       <article className="container-cr max-w-3xl py-10">
-        <Link href="/news" className="mb-6 inline-flex items-center gap-1.5 text-sm text-mist hover:text-blood-400">
-          <ArrowLeft className="size-4" /> All news
-        </Link>
+        {/* BackButton, not a Link to /news. A Link is a forward PUSH: it rebuilt the
+            index and dropped the reader at the top, losing the scroll position and
+            any filter they had — after they had scrolled a long list to find this
+            article. History-back returns them to the exact spot; /news stays the
+            fallback for anyone who arrived on a shared link. */}
+        <BackButton fallback="/news" label="All news" className="mb-6" />
         <Badge tone="red">{article.category}</Badge>
         <h1 className="mt-3 font-display text-3xl font-bold leading-tight text-chalk sm:text-4xl lg:text-5xl">{article.title}</h1>
         <p className="mt-4 flex items-center gap-2 text-sm text-fog">

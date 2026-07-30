@@ -17,6 +17,30 @@ function hash(s: string): number {
 
 const BASE = "#0b0e13";
 
+/**
+ * Film grain, as ONE shared bitmap instead of a live SVG filter per card.
+ *
+ * This was `<feTurbulence type="fractalNoise" numOctaves="2">` inside each card's
+ * own `<defs>`, applied to a full-card rect under `mix-blend-mode: overlay`. Three
+ * compounding costs, and together they are the event grid's mobile jank:
+ *
+ *   1. feTurbulence is among the most expensive SVG filter primitives there is —
+ *      it generates fractal noise per pixel, on the CPU.
+ *   2. The filter id was seeded per event slug, so all N filters were *distinct*
+ *      and the browser could not reuse a single rasterization. A 12-card grid paid
+ *      for 12 independent noise fields.
+ *   3. A filter attached to a live element is re-evaluated on repaint, and the
+ *      blend mode forced an extra compositing layer to repaint into — so scrolling
+ *      the grid re-ran all of it. That is the "cards wait before responding"
+ *      feeling: the main thread was busy generating noise.
+ *
+ * As a data-URI background the noise is generated ONCE, decoded once, cached by URL
+ * (identical for every card), and then tiled by the compositor like any other
+ * image. Same texture, and it drops off the repaint path entirely.
+ */
+const GRAIN_TILE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E";
+
 export function SportPosterArt({
   seed, sportValue, label, idKey = "",
 }: { seed: string; sportValue: string | null; label: string; idKey?: string }) {
@@ -30,6 +54,7 @@ export function SportPosterArt({
   const slashX = 40 + ((h >> 13) % 300);    // slash horizontal position
 
   return (
+    <>
     <svg
       viewBox="0 0 400 160"
       preserveAspectRatio="xMidYMid slice"
@@ -46,10 +71,6 @@ export function SportPosterArt({
           <stop offset="40%" stopColor={BASE} stopOpacity="0" />
           <stop offset="100%" stopColor={BASE} stopOpacity="0.9" />
         </linearGradient>
-        <filter id={`${id}-grain`} x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
       </defs>
 
       {/* Dark base */}
@@ -77,16 +98,23 @@ export function SportPosterArt({
         {label}
       </text>
 
-      {/* Film grain for texture */}
-      <rect
-        width="400" height="160"
-        filter={`url(#${id}-grain)`}
-        opacity="0.07"
-        style={{ mixBlendMode: "overlay" }}
-      />
-
       {/* Bottom fade so overlaid text always reads */}
       <rect width="400" height="160" fill={`url(#${id}-fade)`} />
     </svg>
+
+    {/* Film grain, on top of the artwork and under the card's own text overlay.
+        A tiled background image of the shared GRAIN_TILE — see the constant for
+        why this is not an SVG filter any more. */}
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0"
+      style={{
+        backgroundImage: `url("${GRAIN_TILE}")`,
+        backgroundRepeat: "repeat",
+        opacity: 0.07,
+        mixBlendMode: "overlay",
+      }}
+    />
+    </>
   );
 }

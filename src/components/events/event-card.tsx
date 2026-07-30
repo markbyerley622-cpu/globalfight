@@ -83,21 +83,36 @@ export function EventCard({ event }: { event: EventCardData }) {
           </span>
         </div>
 
-        {/* The headline bout — the biggest thing on the card. */}
+        {/* The headline bout — the biggest thing on the card. Each corner is its own
+            block (name over record) so the two records are immediately readable and
+            never run together as one line of text. */}
         <div className="absolute inset-x-0 bottom-0 p-3">
           {event.mainEvent ? (
-            <p className="font-display text-lg font-black leading-tight text-chalk drop-shadow sm:text-xl">
-              <RankChip r={event.mainEvent.redRank} />{event.mainEvent.red} <span className="text-blood-400">vs</span> <RankChip r={event.mainEvent.blueRank} />{event.mainEvent.blue}
-            </p>
+            <div className="flex items-end gap-2">
+              <CornerName
+                name={event.mainEvent.red}
+                slug={event.mainEvent.redSlug}
+                record={event.mainEvent.redRecord}
+                rank={event.mainEvent.redRank}
+              />
+              <span className="pb-3.5 font-display text-sm font-black uppercase text-blood-400 drop-shadow">vs</span>
+              <CornerName
+                name={event.mainEvent.blue}
+                slug={event.mainEvent.blueSlug}
+                record={event.mainEvent.blueRecord}
+                rank={event.mainEvent.blueRank}
+                align="right"
+              />
+            </div>
           ) : (
             <p className="font-display text-lg font-black leading-tight text-chalk drop-shadow">{event.name}</p>
           )}
           {event.mainEvent && (() => {
             const intel = matchupIntel(event.mainEvent.redRank, event.mainEvent.blueRank);
             return intel ? (
-              <p className="truncate text-[0.62rem] font-bold uppercase tracking-wider text-volt-300 drop-shadow">{intel}</p>
+              <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wider text-volt-300 drop-shadow">{intel}</p>
             ) : (
-              <p className="truncate text-xs text-mist">{event.name}</p>
+              <p className="mt-1 truncate text-xs text-mist">{event.name}</p>
             );
           })()}
         </div>
@@ -116,7 +131,10 @@ export function EventCard({ event }: { event: EventCardData }) {
           {location && (
             <span className="inline-flex min-w-0 items-center gap-1 text-fog">
               <MapPin className="size-3.5 text-blood-400" />
-              <span className="truncate">{location}</span> <Flag code={event.countryCode} />
+              {/* `name` fallback: countryCode is often null on ingested events while
+                  `country` is set, which rendered the name in text beside a grey
+                  placeholder box. See components/flag.tsx. */}
+              <span className="truncate">{location}</span> <Flag code={event.countryCode} name={event.country} />
             </span>
           )}
         </div>
@@ -169,6 +187,57 @@ export function EventCard({ event }: { event: EventCardData }) {
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * One corner of the headline bout: rank, FULL name, and the full professional
+ * record beneath it.
+ *
+ * Two things were wrong before. The record was not on the card at all, and the two
+ * names were plain text inside a single `<p>` — the most prominent words on the
+ * card, advertising a fighter, with no route to that fighter's profile. Users had
+ * no way to know a fighter profile existed from here.
+ *
+ * The affordance is a PERSISTENT faint underline that strengthens on hover, not a
+ * hover-only cue. A hover-only affordance is invisible on the phone, which is where
+ * most of this traffic is — the user has to already know the link is there to
+ * discover that it is there. The underline is quiet enough not to compete with the
+ * name, and it is the one link convention every reader already knows.
+ *
+ * The record is deliberately NOT truncated: "18-2-1" is six characters and is the
+ * single most informative thing about a fighter. `whitespace-nowrap` keeps it on one
+ * line; the NAME is what wraps if space is tight.
+ */
+function CornerName({
+  name, slug, record, rank, align = "left",
+}: {
+  name: string;
+  slug: string;
+  record: string;
+  rank: FighterRank | null;
+  align?: "left" | "right";
+}) {
+  return (
+    <span className={`flex min-w-0 flex-1 flex-col ${align === "right" ? "items-end text-right" : "items-start"}`}>
+      <Link
+        href={`/fighters/${slug}`}
+        // `relative z-10`: this sits over the artwork layers, and needs to be the
+        // thing that receives the tap.
+        className="group/name relative z-10 font-display text-base font-black leading-tight text-chalk decoration-1 underline-offset-4 drop-shadow transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 sm:text-lg"
+        title={`${name} — fighter profile`}
+      >
+        <RankChip r={rank} />
+        <span className="underline decoration-chalk/25 transition-[text-decoration-color] group-hover/name:decoration-blood-400">
+          {name}
+        </span>
+      </Link>
+      {record && (
+        <span className="mt-0.5 whitespace-nowrap font-mono text-[0.7rem] font-semibold tabular-nums text-mist drop-shadow">
+          {record}
+        </span>
+      )}
+    </span>
   );
 }
 

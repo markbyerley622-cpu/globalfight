@@ -80,7 +80,7 @@ function Corner({ f, tone, alignEnd }: { f: TapeFighter; tone: "red" | "blue"; a
       </Link>
       {f.nickname && <p className="truncate text-xs italic text-fog">&ldquo;{f.nickname}&rdquo;</p>}
       <p className={cn("mt-1 flex items-center gap-1.5 text-xs text-mist", alignEnd && "justify-end")}>
-        <Flag code={f.countryCode} />
+        <Flag code={f.countryCode} name={f.nationality} />
         {formatRecord(f.wins, f.losses, f.draws)}
       </p>
     </div>

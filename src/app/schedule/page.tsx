@@ -54,7 +54,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mist">
                     <span>{formatDate(e.date, { weekday: "long" })}</span>
                     {[e.venue, e.city, e.country].some(Boolean) && (
-                      <span className="flex items-center gap-1.5"><MapPin className="size-3.5 text-blood-400" />{[e.venue, e.city, e.country].filter(Boolean).join(", ")} <Flag code={e.countryCode} /></span>
+                      <span className="flex items-center gap-1.5"><MapPin className="size-3.5 text-blood-400" />{[e.venue, e.city, e.country].filter(Boolean).join(", ")} <Flag code={e.countryCode} name={e.country} /></span>
                     )}
                     {e.broadcaster && <span className="flex items-center gap-1.5"><Tv className="size-3.5 text-blood-400" />{e.broadcaster}</span>}
                   </div>

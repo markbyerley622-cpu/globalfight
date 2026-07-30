@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Send, Check, Copy, Mail, Link2 } from "lucide-react";
+import { PopoverMenu, popoverItemClass } from "@/components/ui/popover-menu";
 import { cn } from "@/lib/utils";
 
 // ONE share control for the whole product — events, fights, fighters, rankings,
@@ -44,24 +45,34 @@ export function ShareMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
-  }, [open]);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   async function onButton() {
+    if (open) { setOpen(false); return; }
+
     const url = absolute(path);
     // Native share sheet (mobile) — one tap to every installed app.
     if (typeof navigator !== "undefined" && navigator.share) {
-      try { await navigator.share({ title, url }); onShared?.(); return; } catch { /* fall through to the menu */ }
+      try {
+        await navigator.share({ title, url });
+        onShared?.();
+        return;
+      } catch (e) {
+        // CANCELLING the native sheet must not then open our own menu.
+        //
+        // The old code caught every rejection and fell through to `setOpen`, so the
+        // sequence "tap Share → native sheet → swipe it away" ended with the
+        // dropdown appearing — seconds after the tap, with no apparent cause. That
+        // is the "share options show up after" symptom: not a slow menu, a menu
+        // opened by the dismissal of the sheet.
+        //
+        // AbortError is the user saying no. Anything else (share not permitted for
+        // this data, no target app) is a real failure, and falling back to our own
+        // channel list is the correct response to it.
+        if ((e as Error)?.name === "AbortError") return;
+      }
     }
-    setOpen((v) => !v);
+    setOpen(true);
   }
 
   function openChannel(c: Channel) {
@@ -80,8 +91,9 @@ export function ShareMenu({
   }
 
   return (
-    <div ref={ref} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={onButton}
         aria-haspopup="menu"
@@ -92,28 +104,26 @@ export function ShareMenu({
         <Send className="size-3.5" /> {!compact && label}
       </button>
 
-      {open && (
-        <div role="menu" className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 p-1.5 shadow-2xl shadow-black/40">
-          {CHANNELS.map((c) => (
-            <button key={c.key} role="menuitem" onClick={() => openChannel(c)}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-ink-800 hover:text-chalk">
-              {c.label}
-            </button>
-          ))}
-          <a
-            role="menuitem"
-            href={`mailto:?subject=${enc(title)}&body=${enc(absolute(path))}`}
-            onClick={() => { onShared?.(); setOpen(false); }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-ink-800 hover:text-chalk"
-          >
-            <Mail className="size-4" /> Email
-          </a>
-          <button role="menuitem" onClick={copyLink}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-ink-800 hover:text-chalk">
-            {copied ? <Check className="size-4 text-up" /> : <Link2 className="size-4" />} {copied ? "Copied!" : "Copy link"}
+      {/* Portalled: the event card that hosts this is `overflow-hidden`, which used
+          to clip the menu out of existence on mobile. See ui/popover-menu. */}
+      <PopoverMenu open={open} onClose={() => setOpen(false)} anchorRef={buttonRef} label="Share to">
+        {CHANNELS.map((c) => (
+          <button key={c.key} type="button" role="menuitem" onClick={() => openChannel(c)} className={popoverItemClass}>
+            {c.label}
           </button>
-        </div>
-      )}
+        ))}
+        <a
+          role="menuitem"
+          href={`mailto:?subject=${enc(title)}&body=${enc(absolute(path))}`}
+          onClick={() => { onShared?.(); setOpen(false); }}
+          className={popoverItemClass}
+        >
+          <Mail className="size-4" /> Email
+        </a>
+        <button type="button" role="menuitem" onClick={copyLink} className={popoverItemClass}>
+          {copied ? <Check className="size-4 text-up" /> : <Link2 className="size-4" />} {copied ? "Copied!" : "Copy link"}
+        </button>
+      </PopoverMenu>
     </div>
   );
 }

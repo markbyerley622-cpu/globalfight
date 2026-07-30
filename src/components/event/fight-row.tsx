@@ -175,11 +175,27 @@ function Corner({
       href={`/fighters/${fighter.slug}`}
       className={`group/f flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 ${alignEnd ? "flex-row-reverse text-right" : "text-left"}`}
     >
-      <FighterAvatar fighter={fighter} size="md" showFlag />
+      {/* The avatar carries the crown so the winner is identifiable from the
+          artwork alone, at a glance, without reading the name row. */}
+      <span className="relative shrink-0">
+        <FighterAvatar fighter={fighter} size="md" showFlag />
+        {won && (
+          <span
+            // Gold, and the ONLY gold thing in the row besides a title bar — a
+            // winner marker has to be unmistakable. It replaced a small blood-red
+            // "✓" appended to the name, which read as a checkbox and was invisible
+            // next to the losing corner's identical-weight name.
+            className="absolute -right-1 -top-1.5 flex size-5 items-center justify-center rounded-full border border-gold-400/70 bg-ink-950 text-gold-300 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.9)]"
+            title="Winner"
+            aria-label="Winner"
+          >
+            <Crown className="size-3" aria-hidden />
+          </span>
+        )}
+      </span>
       <div className={`min-w-0 ${dim ? "opacity-60" : ""}`}>
-        <p className="truncate font-display text-sm font-bold leading-tight text-chalk transition-colors group-hover/f:text-blood-300">
+        <p className={`truncate font-display text-sm leading-tight transition-colors group-hover/f:text-blood-300 ${won ? "font-black text-white" : "font-bold text-chalk"}`}>
           {fighter.name}
-          {won && <span className="ml-1 text-blood-400">✓</span>}
         </p>
         <p className="truncate text-xs tabular-nums text-mist">
           {formatRecord(fighter.wins, fighter.losses, fighter.draws)}

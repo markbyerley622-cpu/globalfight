@@ -83,7 +83,9 @@ function Corner({ fighter, alignEnd }: { fighter: Fight["red"]; side: "red" | "b
         </p>
         {fighter.nationality && (
           <p className={cn("flex items-center gap-1 text-[11px] text-fog", alignEnd && "flex-row-reverse")}>
-            <Flag code={fighter.countryCode} /> {fighter.nationality}
+            {/* nationality resolves only when it holds a country NAME ("Brazil"); a demonym
+                ("Brazilian") is not mapped and still falls back to the placeholder. */}
+            <Flag code={fighter.countryCode} name={fighter.nationality} /> {fighter.nationality}
           </p>
         )}
       </div>

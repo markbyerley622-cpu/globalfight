@@ -156,12 +156,13 @@ function FeedTimeline({ items, eventsOnly }: { items: FeedItem[]; eventsOnly: bo
       .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 
   const personal = by(["personal"]);
+  const people = by(["person"]);
   const fights = by(["event_upcoming", "fighter"]);
   const results = by(["result"]);
   const news = by(["coverage"]);
   const videos = by(["video"]);
 
-  // The Events tab is the same machinery, narrowed to the two event bands.
+  // The Events tab: the cards, and only the cards.
   if (eventsOnly) {
     return (
       <div>
@@ -171,11 +172,17 @@ function FeedTimeline({ items, eventsOnly }: { items: FeedItem[]; eventsOnly: bo
     );
   }
 
+  // The Feed tab: PEOPLE, plus the things addressed to you.
+  //
+  // The event bands ("Your fights", "Results") deliberately do NOT appear here.
+  // They used to, which meant the Feed tab was the Events tab plus news — the same
+  // rows under a different heading, two chips apart in the same tab strip. Events
+  // now has one home, and Feed answers the question its name implies: what have the
+  // people I follow been doing.
   return (
     <div>
       <FeedBand title="For you" icon={Bell} items={personal} compact />
-      <FeedBand title="Your fights" subtitle="Call them before they close" icon={Swords} items={fights} />
-      <FeedBand title="Results" subtitle="How your picks landed" icon={Trophy} items={results} />
+      <FeedBand title="People you follow" subtitle="Calls, battles and cards" icon={Users} items={people} compact />
       <FeedBand title="In the news" icon={Newspaper} items={news} />
       <FeedBand title="Watch" icon={Play} items={videos} />
     </div>

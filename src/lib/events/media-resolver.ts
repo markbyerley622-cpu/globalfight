@@ -23,7 +23,13 @@ export type EventMedia =
   | { kind: "faceoff"; red: string | null; blue: string | null }
   | { kind: "generated" };
 
-type MediaInput = Pick<EventCard, "slug" | "sport" | "promotion" | "posterUrl" | "heroUrl" | "mainEvent">;
+// The resolver picks ARTWORK, so it depends only on the two fighter images — not on
+// the whole `mainEvent` shape. Widening `mainEvent` with fields this module never
+// reads (slugs, records) otherwise breaks every caller and test that constructs a
+// minimal fixture, for a property the resolver has no opinion about.
+type MediaInput = Pick<EventCard, "slug" | "sport" | "promotion" | "posterUrl" | "heroUrl"> & {
+  mainEvent: Pick<NonNullable<EventCard["mainEvent"]>, "redImage" | "blueImage"> | null;
+};
 
 export function resolveEventMedia(event: MediaInput): EventMedia {
   const art = pickEventArtwork(event); // hero | poster | fighters | gradient

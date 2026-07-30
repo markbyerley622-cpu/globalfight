@@ -62,7 +62,10 @@ export function FeedCard({ item }: { item: FeedItem }) {
   // Personal items (a reply, a battle result) stay compact on purpose: they are
   // already addressed to you, and a hero image for "someone replied" would be
   // louder than the thing it is telling you about.
-  if (item.kind === "personal") return <CompactCard item={item} />;
+  // Something a person you follow did. Compact for the same reason as `personal`:
+  // it is a one-line social fact ("Alice won a battle vs Dana"), and giving it a
+  // hero image would make it shout louder than the fight it refers to.
+  if (item.kind === "personal" || item.kind === "person") return <CompactCard item={item} />;
 
   const Icon = KIND_ICON[item.kind] ?? Newspaper;
   const media = item.media;

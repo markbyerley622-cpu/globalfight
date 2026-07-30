@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -16,7 +16,9 @@ import { LanguageSwitcher } from "./language-switcher";
 import { PillarNav } from "./pillar-nav";
 import { OnlineCount } from "./online-count";
 import { NotificationBell } from "./notification-bell";
+import { ScrollRestoration } from "./scroll-restoration";
 import { useAuth } from "@/lib/auth-client";
+import { useTrackNavigation } from "@/lib/navigation-history";
 
 /**
  * App-wide shell: a 100dvh flex frame with a fixed top bar (logo · search ·
@@ -38,6 +40,10 @@ export function AppShell({
   const mainRef = useRef<HTMLElement>(null);
   const [navOpen, setNavOpen] = useState(false);
   const { user } = useAuth();
+
+  // Records in-app navigation depth, so every Back control knows whether
+  // router.back() stays inside the app. See lib/navigation-history.
+  useTrackNavigation();
 
   useEffect(() => { setNavOpen(false); }, [pathname]);
 
@@ -104,6 +110,13 @@ export function AppShell({
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden bg-ink-950">
       <AnalyticsPageviews />
+      {/* Restores the scroll position of `#main` on Back/Forward. Suspense because it
+          reads useSearchParams; it renders nothing, so there is no fallback to show.
+          See scroll-restoration.tsx — the document itself never scrolls here, which is
+          why neither the browser's nor Next's own restoration ever worked. */}
+      <Suspense fallback={null}>
+        <ScrollRestoration />
+      </Suspense>
       <a href="#main" className="skip-link">Skip to content</a>
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Top bar — logo + actions row, with the Breaking ticker docked

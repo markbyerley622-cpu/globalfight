@@ -27,7 +27,7 @@ export default async function ResultsPage() {
               <div>
                 <h2 className="font-display text-xl font-bold text-chalk">{e.name}</h2>
                 <p className="flex items-center gap-1.5 text-xs text-fog">
-                  {formatDate(e.date)} · <MapPin className="size-3" /> {e.venue}, {e.country} <Flag code={e.countryCode} size="xs" />
+                  {formatDate(e.date)} · <MapPin className="size-3" /> {e.venue}, {e.country} <Flag code={e.countryCode} name={e.country} size="xs" />
                 </p>
               </div>
               <Badge tone="neutral">Final</Badge>
