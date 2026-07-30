@@ -41,6 +41,28 @@ export function refuseIfUgcMediaDisabled(): NextResponse | null {
 }
 
 /**
+ * Refuse an OWN-PROFILE image (avatar / banner) while that is disabled.
+ *
+ * Separate from refuseIfUgcMediaDisabled because the risks differ — see
+ * `profileImageUploadsEnabled` in lib/feature-flags for the full reasoning. Short
+ * version: this path re-encodes through sharp, so the uploaded bytes are never
+ * stored or served, and there is no unscanned file to publish.
+ *
+ * Returns a response to send, or null to proceed.
+ */
+export function refuseIfProfileImagesDisabled(): NextResponse | null {
+  if (flags().profileImageUploadsEnabled) return null;
+
+  return NextResponse.json(
+    {
+      error: "Profile image uploads are temporarily unavailable.",
+      code: "PROFILE_IMAGES_DISABLED",
+    },
+    { status: 503, headers: { "cache-control": "private, no-store" } },
+  );
+}
+
+/**
  * Moderation states for user media. Nothing is public until APPROVED.
  *
  * PENDING  — uploaded, quarantined, not scanned, NOT public.

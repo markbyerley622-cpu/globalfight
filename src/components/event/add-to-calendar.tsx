@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CalendarPlus, Download } from "lucide-react";
 import { googleCalendarUrl, outlookCalendarUrl, type CalendarEvent } from "@/lib/calendar";
+import { PopoverMenu, popoverItemClass } from "@/components/ui/popover-menu";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,16 +27,7 @@ export function AddToCalendar({
   size?: "sm" | "md";
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
-  }, [open]);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const url = typeof window !== "undefined" ? `${window.location.origin}/events/${slug}` : `/events/${slug}`;
   const event: CalendarEvent = {
@@ -60,8 +52,9 @@ export function AddToCalendar({
   ];
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
@@ -74,23 +67,25 @@ export function AddToCalendar({
         <CalendarPlus className={size === "sm" ? "size-3.5" : "size-4"} /> Add to calendar
       </button>
 
-      {open && (
-        <div role="menu" className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 p-1.5 shadow-2xl shadow-black/40">
-          {items.map((i) => (
-            <a
-              key={i.key}
-              role="menuitem"
-              href={i.href}
-              {...(i.download ? { download: "" } : { target: "_blank", rel: "noopener noreferrer" })}
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-mist transition-colors hover:bg-ink-800 hover:text-chalk"
-            >
-              {i.key === "ics" && <Download className="size-4" />}
-              {i.label}
-            </a>
-          ))}
-        </div>
-      )}
+      {/* Portalled. This control lives in the event card's bottom action row, and the
+          card is `overflow-hidden` — as an absolutely-positioned child the menu was
+          clipped entirely, so on mobile tapping "Add to calendar" appeared to do
+          nothing at all. See ui/popover-menu. */}
+      <PopoverMenu open={open} onClose={() => setOpen(false)} anchorRef={buttonRef} label="Add to calendar">
+        {items.map((i) => (
+          <a
+            key={i.key}
+            role="menuitem"
+            href={i.href}
+            {...(i.download ? { download: "" } : { target: "_blank", rel: "noopener noreferrer" })}
+            onClick={() => setOpen(false)}
+            className={popoverItemClass}
+          >
+            {i.key === "ics" && <Download className="size-4" />}
+            {i.label}
+          </a>
+        ))}
+      </PopoverMenu>
     </div>
   );
 }

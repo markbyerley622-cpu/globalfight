@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BellOff, Check, Loader2, Trash2 } from "lucide-react";
+import { BellOff, Check, Loader2, Trash2, UserPlus, UserCheck } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { NotificationIcon } from "@/components/notifications/notification-icon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +50,64 @@ export function NotificationSkeletonRows({ rows = 5 }: { rows?: number }) {
   );
 }
 
+/**
+ * One-tap follow-back, inside the "X followed you" row.
+ *
+ * Only rendered for a single-member FOLLOW group: once several follows have
+ * collapsed into "3 people followed you" there is no single person to reciprocate
+ * with, and the row links to the list instead.
+ *
+ * Optimistic, and it reverts on failure — the button is a statement about a
+ * relationship, so leaving it showing "Following" after a failed write would be a
+ * lie the user acts on later.
+ */
+function FollowBackButton({ username, initiallyFollowing }: { username: string; initiallyFollowing: boolean }) {
+  const [following, setFollowing] = useState(initiallyFollowing);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    const next = !following;
+    setFollowing(next);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(username)}/follow`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ follow: next }),
+      });
+      if (!res.ok) throw new Error("failed");
+      const data = (await res.json()) as { following?: boolean };
+      // Trust the server's answer over ours.
+      if (typeof data.following === "boolean") setFollowing(data.following);
+    } catch {
+      setFollowing(!next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      // The row is wrapped in a Link; without this the tap navigates to the
+      // profile instead of following, which is the single most likely way for this
+      // control to feel broken.
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); void toggle(); }}
+      disabled={busy}
+      aria-label={following ? `Unfollow ${username}` : `Follow ${username} back`}
+      className={cn(
+        "tap relative z-10 mt-2 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.7rem] font-bold uppercase tracking-wide transition-colors disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
+        following
+          ? "border-ink-700 bg-ink-850 text-mist hover:text-chalk"
+          : "border-blood-500/50 bg-blood-500/15 text-blood-200 hover:border-blood-500 hover:bg-blood-500/25",
+      )}
+    >
+      {following ? <UserCheck className="size-3.5" /> : <UserPlus className="size-3.5" />}
+      {following ? "Following" : "Follow back"}
+    </button>
+  );
+}
+
 function GroupRow({
   group,
   onRead,
@@ -61,6 +119,10 @@ function GroupRow({
   onRemove: (g: NotificationGroup) => void;
   onNavigate?: () => void;
 }) {
+  // A single new follower is the one notification with an obvious reciprocal
+  // action; offer it in place rather than making them open the profile for it.
+  const actor = group.count === 1 ? group.members[0]?.actor : null;
+
   const body = (
     <div
       className={cn(
@@ -76,6 +138,7 @@ function GroupRow({
           {group.title}
         </p>
         {group.body && <p className="mt-0.5 text-xs text-mist">{group.body}</p>}
+        {actor && <FollowBackButton username={actor.username} initiallyFollowing={actor.youFollow} />}
         <p className="mt-1 flex items-center gap-1.5 text-[0.68rem] uppercase tracking-wide text-fog">
           <time dateTime={group.createdAt}>{timeAgo(group.createdAt)}</time>
           {group.count > 1 && (

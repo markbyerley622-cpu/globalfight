@@ -13,6 +13,18 @@ import { safeFighterImageOrNull } from "@/lib/media-safe";
 import { SPORTS } from "@/lib/sports";
 import { recommendVideos } from "@/lib/feed/recommend";
 import { getMyPicksForFightIds, getCrowdForFightIds } from "@/lib/picks";
+import { publicDisplayName } from "@/lib/display-name";
+
+/**
+ * Lowercase only the first character.
+ *
+ * Activity titles are stored verb-first and capitalised, from the actor's own point
+ * of view — "Won a battle vs Dana", "Earned a rare card", "Correctly picked Volk".
+ * Prefixing the actor's name needs that leading verb in lower case
+ * ("Alice won a battle vs Dana"). Only the first character is touched, so the proper
+ * nouns later in the string are left exactly as they were.
+ */
+const lowerFirst = (s: string): string => (s ? s[0].toLowerCase() + s.slice(1) : s);
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -34,6 +46,7 @@ export type FeedKind =
   | "fighter"          // a fighter you follow — booking, record, standing
   | "result"           // a card you follow finished
   | "personal"         // battle result, reply, mention — already user-targeted
+  | "person"           // something a PERSON you follow did (the social feed)
   | "coverage"         // news naming a fighter/promotion you follow
   | "video";           // an upload from a channel your follows map to
 
@@ -55,6 +68,10 @@ export interface FeedItem {
   /** Present only on kind === "video": what the card needs to render a player
    *  without a second round trip. */
   video?: { channel: string; promotion: string | null; promotionName: string | null };
+  /** Present only on kind === "person": who did the thing, so the card can name
+   *  and link them. `displayName` is already privacy-resolved (publicDisplayName),
+   *  never the raw account name or email. */
+  person?: { username: string | null; displayName: string; avatar: string | null };
   /** Present only on kind === "fighter". Everything the card shows, resolved
    *  server-side and batch-loaded — never one query per card. */
   fighter?: {
@@ -206,16 +223,20 @@ function eventMedia(e: {
 
 /** What this user follows. Three cheap indexed reads. */
 async function getFollowGraph(userId: string) {
-  const [events, fighters, promotions, me] = await Promise.all([
+  const [events, fighters, promotions, people, me] = await Promise.all([
     prisma.favoriteEvent.findMany({ where: { userId }, select: { eventId: true } }),
     prisma.favoriteFighter.findMany({ where: { userId }, select: { fighterId: true } }),
     prisma.favoritePromotion.findMany({ where: { userId }, select: { promotion: true } }),
+    // The user→user graph. This is what makes the Feed tab a feed of PEOPLE
+    // rather than a second copy of the Events tab.
+    prisma.userFollow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { sportPrefs: true, notifyFights: true } }),
   ]);
   return {
     eventIds: events.map((e) => e.eventId),
     fighterIds: fighters.map((f) => f.fighterId),
     promotions: promotions.map((p) => p.promotion),
+    followedUserIds: people.map((p) => p.followingId),
     disciplines: [...new Set((me?.sportPrefs ?? []).map((v) => DISCIPLINE_SLUG[v]).filter(Boolean))],
     // Read from the profile the graph already loads, so the card can say
     // "Alerts on" truthfully rather than implying it.
@@ -231,7 +252,7 @@ async function getFollowGraph(userId: string) {
  * is how a fan actually experiences fight week.
  */
 export async function getFollowingFeed(userId: string, limit = 40): Promise<FeedItem[]> {
-  const { eventIds, fighterIds, promotions, disciplines, notifyFights } = await getFollowGraph(userId);
+  const { eventIds, fighterIds, promotions, followedUserIds, disciplines, notifyFights } = await getFollowGraph(userId);
   const now = new Date();
   const soon = new Date(now.getTime() + 45 * 86_400_000);
   const recently = new Date(now.getTime() - 21 * 86_400_000);
@@ -272,7 +293,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     : [[], []];
   const fighterNames = followedFighters.map((f) => f.name).filter((n) => n && n.length >= 6);
 
-  const [upcomingEvents, results, fighterFights, personal, coverage] = await Promise.all([
+  const [upcomingEvents, results, fighterFights, personal, coverage, peopleActivity] = await Promise.all([
     // Cards you follow directly, or run by a promotion you follow.
     followsSomething
       ? prisma.event.findMany({
@@ -351,7 +372,24 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
         })
       : Promise.resolve([]),
 
-
+    // What the PEOPLE you follow have been doing. One query for the whole follow
+    // list, ordered by the [userId, createdAt] index on Activity.
+    //
+    // This is the band that makes the Feed tab its own thing. Before it, "Feed"
+    // and "Events" were both built from the same event/result rows, so the Feed
+    // was the Events tab plus news — which is exactly the duplication a reader
+    // notices and cannot name.
+    followedUserIds.length
+      ? prisma.activity.findMany({
+          where: { userId: { in: followedUserIds }, createdAt: { gte: recently } },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: {
+            id: true, type: true, title: true, url: true, createdAt: true,
+            user: { select: { name: true, username: true, image: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const items: FeedItem[] = [];
@@ -518,6 +556,34 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     });
   }
 
+  // People you follow. `publicDisplayName` is not optional here: User.name has
+  // historically held email-derived values, and this band renders a name to
+  // strangers — so it goes through the same privacy resolver every other public
+  // surface uses rather than reading `name` directly.
+  for (const a of peopleActivity) {
+    const displayName = publicDisplayName(a.user);
+    items.push({
+      id: `ac-${a.id}`,
+      kind: "person",
+      at: iso(a.createdAt),
+      // The stored title is written from the actor's own point of view ("Called
+      // Gaethje by KO"), so it is prefixed with who did it to read correctly in
+      // someone else's feed.
+      title: `${displayName} ${lowerFirst(a.title)}`,
+      body: null,
+      // Fall back to the person's profile: an activity row whose subject has since
+      // been deleted still has a person worth visiting.
+      url: a.url ?? (a.user.username ? `/u/${a.user.username}` : "/following"),
+      icon: "person",
+      meta: null,
+      person: {
+        username: a.user.username,
+        displayName,
+        avatar: safeFighterImageOrNull(a.user.image),
+      },
+    });
+  }
+
   for (const a of coverage) {
     if (!a.publishedAt) continue; // unpublished has no place on a timeline
     items.push({
@@ -605,6 +671,9 @@ const FAMILY: Record<FeedKind, string> = {
   coverage: "news",
   video: "video",
   personal: "personal",
+  // Same family as `personal`: both render as the compact one-line row, so to the
+  // eye a run of them is one run, which is what the rule is measuring.
+  person: "personal",
 };
 
 function interleaveVideos(ranked: FeedItem[], videoItems: FeedItem[], limit: number): FeedItem[] {

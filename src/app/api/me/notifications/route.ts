@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import {
   pageNotifications, unreadCount, markAllRead, markRead, deleteNotifications,
@@ -30,6 +31,56 @@ const serialise = (n: NotificationRow): GroupableNotification => ({
   createdAt: n.createdAt.toISOString(),
 });
 
+/** `/u/<username>` → `<username>`. The only shape setFollow() writes for FOLLOW. */
+function actorUsername(n: GroupableNotification): string | null {
+  if (n.type !== "FOLLOW" || !n.url) return null;
+  const m = /^\/u\/([^/?#]+)$/.exec(n.url);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/**
+ * Attach the follower's identity + whether the viewer already follows them back, so
+ * a FOLLOW row can offer a one-tap follow-back.
+ *
+ * The username comes out of the notification's own `url` rather than a new column:
+ * Notification has no actor field, and this repo has no Prisma migrations, so adding
+ * one means a `db push` on a live database for a value already present in the row.
+ *
+ * TWO queries total regardless of page size, never per row.
+ */
+async function withFollowActors(
+  viewerId: string,
+  rows: GroupableNotification[],
+): Promise<GroupableNotification[]> {
+  const usernames = [...new Set(rows.map(actorUsername).filter((u): u is string => !!u))];
+  if (!usernames.length) return rows;
+
+  const actors = await prisma.user.findMany({
+    where: { username: { in: usernames } },
+    select: { id: true, username: true },
+  });
+  if (!actors.length) return rows;
+
+  const followedBack = new Set(
+    (
+      await prisma.userFollow.findMany({
+        where: { followerId: viewerId, followingId: { in: actors.map((a) => a.id) } },
+        select: { followingId: true },
+      })
+    ).map((f) => f.followingId),
+  );
+
+  const byUsername = new Map(actors.map((a) => [a.username, a]));
+  return rows.map((n) => {
+    const username = actorUsername(n);
+    const actor = username ? byUsername.get(username) : null;
+    // A follower who has since deleted their account leaves the row intact and
+    // simply offers no action, rather than a button that 404s.
+    if (!actor?.username) return n;
+    return { ...n, actor: { username: actor.username, youFollow: followedBack.has(actor.id) } };
+  });
+}
+
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   // Signed out is not an error here — the bell renders for everyone and an empty
@@ -46,7 +97,7 @@ export async function GET(req: Request) {
     unreadCount(user.id),
   ]);
 
-  const notifications = page.items.map(serialise);
+  const notifications = await withFollowActors(user.id, page.items.map(serialise));
   return NextResponse.json({
     notifications,
     groups: grouped ? groupNotifications(notifications) : notifications.map((n) => ({
