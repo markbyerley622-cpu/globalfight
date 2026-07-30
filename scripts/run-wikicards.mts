@@ -119,6 +119,9 @@ No UNRESOLVED bout matches "${fightQuery}".`);
   VERDICT: ${o.reason}`);
   const why: Record<string, string> = {
     verified: "the result was found and will be persisted (and settled) on a non-dry run.",
+    partial: "some of the card was reconstructed, but not enough of it to call the event complete.",
+    name_mismatch:
+      "E. the source HAS this bout on the right date, under a name we failed to match.",
     no_candidate: "A. the source has no page for this bout — the search returned nothing at all.",
     all_rejected: "B/C. the search returned pages, but none scored high enough to be plausibly about this bout.",
     no_card: "D. a page was read but contained no results table this extractor can parse.",
@@ -126,7 +129,20 @@ No UNRESOLVED bout matches "${fightQuery}".`);
     error: "the source could not be reached.",
   };
   console.log(`  ${why[o.reason] ?? o.reason}`);
-  if (o.reason !== "verified") {
+  if (o.note) console.log(`  ${o.note}`);
+
+  // Do NOT call a name mismatch a source-coverage limit.
+  //
+  // This block printed "SOURCE-COVERAGE limit … there is nothing to write" for every
+  // non-verified reason, including the one case where the source demonstrably DOES
+  // have the result. The trace said "record has 1 row near 2026-07-27 but the opponent
+  // is not our fighter: Ricardo Salas" and the verdict two lines later said there was
+  // nothing to find — sending the reader to look for a page that was already open.
+  if (o.reason === "name_mismatch") {
+    console.log("\n  This is OURS to fix, not a source gap. The bout is published; entity");
+    console.log("  resolution did not match the name. Add a FighterAlias for the form above,");
+    console.log("  or extend the ladder in src/lib/entities/resolve.ts.");
+  } else if (o.reason !== "verified" && o.reason !== "partial") {
     console.log("\n  This is a SOURCE-COVERAGE limit, not a settlement bug: there is nothing");
     console.log("  to write. Nothing is fabricated to close it.");
   }

@@ -226,3 +226,60 @@ test("matchKeys drops name suffixes so Jr/III forms unify", () => {
   assert.equal(matchKeys({ name: "Errol Spence Jr." }).canonical, "errol spence");
   assert.equal(matchKeys({ name: "Errol Spence" }).canonical, "errol spence");
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Dropped maternal surname — the Spanish/Portuguese two-surname short form.
+//
+//  Production case: Wikipedia's record table for Richardson Hitchins held the
+//  2026-07-27 bout against "Ricardo Salas". We store "Ricardo Salas Rodriguez".
+//  No rung matched — `canonical` differs, and `loose` is first + LAST token, so
+//  ours folded to "ricardo rodriguez" against the source's "ricardo salas". The
+//  bout failed to verify and the event reported no available result while the
+//  source plainly had one.
+// ════════════════════════════════════════════════════════════════════════════
+
+const salas = candidate("fighter", {
+  id: "f_salas", slug: "ricardo-salas-rodriguez", name: "Ricardo Salas Rodriguez",
+});
+
+test("a dropped maternal surname resolves inside a closed set", () => {
+  const r = resolveName("Ricardo Salas", [salas]);
+  assert.ok(r.ok, "the source's short form must resolve to our full name");
+  assert.equal(r.via, "paternal");
+});
+
+test("it works in the other direction too", () => {
+  const short = candidate("fighter", { id: "f_s2", slug: "ricardo-salas", name: "Ricardo Salas" });
+  const r = resolveName("Ricardo Salas Rodríguez", [short]);
+  assert.ok(r.ok);
+  assert.equal(r.via, "paternal");
+});
+
+test("it is refused in an OPEN set", () => {
+  // Below OPEN_SET_FLOOR by design: dropping a surname is only a safe assumption
+  // when the candidates are already the two corners of a known bout.
+  assert.ok(VIA_CONFIDENCE.paternal < OPEN_SET_FLOOR);
+  assert.equal(resolveName("Ricardo Salas", [salas], { openSet: true }).ok, false);
+});
+
+test("two candidates sharing the prefix are AMBIGUOUS, never a guess", () => {
+  const perez = candidate("fighter", {
+    id: "f_perez", slug: "ricardo-salas-perez", name: "Ricardo Salas Perez",
+  });
+  const r = resolveName("Ricardo Salas", [salas, perez]);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "ambiguous");
+});
+
+test("the guards hold: no bare surnames, no two-token gaps, no short particles", () => {
+  // A bare surname is never enough on its own.
+  assert.equal(resolveName("Salas", [salas]).ok, false);
+  // TWO dropped tokens is not a two-surname name, it is a different person.
+  const long = candidate("fighter", {
+    id: "f_l", slug: "l", name: "Ricardo Salas Rodriguez Fernandez",
+  });
+  assert.equal(resolveName("Ricardo Salas", [long]).ok, false);
+  // A <4-character retained surname cannot carry the match ("Da", "Los", "Ali").
+  const da = candidate("fighter", { id: "f_da", slug: "d", name: "Joao Da Silva" });
+  assert.equal(resolveName("Joao Da", [da]).ok, false);
+});

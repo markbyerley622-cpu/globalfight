@@ -48,6 +48,9 @@ const MEANING: Record<string, string> = {
   partial:
     "Real bouts were found and stored, but NOT enough of the card. The bouts it has are " +
     "correct; the event is simply incomplete and stays eligible for another attempt.",
+  name_mismatch:
+    "OURS TO FIX. The source HAS this bout on the right date, under a name we did not " +
+    "match (see the note). Add a FighterAlias, or extend lib/entities/resolve.ts.",
   no_candidate: "Search returned no page at all. Likely no Wikipedia coverage (common for regional cards).",
   all_rejected: "Pages were found but every one was refused on its title. Check the scoring, or the event name.",
   no_card: "A page was accepted but no bout table could be parsed from it. Suspect HTML/selector drift.",
@@ -64,10 +67,13 @@ const MEANING: Record<string, string> = {
 function rank(reason: string | null): number {
   if (!reason) return 0;
   const base = reason.split(":")[0];
-  if (base === "verified") return 4;
-  if (base === "no_candidate") return 3;
-  if (base === "partial") return 1;
-  return 2;
+  if (base === "verified") return 5;
+  if (base === "no_candidate") return 4;
+  // Top of the list after never-attempted: the source has the result and only our
+  // matching is in the way, so it is the most fixable thing here.
+  if (base === "name_mismatch") return 1;
+  if (base === "partial") return 2;
+  return 3;
 }
 
 const ago = (d: Date | null): string => {

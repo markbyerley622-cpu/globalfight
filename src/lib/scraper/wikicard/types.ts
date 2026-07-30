@@ -127,7 +127,21 @@ export interface WikiTargetOutcome {
    * verified: a 13-bout card that harvested 1 bout from a fighter's biography counted
    * as a success, and the queue then de-prioritised it.
    */
-  reason: "verified" | "partial" | "no_candidate" | "all_rejected" | "no_card" | "unverified" | "error";
+  reason:
+    | "verified"
+    | "partial"
+    /**
+     * The source HAS the bout on the right date and we failed to match the name —
+     * e.g. Wikipedia listed "Ricardo Salas" where we store "Ricardo Salas Rodriguez".
+     * The only reason in this list that is a bug on our side rather than a gap in
+     * the source, so it must not be reported as `no_card`.
+     */
+    | "name_mismatch"
+    | "no_candidate"
+    | "all_rejected"
+    | "no_card"
+    | "unverified"
+    | "error";
   note?: string;
   /** Every decision, in order — the `--explain` trace. */
   trace: TraceStep[];

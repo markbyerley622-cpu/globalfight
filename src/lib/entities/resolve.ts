@@ -44,6 +44,7 @@ export type ResolutionVia =
   | "name_exact"
   | "nickname"
   | "name_loose"
+  | "paternal" // "Ricardo Salas" for "Ricardo Salas Rodríguez" — maternal surname dropped
   | "initial" // "A. Joshua"
   | "translit" // romanization variant
   | "acronym" // "AJ"
@@ -94,6 +95,9 @@ export const VIA_CONFIDENCE: Record<ResolutionVia, number> = {
   alias: 0.95,
   nickname: 0.9,
   name_loose: 0.8,
+  // Deliberately below OPEN_SET_FLOOR: dropping a surname is a legitimate short
+  // form, but only safe to assume inside a bounded candidate set.
+  paternal: 0.7,
   initial: 0.62,
   translit: 0.58,
   acronym: 0.5,
@@ -164,6 +168,7 @@ const LADDER: { via: ResolutionVia; hit: (q: MatchKeys, c: MatchKeys) => boolean
   { via: "alias", hit: (q, c) => !!q.canonical && c.aliasKeys.includes(q.canonical) },
   { via: "nickname", hit: (q, c) => !!q.canonical && c.nicknameKeys.includes(q.canonical) },
   { via: "name_loose", hit: (q, c) => !!q.loose && q.loose === c.loose },
+  { via: "paternal", hit: (q, c) => droppedSurname(q, c) || droppedSurname(c, q) },
   {
     via: "initial",
     hit: (q, c) => !!q.initialSurname && q.initialSurname === c.initialSurname,
@@ -190,6 +195,40 @@ const LADDER: { via: ResolutionVia; hit: (q: MatchKeys, c: MatchKeys) => boolean
         (q.tokenCount === 1 && q.canonical.length <= 3 && q.canonical === c.acronym)),
   },
 ];
+
+/**
+ * Is `short` the same name as `full` with ONE trailing surname dropped?
+ *
+ * The Spanish/Portuguese two-surname case, and it was costing us real results.
+ * "Ricardo Salas Rodríguez" is given name + paternal surname + maternal surname;
+ * the everyday short form drops the maternal one, giving "Ricardo Salas". No rung
+ * on the ladder could see that: `canonical` differs, and `loose` is first + LAST
+ * token, so ours folded to "ricardo rodriguez" against the source's "ricardo
+ * salas" — the surnames compared were different words.
+ *
+ * Observed in production: Wikipedia's record table for Richardson Hitchins held the
+ * 2026-07-27 bout against "Ricardo Salas", we had "Ricardo Salas Rodriguez", the
+ * bout failed to verify, and the event reported no available result while the source
+ * plainly had one.
+ *
+ * Kept deliberately tight, because loosening name matching is how a pipeline starts
+ * writing one fighter's result onto another:
+ *   • exactly ONE extra token — two surnames, not an arbitrary prefix;
+ *   • at least two tokens in the short form (a bare surname is never enough);
+ *   • the retained surname must be ≥4 characters, so short particles like "Da" or
+ *     "Los" cannot carry a match on their own.
+ *
+ * Two candidates sharing the same prefix ("Ricardo Salas Rodríguez" and "Ricardo
+ * Salas Pérez") both hit this rung, which the ladder reports as `ambiguous` rather
+ * than guessing — and in the wikicard path BOTH corners of a bout must resolve to the
+ * same expected pair before anything is written.
+ */
+function droppedSurname(short: MatchKeys, full: MatchKeys): boolean {
+  if (short.tokenCount < 2) return false;
+  if (full.tokenCount !== short.tokenCount + 1) return false;
+  if (short.surname.length < 4) return false;
+  return full.canonical.startsWith(`${short.canonical} `);
+}
 
 /**
  * Resolve a raw name to one of `candidates`.

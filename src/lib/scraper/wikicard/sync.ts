@@ -164,6 +164,8 @@ async function harvestTarget(
   let sawCandidate = false;
   let sawCard = false;
   let parses = 0; // the per-target parse budget
+  /** Opponent name(s) the source listed on the right date that we could not resolve. */
+  let nameMismatch = "";
 
   /** How many of our bouts a page must supply to count as covering this card. */
   const expected = expectedBouts.length;
@@ -266,6 +268,14 @@ async function harvestTarget(
             near.length
               ? `record has ${near.length} row(s) near ${eventIdentity.date.slice(0, 10)} but the opponent is not our fighter: ${near.map((r) => r.opponent).join(", ")}`
               : `record has no row within ${DATE_TOLERANCE_DAYS} days of ${eventIdentity.date.slice(0, 10)} — this bout is not on it yet`);
+          // A near-date row whose opponent did not resolve means the SOURCE HAS THE
+          // BOUT and we failed to match the name. That is the opposite conclusion
+          // from "no coverage", and reporting it as `no_card` sent the reader looking
+          // for a missing Wikipedia page that was in fact right there. Recorded so the
+          // final verdict can name it — see the reason ladder at the end.
+          if (near.length && !nameMismatch) {
+            nameMismatch = near.map((r) => r.opponent).filter(Boolean).slice(0, 3).join(", ");
+          }
         }
         continue;
       }
@@ -400,13 +410,20 @@ async function harvestTarget(
   //   unverified     we parsed a card but it wasn't our bout (the source has no
   //                  coverage of this fight — nothing to fix)
   step("result", false, `gave up after ${outcome.queries} search(es) and ${outcome.parses} parse(s)`);
-  outcome.reason = sawCard
-    ? "unverified"
-    : outcome.parses > 0
-      ? "no_card"
-      : sawCandidate
-        ? "all_rejected"
-        : "no_candidate";
+  // `name_mismatch` outranks the rest deliberately: it is the only one of these that
+  // means the RESULT EXISTS UPSTREAM and we failed to read it. Every other reason
+  // says the source has nothing, which needs no engineering — this one is a bug
+  // report with the offending name attached.
+  outcome.reason = nameMismatch
+    ? "name_mismatch"
+    : sawCard
+      ? "unverified"
+      : outcome.parses > 0
+        ? "no_card"
+        : sawCandidate
+          ? "all_rejected"
+          : "no_candidate";
+  if (nameMismatch) outcome.note = `source listed the opponent as "${nameMismatch}"`;
   outcome.expectedBouts = expected;
   outcome.coveragePct = 0;
   return { outcome, event: null };
