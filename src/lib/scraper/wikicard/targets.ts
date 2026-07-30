@@ -122,9 +122,19 @@ export async function findWikiTargets(opts: FindTargetsOpts = {}): Promise<WikiT
       // or the matching: which events got a result was decided by queue position.
       //
       // nulls-first means a never-attempted event always outranks one we have already
-      // tried, so a new card is picked up promptly AND the backlog drains. `date:
-      // desc` only breaks ties within the same attempt timestamp.
-      orderBy: [{ resultAttemptAt: { sort: "asc", nulls: "first" } }, { date: "desc" }],
+      // tried, so a new card is picked up promptly AND the backlog drains.
+      //
+      // `resultAttemptAt` DOMINATES on purpose, and coverage only breaks ties. Ranking
+      // strictly by coverage — "finish the nearly-complete cards first" — reads well
+      // and reintroduces exactly the starvation this ordering exists to prevent: a
+      // 0%-coverage event would sit behind every partial one indefinitely. Rotation is
+      // the invariant; nothing may outrank it. Ties are rare (millisecond timestamps),
+      // so in practice this is a pure rotation with a sensible ordering inside a batch.
+      orderBy: [
+        { resultAttemptAt: { sort: "asc", nulls: "first" } },
+        { resultCoverage: { sort: "desc", nulls: "last" } },
+        { date: "desc" },
+      ],
       skip,
       take: limit,
       select,
@@ -280,7 +290,7 @@ const lastName = (q: string) => q.split(/\s+vs\.?\s+/i)[1]?.trim() ?? q;
  * it must never be the reason a successfully harvested result fails to persist.
  */
 export async function recordResultAttempts(
-  outcomes: { eventId: string; reason: string; note?: string }[],
+  outcomes: { eventId: string; reason: string; note?: string; coveragePct?: number }[],
   now: Date = new Date(),
 ): Promise<void> {
   if (!outcomes.length) return;
@@ -297,6 +307,7 @@ export async function recordResultAttempts(
               // The note carries the useful specifics for an error ("fetch 429"), so
               // keep it when there is one — `reason` alone is a category.
               resultAttemptReason: o.note ? `${o.reason}: ${o.note}`.slice(0, 500) : o.reason,
+              resultCoverage: o.coveragePct ?? null,
             },
           })
           // An event deleted mid-run is not an error worth failing the harvest for.

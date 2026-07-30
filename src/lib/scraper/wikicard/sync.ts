@@ -34,8 +34,12 @@ import { toNormalizedWikiEvent } from "./map";
 import { verifyCard, verifyTitle, isAcceptable } from "./verify";
 import { parseRecordTable, findRecordRow, recordRowToBout, DATE_TOLERANCE_DAYS, type RecordRow } from "./record-table";
 import { resolveName } from "@/lib/entities/resolve";
-import { rankCandidates, PARSE_BUDGET, type CandidateContext } from "./candidates";
+import {
+  rankCandidates, PARSE_BUDGET, COVERAGE_THRESHOLD,
+  type CandidateContext, type CandidateKind,
+} from "./candidates";
 import type { NormalizedEvent } from "@/services/providers/types";
+import type { SearchStrategyKind } from "./search-strategies";
 import type { ExpectedBout } from "./verify";
 import type {
   WikiTarget, WikiHarvest, WikiHarvestReport, WikiTargetOutcome, StrategyStat, TraceStep,
@@ -161,6 +165,25 @@ async function harvestTarget(
   let sawCard = false;
   let parses = 0; // the per-target parse budget
 
+  /** How many of our bouts a page must supply to count as covering this card. */
+  const expected = expectedBouts.length;
+  /**
+   * The best candidate found so far, by number of OUR bouts it verified.
+   *
+   * Holding a best instead of returning on the first hit is the incident fix — see
+   * the accept block below.
+   */
+  let best: {
+    matched: number;
+    persist: WikiBout[];
+    page: string;
+    strategy: SearchStrategyKind;
+    score: number;
+    reasons: string[];
+    kind: CandidateKind;
+    onPage: number;
+  } | null = null;
+
   for (const strategy of searchIdentity) {
     if (parses >= PARSE_BUDGET) {
       outcome.note = "parse budget exhausted";
@@ -281,23 +304,92 @@ async function harvestTarget(
           : `${b.redName} vs ${b.blueName} — page shows NO result yet`);
       }
 
+      // ── BEST COVERAGE WINS — not the first page that matched anything ──────
+      //
+      // This used to `return` here, on the first candidate yielding ≥1 verified
+      // bout. Combined with a fighter biography out-scoring the season page, that
+      // meant a 13-bout card could accept a page carrying ONE bout, persist it, and
+      // report the event verified. The data written was correct (verifyCard demands
+      // both corners resolve to a wanted pair) — but the event was declared complete
+      // at 1/13, and the queue then rotated it to the back.
+      //
+      // So we keep the best candidate seen and carry on. Ranking already puts the
+      // high-yield shapes first, so the common case reaches full coverage on the
+      // FIRST parse and exits immediately below — no extra fetches. Only a target
+      // whose best page is partial pays for another look, bounded by PARSE_BUDGET.
       stat.verified += 1;
-      outcome.strategy = strategy.kind;
-      outcome.page = cand.title;
-      outcome.score = cand.score;
-      outcome.reasons = cand.reasons;
-      outcome.matched = matched;
-      outcome.bouts = persist.length;
-      outcome.parsedOnPage = bouts.length;
-      outcome.reason = "verified";
-      step("accept", true, `"${cand.title}" via ${strategy.kind} — persisting ${persist.length} bout(s)`);
+      const coverage = expected > 0 ? matched / expected : 1;
+      if (matched > (best?.matched ?? 0)) {
+        best = {
+          matched,
+          persist,
+          page: cand.title,
+          strategy: strategy.kind,
+          score: cand.score,
+          reasons: cand.reasons,
+          kind: cand.kind,
+          onPage: bouts.length,
+        };
+      }
+      step("accept", true,
+        `"${cand.title}" [${cand.kind}] via ${strategy.kind} — ${matched}/${expected} bout(s) ` +
+        `(${Math.round(coverage * 100)}% coverage)`);
       log.info(
-        { op: "wikicard.accept", event: eventIdentity.name, page: cand.title, score: cand.score,
-          reasons: cand.reasons, strategy: strategy.kind, matched, persisted: persist.length, onPage: bouts.length },
-        "candidate accepted",
+        { op: "wikicard.candidate", event: eventIdentity.name, page: cand.title, type: cand.kind,
+          score: cand.score, reasons: cand.reasons, strategy: strategy.kind,
+          expected, harvested: matched, coveragePct: Math.round(coverage * 100),
+          persisted: persist.length, onPage: bouts.length },
+        "candidate harvested",
       );
-      return { outcome, event: toNormalizedWikiEvent(eventIdentity, cand.title, persist, lastUpdated) };
+
+      // Complete enough to stop looking. A card legitimately has bouts Wikipedia
+      // never lists (scratched bouts, early prelims), so "complete" is a threshold
+      // rather than every single bout — otherwise no event would ever finish and the
+      // queue would re-attempt all of them forever.
+      if (coverage >= COVERAGE_THRESHOLD) break;
+      step("candidate", true,
+        `coverage ${Math.round(coverage * 100)}% < ${Math.round(COVERAGE_THRESHOLD * 100)}% — looking for a fuller page`);
     }
+    if (best && expected > 0 && best.matched / expected >= COVERAGE_THRESHOLD) break;
+  }
+
+  // ── Did anything cover this card? ─────────────────────────────────────────
+  if (best) {
+    const coverage = expected > 0 ? best.matched / expected : 1;
+    const pct = Math.round(coverage * 100);
+    const complete = coverage >= COVERAGE_THRESHOLD;
+
+    outcome.strategy = best.strategy;
+    outcome.page = best.page;
+    outcome.score = best.score;
+    outcome.reasons = best.reasons;
+    outcome.matched = best.matched;
+    outcome.bouts = best.persist.length;
+    outcome.parsedOnPage = best.onPage;
+    outcome.candidateKind = best.kind;
+    outcome.expectedBouts = expected;
+    outcome.coveragePct = pct;
+    // "verified" now means RECONSTRUCTED THE EVENT, not "found a matching page".
+    // `partial` persists everything it verified — that data is correct and must not
+    // be discarded — but it does NOT claim the event is done, so the doctor shows it
+    // and the queue keeps it eligible.
+    outcome.reason = complete ? "verified" : "partial";
+    if (!complete) {
+      outcome.note = `only ${best.matched}/${expected} bouts (${pct}%) — best page was ${best.kind}`;
+    }
+    step("accept", true,
+      `BEST "${best.page}" [${best.kind}] — ${best.matched}/${expected} (${pct}%) → ${outcome.reason}`);
+    log.info(
+      { op: "wikicard.accept", event: eventIdentity.name, page: best.page, type: best.kind,
+        score: best.score, reasons: best.reasons, strategy: best.strategy,
+        expected, harvested: best.matched, coveragePct: pct,
+        persisted: best.persist.length, onPage: best.onPage, decision: outcome.reason },
+      "candidate accepted",
+    );
+    return {
+      outcome,
+      event: toNormalizedWikiEvent(eventIdentity, best.page, best.persist, lastUpdated),
+    };
   }
 
   // Name the failure precisely — each of these points somewhere different:
@@ -315,6 +407,8 @@ async function harvestTarget(
       : sawCandidate
         ? "all_rejected"
         : "no_candidate";
+  outcome.expectedBouts = expected;
+  outcome.coveragePct = 0;
   return { outcome, event: null };
 }
 

@@ -100,10 +100,16 @@ export async function harvestWikiTargets(
   // "noCandidate=3" and never which 3. Aggregates tell you a subsystem is unhappy;
   // only the event names let you check the actual Wikipedia page and find out why.
   // Capped at 25 so one bad batch cannot write an unbounded log line.
+  // `partial` counts as unresolved here — that is the whole point of the distinction.
+  // An event that harvested 1 of 13 bouts is NOT done, and reporting it alongside the
+  // outright failures is what stops a partial harvest reading as a success.
   const unresolved = h.report.outcomes
     .filter((o) => o.reason !== "verified")
     .slice(0, 25)
-    .map((o) => ({ event: o.event, reason: o.reason, page: o.page, note: o.note }));
+    .map((o) => ({
+      event: o.event, reason: o.reason, page: o.page, type: o.candidateKind,
+      expected: o.expectedBouts, harvested: o.matched, coveragePct: o.coveragePct, note: o.note,
+    }));
 
   log.info(
     { ...h.report, outcomes: undefined, unresolved, gap: opts.gap ?? "all", mode: opts.mode ?? "incremental", written },
@@ -113,6 +119,7 @@ export async function harvestWikiTargets(
     `targets=${targets.length} verified=${h.report.withCard} written=${written} bouts=${h.report.bouts} ` +
     `searches=${h.report.queries}(${per(h.report.queries)}/t) parses=${h.report.parses}(${per(h.report.parses)}/t) ` +
     `rejected=${h.report.rejected} cacheHits=${h.report.cacheHits} ` +
+    `partial=${tally("partial")} ` +
     `noCandidate=${tally("no_candidate")} allRejected=${tally("all_rejected")} noCard=${tally("no_card")} ` +
     `unverified=${tally("unverified")} errors=${tally("error")}` +
     (strategies ? ` via[${strategies}]` : "")

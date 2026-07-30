@@ -44,17 +44,55 @@ export interface CandidateContext {
   expectedBouts: ExpectedBout[];
 }
 
+/**
+ * What KIND of page a candidate title looks like — and therefore how many of our
+ * bouts it could possibly contain.
+ *
+ * Title similarity alone cannot express this, which is what let a fighter's
+ * biography outrank a season page. "Lorenzo Hunt" is a near-perfect title match for
+ * a bout involving Lorenzo Hunt and scores accordingly — but it can only ever carry
+ * ONE of the thirteen bouts on that card, because it is one man's record. "2026 in
+ * Bare Knuckle Fighting Championship" is a weaker title match and carries all
+ * thirteen.
+ */
+export type CandidateKind = "season_page" | "event_page" | "fighter_bio" | "promotion_page" | "general";
+
+/**
+ * The most bouts a page of this kind can contribute, or null for "unbounded".
+ *
+ * A biography is capped at 1 by construction: it is one fighter's career record, and
+ * a card has at most one bout per fighter. That cap is the fact the ranker needs.
+ */
+export function maxYieldFor(kind: CandidateKind): number | null {
+  return kind === "fighter_bio" ? 1 : null;
+}
+
 export interface ScoredCandidate {
   title: string;
   score: number;
   /** Every signal that fired, so an accept or reject can explain itself. */
   reasons: string[];
+  /** Page shape, which bounds how much of the card this candidate can supply. */
+  kind: CandidateKind;
+  /** `maxYieldFor(kind)`, carried so callers need not recompute it. */
+  maxYield: number | null;
 }
 
 /** Minimum score worth a page fetch + parse. */
 export const PARSE_THRESHOLD = Number(process.env.WIKICARD_PARSE_THRESHOLD ?? 20);
 /** Most pages we will parse for ONE target, however many candidates score above it. */
 export const PARSE_BUDGET = Number(process.env.WIKICARD_PARSE_BUDGET ?? 5);
+/**
+ * Fraction of a card's bouts that must be harvested before the event counts as
+ * reconstructed rather than partially covered.
+ *
+ * Not 1.0 deliberately. A real card routinely has bouts Wikipedia never lists — a
+ * scratched bout, an early prelim — so demanding every one would leave almost every
+ * event permanently `partial` and re-attempted forever. 0.9 is high enough that a
+ * single bout out of thirteen (7%) can never pass, which is the case this exists to
+ * stop.
+ */
+export const COVERAGE_THRESHOLD = Number(process.env.WIKICARD_COVERAGE_THRESHOLD ?? 0.9);
 
 const SCORE = {
   BOTH_FIGHTERS: 45, // both corners of one expected bout — near-certain
@@ -67,6 +105,23 @@ const SCORE = {
   NOT_AN_EVENT: -45, // list / category / disambiguation / franchise page
   OWN_FIGHTER_BIO: 30, // a bio of a fighter ON THIS BOUT — carries their record table
   BIOGRAPHY: -20, // someone else's page: nothing about our bout
+  /**
+   * Applied when a candidate's page SHAPE cannot possibly cover the target.
+   *
+   * This is the incident fix. `own_fighter_bio` (30) plus `one_fighter` (16) scored
+   * 46, beating a season page's `promotion`+`event_shape`+`year` (33) — so for a
+   * 13-bout card the pipeline preferred a page capable of supplying ONE bout over
+   * the page containing all thirteen, harvested that single bout, and reported the
+   * event verified.
+   *
+   * -34 is chosen so a bio (46) lands at 12, below both the season page (33) and the
+   * PARSE_THRESHOLD (20). A bio is then never fetched ahead of a real card page, and
+   * on a multi-bout target it is not fetched at all unless nothing better exists —
+   * which is exactly the "fallback, not preferred" ordering we want. It stays FULLY
+   * available for a single-bout target, where its cap of 1 is no limitation and the
+   * career record is the only source for a bout with no article of its own.
+   */
+  INSUFFICIENT_YIELD: -34,
 } as const;
 
 /**
@@ -100,6 +155,33 @@ const EVENT_SHAPE = [
 ];
 
 const words = (s: string) => new Set(normalizeName(s).split(" ").filter((w) => w.length > 3));
+
+/**
+ * A season/year-in-promotion page: "2026 in Bare Knuckle Fighting Championship".
+ * These carry EVERY card of the year, so one fetch can complete many targets — and
+ * the page cache means the second target that wants it pays nothing.
+ */
+const SEASON_SHAPE = /^\d{4}\s+in\s+/i;
+
+/**
+ * Classify a candidate by page shape.
+ *
+ * Structural only — page-type conventions, never topic. Order matters: the checks run
+ * most-specific first, and `fighter_bio` is deliberately tested before the generic
+ * event shapes so that "Kai Stewart" cannot be read as an event just because the
+ * promotion's name appears nowhere in it.
+ */
+export function classifyCandidate(title: string, ctx: CandidateContext): CandidateKind {
+  if (SEASON_SHAPE.test(title)) return "season_page";
+  if (isOwnFighterBio(title, ctx) || isBiographyTitle(title, ctx)) return "fighter_bio";
+  if (/\bvs\.?\b|\bversus\b/i.test(title)) return "event_page";
+  if (EVENT_SHAPE.some((re) => re.test(title))) return "event_page";
+  // The promotion's own article ("Bare Knuckle Fighting Championship") — about the
+  // organisation, not a card. It carries no bout table worth parsing.
+  const promoTerms = [ctx.promotionName, ...ctx.promotionAliases].filter(Boolean) as string[];
+  if (promoTerms.some((p) => normalizeName(title) === normalizeName(p))) return "promotion_page";
+  return "general";
+}
 
 /**
  * Score one candidate title against what we are looking for. Deterministic, and
@@ -164,7 +246,24 @@ export function scoreCandidate(title: string, ctx: CandidateContext): ScoredCand
     reasons.push("biography");
   }
 
-  return { title, score, reasons };
+  // ── TARGET AWARENESS: can this page shape even cover what we need? ─────────
+  //
+  // Everything above scores the title against the target. None of it can express
+  // "this page tops out at one bout and we need thirteen", which is how a fighter
+  // biography came to outrank the season page carrying the whole card.
+  //
+  // Applied only when we need MORE than the shape can give. On a single-bout target
+  // a bio's cap of 1 is sufficient, so it keeps its full score — it is the only
+  // source for the long tail of bouts that never get an article.
+  const kind = classifyCandidate(title, ctx);
+  const cap = maxYieldFor(kind);
+  const needed = ctx.expectedBouts.length;
+  if (cap !== null && needed > cap) {
+    score += SCORE.INSUFFICIENT_YIELD;
+    reasons.push(`insufficient_yield:${cap}/${needed}`);
+  }
+
+  return { title, score, reasons, kind, maxYield: cap };
 }
 
 const surnameOf = (canonical: string) => canonical.split(" ").filter(Boolean).pop() ?? "";

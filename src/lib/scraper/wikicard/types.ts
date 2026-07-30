@@ -110,8 +110,24 @@ export interface WikiTargetOutcome {
   /** The accepted candidate's score and the signals behind it. */
   score?: number;
   reasons?: string[];
-  /** Why it ended as it did. */
-  reason: "verified" | "no_candidate" | "all_rejected" | "no_card" | "unverified" | "error";
+  /** The page SHAPE that was accepted — season page, event page, fighter bio, … */
+  candidateKind?: string;
+  /** How many bouts this target was looking for. */
+  expectedBouts?: number;
+  /** `matched / expectedBouts`, as a whole percentage. The completeness metric. */
+  coveragePct?: number;
+  /**
+   * Why it ended as it did.
+   *
+   * `verified` means the event was RECONSTRUCTED — coverage reached
+   * COVERAGE_THRESHOLD. `partial` means real, correct bouts were found and persisted
+   * but the card is not complete, so it stays eligible for another attempt.
+   *
+   * The distinction exists because "found a matching page" was previously reported as
+   * verified: a 13-bout card that harvested 1 bout from a fighter's biography counted
+   * as a success, and the queue then de-prioritised it.
+   */
+  reason: "verified" | "partial" | "no_candidate" | "all_rejected" | "no_card" | "unverified" | "error";
   note?: string;
   /** Every decision, in order — the `--explain` trace. */
   trace: TraceStep[];

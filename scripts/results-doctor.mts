@@ -45,6 +45,9 @@ function dbTarget(): string {
  */
 const MEANING: Record<string, string> = {
   "": "NEVER ATTEMPTED — the harvester has not looked at this event even once.",
+  partial:
+    "Real bouts were found and stored, but NOT enough of the card. The bouts it has are " +
+    "correct; the event is simply incomplete and stays eligible for another attempt.",
   no_candidate: "Search returned no page at all. Likely no Wikipedia coverage (common for regional cards).",
   all_rejected: "Pages were found but every one was refused on its title. Check the scoring, or the event name.",
   no_card: "A page was accepted but no bout table could be parsed from it. Suspect HTML/selector drift.",
@@ -53,11 +56,18 @@ const MEANING: Record<string, string> = {
   verified: "Last attempt DID verify — if bouts are still SCHEDULED the failure is downstream, in persistence.",
 };
 
-/** Worst first: never-attempted outranks a real failure, which outranks a success. */
+/**
+ * Worst first. `partial` sorts just after never-attempted: it is the state most likely
+ * to succeed on a retry (a page exists and parses; we just did not get enough of it),
+ * so it is the most actionable thing on the list after the untouched events.
+ */
 function rank(reason: string | null): number {
   if (!reason) return 0;
   const base = reason.split(":")[0];
-  return base === "verified" ? 3 : base === "no_candidate" ? 2 : 1;
+  if (base === "verified") return 4;
+  if (base === "no_candidate") return 3;
+  if (base === "partial") return 1;
+  return 2;
 }
 
 const ago = (d: Date | null): string => {
@@ -93,7 +103,7 @@ async function main() {
     take: limit,
     select: {
       name: true, slug: true, date: true, promotion: true, sport: true,
-      resultAttemptAt: true, resultAttempts: true, resultAttemptReason: true,
+      resultAttemptAt: true, resultAttempts: true, resultAttemptReason: true, resultCoverage: true,
       _count: { select: { fights: true } },
       fights: { where: { result: "SCHEDULED" }, select: { id: true } },
     },
@@ -127,7 +137,8 @@ async function main() {
     const pending = e.fights.length;
     console.log(`${e.name}`);
     console.log(`    ${e.date.toISOString().slice(0, 10)} · ${e.sport} · ${e.promotion ?? "(no promotion)"} · /events/${e.slug}`);
-    console.log(`    ${pending} of ${e._count.fights} bouts unconfirmed · attempts: ${e.resultAttempts} · last: ${ago(e.resultAttemptAt)}`);
+    const cov = e.resultCoverage === null ? "—" : `${e.resultCoverage}%`;
+    console.log(`    ${pending} of ${e._count.fights} bouts unconfirmed · coverage: ${cov} · attempts: ${e.resultAttempts} · last: ${ago(e.resultAttemptAt)}`);
     console.log(`    reason:  ${e.resultAttemptReason ?? "(none recorded)"}`);
     console.log(`    means:   ${MEANING[base] ?? "Unrecognised reason — check WikiTargetOutcome.reason."}`);
     console.log();

@@ -529,6 +529,13 @@ model Event {
   resultAttemptAt     DateTime?
   resultAttempts      Int       @default(0)
   resultAttemptReason String?
+  /// Percentage of this card's bouts the last attempt actually reconstructed.
+  ///
+  /// Added after the pipeline was found reporting "verified" for a 13-bout card from
+  /// which it had harvested ONE bout (taken off a fighter's biography rather than the
+  /// season page). The written result was correct, but the completeness claim was
+  /// not — so completeness is now measured and stored rather than assumed.
+  resultCoverage      Int?
 
   fights           Fight[]
   externalIds      EventExternalId[]

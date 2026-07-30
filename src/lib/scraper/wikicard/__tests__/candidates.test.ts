@@ -176,3 +176,82 @@ test("verifyTitle keeps CARD backfill working, where there is nothing to verify 
   assert.equal(verifyTitle("BKFC 91", "Kansas City Chiefs"), false);
   assert.equal(verifyTitle("BKFC 91", "BKFC 92"), false);
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INCIDENT REGRESSION — a fighter biography must never outrank the season page
+//  on a multi-bout card.
+//
+//  Observed in production: for "BKFC 91 NAPLES HUNT vs PUGLIESI" (13 bouts) the
+//  pipeline accepted "Lorenzo Hunt" — one fighter's biography — because
+//  own_fighter_bio (30) + one_fighter (16) = 46 beat the season page's
+//  promotion + event_shape + year = 33. A biography carries ONE bout by
+//  construction, so the event was reconstructed at 1/13 and then reported
+//  VERIFIED. The data written was correct; the completeness claim was false.
+//
+//  The fix is target awareness: a candidate whose page SHAPE cannot cover the
+//  target is penalised. These tests pin both directions of it, because the
+//  biography path must stay fully available for a single-bout target — it is the
+//  only source for bouts that never get an article of their own.
+// ════════════════════════════════════════════════════════════════════════════
+
+const SEASON_PAGE = "2026 in Bare Knuckle Fighting Championship";
+const BIO_PAGE = "Lorenzo Hunt";
+
+/** A 13-bout BKFC card — the shape that was being mis-harvested. */
+const bigCardCtx = ctx({
+  eventName: "BKFC 91 NAPLES HUNT vs PUGLIESI",
+  promotionName: "BKFC",
+  promotionAliases: ["bkfc", "bare knuckle", "bare-knuckle"],
+  expectedBouts: [
+    { red: ent("f_h", "Lorenzo Hunt"), blue: ent("f_p", "Walter Pugliesi") },
+    ...Array.from({ length: 12 }, (_, i) => ({
+      red: ent(`f_r${i}`, `Red Fighter${i}`),
+      blue: ent(`f_b${i}`, `Blue Fighter${i}`),
+    })),
+  ],
+});
+
+test("season page outranks a fighter bio when the card has many bouts", () => {
+  const season = scoreCandidate(SEASON_PAGE, bigCardCtx);
+  const bio = scoreCandidate(BIO_PAGE, bigCardCtx);
+
+  assert.equal(season.kind, "season_page");
+  assert.equal(bio.kind, "fighter_bio");
+  // The inversion itself — this assertion is the incident.
+  assert.ok(
+    season.score > bio.score,
+    `season page (${season.score}) must beat the bio (${bio.score}) on a 13-bout card`,
+  );
+  assert.ok(bio.reasons.some((r) => r.startsWith("insufficient_yield")), "bio must say why it was demoted");
+});
+
+test("a bio cannot even be fetched for a multi-bout card", () => {
+  // Demoted below PARSE_THRESHOLD, so it is refused before any HTTP request —
+  // the whole point of scoring before fetching.
+  assert.ok(scoreCandidate(BIO_PAGE, bigCardCtx).score < PARSE_THRESHOLD);
+
+  const { parse } = rankCandidates([BIO_PAGE, SEASON_PAGE], bigCardCtx);
+  assert.equal(parse[0]?.title, SEASON_PAGE, "the season page must be parsed first");
+  assert.ok(!parse.some((c) => c.title === BIO_PAGE), "the bio must not be parsed at all");
+});
+
+test("a bio is STILL preferred for a single-bout target", () => {
+  // The regression guard must not break the case the bio path exists for: a bout
+  // with no article of its own, read off the fighter's career record table.
+  const single = scoreCandidate(BIO_PAGE, bkfcCtx);
+  assert.equal(single.kind, "fighter_bio");
+  assert.ok(
+    !single.reasons.some((r) => r.startsWith("insufficient_yield")),
+    "a 1-bout target needs only 1 bout — no penalty applies",
+  );
+  assert.ok(single.score >= PARSE_THRESHOLD, "must remain fetchable");
+  assert.ok(
+    single.score > scoreCandidate(SEASON_PAGE, bkfcCtx).score,
+    "for a single bout the fighter's own record is the better page",
+  );
+});
+
+test("maxYield bounds only biographies", () => {
+  assert.equal(scoreCandidate(BIO_PAGE, bigCardCtx).maxYield, 1);
+  assert.equal(scoreCandidate(SEASON_PAGE, bigCardCtx).maxYield, null);
+});
