@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scoreCandidate, rankCandidates, isBiographyTitle, PARSE_THRESHOLD, PARSE_BUDGET } from "../candidates";
+import {
+  scoreCandidate, rankCandidates, isBiographyTitle,
+  PARSE_THRESHOLD, PARSE_BUDGET, COVERAGE_THRESHOLD,
+} from "../candidates";
 import { verifyCard, verifyTitle, isAcceptable } from "../verify";
 import { candidate } from "@/lib/entities/resolve";
 import type { WikiBout } from "../extract";
@@ -223,16 +226,42 @@ test("season page outranks a fighter bio when the card has many bouts", () => {
     `season page (${season.score}) must beat the bio (${bio.score}) on a 13-bout card`,
   );
   assert.ok(bio.reasons.some((r) => r.startsWith("insufficient_yield")), "bio must say why it was demoted");
+  // 1 of 13 must never clear the completeness bar, whichever page supplied it.
+  assert.ok(1 / bigCardCtx.expectedBouts.length < COVERAGE_THRESHOLD);
 });
 
-test("a bio cannot even be fetched for a multi-bout card", () => {
-  // Demoted below PARSE_THRESHOLD, so it is refused before any HTTP request —
-  // the whole point of scoring before fetching.
-  assert.ok(scoreCandidate(BIO_PAGE, bigCardCtx).score < PARSE_THRESHOLD);
+test("a bio is DEMOTED but still reachable for a multi-bout card", () => {
+  // The distinction that matters, and the one the first attempt at this fix got
+  // wrong. A -34 penalty put the bio under PARSE_THRESHOLD, so it was never fetched
+  // — which broke boxing and MMA completely: their events are SYNTHETIC cards
+  // ("Boxing — 27 Jul 2026") with no season or event page anywhere on Wikipedia, so
+  // the fighter's career record is the only source there is. Measured: 6 boxing
+  // targets went from partially resolved to zero.
+  //
+  // "Fallback, not preferred" requires BOTH of these to hold.
+  const bio = scoreCandidate(BIO_PAGE, bigCardCtx);
+  assert.ok(bio.score < scoreCandidate(SEASON_PAGE, bigCardCtx).score, "not preferred");
+  assert.ok(bio.score >= PARSE_THRESHOLD, "but still a reachable fallback");
 
   const { parse } = rankCandidates([BIO_PAGE, SEASON_PAGE], bigCardCtx);
-  assert.equal(parse[0]?.title, SEASON_PAGE, "the season page must be parsed first");
-  assert.ok(!parse.some((c) => c.title === BIO_PAGE), "the bio must not be parsed at all");
+  assert.equal(parse[0]?.title, SEASON_PAGE, "the season page must be parsed FIRST");
+  assert.equal(parse[1]?.title, BIO_PAGE, "the bio stays available behind it");
+});
+
+test("a bio is the only candidate for a synthetic card, and must survive", () => {
+  // "Boxing — 27 Jul 2026" with 2 bouts: no promotion, no event page, no season page.
+  // If the bio is refused here the target yields nothing at all.
+  const syntheticCtx = ctx({
+    eventName: "Boxing — 27 Jul 2026",
+    promotionName: null,
+    promotionAliases: [],
+    expectedBouts: [
+      { red: ent("f_h", "Richardson Hitchins"), blue: ent("f_s", "Ricardo Salas Rodriguez") },
+      { red: ent("f_b", "Edgar Berlanga"), blue: ent("f_bu", "Steven Butler") },
+    ],
+  });
+  const { parse } = rankCandidates(["Richardson Hitchins"], syntheticCtx);
+  assert.equal(parse.length, 1, "the fighter's own page must remain fetchable");
 });
 
 test("a bio is STILL preferred for a single-bout target", () => {

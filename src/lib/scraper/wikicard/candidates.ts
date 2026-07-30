@@ -114,14 +114,24 @@ const SCORE = {
    * the page containing all thirteen, harvested that single bout, and reported the
    * event verified.
    *
-   * -34 is chosen so a bio (46) lands at 12, below both the season page (33) and the
-   * PARSE_THRESHOLD (20). A bio is then never fetched ahead of a real card page, and
-   * on a multi-bout target it is not fetched at all unless nothing better exists —
-   * which is exactly the "fallback, not preferred" ordering we want. It stays FULLY
-   * available for a single-bout target, where its cap of 1 is no limitation and the
-   * career record is the only source for a bout with no article of its own.
+   * DEMOTED, NOT DISQUALIFIED. -20 puts a bio (46) at 26: below the season page (33)
+   * so a real card page is always preferred and parsed first, but still above
+   * PARSE_THRESHOLD (20) so the bio remains reachable when nothing better exists.
+   *
+   * The first attempt at this used -34, landing the bio at 12 — under the threshold,
+   * so it was never fetched at all. That broke boxing and MMA outright. Their events
+   * are SYNTHETIC cards ("Boxing — 27 Jul 2026", assembled from the odds feed), so no
+   * season or event page for them exists anywhere on Wikipedia; the fighter's career
+   * record is the ONLY source, and a 2-bout card tripped `insufficient_yield:1/2` and
+   * harvested nothing. Measured: 6 boxing targets went from partially resolved to 0
+   * verified. A fallback that cannot be reached is not a fallback.
+   *
+   * With -20 the ordering is: real card page first, bio second. Combined with
+   * best-coverage-wins the bio is only ever fetched when the card page is absent or
+   * yielded less — and a bio that supplies 1 of 13 now reports `partial`, not
+   * `verified`, which is the actual protection against a false completeness claim.
    */
-  INSUFFICIENT_YIELD: -34,
+  INSUFFICIENT_YIELD: -20,
 } as const;
 
 /**

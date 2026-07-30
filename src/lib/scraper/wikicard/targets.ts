@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { log } from "../logger";
 import { resolvePromotion } from "@/lib/promotions";
 import { candidate, type ResolvedEntity } from "@/lib/entities/resolve";
 import { buildSearchLadder } from "./search-strategies";
@@ -310,8 +311,24 @@ export async function recordResultAttempts(
               resultCoverage: o.coveragePct ?? null,
             },
           })
-          // An event deleted mid-run is not an error worth failing the harvest for.
-          .catch(() => undefined),
+          .catch((e: unknown) => {
+            // ONLY a missing row is tolerable — an event deleted mid-run is not worth
+            // failing a harvest for. Everything else gets logged.
+            //
+            // This was a bare `.catch(() => undefined)` and it hid a real failure: run
+            // against a database whose `resultCoverage` column did not exist yet and
+            // EVERY update threw, so no attempt was ever recorded, the queue rotation
+            // had nothing to sort by, and the doctor reported `attempts: 0` for events
+            // that had just been harvested successfully. Silently swallowing a write
+            // error is the same class of bug as the cron reporting 200 for a run in
+            // which everything failed.
+            const code = (e as { code?: string })?.code;
+            if (code === "P2025") return; // record not found — fine
+            log.error(
+              { op: "wikicard.recordAttempt", eventId: o.eventId, code, err: (e as Error)?.message },
+              "failed to record the result attempt — the harvest queue cannot rotate without this",
+            );
+          }),
       ),
   );
 }
