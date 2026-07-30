@@ -103,6 +103,23 @@ async function main() {
     fights: { some: { result: "SCHEDULED" as const } },
   };
 
+  // ── Is the bookkeeping itself working? ───────────────────────────────────
+  //
+  // Asked as a COUNT rather than inferred from the listing, because the listing
+  // sorts never-attempted first and therefore looks identical whether recording is
+  // broken or whether the rows on screen simply happen to be the untouched ones.
+  // Three separate debugging rounds were lost to that ambiguity.
+  const [recorded, unrecorded] = await Promise.all([
+    prisma.event.count({ where: { ...where, resultAttemptAt: { not: null } } }),
+    prisma.event.count({ where: { ...where, resultAttemptAt: null } }),
+  ]);
+  console.log(`Attempt bookkeeping: ${recorded} recorded · ${unrecorded} never attempted`);
+  if (recorded === 0 && unrecorded > 0) {
+    console.log("  ⚠ NOT ONE pending event has a recorded attempt, so recordResultAttempts()");
+    console.log("    is not persisting. The harvest queue cannot rotate without it. Grep the");
+    console.log("    harvest output for `wikicard.recordAttempt` — the write error is logged there.");
+  }
+
   const events = await prisma.event.findMany({
     where,
     orderBy: [{ resultAttemptAt: { sort: "asc", nulls: "first" } }, { date: "desc" }],
