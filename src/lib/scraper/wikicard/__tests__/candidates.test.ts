@@ -315,12 +315,63 @@ test("a wrong-year season page is refused before any fetch", () => {
   assert.equal(parse[0]?.title, SEASON_PAGE);
 });
 
-test("the event's own year is accepted, and ±1 is tolerated", () => {
-  // A card on 1 January is routinely listed on the previous year's page.
-  for (const y of ["2025", "2026", "2027"]) {
-    const c = scoreCandidate(`${y} in Bare Knuckle Fighting Championship`, bigCardCtx);
-    assert.ok(!c.reasons.includes("wrong_season_year"), `${y} must be allowed`);
+test("the event's own year is always accepted", () => {
+  assert.ok(
+    !scoreCandidate("2026 in Bare Knuckle Fighting Championship", bigCardCtx)
+      .reasons.includes("wrong_season_year"),
+  );
+});
+
+test("the ADJACENT year is refused for a mid-year card", () => {
+  // A flat ±1 tolerance was tried first and the production sweep immediately showed it
+  // passing the pages it exists to stop:
+  //   BKFC 73 (2025-04-26)          ← "2026 in Bare Knuckle…"  1 bout,  8%
+  //   HAMMOND VANCAMP (2026-06-26)  ← "2025 in Bare Knuckle…"  1 bout,  8%
+  // April and June are nowhere near a year boundary, so those can only be previous
+  // meetings of the same pair. Best-coverage-wins discarded them, but that is
+  // arithmetic luck rather than a guard.
+  const june = ctx({
+    ...bigCardCtx, eventYear: "2026", eventDate: "2026-06-26T00:00:00.000Z",
+  });
+  for (const y of ["2025", "2027"]) {
+    assert.ok(
+      scoreCandidate(`${y} in Bare Knuckle Fighting Championship`, june)
+        .reasons.includes("wrong_season_year"),
+      `${y} must be refused for a June card`,
+    );
   }
+});
+
+test("the adjacent year IS allowed for a card at the year boundary", () => {
+  // A card on 1 January is genuinely listed on the previous year's page, and one on
+  // 31 December on the next — that is the only case the tolerance is for.
+  const newYear = ctx({
+    ...bigCardCtx, eventYear: "2026", eventDate: "2026-01-03T00:00:00.000Z",
+  });
+  assert.ok(
+    !scoreCandidate("2025 in Bare Knuckle Fighting Championship", newYear)
+      .reasons.includes("wrong_season_year"),
+  );
+  const newYearsEve = ctx({
+    ...bigCardCtx, eventYear: "2025", eventDate: "2025-12-28T00:00:00.000Z",
+  });
+  assert.ok(
+    !scoreCandidate("2026 in Bare Knuckle Fighting Championship", newYearsEve)
+      .reasons.includes("wrong_season_year"),
+  );
+});
+
+test("with no date, the adjacent year is refused — fail closed", () => {
+  // bigCardCtx carries no eventDate, so the boundary cannot be checked. Refusing is
+  // the safe default: the cost is one missed page, the cost of guessing is a rematch
+  // inheriting the wrong fight's result.
+  assert.ok(
+    scoreCandidate("2025 in Bare Knuckle Fighting Championship", bigCardCtx)
+      .reasons.includes("wrong_season_year"),
+  );
+});
+
+test("two years out is always refused", () => {
   assert.ok(
     scoreCandidate("2028 in Bare Knuckle Fighting Championship", bigCardCtx)
       .reasons.includes("wrong_season_year"),

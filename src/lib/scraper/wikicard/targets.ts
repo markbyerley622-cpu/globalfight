@@ -295,6 +295,36 @@ export async function recordResultAttempts(
   now: Date = new Date(),
 ): Promise<void> {
   if (!outcomes.length) return;
+
+  // ── Store OF-CARD coverage, not the harvester's of-outstanding number ─────
+  //
+  // The outcome's `coveragePct` is harvested / expectedBouts, and expectedBouts is
+  // only the bouts still SCHEDULED when the target was built. So it means "of what
+  // was left", which is right for the harvester's own early-exit but is NOT the
+  // event's completeness. Observed: "BKFC 86 MOHEGAN SUN LANE, expected 2,
+  // coveragePct 100, verified" — on an ELEVEN-bout card where 2 were outstanding.
+  //
+  // resultCoverage() in lib/events compares this stored value against decided/total
+  // of the whole card. Two different denominators, so the convergence test
+  // (`pct <= lastCoveragePct`) was comparing incomparable numbers and would
+  // essentially never fire — the exact thing convergence exists to do.
+  //
+  // Recomputed here from the fights AFTER persistence, so one definition of coverage
+  // reaches the database, the UI and the doctor.
+  const ids = [...new Set(outcomes.map((o) => o.eventId).filter(Boolean))];
+  const fights = ids.length
+    ? await prisma.fight
+        .findMany({ where: { eventId: { in: ids } }, select: { eventId: true, result: true } })
+        .catch(() => [] as { eventId: string | null; result: string }[])
+    : [];
+  const cardCoverage = new Map<string, number>();
+  for (const id of ids) {
+    const own = fights.filter((f) => f.eventId === id);
+    if (!own.length) continue;
+    const decided = own.filter((f) => f.result !== "SCHEDULED").length;
+    cardCoverage.set(id, Math.round((decided / own.length) * 100));
+  }
+
   await Promise.all(
     outcomes
       .filter((o) => o.eventId)
@@ -308,7 +338,8 @@ export async function recordResultAttempts(
               // The note carries the useful specifics for an error ("fetch 429"), so
               // keep it when there is one — `reason` alone is a category.
               resultAttemptReason: o.note ? `${o.reason}: ${o.note}`.slice(0, 500) : o.reason,
-              resultCoverage: o.coveragePct ?? null,
+              // Of-CARD, from the map above — never the outcome's of-outstanding value.
+              resultCoverage: cardCoverage.get(o.eventId) ?? null,
             },
           })
           .catch((e: unknown) => {

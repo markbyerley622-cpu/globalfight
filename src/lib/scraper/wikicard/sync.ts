@@ -157,6 +157,7 @@ async function harvestTarget(
     promotionName: target.promotionName,
     promotionAliases: target.promotionAliases,
     eventYear: eventIdentity.date.slice(0, 4),
+    eventDate: eventIdentity.date,
     expectedBouts,
   };
 

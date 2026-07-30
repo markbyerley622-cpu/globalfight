@@ -41,6 +41,12 @@ export interface CandidateContext {
   promotionAliases: string[];
   /** The event's year, as a string. */
   eventYear: string | null;
+  /**
+   * The event's ISO date. Used to decide whether an ADJACENT-year season page is
+   * plausible — only a card within days of a January/December boundary can legitimately
+   * appear on the neighbouring year's page. See seasonYearMismatch.
+   */
+  eventDate?: string | null;
   expectedBouts: ExpectedBout[];
 }
 
@@ -191,18 +197,47 @@ const SEASON_SHAPE = /^\d{4}\s+in\s+/i;
  * prefer the right-year page every time; a target whose correct page does not exist
  * yet would have taken the old fight's winner, method and round.
  *
- * A year is unambiguous, present in the title, and free to check. Tolerance of ±1 is
- * deliberate: a card on 1 January is routinely listed on the previous year's page.
+ * A year is unambiguous, present in the title, and free to check.
+ *
+ * The adjacent year is allowed ONLY for a card within DATE_EDGE_DAYS of a year
+ * boundary. A flat ±1 tolerance was tried first and it is too loose — the production
+ * sweep immediately showed it passing exactly the pages it was meant to stop:
+ *
+ *   BKFC 73 (2025-04-26)                 ← "2026 in Bare Knuckle…"  1 bout,  8%
+ *   BKFC FN HAMMOND VANCAMP (2026-06-26) ← "2025 in Bare Knuckle…"  1 bout,  8%
+ *   BKFC 88 DENVER (2026-04-17)          ← "2025 in Bare Knuckle…"  1 bout, 10%
+ *
+ * April and June are nowhere near a year boundary, so those are previous meetings of
+ * the same pairs and nothing else. Best-coverage-wins discarded them (8-10% against
+ * 75-100%), but that is arithmetic luck, not a guard: a target whose correct page did
+ * not exist yet would have taken the old fight's result.
  */
-const SEASON_YEAR_TOLERANCE = 1;
+const DATE_EDGE_DAYS = 21;
 
-export function seasonYearMismatch(title: string, eventYear: string | null): boolean {
+export function seasonYearMismatch(
+  title: string,
+  eventYear: string | null,
+  eventDate?: string | null,
+): boolean {
   const m = /^(\d{4})\s+in\s+/i.exec(title);
   if (!m || !eventYear) return false;
   const pageYear = Number(m[1]);
   const target = Number(eventYear);
   if (!Number.isFinite(pageYear) || !Number.isFinite(target)) return false;
-  return Math.abs(pageYear - target) > SEASON_YEAR_TOLERANCE;
+
+  const delta = Math.abs(pageYear - target);
+  if (delta === 0) return false;
+  if (delta > 1) return true;
+
+  // Adjacent year: allowed only near a January/December boundary.
+  if (!eventDate) return true;
+  const d = new Date(eventDate);
+  if (Number.isNaN(d.getTime())) return true;
+  const month = d.getUTCMonth(); // 0 = Jan, 11 = Dec
+  const day = d.getUTCDate();
+  const nearStart = month === 0 && day <= DATE_EDGE_DAYS;
+  const nearEnd = month === 11 && day >= 31 - DATE_EDGE_DAYS;
+  return !(nearStart || nearEnd);
 }
 
 /**
@@ -276,7 +311,7 @@ export function scoreCandidate(title: string, ctx: CandidateContext): ScoredCand
   // pair-based verification cannot distinguish from the bout we want. See
   // seasonYearMismatch. NOT_AN_EVENT's weight puts it far below PARSE_THRESHOLD, so
   // it is refused before any fetch.
-  if (seasonYearMismatch(title, ctx.eventYear)) {
+  if (seasonYearMismatch(title, ctx.eventYear, ctx.eventDate)) {
     score += SCORE.NOT_AN_EVENT;
     reasons.push("wrong_season_year");
   }
