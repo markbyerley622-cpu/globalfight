@@ -28,3 +28,9 @@ og-preview.png
 
 # cleanup rollback exports (contain fight rows — never commit)
 wikicard-cleanup-backup-*.json
+
+# Locally generated fighter image variants (sharp -> public/). 3,402 files / 84MB
+# from a storage-unconfigured run. The real copies live in R2; these are a local
+# artefact of the fallback path and must never be committed.
+/public/fighters/
+/public/headshots/
