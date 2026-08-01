@@ -21,6 +21,7 @@
     "images:sync": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/images-sync.mts",
     "test:media": "node --import tsx --test \"src/lib/media/__tests__/**/*.test.ts\"",
     "backfill:misfits": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/promotion-index-backfill.mts --promotion=misfits",
+    "backfill:glory": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/promotion-index-backfill.mts --promotion=glory",
     "backfill:promotion-index": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/promotion-index-backfill.mts",
     "test:promotion-index": "node --import tsx --test \"src/lib/scraper/promotion-index/__tests__/**/*.test.ts\"",
     "espn:backfill": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/espn-backfill.mts",

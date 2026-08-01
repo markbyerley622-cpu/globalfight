@@ -38,7 +38,9 @@ const value = (n: string): string | undefined => {
 
 const requested = (value("promotion") ?? "all").split(/[,\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
 const sources: PromotionIndexSource[] = requested.includes("all")
-  ? PROMOTION_INDEX_SOURCES
+  // `--promotion=all` skips disabled sources; naming one explicitly still runs it,
+  // so a disabled source can be re-probed without editing config.
+  ? PROMOTION_INDEX_SOURCES.filter((s) => !s.disabled)
   : PROMOTION_INDEX_SOURCES.filter((s) => requested.includes(s.key));
 if (!sources.length) {
   console.error(`unknown promotion. known: ${PROMOTION_INDEX_SOURCES.map((s) => s.key).join(", ")}, all`);

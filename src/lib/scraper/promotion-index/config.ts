@@ -21,6 +21,12 @@ export interface PromotionIndexSource {
   scheduledRounds: number;
   /** What was checked before choosing this path. */
   sourceLadder: string;
+  /**
+   * Registered but not run. Used when the ladder found a real index that yields
+   * no attributable BOUTS — running it would add empty cards, which is worse than
+   * showing the sport as unsupported. The sourceLadder records why.
+   */
+  disabled?: boolean;
 }
 
 export const PROMOTION_INDEX_SOURCES: PromotionIndexSource[] = [
@@ -38,6 +44,40 @@ export const PROMOTION_INDEX_SOURCES: PromotionIndexSource[] = [
       "returns the HTML shop page. (4) Wikipedia maintains a 32-row numbered index of every " +
       "card, each row linking to that card's own article carrying a standard results table " +
       "the existing wikicard extractor already reads. CC BY-SA, attribution rendered.",
+  },
+  {
+    key: "glory",
+    article: "Glory (kickboxing)",
+    promotion: "GLORY",
+    sport: "KICKBOXING",
+    // Three rounds of three minutes, plus a possible extra round.
+    scheduledRounds: 3,
+    sourceLadder:
+      "Checked 2026-08-01. (1) No official API. (2) ESPN has no GLORY league — every " +
+      "slug tried returned HTTP 400, and ESPN's boxing scoreboard is a 404. (3) " +
+      "glorykickboxing.com is a Nuxt app: no __NEXT_DATA__, no JSON-LD, no Apollo " +
+      "state; its robots.txt is permissive but the payload is __NUXT__ hydration " +
+      "state, which is a scrape rather than a feed. (4) The 'Glory (kickboxing)' " +
+      "article carries a 127-row event index — # | Event | Date | Venue | Location | " +
+      "Attendance — the same header shape the Misfits index uses. CC BY-SA, " +
+      "attribution rendered. This is the ONLY kickboxing source in the project: " +
+      "ESPN files ONE's kickboxing bouts under MMA because its payload carries a " +
+      "weight class but never a ruleset. " +
+      "MEASURED YIELD 2026-08-01: 206 index rows, 0 usable cards. 140 rows link to a " +
+      "YEAR round-up ('2025 in Glory') rather than their own article, so the " +
+      "shared-article guard refuses them — correctly, since otherwise every Glory " +
+      "card would claim the whole season's bouts. 21 rows have no article at all and " +
+      "45 no parseable date (the article's champion-history tables also carry " +
+      "Event+Date columns and are picked up as index tables). Extracting Glory bouts " +
+      "needs a YEAR-PAGE SPLITTER that sections a round-up by event heading — a new " +
+      "capability, not a config entry. Left registered so the ladder is on record " +
+      "and the next attempt starts from here.",
+    /**
+     * Discovery only: this source lists real events but no attributable bouts, so
+     * running it would add ~200 empty cards. Off until the year-page splitter
+     * exists. See the yield note above.
+     */
+    disabled: true,
   },
 ];
 

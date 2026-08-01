@@ -38,7 +38,7 @@ export const PROMOTIONS: Promotion[] = [
   { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.png", aliases: ["pfl", "professional fighters league"] },
   { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.png", aliases: ["bellator"] },
   { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.png", aliases: ["bkfc", "bare knuckle", "bare-knuckle"] },
-  { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.svg", aliases: ["glory kickboxing", "glory"] },
+  { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.png", aliases: ["glory kickboxing", "glory"] },
   { slug: "rizin", name: "RIZIN", mark: "RIZ", brand: "#c9a227", logo: "/promotions/rizin.svg", aliases: ["rizin"] },
   { slug: "ksw", name: "KSW", mark: "KSW", brand: "#d0021b", logo: "/promotions/ksw.svg", aliases: ["ksw", "konfrontacja"] },
   { slug: "oktagon", name: "Oktagon MMA", mark: "OKT", brand: "#00a3e0", logo: "/promotions/oktagon.svg", aliases: ["oktagon"] },
@@ -67,11 +67,11 @@ export const PROMOTIONS: Promotion[] = [
   // Official artwork supplied by the operator (ijf.png). An official file at the
   // same slug overrides our generated mark — the extension is the only thing that
   // has to be pointed at, which is why this one differs from its neighbours.
-  { slug: "ijf", name: "International Judo Federation", mark: "IJF", brand: "#1a3a8f", logo: "/promotions/ijf.png", aliases: ["international judo federation", "ijf", "judo"] },
-  // .jpg, not .png: the supplied mark has a white background rather than a
-  // transparent one, so it renders as a white tile on the dark card. Swap in a
-  // transparent PNG at the same slug when one is available.
-  { slug: "fias", name: "FIAS", mark: "FIAS", brand: "#c8102e", logo: "/promotions/fias.jpg", aliases: ["fias", "international sambo federation"] },
+  // Merged from two entries. A second `ijf` existed further down with richer
+  // aliases; resolvePromotion takes the FIRST alias match, so that one was dead
+  // code and its aliases ("judo grand slam", "judo masters"…) never resolved.
+  { slug: "ijf", name: "International Judo Federation", mark: "IJF", brand: "#1a3a8f", logo: "/promotions/ijf.png", aliases: ["international judo federation", "ijf", "world judo", "judo grand slam", "judo grand prix", "judo championships", "judo masters", "judo"] },
+  { slug: "fias", name: "FIAS", mark: "FIAS", brand: "#c8102e", logo: "/promotions/fias.png", aliases: ["fias", "international sambo federation"] },
   { slug: "adcc", name: "ADCC", mark: "ADCC", brand: "#2e7d32", logo: "/promotions/adcc.png", aliases: ["adcc", "submission fighting"] },
   // "RAF 12" / "RAF Next Gen" / "RAF Moscow" — the alias must match the bare
   // token, which the word-boundary matcher does safely (won't fire on "Rafael").
@@ -80,7 +80,6 @@ export const PROMOTIONS: Promotion[] = [
   // World Judo Championships / Grand Slam / Grand Prix events Wikidata surfaces,
   // so its events get a real identity instead of the neutral "Various" mark.
   // No official logo asset yet → branded monogram fallback.
-  { slug: "ijf", name: "IJF", mark: "IJF", brand: "#0b4ea2", logo: "/promotions/ijf.png", aliases: ["ijf", "world judo", "judo grand slam", "judo grand prix", "judo championships", "judo masters"] },
 ];
 
 const FALLBACK: Promotion = {
