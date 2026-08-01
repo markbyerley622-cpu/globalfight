@@ -52,13 +52,17 @@ export const PROMOTIONS: Promotion[] = [
   // ── Influencer / crossover boxing ────────────────────────────────────────
   // "misfits" before "mf" so the longer phrase wins; the resolver takes the
   // FIRST alias match and "mf" would otherwise swallow "misfits boxing".
-  { slug: "misfits-boxing", name: "Misfits Boxing", mark: "MF", brand: "#e11d48", logo: "/promotions/misfits-boxing.svg", aliases: ["misfits boxing", "misfits", "mf & dazn", "x series", "mf pro"] },
+  // Official artwork supplied by the operator. The generated .svg marks remain on
+  // disk as the fallback if a .png is ever removed.
+  { slug: "misfits-boxing", name: "Misfits Boxing", mark: "MF", brand: "#e11d48", logo: "/promotions/misfits-boxing.png", aliases: ["misfits boxing", "misfits", "mf & dazn", "x series", "mf pro"] },
   { slug: "crypto-fight-night", name: "Crypto Fight Night", mark: "CFN", brand: "#f7931a", logo: "/promotions/crypto-fight-night.svg", aliases: ["crypto fight night", "cryptofightnight"] },
   // ── Governing bodies (tournament sports) ─────────────────────────────────
   // These were writing events with NO registry entry, so every wrestling, judo,
   // taekwondo and sambo card resolved to the "Various" placeholder and rendered
   // without a mark. Measured by `npm run coverage:audit`.
-  { slug: "uww", name: "United World Wrestling", mark: "UWW", brand: "#0d6ab5", logo: "/promotions/uww.svg", aliases: ["united world wrestling", "uww"] },
+  // brand is UWW's orange, taken from the supplied mark — the previous blue was a
+  // guess made before the real logo existed.
+  { slug: "uww", name: "United World Wrestling", mark: "UWW", brand: "#f58220", logo: "/promotions/uww.png", aliases: ["united world wrestling", "uww"] },
   { slug: "world-taekwondo", name: "World Taekwondo", mark: "WT", brand: "#0b6cb7", logo: "/promotions/world-taekwondo.svg", aliases: ["world taekwondo", "wtf"] },
   // Official artwork supplied by the operator (ijf.png). An official file at the
   // same slug overrides our generated mark — the extension is the only thing that
