@@ -102,7 +102,7 @@ export function DiscussionSheet({ video, onClose }: { video: FeedVideo; onClose:
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="cr-overscroll-contain min-h-0 flex-1 overflow-y-auto">
         {/* pinned video */}
         <div className="border-b border-ink-800 bg-black">
           <div className="relative mx-auto aspect-video w-full max-w-2xl">

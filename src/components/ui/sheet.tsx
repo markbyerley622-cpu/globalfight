@@ -107,7 +107,10 @@ export function Sheet({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "w-full max-w-md animate-[sheet-up_.3s_cubic-bezier(.2,.8,.2,1)] overflow-y-auto border border-ink-700 bg-ink-900 outline-none",
+          // cr-overscroll-contain: flicking past the end of the sheet must not
+          // scroll the page behind it. That chaining is the clearest tell that a
+          // bottom sheet is a web page rather than an app surface.
+          "cr-overscroll-contain w-full max-w-md animate-[sheet-up_.3s_cubic-bezier(.2,.8,.2,1)] overflow-y-auto border border-ink-700 bg-ink-900 outline-none",
           "max-h-[92dvh] rounded-t-3xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
           "sm:max-h-[85dvh] sm:rounded-3xl sm:pb-6",
           className,

@@ -755,3 +755,44 @@
   .hot-sheen::after { animation: none; display: none; }
   .seg-ind { transition: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Reduced motion — the BACKSTOP, and mobile scroll containment
+   ────────────────────────────────────────────────────────────────────
+   Everything above this point opts IN: each animation names itself in a
+   `prefers-reduced-motion` block. That works only for animations someone
+   remembered to list, and there are six easing curves in @theme feeding
+   Tailwind `transition-*` utilities across hundreds of components — none
+   of which appear in any of those lists. So a user who has asked their OS
+   to reduce motion still gets almost all of it.
+
+   This is the catch-all. The named blocks above stay: they say `display:
+   none` and other things a blanket rule cannot, and being redundant with
+   a backstop is the correct relationship.
+
+   Durations are 0.01ms rather than 0, and iteration-count 1 rather than
+   `animation: none`, because JS that waits on `animationend`/
+   `transitionend` must still receive the event — killing the animation
+   outright strands any such handler and leaves a sheet half-open.
+   ════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    /* Instant, not smooth — this is the one users notice most on mobile. */
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Stop scroll CHAINING out of overlays.
+   Without this, flicking past the end of a bottom sheet, dropdown or drawer
+   scrolls the page underneath it — the single most common reason a mobile
+   overlay feels like a web page rather than an app. `contain` keeps the
+   gesture inside the surface; it does not disable the page's own scrolling.
+   Pure CSS: no listener, no preventDefault, no passive-listener cost. */
+.cr-overscroll-contain {
+  overscroll-behavior: contain;
+  /* Momentum scrolling inside the surface on iOS. */
+  -webkit-overflow-scrolling: touch;
+}

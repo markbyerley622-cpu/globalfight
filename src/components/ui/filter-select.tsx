@@ -71,7 +71,7 @@ export function FilterSelect({
               />
             </div>
           )}
-          <ul className="max-h-64 overflow-y-auto py-1" role="listbox">
+          <ul className="cr-overscroll-contain max-h-64 overflow-y-auto py-1" role="listbox">
             <li>
               <button type="button" onClick={() => pick("")} className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-mist hover:bg-ink-800">
                 {placeholder}
