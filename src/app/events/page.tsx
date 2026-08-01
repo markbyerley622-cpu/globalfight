@@ -40,8 +40,14 @@ const WHEN_HEADING: Record<string, string> = {
  * announces itself ("UFC — upcoming events") instead of looking identical to the
  * unfiltered one.
  */
-function listHeading(sp: Awaited<SP>): string {
+function listHeading(sp: Awaited<SP>, fellBackToCompleted = false): string {
   const base =
+    // The fallback OVERRIDES the default. Without this the heading read "Boxing —
+    // upcoming events" directly above seven completed cards from 2022–2023,
+    // because sp.status is undefined and the default is the word "Upcoming". The
+    // banner underneath said the opposite. A heading that contradicts the rows it
+    // labels is worse than no heading.
+    (fellBackToCompleted && !sp.status ? "Completed events" : null) ??
     (sp.status && STATUS_HEADING[sp.status]) ??
     (sp.when && WHEN_HEADING[sp.when]) ??
     "Upcoming events";
@@ -129,7 +135,7 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
             events": a fixed label would be wrong the moment someone taps Results. */}
         <div>
           <h2 className="font-display text-lg font-bold uppercase tracking-tight text-chalk">
-            {listHeading(sp)}
+            {listHeading(sp, fellBackToCompleted)}
           </h2>
           <p className="mt-0.5 text-xs text-fog">
             {total === 0 ? "No events match" : `${total.toLocaleString()} event${total === 1 ? "" : "s"}`}
