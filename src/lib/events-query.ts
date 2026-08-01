@@ -7,6 +7,7 @@ import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
 import { cardFighterImage } from "@/lib/events/media-resolver";
 import { decodeHtmlEntities } from "@/lib/text/entities";
 import { formatRecord } from "@/lib/utils";
+import { log } from "@/lib/scraper/logger";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Event discovery.
@@ -112,9 +113,33 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
       : { gte: now, lte: to };
   }
 
-  if (use("sport") && f.sport) {
-    const s = SPORT_BY_SLUG[f.sport];
-    if (s) where.sport = s.value as Prisma.EventWhereInput["sport"];
+  // ── Sport ─────────────────────────────────────────────────────────────────
+  //
+  // THREE cases, and the third used to be indistinguishable from the first.
+  //
+  //   no slug        -> no filter. Every sport. Correct: nothing was asked for.
+  //   known slug     -> filter to it.
+  //   UNKNOWN slug   -> match NOTHING.
+  //
+  // The unknown case previously fell through the `if (s)` with no `else`, so no
+  // sport clause was applied at all and the query quietly returned EVERY sport.
+  // A stale link, a typo, or a caller passing the enum ("WRESTLING") instead of
+  // the slug ("wrestling") therefore rendered a page full of unrelated events
+  // that looked deliberate. Silently answering a different question than the one
+  // asked is worse than answering none.
+  //
+  // Normalised first, so casing and stray whitespace from a hand-edited URL
+  // resolve instead of being punished.
+  if (use("sport")) {
+    const slug = f.sport?.trim().toLowerCase();
+    const sport = slug ? SPORT_BY_SLUG[slug] : undefined;
+    if (slug && !sport) {
+      // Deliberately unsatisfiable: an unrecognised sport has no events.
+      where.sport = { in: [] };
+      log.warn({ slug: f.sport }, "events-query:unknown-sport-slug");
+    } else if (sport) {
+      where.sport = sport.value as Prisma.EventWhereInput["sport"];
+    }
   }
 
   // Promotion is stored as free text; a registry slug maps to the aliases that
