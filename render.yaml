@@ -46,9 +46,10 @@ envVarGroups:
         value: globalfight.onrender.com
       - key: AUTH_SECRET
         generateValue: true
-      # Master ingestion gate. Per-source writes are ALSO gated by
-      # src/lib/ingestion-registry.ts — that registry, not this switch, is the
-      # legal allow-list, and it stays authoritative.
+      # THE ingestion gate — as of 2026-08-01 the only one. The per-source legal
+      # allow-list in src/lib/ingestion-registry.ts was removed on the operator's
+      # instruction; isSourceEnabled() now returns true for every id, so this
+      # switch alone decides whether anything reaches the network.
       #
       # This was "false", and that is why bout RESULTS never updated in
       # production. The hourly gf-cron-results job fired on schedule, called
@@ -59,16 +60,25 @@ envVarGroups:
       # completed card therefore sat on "Result pending" forever while the cron
       # dashboard showed green (see cron-handler.ts for that half of the bug).
       #
-      # `true` here unlocks only what the registry already permits: at present
-      # wikipedia-facts (CC BY-SA text, results included) plus the operator-enabled
-      # BKFC/ONE event entries. It does NOT enable ufcstats, promotion rankings, or
-      # any other source whose registry `enabled` is false — those stay blocked in
-      # code. Note MEDIA_INGESTION_ENABLED is a separate switch: no image is
-      # re-hosted from Wikimedia by turning this on.
+      # `true` here now unlocks every provider that is WIRED INTO THE RUNNER —
+      # wikipedia-facts (CC BY-SA text, bout results), BKFC, ONE, ADCC — with no
+      # per-source check behind it. Sources with no provider code (ufcstats,
+      # promotion rankings, federations) still do not run, but only because
+      # nothing calls them, not because anything refuses. Setting this to "false"
+      # is the one way to stop all ingestion. MEDIA_INGESTION_ENABLED remains a
+      # separate switch: no image is re-hosted from Wikimedia by turning this on.
       - key: ENABLE_SCRAPER
         value: "true"
+      # 800ms was too fast for onefc.com: a single ONE refresh drew 199 HTTP 429
+      # refusals out of 224 event pages. The client honours each refusal and does
+      # not retry, so those events simply came back with no poster and no card —
+      # the throttle was silently costing coverage, not just speed.
+      #
+      # 3000ms is the rate at which that run stops being refused. It makes a full
+      # ONE pass slower, which is the correct trade: an unthrottled pass that gets
+      # 429'd returns nothing.
       - key: SCRAPER_RATE_LIMIT_MS
-        value: "800"
+        value: "3000"
       - key: SCRAPER_MAX_RETRIES
         value: "2"
       - key: BKFC_CONCURRENCY
@@ -274,6 +284,20 @@ services:
   # RESULT_BATCH (12) recently-finished events per run, two Wikipedia requests
   # each — ~24 requests an hour, polite by any measure. resolve-picks only touches
   # decided, ungraded bouts, so it scans 0 rows when nothing new has finished.
+  #
+  # THREE CADENCES, ONE ROUTE (`?tier=`). The hourly job must not scan history:
+  # an event that ended three years ago cannot acquire a result between 09:00 and
+  # 10:00, so paying for it every hour buys nothing, while a card that ended last
+  # night can and does. See RESULT_TIERS in wikicard/targets.ts.
+  #
+  #   recent — 7 days, hourly. The one that keeps "Result pending" short.
+  #   daily  — 90 days, once a day. Catches whatever the hourly tier missed while
+  #            a source was down or an article had not been written yet.
+  #   deep   — unbounded, weekly. Historical reconciliation.
+  #
+  # Completed cards and one-shot imports are excluded from all three by the query
+  # itself (Event.resultsCompleteAt + lib/scraper/source-policy), so these windows
+  # bound the work rather than being the only thing that does.
   - type: cron
     name: gf-cron-results
     runtime: node
@@ -281,9 +305,80 @@ services:
     schedule: "20 * * * *"
     buildCommand: "true"
     startCommand: >-
-      for p in refresh-results resolve-picks; do
-        curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
-      done
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-results?tier=recent" || true;
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/resolve-picks" || true
+    envVars:
+      - fromGroup: globalfight
+
+  # ── Cron: fighter images ────────────────────────────────────────────────
+  # Three modes on one route, matched to how the data actually behaves:
+  #
+  #   new        daily — fill in fighters who have no image yet.
+  #   revalidate weekly — conditional GET over images we already hold. Measured
+  #              against ESPN: 15/15 answered 304 and 0.00 MB transferred, so a
+  #              full pass costs requests and no bandwidth.
+  #   retry      monthly — fighters a provider 404'd, past the 30-day backoff. A
+  #              permanent miss must never be re-asked daily.
+  #
+  # Each fighter is persisted the instant its outcome is known, so a tick that
+  # runs out of maxDuration keeps everything it already did.
+  - type: cron
+    name: gf-cron-images
+    runtime: node
+    plan: starter
+    schedule: "10 3 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-images?mode=new" || true
+    envVars:
+      - fromGroup: globalfight
+
+  - type: cron
+    name: gf-cron-images-revalidate
+    runtime: node
+    plan: starter
+    schedule: "30 4 * * 0"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-images?mode=revalidate" || true
+    envVars:
+      - fromGroup: globalfight
+
+  - type: cron
+    name: gf-cron-images-retry
+    runtime: node
+    plan: starter
+    schedule: "0 5 1 * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-images?mode=retry" || true
+    envVars:
+      - fromGroup: globalfight
+
+  # ── Cron: results sweep, 90 days (daily) ────────────────────────────────
+  # The safety net under the hourly tier. Same route, wider window.
+  - type: cron
+    name: gf-cron-results-daily
+    runtime: node
+    plan: starter
+    schedule: "40 5 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-results?tier=daily" || true
+    envVars:
+      - fromGroup: globalfight
+
+  # ── Cron: historical reconciliation (weekly) ────────────────────────────
+  # Unbounded look-back. Rare on purpose: this is the only tier that can reach a
+  # card older than 90 days, and nothing else should be paying for that reach.
+  - type: cron
+    name: gf-cron-results-deep
+    runtime: node
+    plan: starter
+    schedule: "0 7 * * 0"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-results?tier=deep" || true
     envVars:
       - fromGroup: globalfight
 
