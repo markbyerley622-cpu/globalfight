@@ -60,14 +60,25 @@ export function EventCard({ event }: { event: EventCardData }) {
           {/* Promotion, ONLY when it's a real org — an unattributed card shows no
               "Multiple promotions" clutter, just the sport tag on the right. */}
           <span className="flex min-h-[1.5rem] items-center gap-2">
+            {/* The MARK alone, when there is one.
+                The name used to sit beside it, so a UFC card read "[logo] UFC"
+                and then "UFC 322" underneath — the org named twice before the
+                event title named it a third time. The logo already identifies
+                the promotion, and the text was crowding out the location and
+                bout count, which are the things a fan actually scans for.
+
+                Nothing is lost: the mark keeps the promotion as its ACCESSIBLE
+                NAME (hover and screen readers still get it), and the event title
+                carries it in writing. Text appears only when the promotion has
+                no logo to speak for it. */}
             {hasRealPromo && (
-              <>
-                {/* The name is rendered as text immediately after, so the mark
-                    must not also announce it — that is what made every card read
-                    the promotion three times over. */}
-                <PromotionLogo promotion={event.promotion} size="sm" labelledBy={false} />
-                <span className="text-xs font-semibold uppercase tracking-wide text-chalk drop-shadow">{event.promotionName}</span>
-              </>
+              promo.logo
+                ? <PromotionLogo promotion={event.promotion} size="sm" />
+                : (
+                  <span className="text-xs font-semibold uppercase tracking-wide text-chalk drop-shadow">
+                    {event.promotionName}
+                  </span>
+                )
             )}
           </span>
           {/* Top-right = the combat sport (Boxing / MMA / …), the fastest thing to
