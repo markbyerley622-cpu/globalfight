@@ -33,6 +33,15 @@ const PROMOS = [
   ["adcc", "ADCC", "#2e7d32"],
   ["road-to-ufc", "RTU", "#d20a0a"],
   ["dwcs", "DWCS", "#d20a0a"],
+  // Influencer / crossover boxing.
+  ["misfits-boxing", "MF", "#e11d48"],
+  ["crypto-fight-night", "CFN", "#f7931a"],
+  // Governing bodies for the tournament sports. Without these, every wrestling,
+  // judo, taekwondo and sambo card rendered with the "Various" placeholder.
+  ["uww", "UWW", "#0d6ab5"],
+  ["world-taekwondo", "WT", "#0b6cb7"],
+  ["ijf", "IJF", "#1a3a8f"],
+  ["fias", "FIAS", "#c8102e"],
 ];
 
 const fontFor = (mark) => (mark.length <= 2 ? 42 : mark.length === 3 ? 34 : 25);

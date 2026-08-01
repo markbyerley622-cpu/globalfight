@@ -49,6 +49,22 @@ export const PROMOTIONS: Promotion[] = [
   { slug: "cffc", name: "CFFC", mark: "CFFC", brand: "#c0161d", logo: "/promotions/cffc.svg", aliases: ["cffc", "cage fury"] },
   { slug: "invicta", name: "Invicta FC", mark: "INV", brand: "#e91e63", logo: "/promotions/invicta.svg", aliases: ["invicta"] },
   { slug: "karate-combat", name: "Karate Combat", mark: "KC", brand: "#00b4d8", logo: "/promotions/karate-combat.svg", aliases: ["karate combat"] },
+  // ── Influencer / crossover boxing ────────────────────────────────────────
+  // "misfits" before "mf" so the longer phrase wins; the resolver takes the
+  // FIRST alias match and "mf" would otherwise swallow "misfits boxing".
+  { slug: "misfits-boxing", name: "Misfits Boxing", mark: "MF", brand: "#e11d48", logo: "/promotions/misfits-boxing.svg", aliases: ["misfits boxing", "misfits", "mf & dazn", "x series", "mf pro"] },
+  { slug: "crypto-fight-night", name: "Crypto Fight Night", mark: "CFN", brand: "#f7931a", logo: "/promotions/crypto-fight-night.svg", aliases: ["crypto fight night", "cryptofightnight"] },
+  // ── Governing bodies (tournament sports) ─────────────────────────────────
+  // These were writing events with NO registry entry, so every wrestling, judo,
+  // taekwondo and sambo card resolved to the "Various" placeholder and rendered
+  // without a mark. Measured by `npm run coverage:audit`.
+  { slug: "uww", name: "United World Wrestling", mark: "UWW", brand: "#0d6ab5", logo: "/promotions/uww.svg", aliases: ["united world wrestling", "uww"] },
+  { slug: "world-taekwondo", name: "World Taekwondo", mark: "WT", brand: "#0b6cb7", logo: "/promotions/world-taekwondo.svg", aliases: ["world taekwondo", "wtf"] },
+  // Official artwork supplied by the operator (ijf.png). An official file at the
+  // same slug overrides our generated mark — the extension is the only thing that
+  // has to be pointed at, which is why this one differs from its neighbours.
+  { slug: "ijf", name: "International Judo Federation", mark: "IJF", brand: "#1a3a8f", logo: "/promotions/ijf.png", aliases: ["international judo federation", "ijf", "judo"] },
+  { slug: "fias", name: "FIAS", mark: "FIAS", brand: "#c8102e", logo: "/promotions/fias.svg", aliases: ["fias", "international sambo federation"] },
   { slug: "adcc", name: "ADCC", mark: "ADCC", brand: "#2e7d32", logo: "/promotions/adcc.png", aliases: ["adcc", "submission fighting"] },
   // "RAF 12" / "RAF Next Gen" / "RAF Moscow" — the alias must match the bare
   // token, which the word-boundary matcher does safely (won't fire on "Rafael").
