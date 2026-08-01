@@ -22,20 +22,41 @@ export function PromotionLogo({
   size = "md",
   className,
   showName = false,
+  labelledBy,
 }: {
   promotion?: string | null;
   size?: keyof typeof SIZES;
   className?: string;
   showName?: boolean;
+  /**
+   * Pass `false` when the CALLER already renders the promotion name beside the
+   * mark. The mark then becomes decorative and contributes no accessible name,
+   * so the promotion is announced once rather than two or three times.
+   */
+  labelledBy?: false;
 }) {
   const p = resolvePromotion(promotion);
   const s = SIZES[size];
 
+  // The name is announced ONCE, by whichever element is the label.
+  //
+  // It used to come from three at the same time — a wrapper `title`, the image
+  // `alt`, and the fallback badge's own `title` — on top of the caller's own
+  // visible text. An event card therefore read "Misfits Boxing Misfits Boxing
+  // Misfits Boxing" to a screen reader, and pasted that way too.
+  //
+  // When the caller already shows the name (`showName`, or its own adjacent
+  // label) the mark is DECORATIVE: empty alt, no title. That is the standard
+  // treatment for an image sitting next to text that already says the same
+  // thing. Otherwise the mark IS the label and keeps the accessible name.
+  const decorative = showName || labelledBy === false;
+  const accessibleName = decorative ? "" : p.name;
+
   const mark = p.logo ? (
-    <span className={cn("relative inline-flex shrink-0 items-center", s.box)} title={p.name}>
+    <span className={cn("relative inline-flex shrink-0 items-center", s.box)}>
       <Image
         src={p.logo}
-        alt={p.name}
+        alt={accessibleName}
         width={s.img}
         height={s.img}
         loading="lazy"
@@ -48,7 +69,10 @@ export function PromotionLogo({
     </span>
   ) : (
     <span
-      title={p.name}
+      // Decorative: the monogram is a visual echo of a name already on screen.
+      // Announcing "MF" after "Misfits Boxing" is noise, not information.
+      aria-hidden={decorative || undefined}
+      title={decorative ? undefined : p.name}
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-md font-display font-bold uppercase leading-none tracking-tight text-white shadow-sm",
         s.box,

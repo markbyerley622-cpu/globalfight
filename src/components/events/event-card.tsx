@@ -62,7 +62,10 @@ export function EventCard({ event }: { event: EventCardData }) {
           <span className="flex min-h-[1.5rem] items-center gap-2">
             {hasRealPromo && (
               <>
-                <PromotionLogo promotion={event.promotion} size="sm" />
+                {/* The name is rendered as text immediately after, so the mark
+                    must not also announce it — that is what made every card read
+                    the promotion three times over. */}
+                <PromotionLogo promotion={event.promotion} size="sm" labelledBy={false} />
                 <span className="text-xs font-semibold uppercase tracking-wide text-chalk drop-shadow">{event.promotionName}</span>
               </>
             )}
