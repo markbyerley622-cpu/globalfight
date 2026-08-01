@@ -63,12 +63,15 @@ export const PROMOTIONS: Promotion[] = [
   // brand is UWW's orange, taken from the supplied mark — the previous blue was a
   // guess made before the real logo existed.
   { slug: "uww", name: "United World Wrestling", mark: "UWW", brand: "#f58220", logo: "/promotions/uww.png", aliases: ["united world wrestling", "uww"] },
-  { slug: "world-taekwondo", name: "World Taekwondo", mark: "WT", brand: "#0b6cb7", logo: "/promotions/world-taekwondo.svg", aliases: ["world taekwondo", "wtf"] },
+  { slug: "world-taekwondo", name: "World Taekwondo", mark: "WT", brand: "#0b6cb7", logo: "/promotions/world-taekwondo.png", aliases: ["world taekwondo", "wtf"] },
   // Official artwork supplied by the operator (ijf.png). An official file at the
   // same slug overrides our generated mark — the extension is the only thing that
   // has to be pointed at, which is why this one differs from its neighbours.
   { slug: "ijf", name: "International Judo Federation", mark: "IJF", brand: "#1a3a8f", logo: "/promotions/ijf.png", aliases: ["international judo federation", "ijf", "judo"] },
-  { slug: "fias", name: "FIAS", mark: "FIAS", brand: "#c8102e", logo: "/promotions/fias.svg", aliases: ["fias", "international sambo federation"] },
+  // .jpg, not .png: the supplied mark has a white background rather than a
+  // transparent one, so it renders as a white tile on the dark card. Swap in a
+  // transparent PNG at the same slug when one is available.
+  { slug: "fias", name: "FIAS", mark: "FIAS", brand: "#c8102e", logo: "/promotions/fias.jpg", aliases: ["fias", "international sambo federation"] },
   { slug: "adcc", name: "ADCC", mark: "ADCC", brand: "#2e7d32", logo: "/promotions/adcc.png", aliases: ["adcc", "submission fighting"] },
   // "RAF 12" / "RAF Next Gen" / "RAF Moscow" — the alias must match the bare
   // token, which the word-boundary matcher does safely (won't fire on "Rafael").
