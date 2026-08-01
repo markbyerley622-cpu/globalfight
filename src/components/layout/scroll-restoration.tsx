@@ -38,8 +38,21 @@ import { usePathname, useSearchParams } from "next/navigation";
 const STORAGE_KEY = "gf:scrollPositions";
 /** Cap the map so a long session cannot grow it without bound. */
 const MAX_ENTRIES = 60;
-/** How long to keep re-applying the target while async content settles, ms. */
-const RESTORE_WINDOW_MS = 600;
+/**
+ * Consecutive frames the container height must hold steady before we accept that
+ * the page has finished growing. Three frames (~50ms at 60fps) is long enough to
+ * ride out a single slow image or a streamed RSC chunk, short enough that a page
+ * which really is done stops immediately.
+ */
+const SETTLED_FRAMES = 3;
+/**
+ * Absolute ceiling on the convergence loop.
+ *
+ * NOT a settle estimate — the height check decides that. This exists only so a
+ * page that never stops growing (a stuck infinite-scroll sentinel) cannot hold a
+ * requestAnimationFrame loop open forever.
+ */
+const MAX_RESTORE_MS = 5000;
 
 type Positions = Map<string, number>;
 
@@ -127,11 +140,40 @@ export function ScrollRestoration() {
         // assignment clamps to the height that exists right now and lands short.
         // Re-apply across frames until the position sticks or the window closes —
         // a convergence loop, not a polling timer.
-        const deadline = performance.now() + RESTORE_WINDOW_MS;
+        // Give up when the CONTENT STOPS GROWING, not when a stopwatch expires.
+        //
+        // This was `performance.now() < deadline` against a fixed 600ms. That is a
+        // guess about how long a route takes to settle, and it silently became wrong
+        // as the app grew: an events list of 418 cards with images is still
+        // lengthening well past 600ms, so the loop quit while the container was
+        // shorter than the saved offset and the scroll clamped short. The symptom is
+        // "Back lands near, but not at, where I was" — and the fix keeps being to
+        // raise the number, on the fastest machine in the room.
+        //
+        // Growth is the real signal. While scrollHeight is still increasing there is
+        // more to come, so keep re-applying however long that takes; once it has held
+        // steady for a few frames the page has settled and the position we can reach
+        // is the position that exists. The wall clock survives only as a hard stop
+        // against a genuinely endless page (a stuck infinite-scroll sentinel).
+        const hardStop = performance.now() + MAX_RESTORE_MS;
+        let tallest = -1;
+        let settledFrames = 0;
+
         const apply = () => {
           if (cancelled) return;
           if (Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
-          if (el.scrollTop < target - 1 && performance.now() < deadline) {
+          // Reached it — nothing further to do, however much more loads after.
+          if (el.scrollTop >= target - 1) return;
+
+          const height = el.scrollHeight;
+          if (height > tallest) {
+            tallest = height;
+            settledFrames = 0;
+          } else {
+            settledFrames += 1;
+          }
+
+          if (settledFrames < SETTLED_FRAMES && performance.now() < hardStop) {
             requestAnimationFrame(apply);
           }
         };
