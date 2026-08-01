@@ -185,6 +185,17 @@ export function splitLocation(input: string | null | undefined): {
   if (!s) return { city: null, country: null };
   const parts = s.split(",").map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return { city: null, country: null };
-  if (parts.length === 1) return { city: parts[0], country: null };
+
+  // A SINGLE part is a venue name, not a city.
+  //
+  // This is called on BKFC's JSON-LD `location.name`, which is very often just
+  // the building — "OVO HYDRO", "FENWAY PARK", "MOHEGAN SUN". Returning it as
+  // the city put the venue name in the city field on 142 of 168 events, so cards
+  // read "OVO HYDRO" where the location should be, and no country was ever
+  // derived, so the flag was blank. A confident wrong city is worse than an
+  // honest blank one — and the blank is what tells the next pass there is work
+  // to do.
+  if (parts.length === 1) return { city: null, country: null };
+
   return { city: parts[parts.length - 2], country: parts[parts.length - 1] };
 }

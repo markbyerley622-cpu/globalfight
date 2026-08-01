@@ -96,4 +96,21 @@ test("splitLocation", () => {
     country: "FL",
   });
   assert.deepEqual(splitLocation(null), { city: null, country: null });
+
+  // REGRESSION: a bare venue name is NOT a city.
+  //
+  // BKFC's JSON-LD `location.name` is very often just the building. Returning it
+  // as the city put "OVO HYDRO" and "FENWAY PARK" in the city field on 142 of 168
+  // production events — cards showed the venue where the location belonged, and
+  // no country was derived so every flag was blank. A confident wrong city is
+  // worse than an honest blank one.
+  for (const venue of ["OVO HYDRO", "FENWAY PARK", "MOHEGAN SUN", "Xfinity Mobile"]) {
+    assert.deepEqual(splitLocation(venue), { city: null, country: null }, venue);
+  }
+
+  // Two parts still resolve — the guard must not cost a real location.
+  assert.deepEqual(splitLocation("Hollywood, Florida"), { city: "Hollywood", country: "Florida" });
+  // Whitespace-only and separator-only inputs are nothing, not a city.
+  assert.deepEqual(splitLocation("   "), { city: null, country: null });
+  assert.deepEqual(splitLocation(",,"), { city: null, country: null });
 });

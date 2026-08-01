@@ -26,6 +26,7 @@
     "espn:backfill": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/espn-backfill.mts",
     "test:espn": "node --import tsx --test \"src/lib/scraper/espn/__tests__/**/*.test.ts\"",
     "events:prune-test": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/prune-test-events.mts",
+    "repair:venue-city": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/repair-venue-as-city.mts",
     "cards:empty": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/empty-cards.mts",
     "cards:mark-complete": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/mark-complete.mts",
     "test:tournament": "node --import tsx --test \"src/lib/scraper/tournament/__tests__/**/*.test.ts\"",
