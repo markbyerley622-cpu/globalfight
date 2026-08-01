@@ -712,8 +712,43 @@
 .ring-featured { box-shadow: 0 0 0 1px rgba(224,169,27,.35), 0 20px 46px -24px rgba(224,169,27,.25); }
 
 /* Vote button press feedback. */
-.tap { transition: transform .12s ease, background-color .2s, border-color .2s, color .2s; }
-.tap:active { transform: scale(.96); }
+/* ════════════════════════════════════════════════════════════════════
+   .tap — the touch-feedback primitive (111 call sites)
+   ────────────────────────────────────────────────────────────────────
+   The grey/blue flash browsers paint on tap is ugly, but on most controls
+   it is the ONLY press feedback there is: an audit found intentional
+   `active:` states in roughly eleven places across the whole app, in
+   three different magnitudes. Switching the highlight off globally would
+   strip feedback from nearly everything and leave taps feeling dead —
+   worse than the flash.
+
+   So `-webkit-tap-highlight-color: transparent` is set HERE and nowhere
+   else: on the one class that already guarantees a replacement. The
+   removal and the replacement are the same declaration block and cannot
+   be applied apart.
+
+   The scale was already 0.96 and stays — this is not a redesign, and 111
+   surfaces already move by that amount.
+   ════════════════════════════════════════════════════════════════════ */
+.tap {
+  transition: transform .12s ease, background-color .2s, border-color .2s, color .2s;
+  /* Safe only because :active below is guaranteed to exist. */
+  -webkit-tap-highlight-color: transparent;
+}
+/* Disabled controls must not appear to respond. Without the guard a
+   disabled button still springs under the finger and reads as accepted. */
+.tap:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(.96); }
+
+/* Reduced motion still gets FEEDBACK, just not movement. Dropping the
+   transform alone would return these 111 surfaces to no press response at
+   all — with the browser highlight now suppressed, that is a control that
+   does nothing when touched. Brightness carries it instead. */
+@media (prefers-reduced-motion: reduce) {
+  .tap:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: none;
+    filter: brightness(.85);
+  }
+}
 
 /* Section entrance. */
 .rise { animation: rise .5s var(--ease-out-quint) both; }
@@ -783,6 +818,13 @@
     /* Instant, not smooth — this is the one users notice most on mobile. */
     scroll-behavior: auto !important;
   }
+}
+
+/* Comfortable thumb target without forcing a visual size change.
+   Opt-in: applied to icon-only controls that render smaller than a thumb. */
+.cr-touch-target {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Stop scroll CHAINING out of overlays.

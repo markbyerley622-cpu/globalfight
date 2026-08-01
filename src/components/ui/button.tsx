@@ -4,7 +4,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-display font-semibold uppercase tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood-500/60 disabled:pointer-events-none disabled:opacity-50",
+  // `tap` is the existing touch-feedback primitive (globals.css): it supplies
+  // the pressed state AND suppresses the browser's grey tap flash, which are
+  // deliberately inseparable. The shared Button had neither. The focus-visible
+  // ring below is untouched — keyboard users are unaffected.
+  "tap inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-display font-semibold uppercase tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blood-500/60 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
