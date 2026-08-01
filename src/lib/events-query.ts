@@ -207,7 +207,19 @@ const CARD_SELECT = {
 export async function queryEvents(
   f: EventFilters,
   followedIds: Set<string> = new Set(),
-): Promise<{ events: EventCard[]; total: number; page: number; pages: number }> {
+): Promise<{
+  events: EventCard[];
+  total: number;
+  page: number;
+  pages: number;
+  /**
+   * True when the default "upcoming" view was empty and this returned COMPLETED
+   * events instead. Surfaced so the page can SAY so — a silent swap leaves a
+   * visitor looking at last year's championships under a heading that implies
+   * they are upcoming, which is its own kind of wrong answer.
+   */
+  fellBackToCompleted: boolean;
+}> {
   const page = Math.max(0, f.page ?? 0);
 
   // ── Fall back to COMPLETED when a sport has no upcoming card ──────────────
@@ -227,6 +239,7 @@ export async function queryEvents(
   const explicitStatus = Boolean(f.status);
   let effective = f;
   let where = buildWhere(effective);
+  let fellBackToCompleted = false;
 
   if (!explicitStatus && (await prisma.event.count({ where })) === 0) {
     const completed: EventFilters = { ...f, status: "completed" };
@@ -234,6 +247,7 @@ export async function queryEvents(
     if ((await prisma.event.count({ where: completedWhere })) > 0) {
       effective = completed;
       where = completedWhere;
+      fellBackToCompleted = true;
     }
   }
 
@@ -279,6 +293,7 @@ export async function queryEvents(
     total,
     page,
     pages: Math.max(1, Math.ceil(total / PER_PAGE)),
+    fellBackToCompleted,
   };
 }
 

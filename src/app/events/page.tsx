@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHero } from "@/components/page-hero";
 import { EventFilters } from "@/components/events/event-filters";
 import { EventCard } from "@/components/events/event-card";
@@ -79,7 +80,7 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
   // (status/promotion/sport/etc.) or paging, where it would fight the query.
   const isDefaultView = !sp.status && !sp.promotion && !sp.sport && !sp.country && !sp.when && filters.page === 0;
   const followed = viewer ? await getFollowedEventIds(viewer.id) : new Set<string>();
-  const [{ events, total, page, pages }, facets, recentEvents] = await Promise.all([
+  const [{ events, total, page, pages, fellBackToCompleted }, facets, recentEvents] = await Promise.all([
     queryEvents(filters, followed),
     getEventFacets(filters),
     isDefaultView ? getRecentEvents(viewer?.id ?? null) : Promise.resolve([]),
@@ -96,6 +97,29 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
         {recentEvents.length > 0 && <RecentEvents events={recentEvents} />}
 
         <EventFilters facets={facets} />
+
+        {/* SAY when the default view was swapped.
+            The wrestling, judo, taekwondo and sambo calendars are annual
+            championships, so they routinely have nothing upcoming and the query
+            falls back to completed cards. Doing that silently leaves a visitor
+            reading last year's World Championships under a heading that implies
+            they are about to happen — the page would be showing real data and
+            still telling a lie about what it is. */}
+        {fellBackToCompleted && (
+          <p
+            role="status"
+            className="rounded-lg border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs text-mist"
+          >
+            No upcoming events match these filters — showing the most recent
+            completed events instead.{" "}
+            <Link
+              href={{ pathname: "/events", query: { ...sp, status: "upcoming" } }}
+              className="font-semibold text-blood-400 underline-offset-2 hover:underline"
+            >
+              Show upcoming only
+            </Link>
+          </p>
+        )}
 
         {/* A HEADING for the list, not just a count. "129 events · page 1 of 11" told
             the reader how many rows there were but never what they were looking AT —
