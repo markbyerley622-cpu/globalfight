@@ -4,6 +4,7 @@ import { log } from "../logger";
 import { resolvePromotion } from "@/lib/promotions";
 import { candidate, type ResolvedEntity } from "@/lib/entities/resolve";
 import { buildSearchLadder } from "./search-strategies";
+import { STATIC_IMPORT_SOURCES } from "../source-policy";
 import type { Sport } from "@/lib/types";
 import type { WikiTarget } from "./types";
 import type { ExpectedBout } from "./verify";
@@ -39,6 +40,31 @@ import type { ExpectedBout } from "./verify";
  */
 export const RESULT_BACKFILL_DAYS = Number(process.env.RESULTS_BACKFILL_WINDOW_DAYS ?? 21);
 
+/**
+ * How far back a run looks, by cadence.
+ *
+ * The point is that the frequent job must not scan history. An event that ended
+ * three years ago cannot acquire a result between 09:00 and 10:00, so paying for
+ * it every hour buys nothing; a card that ended last night can and does. So the
+ * hourly tick works a week, the daily sweep catches whatever the week missed, and
+ * the deep pass is unbounded and rare.
+ *
+ *   recent — hourly. Last 7 days.
+ *   daily  — once a day. Last 90 days; catches anything the hourly tier missed
+ *            while a source was down or a page had not been written yet.
+ *   deep   — weekly/manual. No bound at all: the historical reconciliation.
+ */
+export const RESULT_TIERS = {
+  recent: 7,
+  daily: 90,
+  deep: null,
+} as const;
+
+export type ResultTier = keyof typeof RESULT_TIERS;
+
+export const isResultTier = (v: unknown): v is ResultTier =>
+  typeof v === "string" && v in RESULT_TIERS;
+
 export type WikiGap = "missing_card" | "missing_result";
 export type WikiMode = "incremental" | "historical" | "replay";
 
@@ -55,6 +81,12 @@ export interface FindTargetsOpts {
   mode?: WikiMode;
   /** Overrides RESULT_BACKFILL_DAYS. Ignored in historical/replay mode. */
   windowDays?: number;
+  /**
+   * Cadence tier (see RESULT_TIERS). Sets the look-back window, and `deep` lifts
+   * the bound entirely. Takes precedence over windowDays; ignored in
+   * historical/replay mode, which are already unbounded.
+   */
+  tier?: ResultTier;
   /**
    * Skip the first N events of the result gap — lets a historical repair walk a
    * backlog larger than one batch without re-attempting the same head every run.
@@ -94,8 +126,32 @@ export async function findWikiTargets(opts: FindTargetsOpts = {}): Promise<WikiT
 
   // Only the incremental mode is time-bounded. Historical repair must be able to
   // reach a bout from any date, or the backlog it exists to clear stays unreachable.
-  const windowed = mode === "incremental";
-  const since = new Date(now.getTime() - (opts.windowDays ?? RESULT_BACKFILL_DAYS) * 86_400_000);
+  //
+  // Within incremental, the TIER decides how far back — `deep` is unbounded even
+  // here, which is what lets one scheduled route serve all three cadences.
+  const tierDays = opts.tier ? RESULT_TIERS[opts.tier] : undefined;
+  const windowed = mode === "incremental" && tierDays !== null;
+  const lookBack = tierDays ?? opts.windowDays ?? RESULT_BACKFILL_DAYS;
+  const since = new Date(now.getTime() - lookBack * 86_400_000);
+
+  // ── Never re-queue what cannot change ─────────────────────────────────────
+  //
+  // Two clauses, and they answer two different questions:
+  //
+  //  resultsCompleteAt — "is there anything left to learn about this card?" A card
+  //    whose every bout is decided is done, whoever wrote it.
+  //
+  //  externalIds/source — "can THIS SOURCE ever say more than it already did?"
+  //    A Wikipedia tournament bracket is imported whole and finished; it is also
+  //    unreadable to the wikicard extractor, which has no results table to find.
+  //    So its undecided bouts (walkovers, withdrawals) came back no_card on every
+  //    single hourly tick. ~30 events were doing that. See lib/scraper/source-policy.
+  const revisitable = {
+    resultsCompleteAt: null,
+    ...(STATIC_IMPORT_SOURCES.length
+      ? { NOT: { externalIds: { some: { source: { in: STATIC_IMPORT_SOURCES } } } } }
+      : {}),
+  };
 
   const select = { id: true, name: true, date: true, sport: true, promotion: true } as const;
   const rows: { row: EventRow; gap: WikiGap }[] = [];
@@ -109,6 +165,7 @@ export async function findWikiTargets(opts: FindTargetsOpts = {}): Promise<WikiT
         date: windowed ? { gte: since, lt: now } : { lt: now },
         status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] },
         fights: { some: { result: "SCHEDULED" } },
+        ...revisitable,
         ...filter,
       },
       // LEAST-RECENTLY-ATTEMPTED FIRST — a rotation, not a leaderboard.
@@ -151,6 +208,10 @@ export async function findWikiTargets(opts: FindTargetsOpts = {}): Promise<WikiT
         date: { lt: now },
         status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] },
         fights: { none: {} },
+        // A static-import event with no card is not a card we can fetch; it is a
+        // card that source never had. `resultsCompleteAt` is always null here (no
+        // bouts means never complete), so only the source clause does work.
+        ...revisitable,
         ...filter,
       },
       orderBy: { date: "desc" },
@@ -364,25 +425,45 @@ export async function recordResultAttempts(
   );
 }
 
-/** How many events still carry each gap — for the repair report's before/after. */
+/**
+ * How many events still carry each gap — for the repair report's before/after.
+ *
+ * The three headline counts are QUEUEABLE events: they apply the same
+ * revisitable filter the queue does, so the report cannot claim a backlog the
+ * job will never touch. `parked` is that difference, stated rather than hidden —
+ * events excluded because their card is complete or their source is a one-shot
+ * import. A number that quietly excludes things is how a 30-event permanent
+ * miss looks like healthy progress.
+ */
 export async function countWikiGaps(now: Date = new Date()): Promise<{
   missingResultEvents: number;
   missingResultBouts: number;
   missingCardEvents: number;
+  parkedStaticSource: number;
+  parkedComplete: number;
 }> {
-  const [missingResultEvents, missingResultBouts, missingCardEvents] = await Promise.all([
+  const revisitable = {
+    resultsCompleteAt: null,
+    ...(STATIC_IMPORT_SOURCES.length
+      ? { NOT: { externalIds: { some: { source: { in: STATIC_IMPORT_SOURCES } } } } }
+      : {}),
+  };
+
+  const [missingResultEvents, missingResultBouts, missingCardEvents, parkedStaticSource, parkedComplete] =
+    await Promise.all([
     prisma.event.count({
       where: {
         date: { lt: now },
         status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] },
         fights: { some: { result: "SCHEDULED" } },
+        ...revisitable,
       },
     }),
     prisma.fight.count({
       where: {
         result: "SCHEDULED",
         date: { lt: now },
-        event: { status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] } },
+        event: { status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] }, ...revisitable },
       },
     }),
     prisma.event.count({
@@ -390,8 +471,26 @@ export async function countWikiGaps(now: Date = new Date()): Promise<{
         date: { lt: now },
         status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] },
         fights: { none: {} },
+        ...revisitable,
       },
     }),
+    // Parked, and why. Both are events the queue deliberately will not touch.
+    STATIC_IMPORT_SOURCES.length
+      ? prisma.event.count({
+          where: {
+            date: { lt: now },
+            fights: { some: { result: "SCHEDULED" } },
+            externalIds: { some: { source: { in: STATIC_IMPORT_SOURCES } } },
+          },
+        })
+      : Promise.resolve(0),
+    prisma.event.count({ where: { resultsCompleteAt: { not: null } } }),
   ]);
-  return { missingResultEvents, missingResultBouts, missingCardEvents };
+  return {
+    missingResultEvents,
+    missingResultBouts,
+    missingCardEvents,
+    parkedStaticSource,
+    parkedComplete,
+  };
 }

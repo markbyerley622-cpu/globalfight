@@ -21,6 +21,7 @@
 // It NEVER writes a result no source published.
 import { prisma } from "../src/lib/db.ts";
 import { isSourceEnabled } from "../src/lib/ingestion-registry.ts";
+import { STATIC_IMPORT_SOURCES } from "../src/lib/scraper/source-policy.ts";
 import { harvestWikiTargets, harvestWikiTargetsDetailed } from "../src/lib/scraper/runner.ts";
 import { findWikiTargets, findWikiTargetForFight, countWikiGaps, syncWikiCards } from "../src/lib/scraper/wikicard/index.ts";
 import { resultOps } from "../src/lib/intelligence/result-ops.ts";
@@ -65,9 +66,13 @@ const before = await countWikiGaps();
 const opsBefore = await resultOps();
 console.log("\n── before ──────────────────────────────────────────────────");
 console.log(`  awaitingResults (bouts) : ${opsBefore.awaitingResults}`);
-console.log(`  events missing results  : ${before.missingResultEvents}`);
-console.log(`  events missing a card   : ${before.missingCardEvents}`);
+console.log(`  events missing results  : ${before.missingResultEvents}   (queueable)`);
+console.log(`  events missing a card   : ${before.missingCardEvents}   (queueable)`);
 console.log(`  unsettledPicks          : ${opsBefore.unsettledPicks}`);
+// Parked, stated rather than hidden. These are NOT in the counts above, and a
+// number that quietly excludes things is how a permanent miss looks like health.
+console.log(`  parked: complete cards  : ${before.parkedComplete}   (every bout decided — nothing left to learn)`);
+console.log(`  parked: static imports  : ${before.parkedStaticSource}   (one-shot sources; see lib/scraper/source-policy)`);
 
 // Contamination check. Before the verified-bouts-only fix, accepting a Wikipedia
 // SEASON page attached that page's entire table — every card of the year — to one
@@ -75,7 +80,15 @@ console.log(`  unsettledPicks          : ${opsBefore.unsettledPicks}`);
 // a big event. Reported, never auto-deleted: removing bouts could remove real ones.
 const OVERSIZED_CARD = 40;
 const oversized = await prisma.event.findMany({
-  where: { fights: { some: {} } },
+  where: {
+    fights: { some: {} },
+    // Tournament divisions are legitimately huge — a World Taekwondo weight class
+    // runs to ~72 bouts — so they tripped this every run and buried the real
+    // signal under ten false alarms. The heuristic is about MMA/boxing cards
+    // over-attaching a Wikipedia SEASON page; a bracket import is a different
+    // shape of thing and is excluded by its source, not by raising the threshold.
+    NOT: { externalIds: { some: { source: { in: STATIC_IMPORT_SOURCES } } } },
+  },
   select: { slug: true, name: true, _count: { select: { fights: true } } },
   orderBy: { fights: { _count: "desc" } },
   take: 10,
@@ -266,6 +279,8 @@ console.log("\n── after ─────────────────�
 console.log(`  awaitingResults (bouts) : ${opsBefore.awaitingResults} → ${opsAfter.awaitingResults}  (${opsAfter.awaitingResults - opsBefore.awaitingResults})`);
 console.log(`  events missing results  : ${before.missingResultEvents} → ${after.missingResultEvents}`);
 console.log(`  events missing a card   : ${before.missingCardEvents} → ${after.missingCardEvents}`);
+console.log(`  parked: complete cards  : ${before.parkedComplete} → ${after.parkedComplete}`);
+console.log(`  parked: static imports  : ${before.parkedStaticSource} → ${after.parkedStaticSource}`);
 console.log(`  total fight rows        : ${fights}  (duplicates are prevented by corner-pair identity)`);
 console.log(`  unsettledPicks          : ${opsBefore.unsettledPicks} → ${opsAfter.unsettledPicks}  (MUST be 0)`);
 console.log(`  unsettledBattles        : ${opsAfter.unsettledBattles}  (MUST be 0)`);

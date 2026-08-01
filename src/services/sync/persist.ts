@@ -20,6 +20,7 @@ import { slugify } from "@/lib/utils";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
+import { supportsLiveResultUpdates } from "@/lib/scraper/source-policy";
 import type { Sport } from "@/lib/types";
 import type { NormalizedEvent, NormalizedFighter, NormalizedFightStub } from "../providers/types";
 import { resolveFighter } from "../dedupe/fighters";
@@ -235,6 +236,9 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
     }
   }
 
+  // Completion state, recomputed now that the card is whatever this write made it.
+  await refreshCardCompletion(eventId);
+
   // FOLLOWERS, after the whole card has landed. One diff for the event and its
   // card, so a twelve-bout import is "the card is live", not twelve notifications.
   // The per-BOUT facts (a fighter booked, a bout scratched) are fired by
@@ -242,6 +246,64 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
   await notifyEventChanges(before, eventId);
 
   await invalidate(`event:${slugify(ev.name)}`);
+}
+
+/**
+ * Set or clear `Event.resultsCompleteAt` from what the card now actually says.
+ *
+ * A card is complete when it is in the PAST, has at least one bout, and none of
+ * them is still SCHEDULED. The results cron skips completed cards, which is what
+ * stops the hourly job from re-querying all of history.
+ *
+ * It CLEARS as readily as it sets, and that matters more than it looks: a card
+ * that gains a late bout, or whose result an operator un-decides, must re-enter
+ * the queue. A completion flag that could only ever be set would eventually be a
+ * claim with no evidence behind it — the derived value is always recomputed here,
+ * never trusted from last time.
+ *
+ * Best-effort: this is bookkeeping, and it must never be the reason a
+ * successfully-harvested card fails to persist.
+ */
+async function refreshCardCompletion(eventId: string): Promise<void> {
+  try {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { date: true, resultsCompleteAt: true, resultsTerminalReason: true },
+    });
+    if (!event) return;
+
+    const [total, pending] = await Promise.all([
+      prisma.fight.count({ where: { eventId } }),
+      prisma.fight.count({ where: { eventId, result: "SCHEDULED" } }),
+    ]);
+
+    const past = event.date < new Date();
+    const complete = past && total > 0 && pending === 0;
+
+    // TERMINAL: past, still has undecided bouts, and every source that covers it
+    // is a one-shot import. No later visit can add anything, so this is not
+    // "incomplete" — it is finished, with gaps the source itself has.
+    let terminal: string | null = null;
+    if (past && !complete && total > 0) {
+      const sources = await prisma.eventExternalId.findMany({ where: { eventId }, select: { source: true } });
+      const known = sources.map((s) => s.source);
+      if (known.length > 0 && known.every((s) => !supportsLiveResultUpdates(s))) {
+        terminal = `static source (${[...new Set(known)].join(", ")}) published no outcome for ${pending} of ${total} bouts`;
+      }
+    }
+
+    if (complete === (event.resultsCompleteAt !== null) && terminal === event.resultsTerminalReason) return;
+    await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        resultsCompleteAt: complete ? new Date() : null,
+        // Cleared whenever the card completes, so the reason never outlives it.
+        resultsTerminalReason: complete ? null : terminal,
+      },
+    });
+  } catch (e) {
+    log.warn({ eventId, err: (e as Error).message }, "persist:completion-flag-failed");
+  }
 }
 
 async function linkEventExternalId(eventId: string, ev: NormalizedEvent): Promise<void> {

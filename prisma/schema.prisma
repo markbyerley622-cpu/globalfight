@@ -205,6 +205,29 @@ model Fighter {
   // Licensed external photo (Wikimedia Commons). Displayed via the /api/img
   // proxy with the credit rendered on the profile — a source URL we hold an
   // attribution licence for, kept separate from the own-storage fields above.
+  // ── Media provenance for the OWN-STORAGE images above ───────────────────
+  // thumbUrl/imageUrl/heroImageUrl are our own processed copies. These record
+  // where the bytes came from and what we knew about them, so a refresh can be
+  // conditional (ETag / Last-Modified), a re-run can be a no-op (contentHash),
+  // and a better source can never be overwritten by a worse one (imageTier).
+  //
+  // The source URL is stored as PROVENANCE, never rendered — nothing hotlinks it.
+  imageTier         String? // "manual" | "official" | "wikimedia" | "espn"
+  imageSource       String? // provider key that supplied it, e.g. "espn"
+  imageSourceUrl    String? // exact URL the bytes were fetched from
+  imageETag         String?
+  imageLastModified String?
+  imageContentHash  String? // sha256 of the SOURCE bytes — the idempotency key
+  imageFetchedAt    DateTime?
+  imageWidth        Int?
+  imageHeight       Int?
+  imageMimeType     String?
+  /// Last time a provider had nothing for this fighter (404). Drives the
+  /// monthly retry backoff — a miss is remembered so it is not re-asked daily.
+  imageMissingAt    DateTime?
+  imageMissReason   String?
+  imageAttempts     Int       @default(0)
+
   photoUrl        String? // source image URL (upload.wikimedia.org/…)
   photoSource     String? // "Wikimedia Commons"
   photoCredit     String? // author / "Artist" from the file metadata
@@ -529,6 +552,31 @@ model Event {
   resultAttemptAt     DateTime?
   resultAttempts      Int       @default(0)
   resultAttemptReason String?
+  /// Set when this card is KNOWN COMPLETE: it is in the past, it has at least one
+  /// bout, and not one of them is still SCHEDULED. Cleared automatically if a
+  /// pending bout ever reappears (a card gains a late addition, an operator
+  /// un-decides a result), so it is a cache of a derivable fact and never a claim
+  /// that outlives its evidence.
+  ///
+  /// The results cron skips these outright. Without it the hourly job re-queries
+  /// every completed card in history forever, and the only thing that grows is
+  /// someone else's bandwidth bill.
+  resultsCompleteAt   DateTime?
+  /// Why this card can never reach resultsCompleteAt, when that is the case.
+  ///
+  /// THREE states, not two, and conflating them loses real information:
+  ///   resultsCompleteAt set                  -> COMPLETE. Every bout decided.
+  ///   both null                              -> INCOMPLETE. Still queueable; a
+  ///                                             revisitable source may yet say more.
+  ///   this set, resultsCompleteAt null       -> TERMINAL. The only source that
+  ///                                             covers it is a one-shot import and
+  ///                                             it published no outcome for these
+  ///                                             bouts. Nothing more is coming.
+  ///
+  /// A taekwondo bracket with two walkovers is TERMINAL, not incomplete: the
+  /// walkover has no winner upstream either. Reporting it as incomplete makes a
+  /// 100%-ingested sport read as 19% and hides the cards that are genuinely behind.
+  resultsTerminalReason String?
   /// Percentage of this card's bouts the last attempt actually reconstructed.
   ///
   /// Added after the pipeline was found reporting "verified" for a 13-bout card from
@@ -547,6 +595,8 @@ model Event {
   /// The results-harvest queue: least-recently-attempted first. Without this the
   /// rotation above is a sort over every past event on every hourly tick.
   @@index([resultAttemptAt])
+  /// The completed-card filter, which is the first clause the queue applies.
+  @@index([resultsCompleteAt])
   @@index([country])
   @@index([promotion])
   @@index([promotionId])

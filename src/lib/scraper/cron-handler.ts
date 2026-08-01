@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { refreshDetailed, type RefreshKind } from "./runner";
+import { isResultTier } from "./wikicard";
 import { log } from "./logger";
 
 /**
@@ -19,14 +20,24 @@ export function cronAuthorized(req: Request): boolean {
   return secrets.some((s) => header === `Bearer ${s}`);
 }
 
-/** Builds a GET handler for a cron route that refreshes one entity kind. */
+/**
+ * Builds a GET handler for a cron route that refreshes one entity kind.
+ *
+ * `?tier=recent|daily|deep` selects the results cadence (see RESULT_TIERS): one
+ * route, three schedules. An absent or unrecognised value falls through to the
+ * runner's default (`recent`) rather than erroring — a mistyped cron URL should
+ * do the cheap, safe thing, not stop results landing altogether.
+ */
 export function makeCronHandler(kind: RefreshKind) {
   return async function GET(req: Request) {
     if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const requested = new URL(req.url).searchParams.get("tier");
+    const tier = isResultTier(requested) ? requested : undefined;
+
     const started = Date.now();
     try {
-      const { results, failed } = await refreshDetailed(kind);
+      const { results, failed } = await refreshDetailed(kind, { tier });
       const durationMs = Date.now() - started;
 
       // A run in which EVERY target threw is a failed run, and must answer with an
@@ -51,7 +62,7 @@ export function makeCronHandler(kind: RefreshKind) {
         return NextResponse.json({ ok: false, kind, durationMs, results, failed });
       }
 
-      log.info({ kind, durationMs }, "cron:done");
+      log.info({ kind, tier, durationMs }, "cron:done");
       return NextResponse.json({ ok: true, kind, durationMs, results, failed: [] });
     } catch (e) {
       return NextResponse.json({ ok: false, kind, error: (e as Error).message }, { status: 502 });

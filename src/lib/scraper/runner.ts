@@ -23,9 +23,10 @@ import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
+import { syncEspn, ESPN_LEAGUES, DEFAULT_LEAGUE_KEYS } from "@/lib/scraper/espn";
 import {
   syncWikiCards, findWikiTargets, recordResultAttempts,
-  type WikiGap, type WikiMode, type WikiHarvestReport,
+  type WikiGap, type WikiMode, type WikiHarvestReport, type ResultTier,
 } from "@/lib/scraper/wikicard";
 import { persistAggregated } from "@/services/sync/persist";
 import { isSourceEnabled } from "@/lib/ingestion-registry";
@@ -34,7 +35,7 @@ import type { Sport } from "@/lib/types";
 
 export type RefreshKind =
   | "rankings" | "p4p" | "champions" | "events" | "results" | "news" | "odds" | "mma" | "people" | "enrich"
-  | "bkfc" | "one" | "adcc" | "wikicards";
+  | "bkfc" | "one" | "adcc" | "wikicards" | "espn";
 
 const ENRICH_BATCH = Number(process.env.ENRICH_BATCH ?? 50);
 /** Past events per wikicards run (each costs a search + a page fetch). */
@@ -59,7 +60,7 @@ const CONCURRENCY = Number(process.env.SCRAPER_CONCURRENCY ?? 2);
  * tells you whether the problem is the query, Wikipedia, or the extractor.
  */
 export async function harvestWikiTargets(
-  opts: { gap?: WikiGap; limit: number; mode?: WikiMode; promotion?: string; skip?: number },
+  opts: { gap?: WikiGap; limit: number; mode?: WikiMode; promotion?: string; skip?: number; tier?: ResultTier },
 ): Promise<string> {
   const targets = await findWikiTargets(opts);
   if (!targets.length) return `targets=0 gap=${opts.gap ?? "all"} mode=${opts.mode ?? "incremental"}`;
@@ -128,7 +129,7 @@ export async function harvestWikiTargets(
 
 /** Full harvest detail, for the repair script's report. */
 export async function harvestWikiTargetsDetailed(
-  opts: { gap?: WikiGap; limit: number; mode?: WikiMode; promotion?: string; skip?: number },
+  opts: { gap?: WikiGap; limit: number; mode?: WikiMode; promotion?: string; skip?: number; tier?: ResultTier },
 ): Promise<{ line: string; report: WikiHarvestReport | null; written: number }> {
   const targets = await findWikiTargets(opts);
   if (!targets.length) {
@@ -210,7 +211,16 @@ export interface RefreshOutcome {
  * run was reported as a success. A silent no-op is the one outcome a scheduled
  * job must never be able to report.
  */
-export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome> {
+export interface RefreshOpts {
+  /**
+   * Cadence for the `results` kind — how far back this run looks.
+   * recent (7d, hourly) · daily (90d) · deep (unbounded, weekly).
+   * Defaults to `recent`, so the frequent job never scans history.
+   */
+  tier?: ResultTier;
+}
+
+export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {}): Promise<RefreshOutcome> {
   const queue = new PQueue({ concurrency: CONCURRENCY });
   const results: Record<string, number | string> = {};
   const failed: RefreshFailure[] = [];
@@ -263,8 +273,14 @@ export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome
       // It runs the same licensed Wikipedia path as `wikicards`, but targeted at
       // the RESULT gap only and over a tight recent window, so it is cheap enough
       // to run hourly. Card backfill stays on the wikicards schedule.
+      //
+      // TIERED, so this can run often without re-reading history. `recent` (7
+      // days) is the default because an event that ended three years ago cannot
+      // acquire a result between 09:00 and 10:00 — only a card that just
+      // happened can. The 90-day and unbounded sweeps are the same route on a
+      // slower schedule (?tier=daily / ?tier=deep).
       await safe("results:wikicard", () =>
-        harvestWikiTargets({ gap: "missing_result", limit: RESULT_BATCH }),
+        harvestWikiTargets({ gap: "missing_result", limit: RESULT_BATCH, tier: opts.tier ?? "recent" }),
       );
 
       // RESULTS INTELLIGENCE, second and deliberately after Wikipedia.
@@ -322,12 +338,13 @@ export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome
     case "bkfc":
       // BKFC (bkfc.com) → canonical Normalized* entities (sport=BARE_KNUCKLE).
       // The PROVIDER only acquires + transforms; PERSISTENCE + dedupe are the
-      // shared pipeline's job (persistAggregated). The WRITE gate lives here:
-      // events/fighters are only persisted when their "bkfc-*" ingestion source
-      // is enabled. Otherwise the run is a harvest (fetch fails fast anyway
-      // unless ENABLE_SCRAPER=true). Rankings/news/videos are returned by the
-      // harvest but not written by the aggregated pipeline (policy-gated / no
-      // aggregated persister yet).
+      // shared pipeline's job (persistAggregated). The WRITE gate that used to
+      // live here is REMOVED (2026-08-01): isSourceEnabled() always returns true,
+      // so events/fighters are always persisted. The calls are kept as the seam
+      // to reinstate it. Fetching still fails fast unless ENABLE_SCRAPER=true.
+      // Rankings/news/videos are still returned by the harvest and still NOT
+      // written — there is no aggregated persister for them, which is a missing
+      // feature now rather than a policy gate.
       await safe("bkfc:sync", async () => {
         const h = await syncBKFC({ mode: "daily" });
         let written = 0;
@@ -343,7 +360,8 @@ export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome
     case "one":
       // ONE Championship (onefc.com) → events; sport per-event (Friday Fights →
       // MUAY_THAI / KICKBOXING, else MMA). Pure provider; shared pipeline
-      // persists, grouped by sport. Write-gate = the "one-events" registry entry.
+      // persists, grouped by sport. The "one-events" write-gate is removed —
+      // isSourceEnabled() always passes; the call is the reinstatement seam.
       await safe("one:sync", async () => {
         const h = await syncONE();
         let written = 0;
@@ -362,7 +380,7 @@ export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome
       break;
     case "adcc":
       // ADCC (adcombat.com) → BJJ events. Pure provider; shared pipeline persists.
-      // Write-gate = the "adcc-events" registry entry.
+      // The "adcc-events" write-gate is removed — isSourceEnabled() always passes.
       await safe("adcc:sync", async () => {
         const h = await syncADCC();
         let written = 0;
@@ -377,6 +395,32 @@ export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome
           return `written=0 discovered=${h.report.discovered} — ${h.report.warnings.join("; ")}`;
         }
         return written;
+      });
+      break;
+    case "espn":
+      // ESPN's public MMA scoreboard — UFC/PFL/Bellator/ONE/RIZIN, whole card
+      // with winners, one request per league-year.
+      //
+      // The cron takes the CURRENT year only. That is the tier idea again: this
+      // job exists to settle last night's card and pick up next week's
+      // announcements, and a promotion's back catalogue does not change. History
+      // is `npm run espn:backfill`, run deliberately.
+      await safe("espn:sync", async () => {
+        const year = new Date().getUTCFullYear();
+        const leagues = ESPN_LEAGUES.filter((l) => DEFAULT_LEAGUE_KEYS.includes(l.key));
+        const h = await syncEspn({ leagues, years: [year] });
+        const bySport = new Map<Sport, typeof h.events>();
+        for (const ev of h.events) {
+          if (!bySport.has(ev.sport)) bySport.set(ev.sport, []);
+          bySport.get(ev.sport)!.push(ev);
+        }
+        let written = 0;
+        for (const [sport, list] of bySport) written += await persistAggregated(sport, "events", list);
+        log.info(
+          { cards: h.report.eventsSeen, bouts: h.report.boutsSeen, decided: h.report.boutsDecided, written },
+          "espn:runner:done",
+        );
+        return `cards=${h.report.eventsSeen} bouts=${h.report.boutsSeen} decided=${h.report.boutsDecided} written=${written}`;
       });
       break;
     case "wikicards":
@@ -406,6 +450,9 @@ export async function refreshDetailed(kind: RefreshKind): Promise<RefreshOutcome
 }
 
 /** Back-compatible shape for callers that only want the report map. */
-export async function refresh(kind: RefreshKind): Promise<Record<string, number | string>> {
-  return (await refreshDetailed(kind)).results;
+export async function refresh(
+  kind: RefreshKind,
+  opts: RefreshOpts = {},
+): Promise<Record<string, number | string>> {
+  return (await refreshDetailed(kind, opts)).results;
 }

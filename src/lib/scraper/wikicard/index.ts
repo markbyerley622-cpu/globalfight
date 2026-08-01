@@ -14,7 +14,8 @@ export { parseWikiCard, type WikiBout } from "./extract";
 export { toNormalizedWikiEvent, toFightStub, WIKI_SOURCE } from "./map";
 export {
   findWikiTargets, findWikiTargetForFight, countWikiGaps, recordResultAttempts, RESULT_BACKFILL_DAYS,
-  type WikiGap, type WikiMode, type FindTargetsOpts,
+  RESULT_TIERS, isResultTier,
+  type WikiGap, type WikiMode, type FindTargetsOpts, type ResultTier,
 } from "./targets";
 export {
   buildSearchLadder, isSyntheticEventName,
