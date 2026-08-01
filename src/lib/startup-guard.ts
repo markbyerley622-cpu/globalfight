@@ -13,6 +13,7 @@
 
 import { validateSecret } from "@/lib/auth-secret";
 import { assertPrivateBucketConfig } from "@/lib/evidence/config";
+import { validateStorageConfiguration } from "@/lib/storage-config";
 
 export class StartupConfigError extends Error {
   readonly problems: string[];
@@ -88,6 +89,23 @@ export function collectStartupProblems(env: NodeJS.ProcessEnv = process.env): st
     assertPrivateBucketConfig(env);
   } catch (e) {
     problems.push((e as Error).message);
+  }
+
+  // ── Public media storage selected but not configured ────────────────────
+  // STORAGE_PROVIDER=r2 with no R2_* variables produced a provider that reported
+  // itself active and failed on every upload — found exactly that way in the
+  // production environment. Caught at boot rather than at the first image, so a
+  // deploy that cannot store media never starts and never half-fills a table with
+  // rows pointing at nothing.
+  //
+  // Deliberately NOT gated on isProd: the same fault wastes a whole local backfill.
+  const storage = validateStorageConfiguration(env);
+  if (!storage.usable) {
+    problems.push(
+      `STORAGE_PROVIDER=${storage.requested} selects the "${storage.provider}" backend, but its configuration is ` +
+        `incomplete — missing: ${storage.missing.join(", ")}. Image uploads would fail at write time while the ` +
+        `storage layer reported itself active. This is the PUBLIC media bucket; do not point it at EVIDENCE_R2_*.`,
+    );
   }
 
   // ── Admin bootstrap left armed ──────────────────────────────────────────

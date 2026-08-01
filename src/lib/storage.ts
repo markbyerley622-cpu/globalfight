@@ -9,7 +9,17 @@
 //  • supabase/s3/r2 — implement createUploadUrl() with the SDK + creds; the
 //    upload UI POSTs the file to the returned presigned URL and stores the
 //    returned public URL. Interface below is the contract to implement.
+//
+//  Selecting a backend is NOT the same as having one: getStorage() validates the
+//  selected provider's configuration and throws StorageConfigurationError rather
+//  than handing back an unusable client. See lib/storage-config.ts.
+//
+//  This is the PUBLIC media bucket. The private identity-document bucket is a
+//  separate system (lib/evidence/*, EVIDENCE_R2_*) and the two must never be the
+//  same — evidence/config.ts refuses to start if they are.
 // ════════════════════════════════════════════════════════════════════════
+
+import { assertStorageConfigured, resolveProviderName } from "@/lib/storage-config";
 
 export interface PresignedUpload {
   uploadUrl: string;   // PUT the file here
@@ -106,11 +116,24 @@ const s3Provider: StorageProvider = {
   },
 };
 
-export function getStorage(): StorageProvider {
-  switch (process.env.STORAGE_PROVIDER ?? "url") {
-    case "supabase": return supabaseProvider;
-    case "s3":
-    case "r2": return s3Provider;
-    default: return urlProvider;
-  }
+/**
+ * The configured storage backend.
+ *
+ * FAILS FAST when STORAGE_PROVIDER names a backend whose configuration is
+ * incomplete. It used to return a fully-formed s3Provider on the strength of
+ * `STORAGE_PROVIDER=r2` alone — with no bucket, no endpoint and no credentials —
+ * so the layer reported itself active and then failed on every upload. That
+ * exact configuration was found in the production env file.
+ *
+ * `requestedBy` names the calling subsystem so the error says what was trying to
+ * store something. Leaving STORAGE_PROVIDER unset is still valid and still
+ * returns urlProvider: that is the documented local-dev mode, not a misconfiguration.
+ */
+export function getStorage(requestedBy = "unspecified"): StorageProvider {
+  const provider = resolveProviderName();
+  if (provider === "url") return urlProvider;
+
+  assertStorageConfigured(requestedBy);
+
+  return provider === "supabase" ? supabaseProvider : s3Provider;
 }
