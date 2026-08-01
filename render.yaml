@@ -180,6 +180,28 @@ envVarGroups:
       - key: R2_PUBLIC_BASE_URL
         sync: false
 
+      # ── Identity-document storage: SEPARATE, PRIVATE, MANDATORY ───────────
+      # A brand-new service failed to boot without these:
+      #
+      #   StartupConfigError: Refusing to start — Private evidence storage is not
+      #   configured (EVIDENCE_R2_ENDPOINT/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY)
+      #
+      # startup-guard refuses rather than let identity documents fall back to
+      # public storage, so the process never listens and the health check times
+      # out at :10000. The guard was right; the variables were simply never
+      # DECLARED here, so nobody provisioning a new service knew to set them.
+      #
+      # This bucket must NOT be the same as R2_BUCKET above — evidence/config.ts
+      # refuses to start if it is, and it must never have a public base URL.
+      - key: EVIDENCE_R2_BUCKET
+        sync: false
+      - key: EVIDENCE_R2_ENDPOINT
+        sync: false
+      - key: EVIDENCE_R2_ACCESS_KEY_ID
+        sync: false
+      - key: EVIDENCE_R2_SECRET_ACCESS_KEY
+        sync: false
+
 services:
   # ── Web app ──────────────────────────────────────────────────────────────
   - type: web
