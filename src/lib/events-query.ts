@@ -183,9 +183,36 @@ export async function queryEvents(
   f: EventFilters,
   followedIds: Set<string> = new Set(),
 ): Promise<{ events: EventCard[]; total: number; page: number; pages: number }> {
-  const where = buildWhere(f);
   const page = Math.max(0, f.page ?? 0);
-  const desc = (f.status ?? "upcoming") === "completed";
+
+  // ── Fall back to COMPLETED when a sport has no upcoming card ──────────────
+  //
+  // The default status is "upcoming", which is right for MMA and boxing: those
+  // promotions always have something announced. It is wrong for every sport whose
+  // competition is an annual championship. Wrestling, judo, taekwondo, sambo and
+  // BJJ hold 5,000+ real bouts, and EVERY ONE of those events is in the past — so
+  // the default filter excluded them twice (date >= now AND status != COMPLETED)
+  // and those pages rendered "no events" on top of a full database.
+  //
+  // Only applied when the visitor did NOT choose a status. An explicit
+  // ?status=upcoming still means upcoming, and correctly shows nothing when there
+  // is nothing: silently rewriting a chosen filter would be worse than an empty
+  // page. This only rescues the DEFAULT, where "upcoming" was our assumption
+  // rather than the visitor's request.
+  const explicitStatus = Boolean(f.status);
+  let effective = f;
+  let where = buildWhere(effective);
+
+  if (!explicitStatus && (await prisma.event.count({ where })) === 0) {
+    const completed: EventFilters = { ...f, status: "completed" };
+    const completedWhere = buildWhere(completed);
+    if ((await prisma.event.count({ where: completedWhere })) > 0) {
+      effective = completed;
+      where = completedWhere;
+    }
+  }
+
+  const desc = (effective.status ?? "upcoming") === "completed";
 
   const [rows, total] = await Promise.all([
     prisma.event.findMany({
