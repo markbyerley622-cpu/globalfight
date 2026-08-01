@@ -1,0 +1,4466 @@
+{
+ "leagues": [
+  {
+   "id": "3321",
+   "uid": "s:3301~l:3321",
+   "name": "Ultimate Fighting Championship",
+   "displayName": "UFC",
+   "abbreviation": "UFC",
+   "shortName": "UFC",
+   "slug": "ufc",
+   "season": {
+    "year": 2024,
+    "startDate": "2024-01-01T08:00Z",
+    "endDate": "2024-12-31T08:00Z",
+    "displayName": "2024",
+    "type": {
+     "id": "2",
+     "type": 2,
+     "name": "Regular Season",
+     "abbreviation": "reg"
+    }
+   },
+   "logos": [
+    {
+     "href": "https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png",
+     "width": 500,
+     "height": 500,
+     "alt": "",
+     "rel": [
+      "full",
+      "default"
+     ],
+     "lastUpdated": "2018-12-21T18:30Z"
+    },
+    {
+     "href": "https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png",
+     "width": 500,
+     "height": 500,
+     "alt": "",
+     "rel": [
+      "full",
+      "dark"
+     ],
+     "lastUpdated": "2018-12-21T18:30Z"
+    }
+   ],
+   "calendarType": "list",
+   "calendarIsWhitelist": true,
+   "calendarStartDate": "2024-01-01T08:00Z",
+   "calendarEndDate": "2024-12-31T08:00Z",
+   "calendar": [
+    {
+     "label": "UFC Fight Night: Ankalaev vs. Walker 2",
+     "startDate": "2024-01-14T00:00Z",
+     "endDate": "2024-01-14T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600039893?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 297: Strickland vs. Du Plessis",
+     "startDate": "2024-01-21T02:30Z",
+     "endDate": "2024-01-21T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600039713?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Dolidze vs. Imavov",
+     "startDate": "2024-02-04T00:00Z",
+     "endDate": "2024-02-04T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600040373?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Hermansson vs. Pyfer",
+     "startDate": "2024-02-11T00:00Z",
+     "endDate": "2024-02-11T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600040033?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 298: Volkanovski vs. Topuria",
+     "startDate": "2024-02-18T02:30Z",
+     "endDate": "2024-02-18T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600039753?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Moreno vs. Royval 2",
+     "startDate": "2024-02-25T03:00Z",
+     "endDate": "2024-02-25T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600041054?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Rozenstruik vs. Gaziev",
+     "startDate": "2024-03-02T21:30Z",
+     "endDate": "2024-03-03T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600042433?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 299: O'Malley vs. Vera 2",
+     "startDate": "2024-03-10T02:00Z",
+     "endDate": "2024-03-10T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600039754?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Tuivasa vs. Tybura",
+     "startDate": "2024-03-16T23:00Z",
+     "endDate": "2024-03-17T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600041993?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Ribas vs. Namajunas",
+     "startDate": "2024-03-24T02:00Z",
+     "endDate": "2024-03-24T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600041994?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Blanchfield vs. Fiorot",
+     "startDate": "2024-03-31T02:00Z",
+     "endDate": "2024-03-31T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600041055?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Allen vs. Curtis 2",
+     "startDate": "2024-04-06T22:00Z",
+     "endDate": "2024-04-07T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600041733?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 300: Pereira vs. Hill",
+     "startDate": "2024-04-14T01:00Z",
+     "endDate": "2024-04-14T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600041053?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Nicolau vs. Perez",
+     "startDate": "2024-04-27T23:00Z",
+     "endDate": "2024-04-28T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600043333?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 301: Pantoja vs. Erceg",
+     "startDate": "2024-05-05T01:00Z",
+     "endDate": "2024-05-05T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600043073?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Lewis vs. Nascimento",
+     "startDate": "2024-05-11T23:00Z",
+     "endDate": "2024-05-12T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600043713?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Barboza vs. Murphy",
+     "startDate": "2024-05-18T23:00Z",
+     "endDate": "2024-05-19T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600044353?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 302: Makhachev vs. Poirier",
+     "startDate": "2024-06-02T01:30Z",
+     "endDate": "2024-06-02T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600044413?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Cannonier vs. Imavov",
+     "startDate": "2024-06-09T00:00Z",
+     "endDate": "2024-06-09T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600044933?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Perez vs. Taira",
+     "startDate": "2024-06-16T02:00Z",
+     "endDate": "2024-06-16T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600045713?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Whittaker vs. Aliskerov",
+     "startDate": "2024-06-22T19:00Z",
+     "endDate": "2024-06-23T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600042393?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 303: Pereira vs. Procházka 2",
+     "startDate": "2024-06-30T01:00Z",
+     "endDate": "2024-06-30T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600043173?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Namajunas vs. Cortez",
+     "startDate": "2024-07-14T02:00Z",
+     "endDate": "2024-07-14T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600046021?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Lemos vs. Jandiroba",
+     "startDate": "2024-07-21T00:00Z",
+     "endDate": "2024-07-21T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600046020?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 304: Edwards vs. Muhammad 2",
+     "startDate": "2024-07-28T01:00Z",
+     "endDate": "2024-07-28T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600045073?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Sandhagen vs. Nurmagomedov",
+     "startDate": "2024-08-03T19:00Z",
+     "endDate": "2024-08-04T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600043635?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Tybura vs. Spivac 2",
+     "startDate": "2024-08-10T23:00Z",
+     "endDate": "2024-08-11T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600048251?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 1",
+     "startDate": "2024-08-14T02:00Z",
+     "endDate": "2024-08-14T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047624?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 305: Du Plessis vs. Adesanya",
+     "startDate": "2024-08-18T01:30Z",
+     "endDate": "2024-08-18T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600044293?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 2",
+     "startDate": "2024-08-21T02:00Z",
+     "endDate": "2024-08-21T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047773?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Cannonier vs. Borralho",
+     "startDate": "2024-08-25T02:00Z",
+     "endDate": "2024-08-25T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600048324?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 3",
+     "startDate": "2024-08-28T03:00Z",
+     "endDate": "2024-08-28T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047774?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 4",
+     "startDate": "2024-09-04T03:00Z",
+     "endDate": "2024-09-04T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047775?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Burns vs. Brady",
+     "startDate": "2024-09-07T23:00Z",
+     "endDate": "2024-09-08T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600046942?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 5",
+     "startDate": "2024-09-11T03:00Z",
+     "endDate": "2024-09-11T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047776?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 306 – Riyadh Season Noche UFC: O’Malley vs. Dvalishvili",
+     "startDate": "2024-09-15T02:30Z",
+     "endDate": "2024-09-15T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600039853?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 6",
+     "startDate": "2024-09-18T03:00Z",
+     "endDate": "2024-09-18T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047777?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 7",
+     "startDate": "2024-09-25T03:00Z",
+     "endDate": "2024-09-25T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047778?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Moicano vs. Saint Denis",
+     "startDate": "2024-09-28T19:00Z",
+     "endDate": "2024-09-29T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600045735?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 8",
+     "startDate": "2024-10-02T03:00Z",
+     "endDate": "2024-10-02T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047779?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 307: Pereira vs. Rountree Jr.",
+     "startDate": "2024-10-06T01:30Z",
+     "endDate": "2024-10-06T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600048801?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 9",
+     "startDate": "2024-10-09T03:00Z",
+     "endDate": "2024-10-09T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047780?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Royval vs. Taira",
+     "startDate": "2024-10-12T23:00Z",
+     "endDate": "2024-10-13T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600049121?lang=en&region=us"
+     }
+    },
+    {
+     "label": "Dana White's Contender Series: Season 8, Week 10",
+     "startDate": "2024-10-16T03:00Z",
+     "endDate": "2024-10-16T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600047781?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Hernandez vs. Pereira",
+     "startDate": "2024-10-19T23:00Z",
+     "endDate": "2024-10-20T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600049122?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 308: Topuria vs. Holloway",
+     "startDate": "2024-10-26T17:00Z",
+     "endDate": "2024-10-27T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600044733?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Moreno vs. Albazi",
+     "startDate": "2024-11-03T00:00Z",
+     "endDate": "2024-11-03T06:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600048961?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Magny vs. Prates",
+     "startDate": "2024-11-10T00:00Z",
+     "endDate": "2024-11-10T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600049123?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 309: Jones vs. Miocic",
+     "startDate": "2024-11-17T02:00Z",
+     "endDate": "2024-11-17T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600049124?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Yan vs. Figueiredo",
+     "startDate": "2024-11-23T11:00Z",
+     "endDate": "2024-11-24T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600048962?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC 310: Pantoja vs. Asakura",
+     "startDate": "2024-12-08T02:00Z",
+     "endDate": "2024-12-08T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600049125?lang=en&region=us"
+     }
+    },
+    {
+     "label": "UFC Fight Night: Covington vs. Buckley",
+     "startDate": "2024-12-15T03:00Z",
+     "endDate": "2024-12-15T07:59Z",
+     "event": {
+      "$ref": "http://sports.core.api.espn.pvt/v2/sports/mma/leagues/ufc/events/600049126?lang=en&region=us"
+     }
+    }
+   ]
+  }
+ ],
+ "events": [
+  {
+   "id": "600039713",
+   "uid": "s:3301~l:3321~e:600039713",
+   "date": "2024-01-20T23:30Z",
+   "name": "UFC 297: Strickland vs. Du Plessis",
+   "shortName": "UFC 297",
+   "season": {
+    "year": 2024,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "competitions": [
+    {
+     "id": "401613764",
+     "uid": "s:3301~l:3321~e:600039713~c:401613764",
+     "date": "2024-01-20T23:30Z",
+     "endDate": "2024-01-20T23:30Z",
+     "type": {
+      "id": "956",
+      "abbreviation": "Flyweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "2989380",
+       "uid": "s:3301~a:2989380",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Jimmy Flick",
+        "displayName": "Jimmy Flick",
+        "shortName": "J. Flick",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/2989380/jimmy-flick",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/2989380/jimmy-flick",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/2989380/jimmy-flick",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/2989380/jimmy-flick",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/2989380/jimmy-flick",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/2989380/jimmy-flick",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "17-9-0"
+        }
+       ]
+      },
+      {
+       "id": "3153250",
+       "uid": "s:3301~a:3153250",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Malcolm Gordon",
+        "displayName": "Malcolm Gordon",
+        "shortName": "M. Gordon",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3153250/malcolm-gordon",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/3153250/malcolm-gordon",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/3153250/malcolm-gordon",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/3153250/malcolm-gordon",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3153250/malcolm-gordon",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/3153250/malcolm-gordon",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "14-8-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 77,
+      "displayClock": "1:17",
+      "period": 2,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-20T23:30Z",
+     "broadcast": "ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401614939",
+     "uid": "s:3301~l:3321~e:600039713~c:401614939",
+     "date": "2024-01-20T23:30Z",
+     "endDate": "2024-01-20T23:30Z",
+     "type": {
+      "id": "1003",
+      "abbreviation": "W Bantamweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "4277049",
+       "uid": "s:3301~a:4277049",
+       "type": "athlete",
+       "order": 2,
+       "winner": false,
+       "athlete": {
+        "fullName": "Priscila Cachoeira",
+        "displayName": "Priscila Cachoeira",
+        "shortName": "P. Cachoeira",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4277049/priscila-cachoeira",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4277049/priscila-cachoeira",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4277049/priscila-cachoeira",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4277049/priscila-cachoeira",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4277049/priscila-cachoeira",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4277049/priscila-cachoeira",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/bra.png",
+         "alt": "Brazil",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "13-9-0"
+        }
+       ]
+      },
+      {
+       "id": "4835135",
+       "uid": "s:3301~a:4835135",
+       "type": "athlete",
+       "order": 1,
+       "winner": true,
+       "athlete": {
+        "fullName": "Jasmine Jasudavicius",
+        "displayName": "Jasmine Jasudavicius",
+        "shortName": "J. Jasudavicius",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4835135/jasmine-jasudavicius",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4835135/jasmine-jasudavicius",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4835135/jasmine-jasudavicius",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4835135/jasmine-jasudavicius",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4835135/jasmine-jasudavicius",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4835135/jasmine-jasudavicius",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "15-4-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 261,
+      "displayClock": "4:21",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-20T23:30Z",
+     "broadcast": "ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613763",
+     "uid": "s:3301~l:3321~e:600039713~c:401613763",
+     "date": "2024-01-20T23:30Z",
+     "endDate": "2024-01-20T23:30Z",
+     "type": {
+      "id": "969",
+      "abbreviation": "Welterweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "4880807",
+       "uid": "s:3301~a:4880807",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Yohan Lainesse",
+        "displayName": "Yohan Lainesse",
+        "shortName": "Y. Lainesse",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4880807/yohan-lainesse",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4880807/yohan-lainesse",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4880807/yohan-lainesse",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4880807/yohan-lainesse",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4880807/yohan-lainesse",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4880807/yohan-lainesse",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "9-3-0"
+        }
+       ]
+      },
+      {
+       "id": "5088916",
+       "uid": "s:3301~a:5088916",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Sam Patterson",
+        "displayName": "Sam Patterson",
+        "shortName": "S. Patterson",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/5088916/sam-patterson",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/5088916/sam-patterson",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/5088916/sam-patterson",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/5088916/sam-patterson",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/5088916/sam-patterson",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/5088916/sam-patterson",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/eng.png",
+         "alt": "England",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "15-3-1"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 123,
+      "displayClock": "2:03",
+      "period": 1,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-20T23:30Z",
+     "broadcast": "ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613762",
+     "uid": "s:3301~l:3321~e:600039713~c:401613762",
+     "date": "2024-01-21T01:00Z",
+     "endDate": "2024-01-21T01:00Z",
+     "type": {
+      "id": "1006",
+      "abbreviation": "W Strawweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "4089026",
+       "uid": "s:3301~a:4089026",
+       "type": "athlete",
+       "order": 1,
+       "winner": true,
+       "athlete": {
+        "fullName": "Gillian Robertson",
+        "displayName": "Gillian Robertson",
+        "shortName": "G. Robertson",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4089026/gillian-robertson",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4089026/gillian-robertson",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4089026/gillian-robertson",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4089026/gillian-robertson",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4089026/gillian-robertson",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4089026/gillian-robertson",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "17-8-0"
+        }
+       ]
+      },
+      {
+       "id": "4227055",
+       "uid": "s:3301~a:4227055",
+       "type": "athlete",
+       "order": 2,
+       "winner": false,
+       "athlete": {
+        "fullName": "Polyana Viana",
+        "displayName": "Polyana Viana",
+        "shortName": "P. Viana",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4227055/polyana-viana",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4227055/polyana-viana",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4227055/polyana-viana",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4227055/polyana-viana",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4227055/polyana-viana",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4227055/polyana-viana",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/bra.png",
+         "alt": "Brazil",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "13-9-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 192,
+      "displayClock": "3:12",
+      "period": 2,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN",
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T01:00Z",
+     "broadcast": "ESPN/ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN",
+        "logo": "https://a.espncdn.com/guid/335fd2d2-97b9-336b-81ee-573eb6bdcffc/logos/default.png",
+        "darkLogo": ""
+       },
+       "lang": "en",
+       "region": "us"
+      },
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613161",
+     "uid": "s:3301~l:3321~e:600039713~c:401613161",
+     "date": "2024-01-21T01:00Z",
+     "endDate": "2024-01-21T01:00Z",
+     "type": {
+      "id": "970",
+      "abbreviation": "Bantamweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "5146229",
+       "uid": "s:3301~a:5146229",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Serhiy Sidey",
+        "displayName": "Serhiy Sidey",
+        "shortName": "S. Sidey",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/5146229/serhiy-sidey",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/5146229/serhiy-sidey",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/5146229/serhiy-sidey",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/5146229/serhiy-sidey",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/5146229/serhiy-sidey",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/5146229/serhiy-sidey",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/ukr.png",
+         "alt": "Ukraine",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 85,
+         "displayValue": "85.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "12-2-0"
+        }
+       ]
+      },
+      {
+       "id": "5152409",
+       "uid": "s:3301~a:5152409",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Ramon Taveras",
+        "displayName": "Ramon Taveras",
+        "shortName": "R. Taveras",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/5152409/ramon-taveras",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/5152409/ramon-taveras",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/5152409/ramon-taveras",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/5152409/ramon-taveras",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/5152409/ramon-taveras",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/5152409/ramon-taveras",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 86,
+         "displayValue": "86.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "10-4-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN",
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T01:00Z",
+     "broadcast": "ESPN/ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN",
+        "logo": "https://a.espncdn.com/guid/335fd2d2-97b9-336b-81ee-573eb6bdcffc/logos/default.png",
+        "darkLogo": ""
+       },
+       "lang": "en",
+       "region": "us"
+      },
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401612909",
+     "uid": "s:3301~l:3321~e:600039713~c:401612909",
+     "date": "2024-01-21T01:00Z",
+     "endDate": "2024-01-21T01:00Z",
+     "type": {
+      "id": "999",
+      "abbreviation": "Featherweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "4421978",
+       "uid": "s:3301~a:4421978",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Charles Jourdain",
+        "displayName": "Charles Jourdain",
+        "shortName": "C. Jourdain",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4421978/charles-jourdain",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4421978/charles-jourdain",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4421978/charles-jourdain",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4421978/charles-jourdain",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4421978/charles-jourdain",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4421978/charles-jourdain",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 85,
+         "displayValue": "85.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "18-8-1"
+        }
+       ]
+      },
+      {
+       "id": "4566991",
+       "uid": "s:3301~a:4566991",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Sean Woodson",
+        "displayName": "Sean Woodson",
+        "shortName": "S. Woodson",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4566991/sean-woodson",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4566991/sean-woodson",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4566991/sean-woodson",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4566991/sean-woodson",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4566991/sean-woodson",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4566991/sean-woodson",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 86,
+         "displayValue": "86.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "13-2-1"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN",
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T01:00Z",
+     "broadcast": "ESPN/ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN",
+        "logo": "https://a.espncdn.com/guid/335fd2d2-97b9-336b-81ee-573eb6bdcffc/logos/default.png",
+        "darkLogo": ""
+       },
+       "lang": "en",
+       "region": "us"
+      },
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613442",
+     "uid": "s:3301~l:3321~e:600039713~c:401613442",
+     "date": "2024-01-21T01:00Z",
+     "endDate": "2024-01-21T01:00Z",
+     "type": {
+      "id": "970",
+      "abbreviation": "Bantamweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "4350871",
+       "uid": "s:3301~a:4350871",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Brad Katona",
+        "displayName": "Brad Katona",
+        "shortName": "B. Katona",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4350871/brad-katona",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4350871/brad-katona",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4350871/brad-katona",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4350871/brad-katona",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4350871/brad-katona",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4350871/brad-katona",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 84,
+         "displayValue": "84.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "16-5-0"
+        }
+       ]
+      },
+      {
+       "id": "4686270",
+       "uid": "s:3301~a:4686270",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Garrett Armfield",
+        "displayName": "Garrett Armfield",
+        "shortName": "G. Armfield",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4686270/garrett-armfield",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4686270/garrett-armfield",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4686270/garrett-armfield",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4686270/garrett-armfield",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4686270/garrett-armfield",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4686270/garrett-armfield",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 87,
+         "displayValue": "87.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "10-5-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "ESPN",
+        "ESPN+"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T01:00Z",
+     "broadcast": "ESPN/ESPN+",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN",
+        "logo": "https://a.espncdn.com/guid/335fd2d2-97b9-336b-81ee-573eb6bdcffc/logos/default.png",
+        "darkLogo": ""
+       },
+       "lang": "en",
+       "region": "us"
+      },
+      {
+       "type": {
+        "id": "4",
+        "shortName": "Streaming"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "ESPN+",
+        "logo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default.png",
+        "darkLogo": "https://a.espncdn.com/guid/322a7e47-3cdb-3b5c-ab1b-678e1f2c27e5/logos/default-dark.png"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613440",
+     "uid": "s:3301~l:3321~e:600039713~c:401613440",
+     "date": "2024-01-21T03:00Z",
+     "endDate": "2024-01-21T03:00Z",
+     "type": {
+      "id": "999",
+      "abbreviation": "Featherweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "3902098",
+       "uid": "s:3301~a:3902098",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Arnold Allen",
+        "displayName": "Arnold Allen",
+        "shortName": "A. Allen",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3902098/arnold-allen",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/3902098/arnold-allen",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/3902098/arnold-allen",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/3902098/arnold-allen",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3902098/arnold-allen",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/3902098/arnold-allen",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/eng.png",
+         "alt": "England",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 84,
+         "displayValue": "84.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "21-4-0"
+        }
+       ]
+      },
+      {
+       "id": "4029275",
+       "uid": "s:3301~a:4029275",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Movsar Evloev",
+        "displayName": "Movsar Evloev",
+        "shortName": "M. Evloev",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4029275/movsar-evloev",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4029275/movsar-evloev",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4029275/movsar-evloev",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4029275/movsar-evloev",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4029275/movsar-evloev",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4029275/movsar-evloev",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/rus.png",
+         "alt": "Russia",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 87,
+         "displayValue": "87.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "20-0-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "PPV"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T03:00Z",
+     "broadcast": "PPV",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "2",
+        "shortName": "PPV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "PPV"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613160",
+     "uid": "s:3301~l:3321~e:600039713~c:401613160",
+     "date": "2024-01-21T03:00Z",
+     "endDate": "2024-01-21T03:00Z",
+     "type": {
+      "id": "972",
+      "abbreviation": "Middleweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "2984770",
+       "uid": "s:3301~a:2984770",
+       "type": "athlete",
+       "order": 1,
+       "winner": true,
+       "athlete": {
+        "fullName": "Chris Curtis",
+        "displayName": "Chris Curtis",
+        "shortName": "C. Curtis",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/2984770/chris-curtis",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/2984770/chris-curtis",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/2984770/chris-curtis",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/2984770/chris-curtis",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/2984770/chris-curtis",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/2984770/chris-curtis",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 88,
+         "displayValue": "88.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 30,
+           "displayValue": "30",
+           "period": 0
+          },
+          {
+           "value": 28,
+           "displayValue": "28",
+           "period": 0
+          },
+          {
+           "value": 30,
+           "displayValue": "30",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "32-13-0"
+        }
+       ]
+      },
+      {
+       "id": "4415883",
+       "uid": "s:3301~a:4415883",
+       "type": "athlete",
+       "order": 2,
+       "winner": false,
+       "athlete": {
+        "fullName": "Marc-Andre Barriault",
+        "displayName": "Marc-Andre Barriault",
+        "shortName": "M. Barriault",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4415883/marc-andre-barriault",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4415883/marc-andre-barriault",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4415883/marc-andre-barriault",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4415883/marc-andre-barriault",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4415883/marc-andre-barriault",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4415883/marc-andre-barriault",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 83,
+         "displayValue": "83.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 27,
+           "displayValue": "27",
+           "period": 0
+          },
+          {
+           "value": 29,
+           "displayValue": "29",
+           "period": 0
+          },
+          {
+           "value": 27,
+           "displayValue": "27",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "17-11-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "PPV"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T03:00Z",
+     "broadcast": "PPV",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "2",
+        "shortName": "PPV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "PPV"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613159",
+     "uid": "s:3301~l:3321~e:600039713~c:401613159",
+     "date": "2024-01-21T03:00Z",
+     "endDate": "2024-01-21T03:00Z",
+     "type": {
+      "id": "969",
+      "abbreviation": "Welterweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "3001914",
+       "uid": "s:3301~a:3001914",
+       "type": "athlete",
+       "order": 1,
+       "winner": true,
+       "athlete": {
+        "fullName": "Neil Magny",
+        "displayName": "Neil Magny",
+        "shortName": "N. Magny",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3001914/neil-magny",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/3001914/neil-magny",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/3001914/neil-magny",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/3001914/neil-magny",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3001914/neil-magny",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/3001914/neil-magny",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "31-15-0"
+        }
+       ]
+      },
+      {
+       "id": "3165120",
+       "uid": "s:3301~a:3165120",
+       "type": "athlete",
+       "order": 2,
+       "winner": false,
+       "athlete": {
+        "fullName": "Mike Malott",
+        "displayName": "Mike Malott",
+        "shortName": "M. Malott",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3165120/mike-malott",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/3165120/mike-malott",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/3165120/mike-malott",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/3165120/mike-malott",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3165120/mike-malott",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/3165120/mike-malott",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/can.png",
+         "alt": "Canada",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "14-2-1"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 285,
+      "displayClock": "4:45",
+      "period": 3,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "PPV"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 3
+      }
+     },
+     "startDate": "2024-01-21T03:00Z",
+     "broadcast": "PPV",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "2",
+        "shortName": "PPV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "PPV"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401613219",
+     "uid": "s:3301~l:3321~e:600039713~c:401613219",
+     "date": "2024-01-21T03:00Z",
+     "endDate": "2024-01-21T03:00Z",
+     "type": {
+      "id": "1003",
+      "abbreviation": "W Bantamweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "2995167",
+       "uid": "s:3301~a:2995167",
+       "type": "athlete",
+       "order": 1,
+       "winner": true,
+       "athlete": {
+        "fullName": "Raquel Pennington",
+        "displayName": "Raquel Pennington",
+        "shortName": "R. Pennington",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/2995167/raquel-pennington",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/2995167/raquel-pennington",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/2995167/raquel-pennington",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/2995167/raquel-pennington",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/2995167/raquel-pennington",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/2995167/raquel-pennington",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 147,
+         "displayValue": "147.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 49,
+           "displayValue": "49",
+           "period": 0
+          },
+          {
+           "value": 49,
+           "displayValue": "49",
+           "period": 0
+          },
+          {
+           "value": 49,
+           "displayValue": "49",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "16-10-0"
+        }
+       ]
+      },
+      {
+       "id": "4371001",
+       "uid": "s:3301~a:4371001",
+       "type": "athlete",
+       "order": 2,
+       "winner": false,
+       "athlete": {
+        "fullName": "Mayra Bueno Silva",
+        "displayName": "Mayra Bueno Silva",
+        "shortName": "M. Bueno Silva",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4371001/mayra-bueno-silva",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/4371001/mayra-bueno-silva",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/4371001/mayra-bueno-silva",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/4371001/mayra-bueno-silva",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/4371001/mayra-bueno-silva",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/4371001/mayra-bueno-silva",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/bra.png",
+         "alt": "Brazil",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 137,
+         "displayValue": "137.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 46,
+           "displayValue": "46",
+           "period": 0
+          },
+          {
+           "value": 46,
+           "displayValue": "46",
+           "period": 0
+          },
+          {
+           "value": 45,
+           "displayValue": "45",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "10-7-1"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 5,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": false
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "PPV"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 5
+      }
+     },
+     "startDate": "2024-01-21T03:00Z",
+     "broadcast": "PPV",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "2",
+        "shortName": "PPV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "PPV"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    },
+    {
+     "id": "401612908",
+     "uid": "s:3301~l:3321~e:600039713~c:401612908",
+     "date": "2024-01-21T03:00Z",
+     "endDate": "2024-01-21T03:00Z",
+     "type": {
+      "id": "972",
+      "abbreviation": "Middleweight"
+     },
+     "timeValid": true,
+     "neutralSite": false,
+     "playByPlayAvailable": false,
+     "recent": false,
+     "venue": {
+      "id": "1838",
+      "fullName": "Scotiabank Arena",
+      "address": {
+       "city": "Toronto",
+       "state": "ON",
+       "address1": "40 Bay Street",
+       "country": "Canada"
+      },
+      "indoor": true
+     },
+     "competitors": [
+      {
+       "id": "3093653",
+       "uid": "s:3301~a:3093653",
+       "type": "athlete",
+       "order": 1,
+       "winner": false,
+       "athlete": {
+        "fullName": "Sean Strickland",
+        "displayName": "Sean Strickland",
+        "shortName": "S. Strickland",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3093653/sean-strickland",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/3093653/sean-strickland",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/3093653/sean-strickland",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/3093653/sean-strickland",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3093653/sean-strickland",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/3093653/sean-strickland",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/usa.png",
+         "alt": "USA",
+         "rel": [
+          "country-flag"
+         ]
+        },
+        "accolades": [
+         {
+          "id": "380",
+          "name": "UFC Middleweight Title",
+          "type": "Belt"
+         }
+        ]
+       },
+       "linescores": [
+        {
+         "value": 142,
+         "displayValue": "142.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 48,
+           "displayValue": "48",
+           "period": 0
+          },
+          {
+           "value": 47,
+           "displayValue": "47",
+           "period": 0
+          },
+          {
+           "value": 47,
+           "displayValue": "47",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "31-7-0"
+        }
+       ]
+      },
+      {
+       "id": "3166126",
+       "uid": "s:3301~a:3166126",
+       "type": "athlete",
+       "order": 2,
+       "winner": true,
+       "athlete": {
+        "fullName": "Dricus Du Plessis",
+        "displayName": "Dricus Du Plessis",
+        "shortName": "D. Du Plessis",
+        "links": [
+         {
+          "language": "en-US",
+          "rel": [
+           "playercard",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3166126/dricus-du-plessis",
+          "text": "Player Card",
+          "shortText": "Player Card",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/stats/_/id/3166126/dricus-du-plessis",
+          "text": "Stats",
+          "shortText": "Stats",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "news",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/news/_/id/3166126/dricus-du-plessis",
+          "text": "News",
+          "shortText": "News",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "bio",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/bio/_/id/3166126/dricus-du-plessis",
+          "text": "Bio",
+          "shortText": "Bio",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "overview",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/_/id/3166126/dricus-du-plessis",
+          "text": "Overview",
+          "shortText": "Overview",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "language": "en-US",
+          "rel": [
+           "history",
+           "desktop",
+           "athlete"
+          ],
+          "href": "https://www.espn.com/mma/fighter/history/_/id/3166126/dricus-du-plessis",
+          "text": "Fight History",
+          "shortText": "Fight History",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "flag": {
+         "href": "https://a.espncdn.com/i/teamlogos/countries/500/rsa.png",
+         "alt": "South Africa",
+         "rel": [
+          "country-flag"
+         ]
+        }
+       },
+       "linescores": [
+        {
+         "value": 143,
+         "displayValue": "143.0",
+         "period": 0,
+         "linescores": [
+          {
+           "value": 47,
+           "displayValue": "47",
+           "period": 0
+          },
+          {
+           "value": 48,
+           "displayValue": "48",
+           "period": 0
+          },
+          {
+           "value": 48,
+           "displayValue": "48",
+           "period": 0
+          }
+         ]
+        }
+       ],
+       "statistics": [],
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "TOT",
+         "type": "total",
+         "summary": "24-3-0"
+        }
+       ]
+      }
+     ],
+     "status": {
+      "clock": 300,
+      "displayClock": "5:00",
+      "period": 5,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      },
+      "featured": true
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "PPV"
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 5
+      }
+     },
+     "startDate": "2024-01-21T03:00Z",
+     "broadcast": "PPV",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "2",
+        "shortName": "PPV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "PPV"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": []
+    }
+   ],
+   "links": [
+    {
+     "language": "en-US",
+     "rel": [
+      "summary",
+      "desktop",
+      "event"
+     ],
+     "href": "https://www.espn.com/mma/fightcenter/_/id/600039713/league/ufc",
+     "text": "Gamecast",
+     "shortText": "Gamecast",
+     "isExternal": false,
+     "isPremium": false
+    }
+   ],
+   "venues": [
+    {
+     "id": "1838",
+     "fullName": "Scotiabank Arena",
+     "address": {
+      "city": "Toronto",
+      "state": "ON",
+      "address1": "40 Bay Street",
+      "country": "Canada"
+     }
+    }
+   ],
+   "status": {
+    "type": {
+     "id": "3",
+     "name": "STATUS_FINAL",
+     "state": "post",
+     "completed": true,
+     "description": "Final",
+     "detail": "Final",
+     "shortDetail": "Final"
+    }
+   }
+  }
+ ],
+ "provider": {
+  "id": "100",
+  "name": "Draft Kings",
+  "displayName": "Draft Kings",
+  "priority": 1,
+  "logos": [
+   {
+    "href": "https://a.espncdn.com/i/betting/Draftkings_Light.svg",
+    "rel": [
+     "light"
+    ]
+   },
+   {
+    "href": "https://a.espncdn.com/i/betting/Draftkings_Dark.svg",
+    "rel": [
+     "dark"
+    ]
+   }
+  ]
+ }
+}
