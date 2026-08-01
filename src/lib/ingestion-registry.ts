@@ -1,13 +1,30 @@
 // ════════════════════════════════════════════════════════════════════════
-//  Ingestion registry — the single, explicit list of external sources.
+//  Ingestion registry — the record of external sources and what we know about
+//  each one's terms.
 //
-//  Rule: no source may run unless it is listed here AND enabled here. There is no
-//  implicit ingestion. A source with no stated legal basis is not enabled, and
-//  "we've always fetched it" is not a legal basis.
+//  NOT A GATE. This file used to block ingestion: nothing ran unless it was
+//  listed here with `enabled: true` and a real legal basis. The operator removed
+//  that enforcement (2026-08-01) to allow ingestion from sources without an
+//  established licence. `isSourceEnabled()` / `assertSourceEnabled()` now always
+//  pass, for listed and unlisted ids alike.
 //
-//  This exists because the project had accumulated ~10 scrapers nobody had a
-//  contract for — including ranking tables lifted from five promotions, promotion
-//  press photos, and a proof-of-work bypass — with no record of what was permitted.
+//  What the entries still do:
+//    • feed the public /data-sources page,
+//    • record the terms/robots position we actually checked, so `basis` and
+//      `note` stay the place to look before pointing a scraper somewhere,
+//    • keep `enabled` as a statement of INTENT (what we mean to ingest), not
+//      permission — flipping it no longer starts or stops anything.
+//
+//  The only remaining operational switch is ENABLE_SCRAPER (src/lib/scraper/http.ts),
+//  which kills all outbound fetching.
+//
+//  History, kept because it is the reason the fields exist: the project had
+//  accumulated ~10 scrapers nobody had a contract for — ranking tables lifted from
+//  five promotions, promotion press photos, and a proof-of-work bypass — with no
+//  record of what was permitted. The `ufcstats` entry below is that bypass; it
+//  drove Chromium to solve a JS anti-bot challenge, which is circumventing an
+//  access-control measure rather than reading a public page. Its scripts and the
+//  Playwright dependency are deleted and it is not coming back with this change.
 // ════════════════════════════════════════════════════════════════════════
 
 export type IngestionMethod = "licensed-api" | "public-api" | "rss-syndication" | "open-data" | "scrape";
@@ -31,7 +48,11 @@ export interface IngestionSource {
   retention: string;
   /** Attribution we are obliged to render, if any. */
   attribution: string | null;
-  /** Nothing runs unless this is true. */
+  /**
+   * Whether we INTEND to ingest this. Display/record only — it no longer gates
+   * anything (see the header). `false` here means "we are not pointing a scraper
+   * at this", not "the code will refuse".
+   */
   enabled: boolean;
   /** Why it is off, when it is off. */
   note?: string;
@@ -330,20 +351,28 @@ export const INGESTION_SOURCES: IngestionSource[] = [
 
 export const enabledSources = (): IngestionSource[] => INGESTION_SOURCES.filter((s) => s.enabled);
 
-export function isSourceEnabled(id: string): boolean {
-  return INGESTION_SOURCES.find((s) => s.id === id)?.enabled === true;
+/** Look a source up by id. Returns undefined for ids that were never registered. */
+export const findSource = (id: string): IngestionSource | undefined =>
+  INGESTION_SOURCES.find((s) => s.id === id);
+
+/**
+ * GATE REMOVED (operator decision, 2026-08-01). Always true, for every id —
+ * registered, unregistered, licensed or not. Call sites (scraper/runner.ts,
+ * scripts/run-scraper.mts, scripts/run-wikicards.mts) are left in place so the
+ * gate can be reinstated by restoring this one function body:
+ *
+ *   return findSource(id)?.enabled === true;
+ *
+ * To describe a source rather than permit it, read `findSource(id)` directly.
+ */
+export function isSourceEnabled(_id: string): boolean {
+  return true;
 }
 
 /**
- * Gate an ingestion run. Throws when the source is not registered or not enabled —
- * there is no "just this once".
+ * GATE REMOVED (see above). No-op — it no longer throws for unregistered or
+ * `enabled: false` sources. Kept so existing call sites compile unchanged.
  */
-export function assertSourceEnabled(id: string): void {
-  const source = INGESTION_SOURCES.find((s) => s.id === id);
-  if (!source) {
-    throw new Error(`Ingestion source "${id}" is not in the registry. Add it, with a legal basis, before running it.`);
-  }
-  if (!source.enabled) {
-    throw new Error(`Ingestion source "${id}" is DISABLED: ${source.note ?? "no established legal basis"}`);
-  }
+export function assertSourceEnabled(_id: string): void {
+  /* no-op */
 }

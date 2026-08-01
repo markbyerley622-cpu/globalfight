@@ -17,17 +17,18 @@ know about the ingestion registry. Those belong to the shared framework. The run
 (`src/lib/scraper/runner.ts`, kind `"bkfc"`) takes the harvest and calls
 `persistAggregated("BARE_KNUCKLE", "events"|"fighters", …)`.
 
-## ⚠️ Two gates (shipped disabled)
+## ⚠️ One gate (the registry gate was removed)
 
 1. **`ENABLE_SCRAPER=true`** — required for *any* fetch (shared `../http.ts`). Off by
-   default, so `syncBKFC()` fetches nothing until set.
-2. **The `bkfc-*` ingestion-registry entries** (`src/lib/ingestion-registry.ts`, all
-   `enabled: false`, `basis: "NONE."`). The **runner** checks `isSourceEnabled()`
-   before persisting — the provider itself is registry-agnostic. So even with
-   `ENABLE_SCRAPER=true`, a harvest is returned but **nothing is written** until a real
-   legal basis is added and the relevant entry flipped to `true`. Do not enable
-   `bkfc-rankings` (editorial compilation) or `bkfc-news` (robots `Disallow: /news`)
-   without a licence.
+   default, so `syncBKFC()` fetches nothing until set. This is now the **only** switch.
+2. ~~The `bkfc-*` ingestion-registry entries~~ — **removed 2026-08-01** on the operator's
+   instruction, to allow ingestion from sources without an established licence.
+   `isSourceEnabled()` returns `true` for every id, so the runner's calls no longer hold
+   anything back: with `ENABLE_SCRAPER=true`, everything the harvest carries is written.
+   The `bkfc-*` entries in `src/lib/ingestion-registry.ts` survive as a record of what we
+   know about the terms — `bkfc-rankings` is an editorial compilation and `bkfc-news` is
+   `Disallow: /news` in robots.txt. Nothing enforces that now; read it before pointing a
+   scraper. To reinstate the gate, restore the one-line body of `isSourceEnabled()`.
 
 ## Usage
 
@@ -106,9 +107,10 @@ HTML), canonical mapping, and the validation gate.
 
 ## Enabling in production (checklist)
 
-1. Obtain and document a real legal basis (licence / written permission).
-2. Set the relevant `bkfc-*` entries in `ingestion-registry.ts` to `enabled: true`
-   (only the entities you are licensed for).
+1. Obtain and document a real legal basis (licence / written permission). No code enforces
+   this any more — the registry gate is gone — so it is a process step, not a build error.
+2. Update the relevant `bkfc-*` entries in `ingestion-registry.ts` (`basis`, `enabled`,
+   `permittedFields`) so the public /data-sources page tells the truth about what you take.
 3. Set `ENABLE_SCRAPER=true`.
 4. Schedule `GET /api/cron/refresh-bkfc`; use `mode:"daily"` + `BKFC_MAX_PAGES` to keep
    a run within the cron `maxDuration`.

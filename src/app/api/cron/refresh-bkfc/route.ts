@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 // bkfc.com → Event/Fight/Fighter/Ranking/Article/FeedVideo (sport=BARE_KNUCKLE).
-// Gated: writes nothing unless the "bkfc-*" ingestion sources are enabled with
-// a legal basis (see src/lib/ingestion-registry.ts). Otherwise a dry-run.
+// The "bkfc-*" registry gate was removed (2026-08-01), so this is no longer a
+// dry-run: with ENABLE_SCRAPER=true it writes everything the runner hands to
+// persistAggregated. src/lib/ingestion-registry.ts still records the terms.
 export const GET = makeCronHandler("bkfc");

@@ -4,7 +4,14 @@ import { INGESTION_SOURCES } from "@/lib/ingestion-registry";
 export const metadata = { title: "Data Sources" };
 export const dynamic = "force-dynamic";
 
-/** Rendered from the enforced ingestion registry — this page cannot drift from the code. */
+/**
+ * Rendered from the ingestion registry (src/lib/ingestion-registry.ts).
+ *
+ * That registry is a RECORD, not an enforced gate — the gate was removed on the
+ * operator's instruction. So `enabled` here means "a source we intend to ingest",
+ * and this page can drift from what a scraper is technically able to fetch. Keep
+ * the registry entries honest; nothing else keeps this page true.
+ */
 export default function DataSourcesPage() {
   const enabled = INGESTION_SOURCES.filter((s) => s.enabled);
   const disabled = INGESTION_SOURCES.filter((s) => !s.enabled);
@@ -28,7 +35,7 @@ export default function DataSourcesPage() {
       <H2>Sources we do not use</H2>
       <p>
         We list these because their absence is deliberate. Each was either never licensed or has been
-        withdrawn, and the code will refuse to run them.
+        withdrawn, and we do not ingest them.
       </p>
       {disabled.map((s) => (
         <div key={s.id} className="rounded-lg border border-ink-800/60 p-4 opacity-80">
