@@ -71,11 +71,15 @@ export const PROMOTION_INDEX_SOURCES: PromotionIndexSource[] = [
       "Event+Date columns and are picked up as index tables). Extracting Glory bouts " +
       "needs a YEAR-PAGE SPLITTER that sections a round-up by event heading — a new " +
       "capability, not a config entry. Left registered so the ladder is on record " +
-      "and the next attempt starts from here.",
+      "and the next attempt starts from here. " +
+      "RESOLVED 2026-08-02: the splitter now exists (year-split.ts) and Glory moved to " +
+      "the YEAR_PAGE_SOURCES path below — 127 events, 1,443 bouts, 1,406 decided, 0 " +
+      "sections skipped.",
     /**
-     * Discovery only: this source lists real events but no attributable bouts, so
-     * running it would add ~200 empty cards. Off until the year-page splitter
-     * exists. See the yield note above.
+     * Stays disabled, for a NEW reason: the 140 rows this path refuses are the same
+     * cards the year path now reads, so running both would have them fight over the
+     * same events. Kept registered because the ladder above is the evidence for why
+     * Glory is read the way it is.
      */
     disabled: true,
   },
@@ -83,3 +87,60 @@ export const PROMOTION_INDEX_SOURCES: PromotionIndexSource[] = [
 
 export const indexSourceFor = (key: string): PromotionIndexSource | undefined =>
   PROMOTION_INDEX_SOURCES.find((s) => s.key === key.toLowerCase());
+
+// ════════════════════════════════════════════════════════════════════════
+//  Promotions whose cards are only written up on YEAR ROUND-UP pages.
+//
+//  A different source shape from the one above, so a different list. The index
+//  path wants one article per card; these promotions have none — every card they
+//  ran in a year shares a single article, which is why the index path's
+//  shared-article guard refuses all of them. See year-split.ts.
+// ════════════════════════════════════════════════════════════════════════
+
+export interface YearPageSource {
+  key: string;
+  /** Article title template; `{year}` is substituted. */
+  titleTemplate: string;
+  /** Stored as Event.promotion — must match the promotions registry name. */
+  promotion: string;
+  sport: Sport;
+  /** Earliest year with a round-up page. Later years are probed and may 404. */
+  firstYear: number;
+  sourceLadder: string;
+}
+
+export const YEAR_PAGE_SOURCES: YearPageSource[] = [
+  {
+    key: "one",
+    titleTemplate: "{year} in ONE Championship",
+    promotion: "ONE Championship",
+    sport: "MMA",
+    firstYear: 2011,
+    sourceLadder:
+      "Checked 2026-08-02. ONE has no per-card Wikipedia article: searching for a card " +
+      "by any name form — full, reduced, or with the broadcast suffix stripped — returns " +
+      "the same year round-up, which the wikicard verifier then rejects (correctly). " +
+      "The round-up carries one infobox + results table per card, the same table shape " +
+      "parseWikiCard already reads. ESPN covers ONE's MMA bouts but files its Muay Thai " +
+      "and kickboxing under MMA because the payload has no ruleset field, so ESPN cannot " +
+      "close this gap. CC BY-SA, attribution rendered.",
+  },
+  {
+    key: "glory",
+    titleTemplate: "{year} in Glory",
+    promotion: "GLORY",
+    sport: "KICKBOXING",
+    firstYear: 2012,
+    sourceLadder:
+      "Checked 2026-08-02. Supersedes the disabled index-path entry: the 140 index rows " +
+      "that pointed at a year round-up are exactly what this path reads. Measured on the " +
+      "2025 page — 9 cards, 118 bouts, 116 decided, 0 skipped. This is the ONLY kickboxing " +
+      "source in the project.",
+  },
+];
+
+export const yearSourceFor = (key: string): YearPageSource | undefined =>
+  YEAR_PAGE_SOURCES.find((s) => s.key === key.toLowerCase());
+
+export const yearPageTitle = (s: YearPageSource, year: number): string =>
+  s.titleTemplate.replace("{year}", String(year));

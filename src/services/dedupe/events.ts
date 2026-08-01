@@ -56,9 +56,34 @@ export async function resolveEvent(input: ResolveEventInput): Promise<EventMatch
   const want = normalizeName(input.name);
   for (const c of candidates) {
     const cn = normalizeName(c.name);
-    if (cn === want || cn.includes(want) || want.includes(cn)) {
+    if (cn === want) return { eventId: c.id, matchType: "name_date", confidence: 0.85 };
+    if (containsSameCard(cn, want)) {
       return { eventId: c.id, matchType: "name_date", confidence: 0.85 };
     }
   }
   return { eventId: null, matchType: "none", confidence: 0 };
+}
+
+/**
+ * Is one name the same card as the other, just written at more length?
+ *
+ * Containment is the right instinct — "UFC 300" and "UFC 300 Pereira vs Hill" are
+ * one card — but bare containment merges cards that a NUMBER distinguishes:
+ *
+ *     "fists of fury"     ⊂ "fists of fury 2"      different cards, same night
+ *     "ufc fight night 1" ⊂ "ufc fight night 10"   different cards entirely
+ *
+ * ONE ran Fists Of Fury 1, 2 AND 3 on 2021-02-26. Under bare containment all
+ * three resolved to one row, so two cards' bouts were written onto the third —
+ * 73 bouts across 12 events, silently, with every card still looking plausible.
+ *
+ * So containment holds only when what the longer name adds is DESCRIPTIVE. If the
+ * extra text carries a digit, it is a card designation and the two are not the
+ * same event.
+ */
+export function containsSameCard(a: string, b: string): boolean {
+  const [long, short] = a.length >= b.length ? [a, b] : [b, a];
+  if (!long.includes(short)) return false;
+  const extra = long.replace(short, "");
+  return !/\d/.test(extra);
 }

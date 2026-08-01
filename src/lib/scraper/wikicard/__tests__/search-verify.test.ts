@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSearchLadder, isSyntheticEventName } from "../search-strategies";
+import { buildSearchLadder, isSyntheticEventName, coreEventTitle } from "../search-strategies";
 import { verifyCard, isAcceptable } from "../verify";
 import { candidate } from "@/lib/entities/resolve";
 import type { WikiBout } from "../extract";
@@ -65,6 +65,66 @@ test("a real event leads with its own title, so it resolves in ONE query", () =>
   // "BKFC BKFC 91" is not added — the name already carries the promotion. See the
   // query-hygiene tests below.
   assert.ok(!ladder.some((s) => s.kind === "promotion_event"));
+});
+
+// ── event-title reduction (for the year-page splitter, NOT for search) ──────
+//
+// A promotion names its card for the billing:
+//   "ONE Friday Fights 164 & The Inner Circle 24"          two events, one night
+//   "ONE Fight Night 45: Lessei vs. Rabah on Prime Video"    distribution suffix
+// and upstream punctuates the same compound with "/" instead of "&". Reduction
+// lets a year-page section be matched back to our event row across that skew.
+//
+// It is deliberately NOT a ladder rung: probed 2026-08-02, the full title, the
+// reduced title and both Prime Video forms all return the same upstream hit
+// ("2026 in ONE Championship"), so a rung would spend a request to re-ask an
+// answered question. The pin below is what keeps that from being re-added.
+
+test("a co-branded double card is reduced to the numbered event", () => {
+  assert.equal(coreEventTitle("ONE Friday Fights 164 & The Inner Circle 24"), "ONE Friday Fights 164");
+  // Upstream's punctuation of the same fact.
+  assert.equal(
+    coreEventTitle("ONE Friday Fights 163: Pompet vs. Nat Khat Min / The Inner Circle 23"),
+    "ONE Friday Fights 163: Pompet vs. Nat Khat Min",
+  );
+});
+
+test("a trailing distribution note is not part of the card's identity", () => {
+  assert.equal(coreEventTitle("ONE Friday Fights 138 (YouTube / Watch ONE)"), "ONE Friday Fights 138");
+});
+
+test("a broadcast suffix is not part of the event's indexed name", () => {
+  assert.equal(
+    coreEventTitle("ONE Fight Night 45: Lessei vs. Rabah on Prime Video"),
+    "ONE Fight Night 45: Lessei vs. Rabah",
+  );
+  assert.equal(coreEventTitle("ONE Fight Night 20 live on Amazon Prime Video"), "ONE Fight Night 20");
+  assert.equal(coreEventTitle("Misfits Boxing 15 presented by DAZN"), "Misfits Boxing 15");
+});
+
+test("a title already in its indexed form yields no second query", () => {
+  for (const n of ["BKFC 91", "UFC 300", "ONE Fight Night 39"]) {
+    assert.equal(coreEventTitle(n), null, n);
+  }
+});
+
+test("an ampersand that is part of the name is never truncated away", () => {
+  // No digit on the left, so there is no numbered card to fall back to — splitting
+  // here would invent a different event, which is worse than not matching.
+  assert.equal(coreEventTitle("Rock & Roll Rumble"), null);
+  assert.equal(coreEventTitle("Tag & Team Championship"), null);
+});
+
+test("reduction does NOT become a search rung — the probe showed it buys nothing", () => {
+  const ladder = buildSearchLadder({
+    eventName: "ONE Friday Fights 164 & The Inner Circle 24",
+    promotionName: "ONE Championship",
+    bouts: [{ red: SPENCE, blue: TSZYU }],
+  });
+  // The stored name is asked once, verbatim. The reduced form is a MATCHING key
+  // for the year-page splitter, not a second question for the source.
+  assert.equal(ladder[0].query, "ONE Friday Fights 164 & The Inner Circle 24");
+  assert.ok(!ladder.some((s) => s.query === "ONE Friday Fights 164"));
 });
 
 test("the ladder is ordered, deduped and includes the fallback sweeps", () => {

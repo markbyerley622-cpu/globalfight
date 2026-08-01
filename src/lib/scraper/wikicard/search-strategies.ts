@@ -58,6 +58,49 @@ export function isSyntheticEventName(name: string): boolean {
   return /^.+\s+[—-]\s+\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}$/.test(name.trim());
 }
 
+/**
+ * Broadcast/distribution suffixes a promotion appends to its own card name. The
+ * platform is a marketing fact about how the card was carried, never part of how
+ * an encyclopedia titles the article: Wikipedia has "ONE Fight Night 45", not
+ * "ONE Fight Night 45: Lessei vs. Rabah on Prime Video".
+ */
+const BROADCAST_SUFFIX =
+  /\s+(?:live\s+)?on\s+(?:amazon\s+)?prime\s+video$|\s+on\s+(?:tnt\s+sports|espn\+?|dazn|max)$|\s*[-–—]?\s*presented\s+by\s+.+$/i;
+
+/** A trailing distribution note: "ONE Friday Fights 138 (YouTube / Watch ONE)". */
+const BROADCAST_PAREN = /\s*\((?:[^()]*(?:youtube|prime video|watch one|dazn|espn|tnt)[^()]*)\)\s*$/i;
+
+/**
+ * A co-branded double card: "ONE Friday Fights 164 & The Inner Circle 24" is two
+ * events sharing one night. Both sides are real, but only the numbered card is
+ * written up, so the compound name matches nothing on either side.
+ *
+ * Separator is `&` in our rows and `/` upstream — the same fact, punctuated two
+ * ways. Split only when the LEFT side still carries a digit, so a promotion whose
+ * name merely contains an ampersand is never truncated to a different event.
+ */
+const CO_BRAND = /^(.*?\d.*?)\s+[&/]\s+\S.*$/;
+
+/**
+ * The event title reduced to its stable core — the numbered card, with billing
+ * and distribution stripped — or null when the name is already in that form.
+ *
+ * NOT a search query. Probed 2026-08-02: reducing the title changes nothing about
+ * what upstream returns for ONE. This exists so the YEAR-PAGE SPLITTER can match a
+ * section heading against our stored event name when the two punctuate the same
+ * card differently ("… & The Inner Circle 23" here, "… / The Inner Circle 23"
+ * there). Comparison only — never written back as an event's name.
+ */
+export function coreEventTitle(name: string): string | null {
+  const original = name.trim();
+  let out = original.replace(BROADCAST_PAREN, "").replace(BROADCAST_SUFFIX, "").trim();
+  const branded = CO_BRAND.exec(out);
+  if (branded) out = branded[1].trim();
+  out = out.replace(/[\s:–—/-]+$/, "").trim();
+  if (out.length < 5) return null;
+  return out === original ? null : out;
+}
+
 export interface LadderInput {
   eventName: string;
   /** The CANONICAL promotion name, or null when the event is unattributed. */
@@ -95,6 +138,15 @@ export function buildSearchLadder(input: LadderInput): SearchStrategy[] {
   // source indexes "Boxing — 26 Jul 2026", so asking is a guaranteed miss and,
   // across 1,754 bouts, a meaningful amount of someone else's rate limit.
   if (name && !isSyntheticEventName(name)) add("event_title", name);
+
+  // NOT a rung: the title with co-branding/broadcast suffix stripped. Probed
+  // 2026-08-02 — "ONE Friday Fights 164 & The Inner Circle 24", the bare
+  // "ONE Friday Fights 164", and both Prime Video forms ALL return the same
+  // upstream hit, "2026 in ONE Championship". The title was never what blocked
+  // these cards; upstream has no per-card article for ONE at all. Adding the rung
+  // would spend a request per event against someone else's rate limit to ask a
+  // question already answered. coreEventTitle stays — the year-page splitter
+  // needs it to match a section back to our event row — but the ladder does not.
 
   // 2 — the bout itself. THE fix for synthetic cards, and a strong second try for a
   // real one (Wikipedia often has a standalone article for a marquee fight).
