@@ -46,10 +46,15 @@ export function FightModule({
 
   const battle = summary.battle;
   const battleLabel =
-    battle?.state === "ACTIVE" ? `Challenge · vs ${battle.opponentName ?? "your rival"}`
+    // "friend" not "rival" for the INVITE copy: this is the entry point to a
+    // social feature, and asking someone to challenge a rival reads as picking a
+    // fight with a stranger. The mid-battle fallback stays neutral — "vs your
+    // friend" is odd once the contest is under way, and it is only ever shown
+    // when the opponent's name is missing.
+    battle?.state === "ACTIVE" ? `Challenge · vs ${battle.opponentName ?? "your opponent"}`
     : battle?.state === "RESOLVED" ? "Challenge settled"
-    : battle?.state === "WAITING" ? "Challenge sent · waiting for a rival"
-    : "Challenge a rival";
+    : battle?.state === "WAITING" ? "Challenge sent · waiting for a friend"
+    : "Challenge a friend";
 
   return (
     <div id={anchor} ref={ref} className="scroll-mt-16">
