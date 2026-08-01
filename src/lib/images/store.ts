@@ -78,12 +78,42 @@ async function putBlob(key: string, body: Buffer, contentType = "image/webp"): P
 
 // Cloudflare R2 / any S3-compatible bucket. Lazy-imports the AWS SDK so the
 // dependency is only needed when R2/S3 is actually configured.
+/**
+ * Read a credential from the environment, TRIMMED.
+ *
+ * A trailing newline in a secret is never meaningful and is very easy to
+ * introduce — pasting into a .env, a heredoc, a secrets manager that appends one.
+ * It is also invisible and the resulting failure is opaque: the AWS SigV4 signer
+ * puts the value into the Authorization header and Node throws
+ * "Invalid character in header content [\"authorization\"]", which names neither
+ * the variable nor the cause.
+ *
+ * Observed exactly this: R2_ACCESS_KEY_ID arrived 33 chars and
+ * R2_SECRET_ACCESS_KEY 65 — both one byte over, both a bare \n (char 10).
+ */
+const cred = (...names: string[]): string | undefined => {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v && v.trim()) return v.trim();
+  }
+  return undefined;
+};
+
+/** Is an S3/R2 backend configured? Used to decide whether a failure may degrade. */
+export function isObjectStorageConfigured(): boolean {
+  return Boolean(
+    cred("R2_ENDPOINT", "S3_ENDPOINT") && cred("R2_BUCKET", "S3_BUCKET") &&
+    cred("R2_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID") && cred("R2_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY") &&
+    cred("R2_PUBLIC_BASE_URL", "S3_PUBLIC_BASE_URL"),
+  );
+}
+
 async function putR2(key: string, body: Buffer, contentType = "image/webp"): Promise<string | null> {
-  const endpoint = process.env.R2_ENDPOINT ?? process.env.S3_ENDPOINT;
-  const bucket = process.env.R2_BUCKET ?? process.env.S3_BUCKET;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_ACCESS_KEY;
-  const publicBase = process.env.R2_PUBLIC_BASE_URL ?? process.env.S3_PUBLIC_BASE_URL;
+  const endpoint = cred("R2_ENDPOINT", "S3_ENDPOINT");
+  const bucket = cred("R2_BUCKET", "S3_BUCKET");
+  const accessKeyId = cred("R2_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID");
+  const secretAccessKey = cred("R2_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY");
+  const publicBase = cred("R2_PUBLIC_BASE_URL", "S3_PUBLIC_BASE_URL");
   if (!endpoint || !bucket || !accessKeyId || !secretAccessKey || !publicBase) return null;
 
   const mod = "@aws-sdk/client-s3";
@@ -110,12 +140,35 @@ async function putLocalKey(key: string, body: Buffer): Promise<string> {
   return `/${key}`; // served statically by Next
 }
 
-/** Store a WebP buffer at `key` on the best configured backend. */
+/**
+ * Store a WebP buffer at `key` on the best configured backend.
+ *
+ * A CONFIGURED object backend that fails must NOT degrade to local disk.
+ *
+ * It used to: `putR2(...).catch(() => null)` swallowed every error and fell
+ * through to `putLocalKey`, which succeeds. So a bad credential produced a
+ * cheerful `/fighters/<slug>/profile.webp` — a path that exists on the machine
+ * that ran the job and nowhere else. Run that over a backfill and you get
+ * thousands of rows pointing at files no deployed instance can serve, with no
+ * error anywhere. Local disk is the fallback for "no backend configured", which
+ * is local development; it is not a safety net for a broken one.
+ */
 async function putObject(key: string, body: Buffer): Promise<string> {
   const blobUrl = await putBlob(key, body).catch(() => null);
   if (blobUrl) return blobUrl;
-  const r2Url = await putR2(key, body).catch(() => null);
-  if (r2Url) return r2Url;
+
+  if (isObjectStorageConfigured()) {
+    // Deliberately unguarded — the caller records a storage failure and the
+    // operator sees the real reason.
+    const r2Url = await putR2(key, body);
+    if (r2Url) return r2Url;
+    throw new Error(
+      "Object storage is configured but the upload produced no URL. If the AWS SDK is missing, " +
+        "run `npm i @aws-sdk/client-s3`. Refusing to fall back to local disk, which would store " +
+        "the image where no other instance can serve it.",
+    );
+  }
+
   return putLocalKey(key, body);
 }
 
@@ -144,13 +197,17 @@ export async function deleteStored(url: string): Promise<boolean> {
     }
 
     // Cloudflare R2 / S3 (URL under our public base)
-    const publicBase = (process.env.R2_PUBLIC_BASE_URL ?? process.env.S3_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+    // cred() here too, not raw env: an untrimmed secret fails the DELETE the same
+    // way it failed the PUT ("Invalid character in header content"). Fixing only
+    // the upload path left deletes broken — so an image could be stored and never
+    // removed, which is how orphans accumulate in a bucket.
+    const publicBase = (cred("R2_PUBLIC_BASE_URL", "S3_PUBLIC_BASE_URL") ?? "").replace(/\/$/, "");
     if (publicBase && url.startsWith(publicBase + "/")) {
       const key = decodeURIComponent(url.slice(publicBase.length + 1));
-      const bucket = process.env.R2_BUCKET ?? process.env.S3_BUCKET;
-      const accessKeyId = process.env.R2_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_ACCESS_KEY;
-      const endpoint = process.env.R2_ENDPOINT ?? process.env.S3_ENDPOINT;
+      const bucket = cred("R2_BUCKET", "S3_BUCKET");
+      const accessKeyId = cred("R2_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID");
+      const secretAccessKey = cred("R2_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY");
+      const endpoint = cred("R2_ENDPOINT", "S3_ENDPOINT");
       if (bucket && accessKeyId && secretAccessKey) {
         const mod = "@aws-sdk/client-s3";
         const s3 = (await import(/* webpackIgnore: true */ mod).catch(() => null)) as
