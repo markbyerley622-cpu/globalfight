@@ -17,6 +17,7 @@ import { RecordDonut, StatBar } from "@/components/charts";
 import { getFighter, getFighterFights } from "@/lib/repo";
 import { winningCorner, currentStreak } from "@/lib/event-format";
 import { isPlaceholderName, isPlaceholderSlug } from "@/lib/entities/placeholder";
+import { resolveFighterRecord, canShowStreak } from "@/lib/fighters/record";
 import { isFollowingFighter } from "@/lib/follows";
 import { FollowButton } from "@/components/follow-button";
 import { getFighterPublicProfile } from "@/lib/fighters/profile";
@@ -90,6 +91,10 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
   const upcoming = fights.find((f) => f.result === "SCHEDULED");
   const past = fights.filter((f) => f.result !== "SCHEDULED");
   const streak = currentStreak(fights, slug);
+  // The headline record: the imported one when we have it, otherwise counted
+  // from settled bouts, otherwise NOTHING. Never zeros standing in for absence.
+  const record = resolveFighterRecord(profile, fights, slug);
+  const showStreak = canShowStreak(record, past.length);
   const age = ageFrom(fighter.birthDate);
   const ko = koPercentage(fighter.koWins, fighter.wins);
   const sportLabel = SPORT_LABEL[profile.sport] ?? profile.sport;
@@ -126,14 +131,19 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
     sameAs: allSocials.map((s) => s.url),
   };
 
+  // Vital stats we ACTUALLY hold. Every cell used to fall back to an em dash, so
+  // a fighter we have no vitals for got a six-cell grid of dashes under the
+  // heading "Vital Stats" — which reads as a broken component rather than as
+  // missing data. Unknown fields are omitted, and the block disappears entirely
+  // when we know none of them.
   const stats = [
-    { icon: Calendar, label: "Age", value: age ? `${age}` : "—" },
-    { icon: Ruler, label: "Height", value: fighter.heightCm ? `${(fighter.heightCm / 30.48) | 0}'${Math.round((fighter.heightCm / 2.54) % 12)}"` : "—" },
-    { icon: Activity, label: "Reach", value: fighter.reachCm ? `${Math.round(fighter.reachCm / 2.54)}"` : "—" },
-    { icon: Hand, label: "Stance", value: fighter.stance ?? "—" },
-    { icon: MapPin, label: "Residence", value: profile.residence ?? profile.nationality ?? "—" },
-    { icon: Dumbbell, label: "Gym", value: profile.gym ?? "—" },
-  ];
+    { icon: Calendar, label: "Age", value: age ? `${age}` : null },
+    { icon: Ruler, label: "Height", value: fighter.heightCm ? `${(fighter.heightCm / 30.48) | 0}'${Math.round((fighter.heightCm / 2.54) % 12)}"` : null },
+    { icon: Activity, label: "Reach", value: fighter.reachCm ? `${Math.round(fighter.reachCm / 2.54)}"` : null },
+    { icon: Hand, label: "Stance", value: fighter.stance ?? null },
+    { icon: MapPin, label: "Residence", value: profile.residence ?? profile.nationality ?? null },
+    { icon: Dumbbell, label: "Gym", value: profile.gym ?? null },
+  ].filter((s): s is typeof s & { value: string } => Boolean(s.value));
 
   return (
     <>
@@ -187,7 +197,9 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 <Flag code={profile.countryCode ?? undefined} size="lg" className="h-8 w-12" /> {profile.name}
               </h1>
               <p className="mt-2 text-sm text-mist">
-                {[profile.nationality ?? "—", profile.residence, formatSportRecord(profile)].filter(Boolean).join(" · ")}
+                {[profile.nationality, profile.residence, record ? formatSportRecord({ ...record, sport: profile.sport }) : null]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
               {profile.tagline && <p className="mt-1 text-sm italic text-fog">{profile.tagline}</p>}
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
@@ -225,28 +237,43 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
       <div className="container-cr grid gap-6 py-10 lg:grid-cols-[1fr_1.6fr]">
         {/* Left column */}
         <div className="space-y-6">
-          <div className="card-surface flex flex-col items-center gap-4 p-6">
-            <RecordDonut wins={profile.wins} losses={profile.losses} draws={profile.draws} />
-            <div className="grid w-full grid-cols-3 gap-2 text-center">
-              {[["Wins", profile.wins, "text-up"], ["Losses", profile.losses, "text-down"], ["Draws", profile.draws, "text-fog"]].map(([l, v, c]) => (
-                <div key={l as string} className="rounded-lg bg-ink-950/40 p-2">
-                  <p className={`font-display text-xl font-bold ${c}`}>{v as number}</p>
-                  <p className="text-[0.6rem] uppercase tracking-wider text-fog">{l as string}</p>
-                </div>
-              ))}
+          {/* The record block renders only when there IS a record. It used to
+              take profile.wins/losses/draws raw, so a fighter whose record has
+              not been imported got a donut of nothing and three large zeros —
+              directly above a fight history listing their bouts and results.
+              See lib/fighters/record: stored, derived, or nothing. */}
+          {record && (
+            <div className="card-surface flex flex-col items-center gap-4 p-6">
+              <RecordDonut wins={record.wins} losses={record.losses} draws={record.draws} />
+              <div className="grid w-full grid-cols-3 gap-2 text-center">
+                {[["Wins", record.wins, "text-up"], ["Losses", record.losses, "text-down"], ["Draws", record.draws, "text-fog"]].map(([l, v, c]) => (
+                  <div key={l as string} className="rounded-lg bg-ink-950/40 p-2">
+                    <p className={`font-display text-xl font-bold ${c}`}>{v as number}</p>
+                    <p className="text-[0.6rem] uppercase tracking-wider text-fog">{l as string}</p>
+                  </div>
+                ))}
+              </div>
+              {record.source === "derived" && (
+                // A count of the bouts we hold is a FLOOR, not an official
+                // record — we do not have every fighter's regional or amateur
+                // career. Saying so is what makes showing it honest.
+                <p className="text-center text-[0.65rem] leading-snug text-fog">
+                  Counted from {record.countedBouts} recorded {record.countedBouts === 1 ? "bout" : "bouts"} on Combat Reviews. No official record imported yet.
+                </p>
+              )}
+              {showStreak && streak !== 0 && (
+                <p
+                  className={`w-full rounded-lg py-1.5 text-center font-display text-xs font-bold uppercase tracking-wide ${
+                    streak > 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"
+                  }`}
+                >
+                  {streak > 0 ? `${streak}-fight win streak` : `${-streak}-fight skid`}
+                </p>
+              )}
             </div>
-            {streak !== 0 && (
-              <p
-                className={`w-full rounded-lg py-1.5 text-center font-display text-xs font-bold uppercase tracking-wide ${
-                  streak > 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"
-                }`}
-              >
-                {streak > 0 ? `${streak}-fight win streak` : `${-streak}-fight skid`}
-              </p>
-            )}
-          </div>
+          )}
 
-          {fighter.wins > 0 && (
+          {record && record.wins > 0 && fighter.koWins > 0 && (
             <div className="card-surface space-y-4 p-6">
               <h3 className="font-display text-sm font-bold uppercase tracking-wide text-fog">Finishing</h3>
               <StatBar label="KO / TKO Ratio" value={ko} tone="red" />
@@ -254,18 +281,20 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
             </div>
           )}
 
-          <div className="card-surface p-6">
-            <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-fog">Vital Stats</h3>
-            <dl className="grid grid-cols-2 gap-3">
-              {stats.map((s) => (
-                <div key={s.label} className="rounded-lg bg-ink-950/40 p-3">
-                  <s.icon className="mb-1 size-4 text-blood-400" />
-                  <dt className="text-[0.6rem] uppercase tracking-wider text-fog">{s.label}</dt>
-                  <dd className="truncate font-display text-sm font-bold text-chalk">{s.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
+          {stats.length > 0 && (
+            <div className="card-surface p-6">
+              <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-fog">Vital Stats</h3>
+              <dl className="grid grid-cols-2 gap-3">
+                {stats.map((s) => (
+                  <div key={s.label} className="rounded-lg bg-ink-950/40 p-3">
+                    <s.icon className="mb-1 size-4 text-blood-400" />
+                    <dt className="text-[0.6rem] uppercase tracking-wider text-fog">{s.label}</dt>
+                    <dd className="truncate font-display text-sm font-bold text-chalk">{s.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
 
           {profile.achievements.length > 0 && (
             <div className="card-surface p-6">
