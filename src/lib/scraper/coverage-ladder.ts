@@ -57,17 +57,26 @@ export const COVERAGE_LADDER: LadderEntry[] = [
     checked: "2026-08-02",
     evidence:
       "The boxing provider. 13 categories (2015-2027), 238 articles discovered, 134 events and " +
-      "1,147 bouts written. Took boxing from 20 events / 77 bouts to 149 / 1,157.",
+      "1,147 bouts written. Took boxing from 20 events / 77 bouts to 149 / 1,157.\n\n" +
+      "RETROSPECTIVE BY NATURE, and this is a structural limit rather than a gap to close: " +
+      "Wikipedia creates a per-fight article around or after the event, so this source can build an " +
+      "archive and can never build a schedule. Boxing holds 1 upcoming event against 149 historical. " +
+      "Forward coverage needs an official promoter — see Matchroom.",
   },
   {
     org: "Matchroom Boxing",
     sport: "BOXING",
-    status: "thin",
+    status: "supported",
     checked: "2026-08-02",
     evidence:
-      "381-URL events sitemap (excellent discovery), crawlable. But NO JSON-LD and the event page " +
-      "carries only the headline bout plus a one-line result — no undercard, no venue, no broadcaster. " +
-      "Wikipedia already gives the full card for the same fights, so this adds requests and no bouts.",
+      "RE-EVALUATED for FORWARD schedule, and the earlier 'thin' verdict was right for history and " +
+      "wrong for the schedule. A PAST page (canelo-vs-jacobs) carries only the headline bout and a " +
+      "one-line result, which is why Wikipedia beat it for the archive. An UPCOMING page " +
+      "(joshua-vs-prenga, 25 Jul 2026) carries date, venue, broadcaster (DAZN), a tickets link, the " +
+      "headline bout AND the undercard with title designations. Wikipedia has NOTHING forward — it " +
+      "writes a card up around or after the fight — so for the schedule this is the best source " +
+      "available, not the weakest. 381-URL events sitemap, crawlable, no JSON-LD (HTML extraction). " +
+      "THE BOXING SCHEDULE FIX: boxing currently holds ONE upcoming event.",
   },
   {
     org: "Top Rank / PBC / Golden Boy / Queensberry",
