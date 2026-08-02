@@ -75,8 +75,12 @@ async function duplicateEvents() {
   const dupes = [...byKey.entries()].filter(([, v]) => v.length > 1);
   report({
     id: "duplicate-events",
-    label: "Same promotion, same DAY, more than one event row",
-    why: "One card split across two rows halves its bouts, picks and discussion, and both copies look fine in isolation.",
+    label: "Same promotion, same DAY, more than one event row (COLLISIONS, not duplicates)",
+    why:
+      "A HEURISTIC, and mostly a false alarm — run `npm run audit:duplicates` for the classification. " +
+      "Measured 2026-08-02: of 75 collisions only 2 were genuine duplicates. 49 were divisions of one " +
+      "championship (every World Judo weight class shares a day) and 13 were numbered episodes of one " +
+      "series (ONE's 'No Surrender' 1/2/3). Merging on this number alone would destroy real events.",
     count: dupes.length,
     samples: dupes.map(([k, v]) => `${k} → ${v.map((e) => `${e.slug}(${e._count.fights} bouts)`).join(" + ")}`),
   });

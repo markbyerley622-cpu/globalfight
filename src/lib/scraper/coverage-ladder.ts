@@ -42,6 +42,10 @@ export interface LadderEntry {
   checked: string | null;
   /** What was found, in enough detail to act on without re-checking. */
   evidence: string;
+  /** One line, for a `blocked` entry: WHY, so the dashboard can state it. */
+  blockedReason?: string;
+  /** What to use instead. A block with no alternative is an open question. */
+  recommendedReplacement?: string;
 }
 
 export const COVERAGE_LADDER: LadderEntry[] = [
@@ -146,11 +150,23 @@ export const COVERAGE_LADDER: LadderEntry[] = [
     status: "blocked",
     checked: "2026-08-02",
     evidence:
-      "A provider EXISTS and is wired into the runner (lib/scraper/adcc, case 'adcc'), but " +
-      "https://adcombat.com/adcc-events/ now answers HTTP 403 Forbidden. That is why BJJ holds ONE " +
-      "event: the provider is not missing, it is being refused. syncADCC swallows the failure into " +
-      "report.warnings and returns zero events, so the runner reports it rather than showing a silent " +
-      "zero — but the source is dead until the block is understood.",
+      "DIAGNOSED 2026-08-02. The provider is not missing and its code is not broken — the host " +
+      "refuses us. Precisely: /robots.txt returns 200 and permits ALL crawling ('User-agent: *', " +
+      "'Disallow:' empty) and advertises /sitemap_index.xml — but the homepage AND that very sitemap " +
+      "both return HTTP 403. So the site's published policy allows us while an edge layer (WAF / bot " +
+      "manager) blocks every non-browser client. It is not a robots decision, not a rate limit (a " +
+      "single cold request is refused), not an endpoint change and not a code regression.\n\n" +
+      "NOT WORKED AROUND, deliberately. lib/scraper/http is an explicitly honest client — one " +
+      "identifying UA, no rotation, no browser spoofing, no challenge solving — and its stated " +
+      "contract is that a 403 is FINAL. Spoofing a browser to get past a WAF would defeat a control " +
+      "the operator chose to apply, whatever robots.txt says.",
+    blockedReason:
+      "Edge WAF returns 403 to all non-browser clients, including the sitemap its own robots.txt " +
+      "advertises. Respecting it; not evading it.",
+    recommendedReplacement:
+      "Wikipedia ADCC World Championship editions, ALREADY CONFIGURED in tournament/config.ts " +
+      "(key 'bjj', hubs '{year} ADCC World Championship'). Verified working — but medals-only and " +
+      "biennial, so it yields ~1 event per championship. Real BJJ volume needs IBJJF / WNO / Polaris.",
   },
   {
     org: "Wikipedia — ADCC World Championship editions",

@@ -37,6 +37,7 @@
     "cards:mark-complete": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/mark-complete.mts",
     "test:tournament": "node --import tsx --test \"src/lib/scraper/tournament/__tests__/**/*.test.ts\"",
     "audit:integrity": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/integrity-audit.mts",
+    "audit:duplicates": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/classify-duplicates.mts",
     "dm:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/dm-smoke.mts",
     "repair:entity-duplicates": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/merge-entity-duplicates.mts",
     "audit:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/audit-wikicards.mts",
