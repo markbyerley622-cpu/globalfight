@@ -51,6 +51,28 @@ export interface FeatureFlags {
   /** Allow automated download/re-hosting of third-party media. */
   mediaIngestionEnabled: boolean;
 
+  // ── Per-provider ingestion ─────────────────────────────────────────────
+  //
+  // ENABLE_SCRAPER is the master gate and stays the one switch that stops all
+  // network ingestion. These sit BELOW it and are per-sport, so a new provider
+  // can be shipped, deployed and left off until it has been watched on the
+  // provider dashboard — rather than going live the moment it merges.
+  //
+  // A provider runs only when ENABLE_SCRAPER *and* its own flag are true. Both
+  // fail closed: anything other than the exact string "true" is off.
+  /** Wikipedia category-discovery boxing provider (lib/scraper/boxing). */
+  boxingProviderEnabled: boolean;
+  /** Muay Thai ingestion beyond what ONE already supplies. */
+  muayThaiProviderEnabled: boolean;
+  /** BJJ / grappling ingestion (ADCC and successors). */
+  bjjProviderEnabled: boolean;
+  /**
+   * Historical BACKFILL, as distinct from incremental sync. A backfill walks
+   * every year a source has and is the expensive, long-running mode; leaving it
+   * behind its own switch means a daily cron cannot accidentally start one.
+   */
+  providerBackfillEnabled: boolean;
+
   // ── User-generated content ─────────────────────────────────────────────
   /** Accept PUBLISHED user media: clips and forum attachments. */
   ugcMediaUploadsEnabled: boolean;
@@ -93,6 +115,10 @@ export function readFlags(env: NodeJS.ProcessEnv = process.env): FeatureFlags {
     rankingsEnabled: on("RANKINGS_ENABLED", env),
     rankingsIngestEnabled: on("RANKINGS_INGEST_ENABLED", env),
     mediaIngestionEnabled: on("MEDIA_INGESTION_ENABLED", env),
+    boxingProviderEnabled: on("BOXING_PROVIDER_ENABLED", env),
+    muayThaiProviderEnabled: on("MUAYTHAI_PROVIDER_ENABLED", env),
+    bjjProviderEnabled: on("BJJ_PROVIDER_ENABLED", env),
+    providerBackfillEnabled: on("PROVIDER_BACKFILL_ENABLED", env),
 
     ugcMediaUploadsEnabled: on("UGC_MEDIA_UPLOADS_ENABLED", env),
     // Inherits the broad flag: turning UGC media on cannot leave profile images off,

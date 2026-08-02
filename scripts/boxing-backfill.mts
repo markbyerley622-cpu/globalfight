@@ -53,6 +53,15 @@ if (yearsArg) {
 async function main() {
   console.log(`\n  Boxing backfill — ${DRY ? "DRY RUN" : "WRITING"}  years ${years[0]}–${years[years.length - 1]}\n`);
 
+  // A backfill walks every year a source has: the expensive, long-running mode.
+  // It sits behind its own switch so a scheduled job can never start one by
+  // accident, and `--force` is the deliberate local override.
+  if (!DRY && !flag("force") && process.env.PROVIDER_BACKFILL_ENABLED !== "true") {
+    console.log("  PROVIDER_BACKFILL_ENABLED is not \"true\" — refusing to write.");
+    console.log("  Set it in the environment, or pass --force to override locally, or --dry-run to preview.\n");
+    return;
+  }
+
   // RESUMABLE: article titles already ingested are skipped before a request.
   const existing = await prisma.eventExternalId.findMany({
     where: { source: "wikipedia-category" },

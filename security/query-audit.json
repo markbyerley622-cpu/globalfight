@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 916,
+    "queries": 921,
     "high": 0,
     "medium": 76,
     "low": 161,
-    "info": 679,
-    "public": 615,
+    "info": 684,
+    "public": 620,
     "userOwned": 209,
     "shared": 92,
     "admin": 0
@@ -3457,7 +3457,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 88,
+      "line": 89,
       "fn": "upsertFighter",
       "model": "Fighter",
       "method": "update",
@@ -3470,7 +3470,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 92,
+      "line": 93,
       "fn": "row",
       "model": "Fighter",
       "method": "upsert",
@@ -3483,7 +3483,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 118,
+      "line": 119,
       "fn": "linkFighterExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -3496,7 +3496,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 201,
+      "line": 217,
       "fn": "upsertEvent",
       "model": "Event",
       "method": "update",
@@ -3509,7 +3509,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 209,
+      "line": 225,
       "fn": "row",
       "model": "Event",
       "method": "upsert",
@@ -3522,7 +3522,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 296,
+      "line": 312,
       "fn": "refreshCardCompletion",
       "model": "Event",
       "method": "update",
@@ -3535,7 +3535,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 312,
+      "line": 328,
       "fn": "linkEventExternalId",
       "model": "EventExternalId",
       "method": "upsert",
@@ -3548,7 +3548,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 357,
+      "line": 373,
       "fn": "recordFightImport",
       "model": "FightImport",
       "method": "upsert",
@@ -3561,7 +3561,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 374,
+      "line": 390,
       "fn": "linkCornerExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -3574,7 +3574,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 413,
+      "line": 432,
       "fn": "redId",
       "model": "Fighter",
       "method": "upsert",
@@ -3587,7 +3587,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 416,
+      "line": 435,
       "fn": "blueId",
       "model": "Fighter",
       "method": "upsert",
@@ -3600,7 +3600,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 500,
+      "line": 519,
       "fn": "outcome",
       "model": "Fight",
       "method": "update",
@@ -3613,7 +3613,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 511,
+      "line": 530,
       "fn": "created",
       "model": "Fight",
       "method": "upsert",
@@ -5762,6 +5762,84 @@
       "fn": "ids",
       "model": "Fighter",
       "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 82,
+      "fn": "grouped",
+      "model": "EventExternalId",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 100,
+      "fn": "getProviderHealth",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 101,
+      "fn": "getProviderHealth",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 143,
+      "fn": "getProviderHealth",
+      "model": "Event",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 144,
+      "fn": "getProviderHealth",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 153,
+      "fn": "bouts",
+      "model": "Fight",
+      "method": "count",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",
@@ -11153,7 +11231,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 261,
+      "line": 281,
       "fn": "total",
       "model": "Ranking",
       "method": "count",
@@ -11166,7 +11244,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 264,
+      "line": 284,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11179,20 +11257,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 277,
-      "fn": "anyCurated",
-      "model": "Ranking",
-      "method": "count",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/repo.prisma.ts",
-      "line": 299,
+      "line": 319,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "findMany",
@@ -11205,7 +11270,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 300,
+      "line": 320,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "count",
@@ -11218,7 +11283,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 306,
+      "line": 326,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -11231,7 +11296,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 313,
+      "line": 333,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11244,7 +11309,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 327,
+      "line": 347,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findUnique",
@@ -11257,7 +11322,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 328,
+      "line": 348,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11270,7 +11335,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 361,
+      "line": 381,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -11283,7 +11348,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 363,
+      "line": 383,
       "fn": "rows",
       "model": "OddsSnapshot",
       "method": "findMany",
@@ -11296,7 +11361,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 386,
+      "line": 406,
       "fn": "rows",
       "model": "Champion",
       "method": "findMany",
@@ -11309,7 +11374,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 467,
+      "line": 487,
       "fn": "rows",
       "model": "Event",
       "method": "findMany",
@@ -11322,7 +11387,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 494,
+      "line": 514,
       "fn": "getResults",
       "model": "Event",
       "method": "findMany",
@@ -11335,7 +11400,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 501,
+      "line": 521,
       "fn": "getResults",
       "model": "Event",
       "method": "count",
@@ -11348,7 +11413,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 513,
+      "line": 533,
       "fn": "e",
       "model": "Event",
       "method": "findFirst",
@@ -11361,7 +11426,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 525,
+      "line": 545,
       "fn": "f",
       "model": "Fight",
       "method": "findFirst",
@@ -11374,7 +11439,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 533,
+      "line": 553,
       "fn": "fighter",
       "model": "Fighter",
       "method": "findUnique",
@@ -11387,7 +11452,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 535,
+      "line": 555,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -11400,7 +11465,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 544,
+      "line": 564,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -11413,7 +11478,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 571,
+      "line": 591,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -11426,7 +11491,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 585,
+      "line": 605,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -11439,7 +11504,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 596,
+      "line": 616,
       "fn": "a",
       "model": "Article",
       "method": "findFirst",
@@ -11452,7 +11517,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 600,
+      "line": 620,
       "fn": "a",
       "model": "Article",
       "method": "findUnique",
@@ -12323,7 +12388,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 134,
+      "line": 135,
       "fn": "exists",
       "model": "FighterAlias",
       "method": "findFirst",
@@ -12336,7 +12401,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 136,
+      "line": 137,
       "fn": "recordAliases",
       "model": "FighterAlias",
       "method": "create",
@@ -12349,7 +12414,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 197,
+      "line": 213,
       "fn": "current",
       "model": "Event",
       "method": "findUnique",
@@ -12362,7 +12427,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 269,
+      "line": 285,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -12375,7 +12440,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 276,
+      "line": 292,
       "fn": "refreshCardCompletion",
       "model": "Fight",
       "method": "count",
@@ -12388,7 +12453,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 277,
+      "line": 293,
       "fn": "refreshCardCompletion",
       "model": "Fight",
       "method": "count",
@@ -12401,7 +12466,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 288,
+      "line": 304,
       "fn": "sources",
       "model": "EventExternalId",
       "method": "findMany",
@@ -12414,7 +12479,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 397,
+      "line": 413,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findFirst",
@@ -12427,7 +12492,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 473,
+      "line": 492,
       "fn": "existing",
       "model": "Fight",
       "method": "findFirst",
@@ -12440,7 +12505,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 484,
+      "line": 503,
       "fn": "existing",
       "model": "Fight",
       "method": "findUnique",
