@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ProfileView } from "@/components/profile/profile-view";
+import { getCurrentUser } from "@/lib/auth";
+import { getFollowCounts } from "@/lib/geo/people";
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -7,6 +9,26 @@ export const metadata: Metadata = {
   alternates: { canonical: "/profile" },
 };
 
-export default function ProfilePage() {
-  return <ProfileView />;
+/**
+ * Follower/following counts are resolved HERE, on the server, and passed down.
+ *
+ * They were present on /u/[username] — everyone else's profile — and absent from
+ * your own, which is the one profile you look at most. The follow feature was
+ * built and then invisible to its own users: you could see that a stranger had
+ * followers and had no way to see whether anyone had followed you.
+ *
+ * Done server-side because this page already renders on the server and the
+ * counts are two indexed COUNT queries; a client fetch would add a round-trip
+ * and a loading state to a number that is ready before the page is sent.
+ */
+export default async function ProfilePage() {
+  const viewer = await getCurrentUser();
+  const followCounts = viewer ? await getFollowCounts(viewer.id) : null;
+
+  return (
+    <ProfileView
+      followCounts={followCounts}
+      username={viewer?.username ?? null}
+    />
+  );
 }

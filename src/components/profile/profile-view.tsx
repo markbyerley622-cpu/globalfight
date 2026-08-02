@@ -16,7 +16,15 @@ const initials = (u: { name: string | null; username: string | null }) =>
 
 /** The user's profile: identity (with editable banner + avatar) + account
  *  shortcuts + settings. */
-export function ProfileView() {
+export function ProfileView({
+  followCounts = null,
+  username: serverUsername = null,
+}: {
+  /** Resolved on the server in app/profile/page.tsx. Null when signed out. */
+  followCounts?: { followers: number; following: number } | null;
+  /** The signed-in handle as the SERVER saw it, used only to build the links. */
+  username?: string | null;
+} = {}) {
   const t = useT();
   const { user, loading, refresh } = useAuth();
   const [uploading, setUploading] = useState<null | "avatar" | "banner">(null);
@@ -155,6 +163,24 @@ export function ProfileView() {
         <EditProfileLink />
       </div>
 
+      {/* Followers / following. Shown even at zero: "0 followers" is a real
+          answer, and hiding the row until someone arrives means the feature is
+          invisible to exactly the people who have not been found yet. */}
+      {followCounts && (user.username ?? serverUsername) && (
+        <div className="mt-3 flex items-center gap-5">
+          <FollowStat
+            href={`/u/${user.username ?? serverUsername}/followers`}
+            value={followCounts.followers}
+            label={followCounts.followers === 1 ? "follower" : "followers"}
+          />
+          <FollowStat
+            href={`/u/${user.username ?? serverUsername}/following`}
+            value={followCounts.following}
+            label="following"
+          />
+        </div>
+      )}
+
       {/* Today — the daily surface. Given its own card above the all-time stats
           because it is the only thing on this screen that changes on a day
           with no fights, and burying it in the shortcut list made it look
@@ -214,6 +240,20 @@ export function ProfileView() {
  * fetch that would compete with the profile's own content) and no stats. It gives
  * the link, copy, share, and a way through to the rest.
  */
+/** One tappable count. Mirrors the pair on /u/[username] so the two profiles
+ *  read identically — the same fact should not have two presentations. */
+function FollowStat({ href, value, label }: { href: string; value: number; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-baseline gap-1.5 rounded-lg px-1 py-0.5 transition-colors hover:bg-ink-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+    >
+      <span className="font-display text-base font-bold text-chalk">{value.toLocaleString()}</span>
+      <span className="text-[0.75rem] text-fog group-hover:text-mist">{label}</span>
+    </Link>
+  );
+}
+
 function InviteCard({ username, name }: { username: string; name: string }) {
   const path = `/invite/${username}`;
   return (
