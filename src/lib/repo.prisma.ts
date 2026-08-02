@@ -244,9 +244,26 @@ export async function getRankingDivisions(sportValue: string): Promise<RankingDi
 }
 
 /**
- * Pound-for-pound for a sport. Boxing has a curated Ranking table; other
- * sports derive a top list straight from the fighter database (real fighters
- * ordered by record), so every sport has a populated P4P. Paginated, 10/page.
+ * Pound-for-pound for a sport — SOURCE-BACKED ROWS ONLY.
+ *
+ * `source: "generated"` rankings are excluded from every public read. They are
+ * derived from our own fighter table (top records, ordered by a rating we
+ * compute), which is a reasonable internal signal and NOT a pound-for-pound
+ * ranking anyone should be shown as fact.
+ *
+ * What made that concrete: the generated boxing P4P read
+ * "#1 Inoue, #2 Crawford, #3 Usyk, #4 Canelo, #5 Mariusz Wach" — the top four
+ * were surname-only stubs seeded by a ranking import with ZERO bouts, and the
+ * fifth was an artefact of a thin dataset. Once the boxing provider landed, the
+ * real Terence Crawford / Oleksandr Usyk / Canelo Álvarez profiles existed
+ * alongside those stubs, so the generated list linked readers to empty pages
+ * while the populated ones sat elsewhere. Generated MMA was the same shape.
+ *
+ * The curated lists (BJJ, wrestling, Muay Thai, kickboxing, bare-knuckle) are
+ * transcribed from named public rankings with a date and a confidence rubric —
+ * those are shown. See lib/rankings/curated/lists.
+ *
+ * An empty sport is honest; a guessed one is not. Paginated, 10/page.
  */
 export async function getPoundForPoundBySport(
   sportValue: string | undefined, page: number, limit = 10,
@@ -255,6 +272,9 @@ export async function getPoundForPoundBySport(
   // No sportValue → "All Sports": the top rated across every combat sport.
   const where = {
     isPoundForPound: true,
+    // The gate. Applied to the COUNT as well as the rows, or the pager would
+    // promise pages of results the query then refuses to return.
+    source: { not: "generated" },
     ...(sportValue ? { fighter: { sport: sportValue as PFighter["sport"] } } : {}),
   };
 
@@ -273,8 +293,8 @@ export async function getPoundForPoundBySport(
     skip, take: limit,
     include: { fighter: { include: { titles: true } } },
   });
-  // If any row is from a scrape/official import it's curated; else generated.
-  const anyCurated = await prisma.ranking.count({ where: { ...where, source: { not: "generated" } } });
+  // Everything that survives the filter is curated by definition — the second
+  // count this used to run could only ever return the same rows.
   return {
     items: rows.map((r) => ({
       rank: r.rank, previousRank: r.previousRank ?? undefined,
@@ -282,7 +302,7 @@ export async function getPoundForPoundBySport(
       fighter: mapFighter(r.fighter),
     })),
     total,
-    source: anyCurated > 0 ? "curated" : "generated",
+    source: "curated",
   };
 }
 
