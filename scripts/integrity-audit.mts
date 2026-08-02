@@ -217,7 +217,11 @@ async function sportDrift() {
   report({
     id: "sport-drift",
     label: "Cards whose every fighter is filed under a different sport than the card",
-    why: "Sport drives filters, the directory and ranking eligibility — ONE Friday Fights sitting under MMA is how a Muay Thai corpus became invisible.",
+    why:
+      "EXPECTED on mixed cards, since Fight.ruleset became the authority. Event.sport is the CARD's " +
+      "majority ruleset and Fighter.sport is a DISCIPLINE derived from bouts — a ONE card of Muay Thai " +
+      "specialists is legitimately labelled MMA. Investigate only when the card is from a " +
+      "single-ruleset promotion, where the two must agree.",
     count: drifted.length,
     samples: drifted.slice(0, LIST_CAP).map((e) => `${e.slug} card=${e.sport} fighters=${e.fights[0]?.red.sport}`),
   });

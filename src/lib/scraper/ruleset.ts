@@ -28,6 +28,128 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import type { Sport } from "@/lib/types";
+import type { Ruleset } from "@prisma/client";
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE CANONICAL RULESET MAPPING. Every provider goes through this.
+//
+//  Fight.ruleset is now a first-class column and the authority for fighter
+//  discipline; Event.sport is contextual metadata about the CARD. Any provider
+//  that classified a bout from its event was producing the Superlek bug — a
+//  Muay Thai world champion proposed for reclassification to MMA at confidence
+//  1.00, because his bouts sit on mixed ONE cards.
+//
+//  A ruleset is READ or it is UNKNOWN. It is never inferred here.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** How much a stated ruleset is worth, by where it came from. */
+export const RULESET_CONFIDENCE = {
+  /** The source named the ruleset on the bout itself ("Featherweight Muay Thai"). */
+  stated: 1,
+  /**
+   * Derived from a promotion that only ever runs ONE ruleset (GLORY is
+   * kickboxing; a World Judo Championship is judo). Sound, but a step removed
+   * from the bout, so a stated value supersedes it.
+   */
+  singleRulesetPromotion: 0.8,
+} as const;
+
+/**
+ * A ruleset phrase → the enum. Returns null when nothing is named, so the
+ * caller stores UNKNOWN rather than a default.
+ *
+ * Order matters: "submission grappling" before "grappling", "muay thai" before
+ * both "thai" and "boxing", and bare "mma" last.
+ */
+export function toRuleset(label: string | null | undefined): Ruleset | null {
+  if (!label) return null;
+  const s = label.toLowerCase();
+  if (/\bmuay\s*thai\b|\bthai\s*boxing\b/.test(s)) return "MUAY_THAI";
+  if (/\blethwei\b/.test(s)) return "LETHWEI";
+  if (/\bsanda\b|\bsan\s*shou\b/.test(s)) return "SANDA";
+  if (/\bsavate\b/.test(s)) return "SAVATE";
+  if (/\bkickboxing\b|\bk-?1\b/.test(s)) return "KICKBOXING";
+  if (/\bkarate\b/.test(s)) return "KARATE";
+  if (/\bbare[\s-]?knuckle\b/.test(s)) return "BARE_KNUCKLE";
+  if (/\bsubmission\s+grappling\b|\bno[\s-]?gi\b|\bgrappling\b/.test(s)) return "SUBMISSION_GRAPPLING";
+  if (/\bjiu[\s-]?jitsu\b|\bbjj\b/.test(s)) return "BJJ";
+  if (/\bcombat\s+sambo\b/.test(s)) return "COMBAT_SAMBO";
+  if (/\bsambo\b/.test(s)) return "SAMBO";
+  if (/\bfreestyle\b|\bgreco[\s-]?roman\b|\bwrestling\b/.test(s)) return "WRESTLING";
+  if (/\bjudo\b/.test(s)) return "JUDO";
+  if (/\btaekwondo\b/.test(s)) return "TAEKWONDO";
+  if (/\bboxing\b/.test(s)) return "BOXING";
+  if (/\bmma\b|\bmixed\s+martial\s+arts\b/.test(s)) return "MMA";
+  return null;
+}
+
+/**
+ * A Ruleset → the Sport a fighter is credited with for competing under it.
+ *
+ * Mostly one-to-one. The interesting cases are the ones where the ruleset space
+ * is deliberately wider than the sport space:
+ *   • SUBMISSION_GRAPPLING is scored differently from gi BJJ but a competitor
+ *     belongs in the same directory, so both credit BJJ;
+ *   • KARATE / LETHWEI / SANDA / SAVATE have no Sport yet — they return null,
+ *     which keeps the bout out of every directory rather than filing it under a
+ *     sport it is not. Adding one later is a line here, not a migration.
+ */
+export function rulesetToSport(ruleset: Ruleset | null | undefined): Sport | null {
+  switch (ruleset) {
+    case "MMA": return "MMA";
+    case "BOXING": return "BOXING";
+    case "MUAY_THAI": return "MUAY_THAI";
+    case "KICKBOXING": return "KICKBOXING";
+    case "BARE_KNUCKLE": return "BARE_KNUCKLE";
+    case "BJJ": return "BJJ";
+    case "SUBMISSION_GRAPPLING": return "BJJ_NOGI";
+    case "WRESTLING": return "WRESTLING";
+    case "JUDO": return "JUDO";
+    case "SAMBO": return "SAMBO";
+    case "COMBAT_SAMBO": return "COMBAT_SAMBO";
+    case "TAEKWONDO": return "TAEKWONDO";
+    // No Sport for these yet — null keeps them out of every directory rather
+    // than misfiling them.
+    case "KARATE":
+    case "LETHWEI":
+    case "SANDA":
+    case "SAVATE":
+    case "UNKNOWN":
+    default:
+      return null;
+  }
+}
+
+/**
+ * A promotion's Sport → the ruleset every one of its bouts is contested under,
+ * or null when the promotion runs MORE THAN ONE and the card cannot answer for
+ * the bout.
+ *
+ * This is the ONLY legitimate use of event-level data for bout classification,
+ * and it is legitimate precisely because it is conditional: a GLORY card is
+ * kickboxing throughout, so the event tells us the bout's rules. A ONE card
+ * does not, and returns null so the bout stays UNKNOWN until a source states it.
+ */
+export function rulesetFromSingleRulesetSport(sport: Sport | null | undefined): Ruleset | null {
+  switch (sport) {
+    case "BOXING": return "BOXING";
+    case "KICKBOXING": return "KICKBOXING";
+    case "MUAY_THAI": return "MUAY_THAI";
+    case "BARE_KNUCKLE": return "BARE_KNUCKLE";
+    case "WRESTLING": return "WRESTLING";
+    case "JUDO": return "JUDO";
+    case "TAEKWONDO": return "TAEKWONDO";
+    case "SAMBO": return "SAMBO";
+    case "COMBAT_SAMBO": return "COMBAT_SAMBO";
+    case "BJJ": return "BJJ";
+    case "BJJ_NOGI": return "SUBMISSION_GRAPPLING";
+    // MMA is the one that must NOT map. It is both a real ruleset and the label
+    // every mixed card carries, so an MMA event tells us nothing about whether a
+    // given bout on it was MMA — which is the entire bug.
+    case "MMA": return null;
+    default: return null;
+  }
+}
 
 /**
  * The ruleset named inside a weight-class label, or null when it names none.

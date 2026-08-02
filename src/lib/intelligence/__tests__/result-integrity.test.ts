@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isDecided, preventResultDowngrade, requireAttributedWinner } from "../result-integrity";
+import {
+  isDecided, preventResultDowngrade, requireAttributedWinner, preventRulesetDowngrade,
+} from "../result-integrity";
 
 test("isDecided: SCHEDULED and null are not decided; outcomes are", () => {
   assert.equal(isDecided("SCHEDULED"), false);
@@ -87,6 +89,49 @@ test("draws and no-contests legitimately have no winner and are left alone", () 
     assert.equal(out.rejected, false);
     assert.deepEqual(out.update, update);
   }
+});
+
+// ── preventRulesetDowngrade ───────────────────────────────────────────────
+// Fight.ruleset is the authority for fighter discipline, and the providers that
+// can state it are a minority. They all run on the same cron and touch the same
+// rows, so without this the LAST writer wins and a known Muay Thai bout is
+// silently downgraded to UNKNOWN by an unrelated re-ingest.
+
+const stated = { ruleset: "MUAY_THAI", rulesetConfidence: 1 };
+
+test("an incoming UNKNOWN never overwrites a known ruleset", () => {
+  const out = preventRulesetDowngrade(stated, { ruleset: "UNKNOWN", rulesetConfidence: 0, mainEvent: true });
+  assert.equal("ruleset" in out, false);
+  assert.equal("rulesetConfidence" in out, false);
+  assert.equal(out.mainEvent, true, "unrelated fields survive");
+});
+
+test("a weaker source never overwrites a stronger one", () => {
+  // 0.8 = derived from a single-ruleset promotion; 1 = stated on the bout.
+  const out = preventRulesetDowngrade(stated, { ruleset: "KICKBOXING", rulesetConfidence: 0.8 });
+  assert.equal("ruleset" in out, false);
+});
+
+test("an EQUAL-confidence correction still lands", () => {
+  // A fixed value from the same class of source must not be locked out.
+  const out = preventRulesetDowngrade(stated, { ruleset: "KICKBOXING", rulesetConfidence: 1 });
+  assert.equal(out.ruleset, "KICKBOXING");
+});
+
+test("a stronger source supersedes a weaker stored value", () => {
+  const derived = { ruleset: "BOXING", rulesetConfidence: 0.8 };
+  const out = preventRulesetDowngrade(derived, { ruleset: "MUAY_THAI", rulesetConfidence: 1 });
+  assert.equal(out.ruleset, "MUAY_THAI");
+});
+
+test("an UNKNOWN stored value accepts anything — there is nothing to protect", () => {
+  const out = preventRulesetDowngrade({ ruleset: "UNKNOWN", rulesetConfidence: null }, { ruleset: "BJJ", rulesetConfidence: 0.8 });
+  assert.equal(out.ruleset, "BJJ");
+});
+
+test("an update that says nothing about the ruleset is untouched", () => {
+  const update = { mainEvent: true, orderOnCard: 2 };
+  assert.deepEqual(preventRulesetDowngrade(stated, update), update);
 });
 
 test("unrelated fields survive a rejection", () => {

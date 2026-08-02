@@ -10,7 +10,7 @@
 import type { FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
-import { preventResultDowngrade, requireAttributedWinner } from "@/lib/intelligence/result-integrity";
+import { preventResultDowngrade, requireAttributedWinner, preventRulesetDowngrade } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { onResultWritten } from "@/lib/intelligence/resolve";
 import { recordIngestEvidence } from "@/lib/results/pipeline";
@@ -18,6 +18,7 @@ import { notifyEventChanges, snapshotEvent } from "@/lib/social/event-triggers";
 import { notifyFightAnnounced, notifyFightChanges } from "@/lib/social/fighter-triggers";
 import { slugify } from "@/lib/utils";
 import { normalizeText } from "@/lib/text/entities";
+import { RULESET_CONFIDENCE } from "@/lib/scraper/ruleset";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
@@ -458,10 +459,24 @@ async function upsertFight(
       );
     }
 
+    // The bout's ruleset, when the PROVIDER stated it. Never derived from the
+    // event here — a provider that does not know leaves it unset and the column
+    // stays UNKNOWN, which a backfill can close later. Guessing now would be
+    // indistinguishable from knowing.
+    const rulesetFields = stub.ruleset
+      ? {
+          ruleset: stub.ruleset,
+          rulesetConfidence: stub.rulesetConfidence ?? RULESET_CONFIDENCE.stated,
+          rulesetSource: stub.rulesetSource ?? source,
+          rulesetUpdatedAt: new Date(),
+        }
+      : {};
+
     const data = defined({
       eventId,
       redId, blueId,
       weightClassId,
+      ...rulesetFields,
       scheduledRounds: stub.scheduledRounds,
       titleFight: stub.titleFight,
       mainEvent: stub.mainEvent,
@@ -512,8 +527,15 @@ async function upsertFight(
       //      orientation-independent, so the result still lands correctly.
       //  (2) never let a later sync un-decide a bout back to SCHEDULED.
       //  (3) never overwrite operator-locked fields.
+      //  (4) never let a weaker source replace a STATED ruleset. Providers that
+      //      cannot supply one run on the same cron and touch the same rows, so
+      //      without this the last writer wins and a known Muay Thai bout is
+      //      silently downgraded to UNKNOWN by the next unrelated ingest.
       const { redId: _r, blueId: _b, ...corneless } = data;
-      const guarded = preventResultDowngrade(existing.result, corneless);
+      const guarded = preventRulesetDowngrade(
+        existing,
+        preventResultDowngrade(existing.result, corneless),
+      );
       const update = stripLocked(guarded, existing.lockedFields);
       if (Object.keys(update).length > 0) {
         await tx.fight.update({ where: { id: existing.id }, data: update });

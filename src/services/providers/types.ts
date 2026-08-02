@@ -46,6 +46,24 @@ export interface NormalizedFightStub {
   redExternalId?: string;
   blueExternalId?: string;
   weightClass?: string;
+  /**
+   * ── PROVIDER CONTRACT ────────────────────────────────────────────────────
+   * The rules THIS BOUT was contested under. Emit it whenever the source states
+   * it; omit it when the source does not, and persistence stores UNKNOWN.
+   *
+   * NEVER derive this from the event's sport. A ONE card runs four rulesets in
+   * one night, so the card's label is false for most bouts on it — that is the
+   * defect Fight.ruleset exists to fix, and a provider re-deriving it from
+   * Event.sport would reintroduce it one layer down.
+   *
+   * Use toRuleset() from lib/scraper/ruleset to map a source's phrase; do not
+   * write a second classifier.
+   */
+  ruleset?: import("@prisma/client").Ruleset;
+  /** 0–1. Use RULESET_CONFIDENCE from lib/scraper/ruleset. */
+  rulesetConfidence?: number;
+  /** Which provider or derivation stated it, so a better source can supersede. */
+  rulesetSource?: string;
   scheduledRounds?: number;
   titleFight?: boolean;
   mainEvent?: boolean;

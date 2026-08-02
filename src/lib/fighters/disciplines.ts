@@ -65,8 +65,16 @@ export interface ResolvedDisciplines {
 }
 
 export interface DisciplineBout {
-  /** The sport of the EVENT this bout was on. */
-  sport: Sport;
+  /**
+   * The discipline this BOUT was contested under — from Fight.ruleset, mapped
+   * to a Sport. Pass null when the bout's ruleset is UNKNOWN.
+   *
+   * NOT the event's sport. Event.sport is the CARD's majority ruleset and is
+   * false for most bouts on a mixed card, which is what proposed reclassifying
+   * Superlek from Muay Thai to MMA at confidence 1.00. A bout whose ruleset we
+   * do not know contributes NOTHING rather than contributing its card's label.
+   */
+  sport: Sport | null;
   /** A decided bout. Scheduled bouts are weaker evidence. */
   settled: boolean;
 }
@@ -85,6 +93,9 @@ export function resolveDisciplines(input: {
 }): ResolvedDisciplines {
   const tally = new Map<Sport, { settled: number; booked: number }>();
   for (const b of input.bouts) {
+    // An UNKNOWN ruleset is not evidence. Counting it under the card's sport is
+    // precisely the substitution this rewrite removed.
+    if (!b.sport) continue;
     const t = tally.get(b.sport) ?? { settled: 0, booked: 0 };
     if (b.settled) t.settled += 1;
     else t.booked += 1;

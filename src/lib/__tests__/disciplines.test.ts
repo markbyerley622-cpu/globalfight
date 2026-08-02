@@ -8,10 +8,12 @@ import type { DisciplineBout } from "@/lib/fighters/disciplines";
 // nothing revisited them. Fighter.sport is a label written by whichever provider
 // got there first; a fighter's disciplines are what they have actually competed in.
 
+// `sport` here is the BOUT's ruleset mapped to a sport (Fight.ruleset), never
+// the event's — see DisciplineBout.
 const settled = (sport: string, n: number): DisciplineBout[] =>
-  Array.from({ length: n }, () => ({ sport: sport as DisciplineBout["sport"], settled: true }));
+  Array.from({ length: n }, () => ({ sport: sport as NonNullable<DisciplineBout["sport"]>, settled: true }));
 const booked = (sport: string, n: number): DisciplineBout[] =>
-  Array.from({ length: n }, () => ({ sport: sport as DisciplineBout["sport"], settled: false }));
+  Array.from({ length: n }, () => ({ sport: sport as NonNullable<DisciplineBout["sport"]>, settled: false }));
 
 // ── the bug ───────────────────────────────────────────────────────────────
 
@@ -129,10 +131,35 @@ test("classifyDrift separates the repairable from the ambiguous", () => {
 
 test("a sport nobody has coded for still resolves — extensible by construction", () => {
   // Nothing in the resolver enumerates sports, so a future discipline works the
-  // moment an event carries it.
+  // moment a bout's ruleset carries it.
+  const d = resolveDisciplines({ importedSport: "MMA", bouts: settled("LETHWEI", 4) });
+  assert.equal(d.primarySport, "LETHWEI");
+});
+
+test("a bout whose RULESET is unknown contributes nothing", () => {
+  // The substitution this rewrite removed: an UNKNOWN bout used to fall back to
+  // its card's sport, which is how a Muay Thai specialist's mixed-card bouts
+  // read as MMA. It must now be silent evidence, not wrong evidence.
   const d = resolveDisciplines({
     importedSport: "MMA",
-    bouts: settled("LETHWEI" as unknown as DisciplineBout["sport"], 4),
+    bouts: [
+      ...settled("MUAY_THAI", 3),
+      { sport: null, settled: true },
+      { sport: null, settled: true },
+    ],
   });
-  assert.equal(d.primarySport, "LETHWEI");
+  assert.equal(d.primarySport, "MUAY_THAI");
+  assert.deepEqual(d.sports, ["MUAY_THAI"]);
+  // Confidence counts only bouts we can read, so it is not diluted by ignorance.
+  assert.equal(d.confidence, 1);
+});
+
+test("a fighter whose every bout is UNKNOWN falls back to the label, marked", () => {
+  const d = resolveDisciplines({
+    importedSport: "MMA",
+    bouts: [{ sport: null, settled: true }, { sport: null, settled: true }],
+  });
+  assert.equal(d.primarySport, "MMA");
+  assert.equal(d.fromImportOnly, true);
+  assert.equal(d.confidence, 0);
 });

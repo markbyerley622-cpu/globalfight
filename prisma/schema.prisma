@@ -37,6 +37,42 @@ enum Stance {
   SWITCH
 }
 
+/// The rules a BOUT was contested under — a first-class domain concept, not a
+/// property of the card it sat on.
+///
+/// Event.sport was standing in for this and it is wrong for every multi-ruleset
+/// promotion. A ONE numbered card runs MMA, Muay Thai, kickboxing and grappling
+/// in one night; classifying the card by its majority (lib/scraper/ruleset)
+/// gives a useful label for the EVENT and a false one for the individual bout.
+/// The discipline audit proved the cost: it proposed reclassifying Superlek from
+/// MUAY_THAI to MMA at confidence 1.00, because his bouts sit on MMA-labelled
+/// cards.
+///
+/// Deliberately WIDER than Sport: SUBMISSION_GRAPPLING is a distinct ruleset
+/// from BJJ (no gi, different scoring), and KARATE / LETHWEI / SANDA / SAVATE
+/// exist here before any provider emits them so adding one is a mapping change
+/// rather than a migration.
+enum Ruleset {
+  MMA
+  BOXING
+  MUAY_THAI
+  KICKBOXING
+  BJJ
+  SUBMISSION_GRAPPLING
+  WRESTLING
+  JUDO
+  SAMBO
+  COMBAT_SAMBO
+  TAEKWONDO
+  BARE_KNUCKLE
+  KARATE
+  LETHWEI
+  SANDA
+  SAVATE
+  /// We do not know. NEVER a guess — an honest gap a later backfill can fill.
+  UNKNOWN
+}
+
 enum FightResult {
   WIN
   LOSS
@@ -653,6 +689,23 @@ model Fight {
   /// — replaced by Silva". Rendered verbatim next to the bout.
   cardNote         String?
 
+  /// ── The bout's own ruleset ──────────────────────────────────────────────
+  /// Authoritative for fighter discipline. Event.sport is contextual metadata
+  /// about the CARD and must not be used to classify a fighter.
+  ///
+  /// Defaults to UNKNOWN rather than to the event's sport: a wrong ruleset is
+  /// indistinguishable from a right one downstream, and UNKNOWN is a gap a
+  /// backfill can close without having to detect and undo a guess first.
+  ruleset           Ruleset  @default(UNKNOWN)
+  /// 0–1. How much the source told us, not how much we inferred: a ruleset
+  /// stated per bout ("Featherweight Muay Thai") is 1; one derived from a
+  /// single-ruleset promotion is lower; a guess is not stored at all.
+  rulesetConfidence Float?
+  /// Which provider/derivation set it, so a better source can supersede a weaker
+  /// one and a bad backfill can be identified and re-run.
+  rulesetSource     String?
+  rulesetUpdatedAt  DateTime?
+
   // result
   result     FightResult  @default(SCHEDULED)
   winnerId   String? // Fighter.id or null
@@ -682,6 +735,10 @@ model Fight {
   resultCandidate ResultCandidate?
 
   @@index([date, result])
+  /// "Which disciplines does this fighter compete in?" scans a fighter's bouts
+  /// by ruleset — the query behind every directory, filter and ranking once
+  /// discipline is derived from bouts rather than from the event.
+  @@index([ruleset])
   @@index([redId])
   @@index([blueId])
   @@index([eventId, orderOnCard])

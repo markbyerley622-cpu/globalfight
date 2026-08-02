@@ -25,6 +25,7 @@
     "backfill:promotion-index": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/promotion-index-backfill.mts",
     "backfill:year": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/year-page-backfill.mts",
     "backfill:boxing": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/boxing-backfill.mts",
+    "backfill:ruleset": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/ruleset-backfill.mts",
     "test:boxing": "node --import tsx --test \"src/lib/scraper/boxing/__tests__/**/*.test.ts\"",
     "repair:year-misattribution": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/repair-year-misattribution.mts",
     "test:year": "node --import tsx --test \"src/lib/scraper/promotion-index/__tests__/year-*.test.ts\"",

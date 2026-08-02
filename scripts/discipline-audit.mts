@@ -12,6 +12,7 @@
 // belong in, which is the same bug pointed the other way.
 import { prisma } from "../src/lib/db.ts";
 import { resolveDisciplines, classifyDrift, type DriftKind } from "../src/lib/fighters/disciplines.ts";
+import { rulesetToSport } from "../src/lib/scraper/ruleset.ts";
 import type { Sport } from "../src/lib/types.ts";
 
 const argv = process.argv.slice(2);
@@ -76,13 +77,14 @@ function isSafeRepair(from: Sport, to: Sport | null): boolean {
 async function main() {
   console.log(`\n  Discipline audit — ${APPLY ? "APPLYING repairs" : "READ ONLY"}\n`);
 
-  // Bouts carry no sport of their own; the sport is the EVENT's. A bout with no
-  // event tells us nothing and is excluded rather than defaulted.
+  // Fight.ruleset, NOT Event.sport. The event's sport is the card's majority
+  // ruleset and is false for most bouts on a mixed card — reading it here is
+  // what proposed reclassifying Superlek from Muay Thai to MMA.
   const fighters = await prisma.fighter.findMany({
     select: {
       id: true, slug: true, name: true, sport: true,
-      fightsAsRed: { select: { result: true, event: { select: { sport: true } } } },
-      fightsAsBlue: { select: { result: true, event: { select: { sport: true } } } },
+      fightsAsRed: { select: { result: true, ruleset: true } },
+      fightsAsBlue: { select: { result: true, ruleset: true } },
     },
   });
 
@@ -95,9 +97,11 @@ async function main() {
   const refused: Row[] = [];
 
   for (const f of fighters) {
-    const bouts = [...f.fightsAsRed, ...f.fightsAsBlue]
-      .filter((b) => b.event)
-      .map((b) => ({ sport: b.event!.sport as Sport, settled: b.result !== "SCHEDULED" }));
+    const bouts = [...f.fightsAsRed, ...f.fightsAsBlue].map((b) => ({
+      // UNKNOWN contributes nothing rather than falling back to the card.
+      sport: b.ruleset === "UNKNOWN" ? null : rulesetToSport(b.ruleset),
+      settled: b.result !== "SCHEDULED",
+    }));
 
     const d = resolveDisciplines({ importedSport: f.sport as Sport, bouts });
     const drift = classifyDrift(f.sport as Sport, d);

@@ -50,6 +50,49 @@ export function requireAttributedWinner<T extends Record<string, unknown>>(
 }
 
 /**
+ * A stated ruleset must not be replaced by a weaker one.
+ *
+ * Fight.ruleset is the authority for fighter discipline, and the sources that
+ * can state it are unevenly distributed: Wikipedia names it per bout
+ * ("Featherweight Muay Thai", confidence 1), a single-ruleset promotion implies
+ * it (0.8), and most providers cannot supply it at all. Those providers run on
+ * the same cron and touch the same rows, so without this the LAST writer wins
+ * and a re-ingest silently downgrades a known Muay Thai bout to UNKNOWN.
+ *
+ * Rules, in order:
+ *   • an incoming UNKNOWN never overwrites a known ruleset;
+ *   • a lower-confidence source never overwrites a higher-confidence one;
+ *   • equal confidence DOES overwrite, so a corrected value from the same class
+ *     of source can still land.
+ *
+ * Pure. Returns the update with the ruleset fields stripped when they must not
+ * be applied.
+ */
+export function preventRulesetDowngrade<T extends Record<string, unknown>>(
+  existing: { ruleset?: string | null; rulesetConfidence?: number | null },
+  update: T,
+): T {
+  if (!("ruleset" in update)) return update;
+
+  const known = existing.ruleset && existing.ruleset !== "UNKNOWN";
+  if (!known) return update; // nothing to protect
+
+  const incoming = update.ruleset;
+  const incomingConf = typeof update.rulesetConfidence === "number" ? update.rulesetConfidence : 0;
+  const existingConf = existing.rulesetConfidence ?? 0;
+
+  const weaker = incoming === "UNKNOWN" || incomingConf < existingConf;
+  if (!weaker) return update;
+
+  const next = { ...update };
+  delete next.ruleset;
+  delete next.rulesetConfidence;
+  delete next.rulesetSource;
+  delete next.rulesetUpdatedAt;
+  return next;
+}
+
+/**
  * Guard a Fight UPDATE against un-deciding a bout. If the stored result is
  * already decided and the incoming update would set it back to SCHEDULED, strip
  * the result and its dependent fields from the update — the decided outcome
