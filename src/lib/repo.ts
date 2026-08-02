@@ -93,9 +93,18 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
 
 export async function getResults(page = 1): Promise<ResultsPage> {
   const empty: ResultsPage = { events: [], total: 0, page, pageSize: 0 };
-  // Keyed by page — a single "events:results" key would serve page 1's payload
-  // for every page.
-  return cached(`events:results:${page}`, CACHE_TTL.EVENTS, () => live(() => pg.getResults(page), empty));
+  // ONLY page 1 is cached, under the key ingest already invalidates.
+  //
+  // Per-page keys ("events:results:4") would each need invalidating, and
+  // `invalidate()` deletes one exact key — it cannot scan a prefix, and neither
+  // backend here is given a way to. Ingest calls invalidate("events:results"),
+  // so per-page keys would have silently gone stale for a full TTL after every
+  // scrape, showing a reader results the database had already corrected.
+  //
+  // Page 1 is the hot path (every reader, every crawler); deeper pages are rare
+  // and read straight from Postgres, which is bounded work — 10 cards.
+  if (page !== 1) return live(() => pg.getResults(page), empty);
+  return cached("events:results", CACHE_TTL.EVENTS, () => live(() => pg.getResults(1), empty));
 }
 
 export async function getEvent(slug: string): Promise<FightEvent | null> {
