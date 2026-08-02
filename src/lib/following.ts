@@ -819,7 +819,7 @@ export async function getCornerMen(limit = 12): Promise<FeedItem[]> {
           body: a.excerpt,
           url: `/news/${a.slug}`,
           icon: "podcast",
-          meta: a.author?.name ?? a.author?.username ?? "Combat Reviews",
+          meta: a.author ? publicDisplayName(a.author) : "Combat Reviews",
         }]
       : [],
   );

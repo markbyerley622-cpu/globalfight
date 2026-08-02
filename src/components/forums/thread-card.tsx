@@ -83,8 +83,21 @@ export function ThreadCard({
 
   return (
     <li className="group relative flex overflow-hidden rounded-card border border-ink-700 bg-ink-900/40 transition-colors hover:border-blood-500/40">
+      {/* THE CARD LINK IS AN OVERLAY, not a wrapper.
+          It used to wrap the whole body, which made the author's name
+          unlinkable: an <a> inside an <a> is invalid HTML, so the one place a
+          reader meets an author in the forum list led only back to the thread.
+          The overlay keeps "tap anywhere opens the thread" while letting the
+          author — and the vote rail — be real, separate controls above it. */}
+      <Link
+        href={href}
+        onTouchEnd={onTouchEnd}
+        aria-label={thread.title}
+        className="absolute inset-0 z-0 rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+      />
+
       {/* vote rail — RESPECT (green count) over SALUTE (red count) */}
-      <div className="flex w-11 shrink-0 flex-col items-center gap-0.5 border-r border-ink-800 bg-ink-950/40 py-2.5">
+      <div className="relative z-10 flex w-11 shrink-0 flex-col items-center gap-0.5 border-r border-ink-800 bg-ink-950/40 py-2.5">
         <button
           type="button"
           aria-label="Respect"
@@ -120,8 +133,8 @@ export function ThreadCard({
         </span>
       </div>
 
-      {/* body */}
-      <Link href={href} onTouchEnd={onTouchEnd} className="flex min-w-0 flex-1 gap-3 p-2.5 sm:p-3">
+      {/* body — plain container now; the link above covers it */}
+      <div className="pointer-events-none flex min-w-0 flex-1 gap-3 p-2.5 sm:p-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.65rem]">
             {thread.pinned && <Pin className="size-3 shrink-0 text-gold-400" />}
@@ -131,7 +144,20 @@ export function ThreadCard({
               </span>
             )}
             <KindBadge kind={thread.kind} />
-            <span className="truncate text-fog">{thread.authorName} · {timeAgo(thread.lastPostAt)}</span>
+            <span className="truncate text-fog">
+              {thread.authorUsername ? (
+                <Link
+                  href={`/u/${thread.authorUsername}`}
+                  className="pointer-events-auto relative z-10 font-semibold hover:text-blood-300 hover:underline"
+                >
+                  {thread.authorName}
+                </Link>
+              ) : (
+                thread.authorName
+              )}
+              {" · "}
+              {timeAgo(thread.lastPostAt)}
+            </span>
           </div>
 
           <h3 className="font-display text-sm font-semibold leading-snug text-chalk group-hover:text-blood-300 sm:text-[0.95rem]">
@@ -158,7 +184,7 @@ export function ThreadCard({
             <Image src={thread.previewImage} alt="" fill className="object-cover" sizes="64px" loading="lazy" />
           </span>
         )}
-      </Link>
+      </div>
 
       {/* double-tap Respect burst */}
       {burst && (

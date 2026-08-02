@@ -6,6 +6,7 @@ import {
   Trophy, Newspaper, Bell, Play,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { publicDisplayName } from "@/lib/display-name";
 import {
   getFollowingFeed, getFollowingSummary, getRivals, getCornerMen,
   type FeedItem, type Rival,
@@ -237,7 +238,7 @@ function RivalsTab({ rivals }: { rivals: Rival[] }) {
   return (
     <ol className="flex flex-col gap-2.5">
       {rivals.map((r) => {
-        const initial = (r.name ?? r.username ?? "?").slice(0, 1).toUpperCase();
+        const initial = publicDisplayName(r).slice(0, 1).toUpperCase();
         const body = (
           <>
             {r.image ? (
@@ -249,7 +250,7 @@ function RivalsTab({ rivals }: { rivals: Rival[] }) {
             )}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-display text-sm font-bold text-chalk">
-                {r.name ?? r.username ?? "Anonymous"}
+                {publicDisplayName(r)}
               </span>
               <span className="mt-0.5 flex items-center gap-2 text-[0.7rem] text-fog">
                 <span className="tabular-nums">

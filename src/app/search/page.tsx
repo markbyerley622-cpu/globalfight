@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Flag } from "@/components/flag";
 import { SearchHit, type SearchFollowMaps } from "@/components/search/search-hit";
+import { publicDisplayName } from "@/lib/display-name";
 
 type FighterHit = {
   slug: string; name: string; nickname?: string | null;
@@ -168,7 +169,7 @@ export default function SearchPage() {
             // API, so a button there is a guaranteed dead end.
             kind={u.self ? undefined : "person"}
             slug={u.self ? undefined : u.username}
-            name={u.name ?? u.username}
+            name={publicDisplayName(u)}
             image={u.image}
             fallbackIcon={<User className="size-4 text-gold-400" />}
             meta={`@${u.username}${u.role && u.role !== "fan" ? ` · ${u.role}` : ""}`}

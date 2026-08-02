@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { PromotionLogo } from "@/components/promotion-logo";
 import { formatDistance } from "@/lib/geo/gazetteer";
+import { publicDisplayName } from "@/lib/display-name";
 import { directionsUrl, type MapLayer, type MapPin } from "@/lib/geo/types";
 import { LAYER_COLOR } from "./map-canvas";
 import { CheckInButton } from "./check-in-button";
@@ -250,7 +251,7 @@ export function PinDetail({
           <FollowButton
             kind="person"
             slug={pin.person.username}
-            name={pin.name ?? pin.person.username}
+            name={publicDisplayName({ name: pin.name, username: pin.person.username })}
             initialFollowing={!!following}
             size="sm"
           />

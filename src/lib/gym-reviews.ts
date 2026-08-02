@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { notifyGymReview } from "@/lib/gym-notifications";
+import { publicDisplayName } from "@/lib/display-name";
 import type { Prisma } from "@prisma/client";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -135,7 +136,9 @@ export async function getGymReviewData(gymId: string, viewerId?: string | null):
   const toDTO = (r: typeof listRows[number], isMine: boolean): ReviewDTO => ({
     id: r.id,
     authorId: r.authorId,
-    authorName: r.author.name ?? "Anonymous",
+    // Never the raw `name` — it is whatever was typed at signup, and a review is
+    // public. See lib/display-name.
+    authorName: publicDisplayName(r.author),
     authorUsername: r.author.username,
     authorImage: r.author.image,
     overall: r.overall,

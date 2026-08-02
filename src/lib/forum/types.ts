@@ -36,6 +36,12 @@ export interface ForumThreadDTO {
   categoryName: string;
   authorName: string;
   authorId: string;
+  /**
+   * The author's handle, so a thread card can LINK to them. Every post already
+   * carried this and every thread card did not, which is why an author was
+   * clickable inside a thread and inert in the list that led to it.
+   */
+  authorUsername: string | null;
   authorRole: string;          // registry role: fan | fighter | world_champion | …
   authorAppRole: string;       // app role: USER | MODERATOR | ADMIN (for staff crown)
   authorSport: string | null;  // sport when the author has a fighter profile

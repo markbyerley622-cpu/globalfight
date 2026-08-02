@@ -28,7 +28,16 @@ export default async function ThreadPage({ params }: { params: Promise<{ categor
       <PageHero eyebrow={t.categoryName} title={t.title}>
         <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mist">
           <KindBadge kind={t.kind} />
-          <span>by {t.authorName}</span>
+          <span>
+            by{" "}
+            {t.authorUsername ? (
+              <Link href={`/u/${t.authorUsername}`} className="font-semibold text-chalk hover:text-blood-300 hover:underline">
+                {t.authorName}
+              </Link>
+            ) : (
+              t.authorName
+            )}
+          </span>
           <span className="flex items-center gap-1"><MessageSquare className="size-3.5" />{t.replyCount} replies</span>
           <span className="flex items-center gap-1"><Eye className="size-3.5" />{t.views} views</span>
           {t.reactionCount > 0 && <span className="flex items-center gap-1"><Heart className="size-3.5" />{t.reactionCount}</span>}

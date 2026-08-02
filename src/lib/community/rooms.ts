@@ -131,7 +131,8 @@ export async function getOrCreateGeneralRoom(event: {
 async function getOrCreateBattleRoom(battle: {
   id: string; challenger: { name: string | null; username: string | null }; opponent: { name: string | null; username: string | null } | null;
 }, fight: FightForRoom): Promise<RoomThreadRef> {
-  const who = (u: { name: string | null; username: string | null } | null) => u?.name ?? u?.username ?? "Challenger";
+  const who = (u: { name: string | null; username: string | null } | null) =>
+    u ? publicDisplayName(u) : "Challenger";
   return provision(
     async () => {
       const t = await prisma.forumThread.findUnique({ where: { battleId: battle.id }, select: THREAD_REF });
@@ -374,7 +375,7 @@ export async function getRoomSummaries(fightIds: string[], viewerId?: string): P
       const them = b.challengerId === viewerId ? b.opponent : b.challenger;
       out.get(b.fightId)!.battle = {
         state: b.state as BattleRoomState,
-        opponentName: them?.name ?? them?.username ?? null,
+        opponentName: them ? publicDisplayName(them) : null,
         opponentImage: them?.image ?? null,
         unreadHint: b.messageCount,
       };
