@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { FighterLink } from "@/components/fighter-link";
 import { cn, formatRecord } from "@/lib/utils";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
@@ -71,12 +71,11 @@ function Corner({ fighter, alignEnd }: { fighter: Fight["red"]; side: "red" | "b
     <div className={cn("flex flex-1 flex-col gap-2", alignEnd ? "items-end text-right" : "items-start text-left")}>
       <FighterAvatar fighter={fighter} size="lg" />
       <div className={cn(alignEnd && "flex flex-col items-end")}>
-        <Link
-          href={`/fighters/${fighter.slug}`}
+        <FighterLink
+          name={fighter.name}
+          slug={fighter.slug}
           className="font-display text-lg font-bold leading-tight text-chalk hover:text-blood-300 sm:text-xl"
-        >
-          {fighter.name}
-        </Link>
+        />
         {fighter.nickname && <p className="text-xs text-mist">“{fighter.nickname}”</p>}
         <p className="mt-0.5 text-xs tabular-nums text-fog">
           {formatRecord(fighter.wins, fighter.losses, fighter.draws)}

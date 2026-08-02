@@ -18,6 +18,8 @@ import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import { matchupIntel } from "@/lib/events/matchup";
 import type { EventCard as EventCardData, FighterRank } from "@/lib/events-query";
+import { FighterLink } from "@/components/fighter-link";
+import { isPlaceholderName } from "@/lib/entities/placeholder";
 
 /**
  * One event, as a card.
@@ -234,18 +236,21 @@ function CornerName({
 }) {
   return (
     <span className={`flex min-w-0 flex-1 flex-col ${align === "right" ? "items-end text-right" : "items-start"}`}>
-      <Link
-        href={`/fighters/${slug}`}
+      <FighterLink
+        name={name}
+        slug={slug}
         // `relative z-10`: this sits over the artwork layers, and needs to be the
         // thing that receives the tap.
         className="group/name relative z-10 font-display text-base font-black leading-tight text-chalk decoration-1 underline-offset-4 drop-shadow transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 sm:text-lg"
         title={`${name} — fighter profile`}
       >
         <RankChip r={rank} />
-        <span className="underline decoration-chalk/25 transition-[text-decoration-color] group-hover/name:decoration-blood-400">
+        {/* The underline is the link affordance, so an unannounced opponent must
+            not carry it — see FighterLink. */}
+        <span className={isPlaceholderName(name) ? "" : "underline decoration-chalk/25 transition-[text-decoration-color] group-hover/name:decoration-blood-400"}>
           {name}
         </span>
-      </Link>
+      </FighterLink>
       {record && (
         <span className="mt-0.5 whitespace-nowrap font-mono text-[0.7rem] font-semibold tabular-nums text-mist drop-shadow">
           {record}

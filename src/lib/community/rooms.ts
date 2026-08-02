@@ -3,6 +3,7 @@ import type { Sport } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { createThread } from "@/lib/forum/repo";
 import { publicDisplayName } from "@/lib/display-name";
+import { isRealBout } from "@/lib/entities/placeholder";
 import type {
   BattleRoomDTO, BattleRoomState, Corner, FightRoomDTO, RoomIdentity, RoomThreadRef,
 } from "@/lib/community/room-types";
@@ -85,7 +86,9 @@ async function getOrCreateCommunityRoom(fight: FightForRoom): Promise<RoomThread
         authorId: author,
         categorySlug: categoryForSport(fight.red.sport),
         title: `${fight.red.name} vs ${fight.blue.name}`.slice(0, 155),
-        content: `Everything on **${fight.red.name} vs ${fight.blue.name}**${fight.event ? ` at ${fight.event.name}` : ""} — reads, tape, tactics, trash talk. Make your pick, then defend it.`,
+        // "trash talk" invited exactly the hostility the community guidelines
+        // prohibit, in copy the platform itself authored. Debate is the ask.
+        content: `Everything on **${fight.red.name} vs ${fight.blue.name}**${fight.event ? ` at ${fight.event.name}` : ""} — reads, tape, tactics, analysis. Make your pick, then defend it.`,
         fightId: fight.id,
         kind: "discussion",
       });
@@ -198,6 +201,11 @@ export async function getFightRoom(fightSlug: string, viewerId?: string): Promis
     },
   });
   if (!fight) return null;
+  // A bout with an unannounced opponent is not a matchup yet, and provisioning a
+  // room for it is what put "TBA vs Opponent TBA" threads in the public forums.
+  // Rooms are created lazily on first open, so refusing here is enough to stop
+  // new ones; the thread appears the moment the opponent is announced.
+  if (!isRealBout(fight.red.name, fight.blue.name)) return null;
 
   const community = await getOrCreateCommunityRoom(fight);
 

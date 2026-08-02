@@ -16,6 +16,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { RecordDonut, StatBar } from "@/components/charts";
 import { getFighter, getFighterFights } from "@/lib/repo";
 import { winningCorner, currentStreak } from "@/lib/event-format";
+import { isPlaceholderName, isPlaceholderSlug } from "@/lib/entities/placeholder";
 import { isFollowingFighter } from "@/lib/follows";
 import { FollowButton } from "@/components/follow-button";
 import { getFighterPublicProfile } from "@/lib/fighters/profile";
@@ -31,9 +32,26 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const f = await getFighterPublicProfile(slug);
   if (!f) return {};
+  // A placeholder is not a person, so it gets no indexable metadata (the page
+  // itself 404s below). See lib/entities/placeholder.
+  if (isPlaceholderName(f.name) || isPlaceholderSlug(slug)) return { robots: { index: false, follow: false } };
   const sportLabel = SPORT_LABEL[f.sport] ?? f.sport;
   const title = `${f.name}${f.nickname ? ` "${f.nickname}"` : ""} — ${sportLabel} profile`;
-  const description = `${f.name}: ${formatSportRecord(f)} · ${sportLabel} · ${f.nationality ?? ""}. ${f.tagline ?? "Official profile, record, achievements, gallery and contact on Combat Reviews."}`.trim();
+  // "Official profile" is a claim of the athlete's own authorship, and it was
+  // being made for every unclaimed record we scraped — on pages whose record and
+  // vitals we could not even fill in. It is now said only where it is TRUE: a
+  // profile the athlete has claimed and had verified. Everything else is
+  // described as what it is, a Combat Reviews profile.
+  //
+  // Fields are composed CONDITIONALLY: interpolating a missing nationality left
+  // descriptions reading "Rose Namajunas:  ·  · . " in search results.
+  const provenance = f.claimed
+    ? "Verified official profile, record, achievements, gallery and contact on Combat Reviews."
+    : "Record, achievements and fight history on Combat Reviews.";
+  const facts = [f.name && formatSportRecord(f) ? `${f.name}: ${formatSportRecord(f)}` : f.name, sportLabel, f.nationality]
+    .filter(Boolean)
+    .join(" · ");
+  const description = `${facts}. ${f.tagline ?? provenance}`.replace(/\s+/g, " ").trim();
   // NO `images` override. There is a designed card at ./opengraph-image (name,
   // record in the badge, nationality/gym/KO-rate chips, CR mark), and setting
   // `images` here SHADOWED it: this route advertised the fighter's portrait
@@ -60,6 +78,10 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const [profile, fighter] = await Promise.all([getFighterPublicProfile(slug), getFighter(slug)]);
   if (!profile || !fighter) notFound();
+  // "TBA" got a Fighter row from ingest, and therefore a profile page reachable
+  // from every event card that had an unannounced opponent. It is not a person:
+  // no route, no metadata, no sitemap entry.
+  if (isPlaceholderName(fighter.name) || isPlaceholderSlug(slug)) notFound();
 
   const fights = await getFighterFights(slug);
   const currentUser = await getCurrentUser();

@@ -11,6 +11,7 @@
 // ════════════════════════════════════════════════════════════════════════
 
 import { log } from "@/lib/scraper/logger";
+import { isPlaceholderName } from "@/lib/entities/placeholder";
 
 const BASE = process.env.ODDS_API_BASE ?? "https://api.the-odds-api.com/v4";
 // Sport feed keys → human label shown in the UI.
@@ -50,22 +51,15 @@ interface OddsApiEvent {
 
 /**
  * Bookmakers list a bout before the opponent is announced, using a placeholder for
- * the empty side ("TBA", "Opponent TBA", "TBD"…). Those are not people.
+ * the empty side ("TBA", "Opponent TBA", "TBD"…). Those are not people, and a bout
+ * is only real once BOTH sides are named — until then we skip it and ingest it
+ * normally on a later run once the opponent is announced.
  *
- * We take competitor names verbatim from the feed, so without this guard the
- * placeholder is upserted as a real Fighter, given a slug, and rendered on the
- * schedule as "Opponent TBA vs TBA" — and every future placeholder bout collapses
- * onto that same slug, because they all share the name.
- *
- * A bout is only real once BOTH sides are named. Until then we skip it; it will be
- * ingested normally on a later run once the opponent is announced.
+ * The rule itself now lives in lib/entities/placeholder, because ingest, routing,
+ * metadata, the sitemap and community-thread creation all ask the same question
+ * and must not answer it differently.
  */
-const PLACEHOLDER_COMPETITOR =
-  /^(opponent\s+)?(tba|tbd|tbc|to\s+be\s+(announced|advised|confirmed|determined)|unknown|opponent)$/i;
-
-function isPlaceholderCompetitor(name: string): boolean {
-  return PLACEHOLDER_COMPETITOR.test(name.trim());
-}
+const isPlaceholderCompetitor = isPlaceholderName;
 
 /** Pull live h2h odds for boxing + MMA from the licensed odds feed. */
 export async function fetchMarketOdds(): Promise<MarketEvent[]> {

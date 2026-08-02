@@ -4,6 +4,7 @@ import { listFighters, getArticles, getUpcomingEvents } from "@/lib/repo";
 import { WEIGHT_CLASS_LIST } from "@/lib/repo";
 import { prisma } from "@/lib/db";
 import { flags } from "@/lib/feature-flags";
+import { isPlaceholderName, isPlaceholderSlug, isRealBout } from "@/lib/entities/placeholder";
 
 /**
  * A disabled route must not be advertised to search engines.
@@ -44,7 +45,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: { eventId: { not: null } },
       orderBy: { date: "desc" },
       take: 5000,
-      select: { slug: true, date: true },
+      // The corner NAMES are needed to reject "X vs TBA" — a matchup page for a
+      // bout with an unannounced opponent has no content worth indexing.
+      select: { slug: true, date: true, red: { select: { name: true } }, blue: { select: { name: true } } },
     }).catch(() => []),
   ]);
 
@@ -58,9 +61,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }))
       : []),
-    ...fighters.map((x) => ({ url: `${base}/fighters/${x.slug}`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.6 })),
+    // "TBA" is not a person and "X vs TBA" is not a matchup. Both are ingest
+    // artefacts that were being advertised to crawlers as indexable entities —
+    // 15 of them, per the audit. Excluded at the source of the URL rather than
+    // patched per-route, so a new surface cannot reintroduce them.
+    ...fighters
+      .filter((x) => !isPlaceholderName(x.name) && !isPlaceholderSlug(x.slug))
+      .map((x) => ({ url: `${base}/fighters/${x.slug}`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.6 })),
     ...articles.map((a) => ({ url: `${base}/news/${a.slug}`, lastModified: new Date(a.publishedAt), changeFrequency: "monthly" as const, priority: 0.5 })),
     ...events.map((e) => ({ url: `${base}/schedule/${e.slug}`, lastModified: now, changeFrequency: "daily" as const, priority: 0.6 })),
-    ...fights.map((x) => ({ url: `${base}/fights/${x.slug}`, lastModified: x.date, changeFrequency: "weekly" as const, priority: 0.6 })),
+    ...fights
+      .filter((x) => isRealBout(x.red?.name, x.blue?.name))
+      .map((x) => ({ url: `${base}/fights/${x.slug}`, lastModified: x.date, changeFrequency: "weekly" as const, priority: 0.6 })),
   ];
 }
