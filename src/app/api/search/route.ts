@@ -57,7 +57,9 @@ export async function GET(req: Request) {
   const [fighters, upcoming, results, articles, communities, threadsPage, gyms, people, videos] = await Promise.all([
     searchFighters(q).catch(() => []),
     getUpcomingEvents().catch(() => []),
-    getResults().catch(() => []),
+    getResults()
+      .then((r) => r.events)
+      .catch(() => []),
     getArticles().catch(() => []),
     getCommunities().catch(() => []),
     getThreads({ limit: 40 }).catch(() => ({ items: [], nextCursor: null })),

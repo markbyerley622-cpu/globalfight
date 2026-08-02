@@ -22,7 +22,7 @@ export async function GET() {
   const [articles, upcoming, results] = await Promise.all([
     getArticles(),
     getUpcomingEvents(),
-    getResults(),
+    getResults().then((r) => r.events),
   ]);
 
   const news: Notification[] = articles.slice(0, 4).map((a) => ({

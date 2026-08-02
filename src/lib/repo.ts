@@ -12,6 +12,14 @@ import type {
   Fighter, WeightClassRanking, Champion, FightEvent, Fight, Article, FighterListItem,
 } from "@/lib/types";
 import type { RankingDivision } from "@/lib/repo.prisma";
+
+/** One page of completed cards — see repo.prisma.getResults. */
+export interface ResultsPage {
+  events: FightEvent[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 import { cached, CACHE_TTL } from "@/lib/cache";
 import { maybeRefreshNews } from "@/lib/news/lazy-refresh";
 // Weight-class taxonomy (reference config — the divisions themselves, not mock
@@ -83,8 +91,11 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
   return cached("events:upcoming", CACHE_TTL.EVENTS, () => live(() => pg.getUpcomingEvents(), []));
 }
 
-export async function getResults(): Promise<FightEvent[]> {
-  return cached("events:results", CACHE_TTL.EVENTS, () => live(() => pg.getResults(), []));
+export async function getResults(page = 1): Promise<ResultsPage> {
+  const empty: ResultsPage = { events: [], total: 0, page, pageSize: 0 };
+  // Keyed by page — a single "events:results" key would serve page 1's payload
+  // for every page.
+  return cached(`events:results:${page}`, CACHE_TTL.EVENTS, () => live(() => pg.getResults(page), empty));
 }
 
 export async function getEvent(slug: string): Promise<FightEvent | null> {

@@ -10,15 +10,36 @@ import { formatDate, formatRecord } from "@/lib/utils";
 import { boutOutcomeView } from "@/lib/event-format";
 import { resultCoverage } from "@/lib/events/result-coverage";
 
-export const metadata: Metadata = {
-  title: "Fight Results",
-  description: "Completed cards with recorded results, methods, rounds and scorecards.",
-};
+// Per-page canonical: without one, /results?page=4 canonicalises to the root via
+// metadataBase and every page of history competes as the same document.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}): Promise<Metadata> {
+  const { page } = await searchParams;
+  const n = Number.parseInt(page ?? "1", 10);
+  const valid = Number.isFinite(n) && n > 1 ? n : 1;
+  return {
+    title: valid > 1 ? `Fight Results — page ${valid}` : "Fight Results",
+    description: "Completed cards with recorded results, methods, rounds and scorecards.",
+    alternates: { canonical: valid > 1 ? `/results?page=${valid}` : "/results" },
+  };
+}
 
 export const revalidate = 300;
 
-export default async function ResultsPage() {
-  const events = await getResults();
+export default async function ResultsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const requested = Number.parseInt(rawPage ?? "1", 10);
+  const { events, total, page, pageSize } = await getResults(
+    Number.isFinite(requested) && requested > 0 ? requested : 1,
+  );
+  const lastPage = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
   return (
     <>
       <PageHero
@@ -107,6 +128,43 @@ export default async function ResultsPage() {
             </div>
           );
         })}
+
+        {/* Real pagination, because the alternative was shipping every completed
+            card in history on one response — 987KB of uncompressed HTML with
+            ~500 serialized fighter objects in it, per the audit. */}
+        {lastPage > 1 && (
+          <nav className="flex items-center justify-between gap-4 pt-4" aria-label="Results pages">
+            {page > 1 ? (
+              <Link
+                href={page === 2 ? "/results" : `/results?page=${page - 1}`}
+                className="rounded-lg border border-ink-700 px-4 py-2 text-sm font-semibold text-chalk hover:bg-ink-800"
+                rel="prev"
+              >
+                ← Newer
+              </Link>
+            ) : (
+              <span />
+            )}
+            <p className="text-xs text-fog" aria-live="polite">
+              Page {page} of {lastPage} · {total} completed {total === 1 ? "card" : "cards"}
+            </p>
+            {page < lastPage ? (
+              <Link
+                href={`/results?page=${page + 1}`}
+                className="rounded-lg border border-ink-700 px-4 py-2 text-sm font-semibold text-chalk hover:bg-ink-800"
+                rel="next"
+              >
+                Older →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
+        )}
+
+        {events.length === 0 && (
+          <p className="py-16 text-center text-sm text-fog">No completed cards on this page.</p>
+        )}
       </div>
     </>
   );

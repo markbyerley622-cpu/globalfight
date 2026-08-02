@@ -435,6 +435,9 @@ export function mapFight(f: PFightFull): Fight {
   };
 }
 
+/** Completed cards per page on /results. Ten cards is a full scroll. */
+export const RESULTS_PAGE_SIZE = 10;
+
 const FIGHT_INCLUDE = {
   red: { include: { titles: true } },
   blue: { include: { titles: true } },
@@ -469,14 +472,35 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
   return rows.map(mapEvent);
 }
 
-export async function getResults(): Promise<FightEvent[]> {
-  const rows = await prisma.event.findMany({
-    where: { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" }] },
-    orderBy: { date: "desc" },
-    take: 50,
-    include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
-  });
-  return rows.map(mapEvent);
+/**
+ * Completed cards, newest first, ONE PAGE at a time.
+ *
+ * This used to take 50 events and every bout on each, with the full Fighter
+ * record for both corners — roughly 500 fighter objects serialized into the RSC
+ * payload for a single scroll. The audit measured the result: 987KB of
+ * uncompressed HTML on the results landing page, nearly a megabyte before a
+ * reader has asked for anything beyond the most recent card.
+ *
+ * `total` comes back with the page so the UI can render real pagination instead
+ * of guessing whether a next page exists.
+ */
+export async function getResults(
+  page = 1,
+  pageSize = RESULTS_PAGE_SIZE,
+): Promise<{ events: FightEvent[]; total: number; page: number; pageSize: number }> {
+  const where = { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" as const }] };
+  const safePage = Math.max(1, Math.floor(page));
+  const [rows, total] = await Promise.all([
+    prisma.event.findMany({
+      where,
+      orderBy: { date: "desc" },
+      skip: (safePage - 1) * pageSize,
+      take: pageSize,
+      include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
+    }),
+    prisma.event.count({ where }),
+  ]);
+  return { events: rows.map(mapEvent), total, page: safePage, pageSize };
 }
 
 /**

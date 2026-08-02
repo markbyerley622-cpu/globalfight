@@ -50,7 +50,7 @@ export default async function RegistryPage({
     getUpcomingEvents(),
     getResults(),
   ]);
-  const events = [...upcoming, ...results];
+  const events = [...upcoming, ...results.events];
 
   // ── Derive real organisations from the data we already hold ────────────
   const gyms = new Map<string, number>();
