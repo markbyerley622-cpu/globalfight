@@ -13,7 +13,7 @@ import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { isDemoMode } from "@/lib/demo-world";
-import { SITE } from "@/lib/config";
+import { SITE, isCanonicalHost } from "@/lib/config";
 
 // Mona Sans (owner-supplied variable font) is the primary UI/body typeface.
 // Mapped onto the existing --font-inter variable so every surface picks it up
@@ -92,7 +92,14 @@ export const metadata: Metadata = {
     // pages without one still preview correctly: X falls back to og:image when
     // twitter:image is absent, and openGraph.images above supplies that.
   },
-  robots: { index: true, follow: true },
+  // Indexable ONLY on the deployment whose origin an operator named explicitly.
+  // A Render service slug is reachable whether or not it is the address we
+  // publish, and indexing it splits every ranking signal across two hosts and
+  // keeps the temporary one alive in results after it stops being served. See
+  // isCanonicalHost — robots.ts refuses the crawl, this refuses the index.
+  robots: isCanonicalHost()
+    ? { index: true, follow: true }
+    : { index: false, follow: false, nocache: true },
   alternates: { canonical: "/" },
 };
 

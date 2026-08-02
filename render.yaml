@@ -257,6 +257,20 @@ services:
       # Bearer token for POST /api/admin/seed-world/reset (removes all seed data).
       - key: SEED_WORLD_ADMIN_TOKEN
         generateValue: true
+      # ── THIS VARIABLE NOW GATES SEARCH INDEXING ──────────────────────────
+      # config.ts:isCanonicalHost() treats "an operator named the origin
+      # explicitly" as the signal that this deployment is the real one. While
+      # NEXT_PUBLIC_SITE_URL is unset, SITE.url falls back to RENDER_EXTERNAL_URL
+      # (a service slug, not a product address) and the audit found the
+      # consequence: canonical URLs, OG images, robots Host and the sitemap all
+      # pointing at globalfight.onrender.com, which returns 503 — search engines
+      # told a dead host was authoritative for the whole site.
+      #
+      # So with it unset the app now serves `robots.txt: Disallow: /` and
+      # `noindex` on every page. That is deliberate: being unindexed for a day
+      # is recoverable, being indexed under a host that stops resolving is not.
+      # SET THIS BEFORE LAUNCH or the site will not be indexed at all.
+      #
       # Must be a FULL origin (scheme included) — it's the base for password-reset
       # links and site metadata. `fromService property: host` yields a bare
       # hostname with no scheme, which produces broken links, so set it by hand

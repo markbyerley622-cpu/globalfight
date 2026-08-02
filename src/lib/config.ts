@@ -44,6 +44,27 @@ export function resolveSiteUrl(fallback: string = DEFAULT_SITE_URL): string {
   return parseOrigin(process.env.RENDER_EXTERNAL_URL) ?? fallback;
 }
 
+/**
+ * Is this deployment serving the address we publish?
+ *
+ * The audit found canonical URLs, OG images, the robots `Host` and the sitemap
+ * all pointing at `globalfight.onrender.com`, which returns 503 — search engines
+ * were told a dead host was authoritative for the whole site. The cause is the
+ * fallback chain above doing its job: with NEXT_PUBLIC_SITE_URL unset, SITE.url
+ * resolves to whatever RENDER_EXTERNAL_URL happens to be, and a service slug is
+ * not a product address.
+ *
+ * The chain must stay (a wrong canonical beats a dead build), so instead we
+ * detect the case and refuse to be indexed under it. A deployment is canonical
+ * only when the origin was stated EXPLICITLY: an operator naming the domain is
+ * exactly the signal that this is the real one.
+ *
+ * Set NEXT_PUBLIC_SITE_URL to the production domain and this returns true.
+ */
+export function isCanonicalHost(): boolean {
+  return parseOrigin(process.env.NEXT_PUBLIC_SITE_URL) !== null;
+}
+
 export const SITE = {
   name: "Combat Reviews",
   tagline: "The Registry of Combat Sports",
