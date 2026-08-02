@@ -39,6 +39,7 @@
     "test:tournament": "node --import tsx --test \"src/lib/scraper/tournament/__tests__/**/*.test.ts\"",
     "audit:integrity": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/integrity-audit.mts",
     "audit:duplicates": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/classify-duplicates.mts",
+    "migrate:disciplines": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/discipline-migrate.mts",
     "audit:disciplines": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/discipline-audit.mts",
     "dm:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/dm-smoke.mts",
     "repair:entity-duplicates": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/merge-entity-duplicates.mts",

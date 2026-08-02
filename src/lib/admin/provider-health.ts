@@ -51,6 +51,77 @@ export interface ProviderHealthReport {
   ladder: LadderEntry[];
   ladderSummary: Record<LadderStatus, number>;
   coverage: { sport: string; events: number; bouts: number; withBouts: number }[];
+  graph: GraphHealth;
+}
+
+/**
+ * The canonical combat graph's completeness — launch-readiness telemetry.
+ *
+ * Ruleset coverage is the number that gates everything downstream: a discipline
+ * is only as good as the bout evidence behind it, and an UNKNOWN bout is a
+ * fighter who may be filed under the wrong sport. This is the screen that says
+ * whether the graph is ready to be trusted by search and rankings.
+ */
+export interface GraphHealth {
+  bouts: number;
+  boutsWithRuleset: number;
+  /** UNKNOWN bouts grouped by promotion — every gap with a name. */
+  unknownByPromotion: { promotion: string; bouts: number }[];
+  fighters: number;
+  fightersCalculated: number;
+  multiDiscipline: number;
+  /** HIGH / MEDIUM / LOW / UNKNOWN counts. */
+  tiers: { tier: string; fighters: number }[];
+  /** Fighters per discipline; a crossover athlete counts in each. */
+  perDiscipline: { sport: string; fighters: number }[];
+}
+
+async function getGraphHealth(): Promise<GraphHealth> {
+  const [bouts, known, fighters, calculated, tierRows, unknownRows, fighterRows] = await Promise.all([
+    prisma.fight.count(),
+    prisma.fight.count({ where: { ruleset: { not: "UNKNOWN" } } }),
+    prisma.fighter.count(),
+    prisma.fighter.count({ where: { lastCalculatedAt: { not: null } } }),
+    prisma.fighter.groupBy({ by: ["disciplineTier"], _count: { _all: true } }),
+    prisma.fight.findMany({
+      where: { ruleset: "UNKNOWN" },
+      select: { event: { select: { promotion: true } } },
+    }),
+    // `sports` is an array column, so the distribution is counted in app code —
+    // one read of a narrow projection rather than a query per discipline.
+    prisma.fighter.findMany({ select: { sports: true } }),
+  ]);
+
+  const byPromo = new Map<string, number>();
+  for (const f of unknownRows) {
+    const p = f.event?.promotion ?? "(no event)";
+    byPromo.set(p, (byPromo.get(p) ?? 0) + 1);
+  }
+
+  const perDiscipline = new Map<string, number>();
+  let multi = 0;
+  for (const f of fighterRows) {
+    if (f.sports.length > 1) multi += 1;
+    for (const s of f.sports) perDiscipline.set(s, (perDiscipline.get(s) ?? 0) + 1);
+  }
+
+  return {
+    bouts,
+    boutsWithRuleset: known,
+    unknownByPromotion: [...byPromo]
+      .map(([promotion, n]) => ({ promotion, bouts: n }))
+      .sort((a, b) => b.bouts - a.bouts)
+      .slice(0, 10),
+    fighters,
+    fightersCalculated: calculated,
+    multiDiscipline: multi,
+    tiers: tierRows
+      .map((t) => ({ tier: t.disciplineTier ?? "(not calculated)", fighters: t._count._all }))
+      .sort((a, b) => b.fighters - a.fighters),
+    perDiscipline: [...perDiscipline]
+      .map(([sport, n]) => ({ sport, fighters: n }))
+      .sort((a, b) => b.fighters - a.fighters),
+  };
 }
 
 /** The sources we expect to see, with the flag that gates each. */
@@ -164,5 +235,6 @@ export async function getProviderHealth(): Promise<ProviderHealthReport> {
     ladder: COVERAGE_LADDER,
     ladderSummary: ladderSummary(),
     coverage,
+    graph: await getGraphHealth(),
   };
 }

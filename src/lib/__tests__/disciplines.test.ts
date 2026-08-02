@@ -117,6 +117,57 @@ test("a tie with an unrelated label is still deterministic", () => {
   assert.deepEqual(a.sports, b.sports);
 });
 
+// ── the persisted confidence tier ─────────────────────────────────────────
+// Stored on Fighter so a consumer never re-derives to find out how much the
+// graph is worth. Uncertainty is exposed, never hidden.
+
+const withConf = (sport: string, n: number, conf: number | null): DisciplineBout[] =>
+  Array.from({ length: n }, () => ({
+    sport: sport as NonNullable<DisciplineBout["sport"]>,
+    settled: true,
+    rulesetConfidence: conf,
+  }));
+
+test("a ruleset STATED on the bout is HIGH", () => {
+  const d = resolveDisciplines({ importedSport: "MMA", bouts: withConf("MUAY_THAI", 4, 1) });
+  assert.equal(d.tier, "HIGH");
+});
+
+test("a ruleset DERIVED from a promotion or card is MEDIUM", () => {
+  assert.equal(resolveDisciplines({ importedSport: null, bouts: withConf("MMA", 6, 0.9) }).tier, "MEDIUM");
+  assert.equal(resolveDisciplines({ importedSport: null, bouts: withConf("JUDO", 6, 0.8) }).tier, "MEDIUM");
+});
+
+test("the STRONGEST evidence sets the tier — volume must not dilute a fact", () => {
+  // One stated bout beats ten derived ones. Averaging would let a pile of weak
+  // evidence bury a thing we actually know.
+  const d = resolveDisciplines({
+    importedSport: null,
+    bouts: [...withConf("MUAY_THAI", 1, 1), ...withConf("MUAY_THAI", 10, 0.8)],
+  });
+  assert.equal(d.tier, "HIGH");
+});
+
+test("a label with no bout behind it is LOW, and says so", () => {
+  const d = resolveDisciplines({ importedSport: "BOXING", bouts: [] });
+  assert.equal(d.tier, "LOW");
+  assert.equal(d.fromImportOnly, true);
+});
+
+test("no label and no bouts is UNKNOWN — nothing is claimed", () => {
+  assert.equal(resolveDisciplines({ importedSport: null, bouts: [] }).tier, "UNKNOWN");
+});
+
+test("the tier describes the PRIMARY discipline, not the best bout anywhere", () => {
+  // Stated kickboxing evidence must not make a derived Muay Thai primary read HIGH.
+  const d = resolveDisciplines({
+    importedSport: null,
+    bouts: [...withConf("MUAY_THAI", 8, 0.8), ...withConf("KICKBOXING", 2, 1)],
+  });
+  assert.equal(d.primarySport, "MUAY_THAI");
+  assert.equal(d.tier, "MEDIUM");
+});
+
 test("classifyDrift separates the repairable from the ambiguous", () => {
   const mt = resolveDisciplines({ importedSport: "MMA", bouts: settled("MUAY_THAI", 8) });
   assert.equal(classifyDrift("MUAY_THAI", mt), "agrees");

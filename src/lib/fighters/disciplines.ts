@@ -62,6 +62,12 @@ export interface ResolvedDisciplines {
   evidence: DisciplineEvidence[];
   /** True when nothing but the import label was available. */
   fromImportOnly: boolean;
+  /**
+   * How much the whole graph is worth, from the ruleset confidence of the bouts
+   * behind the PRIMARY discipline. Persisted so uncertainty is visible without
+   * anyone re-deriving it — never hidden.
+   */
+  tier: DisciplineTier;
 }
 
 export interface DisciplineBout {
@@ -77,7 +83,25 @@ export interface DisciplineBout {
   sport: Sport | null;
   /** A decided bout. Scheduled bouts are weaker evidence. */
   settled: boolean;
+  /**
+   * Fight.rulesetConfidence — how the bout's ruleset was established:
+   * 1 stated on the bout · 0.9 single-ruleset promotion · 0.8 event sport.
+   *
+   * Carried through so the fighter's stored tier can say WHY it is worth what
+   * it is worth, rather than a consumer having to re-open the Fight table to
+   * find out. Null when the bout has no ruleset.
+   */
+  rulesetConfidence?: number | null;
 }
+
+/**
+ * How much a stored discipline graph is worth. Mirrors the Prisma enum; kept as
+ * a string union here so this module stays pure and client-safe.
+ */
+export type DisciplineTier = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+
+/** A stated ruleset. Below this the evidence is derived rather than read. */
+const STATED = 1;
 
 /**
  * Resolve a fighter's disciplines from their bouts, falling back to the
@@ -91,14 +115,18 @@ export function resolveDisciplines(input: {
   importedSport: Sport | null | undefined;
   bouts: DisciplineBout[];
 }): ResolvedDisciplines {
-  const tally = new Map<Sport, { settled: number; booked: number }>();
+  const tally = new Map<Sport, { settled: number; booked: number; bestConfidence: number }>();
   for (const b of input.bouts) {
     // An UNKNOWN ruleset is not evidence. Counting it under the card's sport is
     // precisely the substitution this rewrite removed.
     if (!b.sport) continue;
-    const t = tally.get(b.sport) ?? { settled: 0, booked: 0 };
+    const t = tally.get(b.sport) ?? { settled: 0, booked: 0, bestConfidence: 0 };
     if (b.settled) t.settled += 1;
     else t.booked += 1;
+    // The STRONGEST evidence for this discipline, not the average: one bout
+    // whose ruleset the source stated is a firmer basis than ten derived ones,
+    // and averaging would let volume dilute a fact.
+    t.bestConfidence = Math.max(t.bestConfidence, b.rulesetConfidence ?? 0);
     tally.set(b.sport, t);
   }
 
@@ -106,7 +134,10 @@ export function resolveDisciplines(input: {
   // reported with confidence 0 and marked, so a caller can choose to distrust it.
   if (tally.size === 0) {
     if (!input.importedSport) {
-      return { primarySport: null, sports: [], confidence: 0, evidence: [], fromImportOnly: true };
+      return {
+        primarySport: null, sports: [], confidence: 0, evidence: [],
+        fromImportOnly: true, tier: "UNKNOWN",
+      };
     }
     return {
       primarySport: input.importedSport,
@@ -114,6 +145,8 @@ export function resolveDisciplines(input: {
       confidence: 0,
       evidence: [{ sport: input.importedSport, settled: 0, booked: 0, source: "import" }],
       fromImportOnly: true,
+      // A label with no bout behind it. Stated as LOW rather than dressed up.
+      tier: "LOW",
     };
   }
 
@@ -146,6 +179,13 @@ export function resolveDisciplines(input: {
 
   const sports = [primary.sport, ...evidence.filter((e) => e.sport !== primary.sport).map((e) => e.sport)];
 
+  // The tier reflects HOW the primary discipline's ruleset was established —
+  // read from the source, or derived from a promotion/card. It is deliberately
+  // about provenance, not about volume: a fighter with one stated Muay Thai
+  // bout is HIGH, because we KNOW that bout's rules.
+  const best = tally.get(primary.sport)?.bestConfidence ?? 0;
+  const tier: DisciplineTier = best >= STATED ? "HIGH" : best > 0 ? "MEDIUM" : "LOW";
+
   return {
     primarySport: primary.sport,
     sports,
@@ -154,6 +194,7 @@ export function resolveDisciplines(input: {
     confidence: totalSettled > 0 ? primary.settled / totalSettled : 0,
     evidence,
     fromImportOnly: false,
+    tier,
   };
 }
 

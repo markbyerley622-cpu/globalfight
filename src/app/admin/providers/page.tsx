@@ -25,6 +25,8 @@ const LADDER: Record<LadderStatus, string> = {
   unprobed: "text-mist",
 };
 
+const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
+
 export default function ProvidersPage() {
   const [data, setData] = useState<ProviderHealthReport | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "forbidden" | "error">("loading");
@@ -79,6 +81,68 @@ export default function ProvidersPage() {
             {data.providers.map((p) => <Row key={p.source} p={p} />)}
           </tbody>
         </table>
+      </div>
+
+      {/* ── The combat graph ──────────────────────────────────────────────── */}
+      <h2 className="mb-1 font-display text-sm font-bold uppercase tracking-wide text-fog">Canonical combat graph</h2>
+      <p className="mb-3 text-xs text-fog">
+        Ruleset coverage gates everything downstream — a discipline is only as
+        good as the bout evidence behind it.
+      </p>
+      <div className="mb-8 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-xl border border-ink-800 bg-ink-900/40 p-4">
+          <p className="font-display text-2xl font-black tabular-nums text-chalk">
+            {pct(data.graph.boutsWithRuleset, data.graph.bouts)}%
+          </p>
+          <p className="text-xs text-mist tabular-nums">
+            {data.graph.boutsWithRuleset.toLocaleString()} of {data.graph.bouts.toLocaleString()} bouts have a verified ruleset
+          </p>
+          <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-wider text-fog">Remaining UNKNOWN, by promotion</p>
+          <ul className="mt-1 space-y-0.5">
+            {data.graph.unknownByPromotion.map((u) => (
+              <li key={u.promotion} className="flex justify-between text-xs text-mist">
+                <span className="truncate">{u.promotion}</span>
+                <span className="tabular-nums">{u.bouts.toLocaleString()}</span>
+              </li>
+            ))}
+            {data.graph.unknownByPromotion.length === 0 && (
+              <li className="text-xs text-up">Every bout has a ruleset.</li>
+            )}
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-ink-800 bg-ink-900/40 p-4">
+          <p className="font-display text-2xl font-black tabular-nums text-chalk">
+            {data.graph.fightersCalculated.toLocaleString()}
+            <span className="text-sm font-bold text-fog"> / {data.graph.fighters.toLocaleString()}</span>
+          </p>
+          <p className="text-xs text-mist">
+            fighters with a persisted discipline graph ·{" "}
+            <span className="text-chalk">{data.graph.multiDiscipline.toLocaleString()}</span> multi-discipline
+          </p>
+          <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-wider text-fog">Confidence</p>
+          <ul className="mt-1 space-y-0.5">
+            {data.graph.tiers.map((t) => (
+              <li key={t.tier} className="flex justify-between text-xs">
+                <span className={t.tier === "HIGH" ? "text-up" : t.tier === "LOW" ? "text-gold-300" : "text-mist"}>{t.tier}</span>
+                <span className="tabular-nums text-mist">
+                  {t.fighters.toLocaleString()} ({pct(t.fighters, data.graph.fighters)}%)
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-wider text-fog">
+            Fighters per discipline <span className="font-normal normal-case">(crossovers count in each)</span>
+          </p>
+          <ul className="mt-1 grid grid-cols-2 gap-x-4">
+            {data.graph.perDiscipline.map((d) => (
+              <li key={d.sport} className="flex justify-between text-xs text-mist">
+                <span className="truncate">{d.sport.replace(/_/g, " ")}</span>
+                <span className="tabular-nums">{d.fighters.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {/* ── Coverage ──────────────────────────────────────────────────────── */}

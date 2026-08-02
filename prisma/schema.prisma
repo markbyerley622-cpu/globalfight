@@ -52,6 +52,21 @@ enum Stance {
 /// from BJJ (no gi, different scoring), and KARATE / LETHWEI / SANDA / SAVATE
 /// exist here before any provider emits them so adding one is a mapping change
 /// rather than a migration.
+/// How much a fighter's stored discipline graph is worth. Persisted so a
+/// consumer can decide whether to trust it WITHOUT re-deriving it — the whole
+/// point of the persistence layer.
+enum DisciplineTier {
+  /// Backed by bouts whose ruleset the SOURCE stated per bout.
+  HIGH
+  /// Backed by bouts whose ruleset came from a single-ruleset promotion or the
+  /// event's sport. Sound, a step removed from the bout.
+  MEDIUM
+  /// No usable bout evidence — the provider's import label is all there is.
+  LOW
+  /// Not even a label. Nothing is claimed.
+  UNKNOWN
+}
+
 enum Ruleset {
   MMA
   BOXING
@@ -193,7 +208,41 @@ model Fighter {
   slug     String  @unique
   name     String
   nickname String?
+  /// LEGACY: the provider's import label, and the display default. Kept in sync
+  /// with `primarySport` during the migration so existing readers do not break,
+  /// but it is NOT authoritative — new code reads primarySport/sports.
   sport    Sport   @default(BOXING)
+
+  /// ── The canonical discipline graph ───────────────────────────────────────
+  /// COMPUTED from Fight.ruleset via lib/fighters/disciplines, never imported.
+  /// Every value here must be reproducible from bout history; if it cannot be
+  /// reproduced it is a bug, not a fact.
+  ///
+  /// Persisted rather than derived on demand because the alternative is
+  /// resolving disciplines for every row of every directory, ranking and search
+  /// page — N+1 over a fighter's whole bout history, per request.
+  ///
+  /// The primary discipline. Null when there is no evidence AND no label.
+  primarySport         Sport?
+  /// EVERY discipline with bout evidence, primary first. A fighter is not one
+  /// sport: Superlek fights Muay Thai and kickboxing, and the single `sport`
+  /// column above can only ever be right about one of them.
+  sports               Sport[]
+  /// 0–1: the share of settled bouts sitting in the primary discipline. A pure
+  /// specialist scores 1; a genuine crossover athlete scores lower, which is
+  /// correct — the PRIMARY is less certain for them.
+  disciplineConfidence Float?
+  /// How much the above is worth, from the ruleset confidence of the bouts
+  /// behind it. Stored so a consumer never has to re-derive to find out.
+  disciplineTier       DisciplineTier?
+  /// MACHINE-READABLE provenance, not a sentence:
+  ///   [{ "sport": "MUAY_THAI", "settled": 12, "booked": 1, "source": "competition" }, …]
+  /// So a profile can say "12 Muay Thai bouts, 5 kickboxing" without touching
+  /// the Fight table, and an audit can prove the stored graph from its evidence.
+  disciplineEvidence   Json?
+  /// When the graph was last computed. A fighter whose bouts changed since is
+  /// stale and is what the incremental recalculation selects on.
+  lastCalculatedAt     DateTime?
 
   // bio
   nationality String? // ISO-ish country name
@@ -302,6 +351,13 @@ model Fighter {
   discussionThread ForumThread?
 
   @@index([sport, active])
+  /// The query every discipline-aware directory, filter and ranking will run:
+  /// "fighters who compete in X". A Postgres GIN index is what makes an array
+  /// `has` predicate a lookup rather than a table scan over 10k rows.
+  @@index([sports], type: Gin)
+  @@index([primarySport, active])
+  /// The incremental recalculation's selector: whose graph is stale?
+  @@index([lastCalculatedAt])
   @@index([countryCode])
   @@index([name])
   @@index([wins, losses])
