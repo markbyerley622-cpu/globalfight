@@ -118,6 +118,15 @@ export interface FightEvent {
   heroUrl?: string;
   date: string;
   status: EventStatus;
+  /**
+   * Results-harvest bookkeeping, carried so a surface can derive an HONEST
+   * completeness state (lib/events/result-coverage) rather than asserting
+   * "Final". Without `resultAttempts`/`resultCoveragePct` a card whose source
+   * has been exhausted is indistinguishable from one still arriving, and the
+   * reader is told to keep waiting for bouts nobody ever published.
+   */
+  resultAttempts?: number;
+  resultCoveragePct?: number | null;
   fights: Fight[];
 }
 
@@ -132,6 +141,13 @@ export interface Fight {
   mainEvent: boolean;
   coMain: boolean;
   result: FightResult;
+  /**
+   * The rules THIS BOUT was contested under (Fight.ruleset). "UNKNOWN" when no
+   * source stated it. Carried so a profile can group records by discipline
+   * without re-opening the database — a fighter's Muay Thai record and their
+   * MMA record are different facts and must never be summed.
+   */
+  ruleset?: string | null;
   winnerId?: string;
   method?: FightMethod;
   roundEnded?: number;

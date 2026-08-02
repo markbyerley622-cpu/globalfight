@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 778 across 681 files
-- **By class:** 518 public · 169 user-owned · 91 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 68 medium · 🟡 147 low · ⚪ 563 info
+- **Queries analysed:** 928 across 789 files
+- **By class:** 627 public · 209 user-owned · 92 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 76 medium · 🟡 161 low · ⚪ 691 info
 
 ## 🔴 High risk
 
@@ -43,10 +43,10 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/admin/merge-fighters.ts:108` | mergeFighter | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/admin/merge-fighters.ts:111` | winFavs | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/admin/merge-fighters.ts:113` | loseFavs | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/battles.ts:226` | battles | Battle (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/battles.ts:249` | fresh | Battle (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/battles.ts:253` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/battles.ts:270` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:235` | battles | Battle (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:258` | fresh | Battle (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:262` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:279` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/community/repo.ts:100` | leaveCommunity | CommunityMember (SHARED) | delete · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/lifecycle.ts:55` | claim | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/lifecycle.ts:70` | deleteClaimEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
@@ -56,33 +56,41 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/evidence/scan.ts:77` | scanEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/scan.ts:89` | scanEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/feed/notify.ts:56` | followers | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/fighters/profile.ts:158` | c | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:183` | existing | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:190` | claim | FighterClaim (SHARED) | upsert · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:216` | rows | FighterClaim (SHARED) | findMany · unknown | Shared model; dynamic `where` — verify the caller validates the relationship. |
-| `src/lib/fighters/profile.ts:260` | claim | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:271` | superseded | FighterClaim (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:278` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:279` | reviewClaim | FighterClaim (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:293` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:306` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:179` | c | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:204` | existing | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:211` | claim | FighterClaim (SHARED) | upsert · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:237` | rows | FighterClaim (SHARED) | findMany · unknown | Shared model; dynamic `where` — verify the caller validates the relationship. |
+| `src/lib/fighters/profile.ts:281` | claim | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:292` | superseded | FighterClaim (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:299` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:300` | reviewClaim | FighterClaim (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:319` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:332` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/follow-targets.ts:115` | existing | Follow (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:126` | toggleFollow | Follow (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:212` | rows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:214` | rows | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:215` | rows | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:218` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/follows.ts:29` | existing | FavoriteFighter (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:68` | existing | FavoritePromotion (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:104` | existing | FavoriteEvent (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
-| `src/lib/forum/repo.ts:556` | onBattleRoomMessage | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/forum/repo.ts:672` | toggleBookmark | ForumBookmark (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/forum/repo.ts:680` | toggleSubscription | ForumSubscription (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/forum/repo.ts:561` | onBattleRoomMessage | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/forum/repo.ts:677` | toggleBookmark | ForumBookmark (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/forum/repo.ts:685` | toggleSubscription | ForumSubscription (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/geo/people.ts:264` | getMutualFollowers | UserFollow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:62` | checkIn | CheckIn (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:102` | getPresence | CheckIn (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:118` | coaches | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/identity/event-room.ts:79` | _getEventRoom | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:43` | audienceFor | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:46` | audienceFor | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:101` | unpickedFollowers | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:102` | unpickedFollowers | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:125` | before | Notification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:155` | created | Notification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/intelligence/return-engine.ts:360` | follows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/identity/event-room.ts:80` | _getEventRoom | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:48` | audienceFor | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:50` | audienceFor | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:53` | audienceFor | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:109` | unpickedFollowers | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:110` | unpickedFollowers | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:166` | before | Notification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:196` | created | Notification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/intelligence/return-engine.ts:401` | follows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/metrics.ts:75` | getLaunchMetrics | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 
 ## Model classification
@@ -94,7 +102,9 @@ _None._ No private-model read/write was found without an ownership filter.
 | AuditLog | PUBLIC | auto (heuristic) |
 | Champion | PUBLIC | auto (heuristic) |
 | CommunityMarket | PUBLIC | auto (heuristic) |
+| Conversation | PUBLIC | auto (heuristic) |
 | DataSource | PUBLIC | auto (heuristic) |
+| DirectMessage | PUBLIC | auto (heuristic) |
 | Event | PUBLIC | curated |
 | EventExternalId | PUBLIC | auto (heuristic) |
 | FeedCollection | PUBLIC | auto (heuristic) |
@@ -112,6 +122,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | FighterMedia | PUBLIC | auto (heuristic) |
 | FighterSocial | PUBLIC | auto (heuristic) |
 | FighterSponsor | PUBLIC | auto (heuristic) |
+| FightImport | PUBLIC | auto (heuristic) |
 | ForumCategory | PUBLIC | auto (heuristic) |
 | ForumPost | PUBLIC | curated |
 | ForumReaction | PUBLIC | curated |
@@ -131,6 +142,8 @@ _None._ No private-model read/write was found without an ownership filter.
 | ProviderSync | PUBLIC | auto (heuristic) |
 | Ranking | PUBLIC | curated |
 | RankSnapshot | PUBLIC | auto (heuristic) |
+| ResultCandidate | PUBLIC | auto (heuristic) |
+| ResultEvidence | PUBLIC | auto (heuristic) |
 | ScrapeJob | PUBLIC | auto (heuristic) |
 | Tag | PUBLIC | auto (heuristic) |
 | Title | PUBLIC | auto (heuristic) |
@@ -151,10 +164,12 @@ _None._ No private-model read/write was found without an ownership filter.
 | AnalyticsEvent | USER_OWNED | curated |
 | CardAward | USER_OWNED | curated |
 | CheckIn | USER_OWNED | curated |
+| ConversationMember | USER_OWNED | auto (heuristic) |
 | FavoriteEvent | USER_OWNED | curated |
 | FavoriteFighter | USER_OWNED | curated |
 | FavoritePromotion | USER_OWNED | curated |
 | FightPick | USER_OWNED | curated |
+| Follow | USER_OWNED | auto (heuristic) |
 | ForumBookmark | USER_OWNED | curated |
 | ForumSubscription | USER_OWNED | curated |
 | GymReviewVote | USER_OWNED | curated |

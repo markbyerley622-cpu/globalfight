@@ -37,6 +37,57 @@ enum Stance {
   SWITCH
 }
 
+/// The rules a BOUT was contested under — a first-class domain concept, not a
+/// property of the card it sat on.
+///
+/// Event.sport was standing in for this and it is wrong for every multi-ruleset
+/// promotion. A ONE numbered card runs MMA, Muay Thai, kickboxing and grappling
+/// in one night; classifying the card by its majority (lib/scraper/ruleset)
+/// gives a useful label for the EVENT and a false one for the individual bout.
+/// The discipline audit proved the cost: it proposed reclassifying Superlek from
+/// MUAY_THAI to MMA at confidence 1.00, because his bouts sit on MMA-labelled
+/// cards.
+///
+/// Deliberately WIDER than Sport: SUBMISSION_GRAPPLING is a distinct ruleset
+/// from BJJ (no gi, different scoring), and KARATE / LETHWEI / SANDA / SAVATE
+/// exist here before any provider emits them so adding one is a mapping change
+/// rather than a migration.
+/// How much a fighter's stored discipline graph is worth. Persisted so a
+/// consumer can decide whether to trust it WITHOUT re-deriving it — the whole
+/// point of the persistence layer.
+enum DisciplineTier {
+  /// Backed by bouts whose ruleset the SOURCE stated per bout.
+  HIGH
+  /// Backed by bouts whose ruleset came from a single-ruleset promotion or the
+  /// event's sport. Sound, a step removed from the bout.
+  MEDIUM
+  /// No usable bout evidence — the provider's import label is all there is.
+  LOW
+  /// Not even a label. Nothing is claimed.
+  UNKNOWN
+}
+
+enum Ruleset {
+  MMA
+  BOXING
+  MUAY_THAI
+  KICKBOXING
+  BJJ
+  SUBMISSION_GRAPPLING
+  WRESTLING
+  JUDO
+  SAMBO
+  COMBAT_SAMBO
+  TAEKWONDO
+  BARE_KNUCKLE
+  KARATE
+  LETHWEI
+  SANDA
+  SAVATE
+  /// We do not know. NEVER a guess — an honest gap a later backfill can fill.
+  UNKNOWN
+}
+
 enum FightResult {
   WIN
   LOSS
@@ -157,7 +208,41 @@ model Fighter {
   slug     String  @unique
   name     String
   nickname String?
+  /// LEGACY: the provider's import label, and the display default. Kept in sync
+  /// with `primarySport` during the migration so existing readers do not break,
+  /// but it is NOT authoritative — new code reads primarySport/sports.
   sport    Sport   @default(BOXING)
+
+  /// ── The canonical discipline graph ───────────────────────────────────────
+  /// COMPUTED from Fight.ruleset via lib/fighters/disciplines, never imported.
+  /// Every value here must be reproducible from bout history; if it cannot be
+  /// reproduced it is a bug, not a fact.
+  ///
+  /// Persisted rather than derived on demand because the alternative is
+  /// resolving disciplines for every row of every directory, ranking and search
+  /// page — N+1 over a fighter's whole bout history, per request.
+  ///
+  /// The primary discipline. Null when there is no evidence AND no label.
+  primarySport         Sport?
+  /// EVERY discipline with bout evidence, primary first. A fighter is not one
+  /// sport: Superlek fights Muay Thai and kickboxing, and the single `sport`
+  /// column above can only ever be right about one of them.
+  sports               Sport[]
+  /// 0–1: the share of settled bouts sitting in the primary discipline. A pure
+  /// specialist scores 1; a genuine crossover athlete scores lower, which is
+  /// correct — the PRIMARY is less certain for them.
+  disciplineConfidence Float?
+  /// How much the above is worth, from the ruleset confidence of the bouts
+  /// behind it. Stored so a consumer never has to re-derive to find out.
+  disciplineTier       DisciplineTier?
+  /// MACHINE-READABLE provenance, not a sentence:
+  ///   [{ "sport": "MUAY_THAI", "settled": 12, "booked": 1, "source": "competition" }, …]
+  /// So a profile can say "12 Muay Thai bouts, 5 kickboxing" without touching
+  /// the Fight table, and an audit can prove the stored graph from its evidence.
+  disciplineEvidence   Json?
+  /// When the graph was last computed. A fighter whose bouts changed since is
+  /// stale and is what the incremental recalculation selects on.
+  lastCalculatedAt     DateTime?
 
   // bio
   nationality String? // ISO-ish country name
@@ -266,6 +351,13 @@ model Fighter {
   discussionThread ForumThread?
 
   @@index([sport, active])
+  /// The query every discipline-aware directory, filter and ranking will run:
+  /// "fighters who compete in X". A Postgres GIN index is what makes an array
+  /// `has` predicate a lookup rather than a table scan over 10k rows.
+  @@index([sports], type: Gin)
+  @@index([primarySport, active])
+  /// The incremental recalculation's selector: whose graph is stale?
+  @@index([lastCalculatedAt])
   @@index([countryCode])
   @@index([name])
   @@index([wins, losses])
@@ -653,6 +745,23 @@ model Fight {
   /// — replaced by Silva". Rendered verbatim next to the bout.
   cardNote         String?
 
+  /// ── The bout's own ruleset ──────────────────────────────────────────────
+  /// Authoritative for fighter discipline. Event.sport is contextual metadata
+  /// about the CARD and must not be used to classify a fighter.
+  ///
+  /// Defaults to UNKNOWN rather than to the event's sport: a wrong ruleset is
+  /// indistinguishable from a right one downstream, and UNKNOWN is a gap a
+  /// backfill can close without having to detect and undo a guess first.
+  ruleset           Ruleset  @default(UNKNOWN)
+  /// 0–1. How much the source told us, not how much we inferred: a ruleset
+  /// stated per bout ("Featherweight Muay Thai") is 1; one derived from a
+  /// single-ruleset promotion is lower; a guess is not stored at all.
+  rulesetConfidence Float?
+  /// Which provider/derivation set it, so a better source can supersede a weaker
+  /// one and a bad backfill can be identified and re-run.
+  rulesetSource     String?
+  rulesetUpdatedAt  DateTime?
+
   // result
   result     FightResult  @default(SCHEDULED)
   winnerId   String? // Fighter.id or null
@@ -682,6 +791,10 @@ model Fight {
   resultCandidate ResultCandidate?
 
   @@index([date, result])
+  /// "Which disciplines does this fighter compete in?" scans a fighter's bouts
+  /// by ruleset — the query behind every directory, filter and ranking once
+  /// discipline is derived from bouts rather than from the event.
+  @@index([ruleset])
   @@index([redId])
   @@index([blueId])
   @@index([eventId, orderOnCard])
@@ -1291,6 +1404,8 @@ model User {
   following         UserFollow[]         @relation("Follower")
   followers         UserFollow[]         @relation("Following")
   pushSubscriptions PushSubscription[]
+  conversations     ConversationMember[]
+  sentMessages      DirectMessage[]      @relation("MessageSender")
 
   @@index([reputation])
   // The people layer's hot path: "visible users who have a resolved point".
@@ -2169,6 +2284,66 @@ model CheckIn {
 /// person" — favourites covered fighters, promotions and events only — so
 /// "Friends Only" visibility had nothing to resolve against and the Following
 /// pillar had no people in it. One row per direction; mutual follow is both.
+/// ── Direct messages ────────────────────────────────────────────────────────
+///
+/// One-to-one only, deliberately. A group thread needs its own membership
+/// lifecycle (invite, leave, rename, who-can-add) and a different read model;
+/// building the pair case first keeps the schema honest rather than shipping a
+/// group table nothing populates. `pairKey` is what makes it 1:1 and safe:
+/// the two user ids, sorted and joined, so the SAME two people can only ever
+/// have ONE conversation no matter who opens it first, enforced by the database
+/// rather than by a check-then-create race (see CLAUDE.md rule 4).
+model Conversation {
+  id String @id @default(cuid())
+  /// "<lowerId>:<higherId>" — sorted, so it is orientation-independent.
+  pairKey String @unique
+
+  createdAt DateTime @default(now())
+  /// Denormalised so the inbox can order without touching the message table.
+  /// Written in the same transaction as the message it describes.
+  lastMessageAt DateTime @default(now())
+
+  members  ConversationMember[]
+  messages DirectMessage[]
+
+  @@index([lastMessageAt])
+}
+
+/// A participant, and their read position. `lastReadAt` is a WATERMARK rather
+/// than a per-message read flag: unread is then a count of messages newer than
+/// it, which needs no write per message and cannot drift out of sync with the
+/// thread.
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt DateTime?
+  /// Leaving hides the thread without destroying the other person's copy of the
+  /// conversation — a message is shared history, not one user's row.
+  archivedAt DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model DirectMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  body String @db.Text
+
+  createdAt DateTime @default(now())
+
+  /// The inbox and the thread both read newest-first within a conversation.
+  @@index([conversationId, createdAt])
+}
+
 model UserFollow {
   id          String @id @default(cuid())
   followerId  String

@@ -22,6 +22,13 @@ import type {
 // Forum repository (DB-backed, realtime) lives in its own module and is
 // surfaced here so repo.prisma remains the single Prisma entry point.
 export * from "@/lib/forum/repo";
+// THE canonical discipline predicate. Nothing in this file writes
+// `{ sport: X }` against Fighter any more — see lib/fighters/discipline-query.
+// `rankableInDiscipline` is deliberately NOT used here: every ranking surface in
+// this file is CURATED, and a curated list is its own verification. The strict
+// predicate belongs to generateP4P, which computes an ordering rather than
+// transcribing one.
+import { competesInDiscipline } from "@/lib/fighters/discipline-query";
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : undefined);
 const isoReq = (d: Date) => d.toISOString();
@@ -70,7 +77,9 @@ export async function getFightersPage(opts: {
 }): Promise<{ items: import("@/lib/types").FighterListItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(opts.limit ?? 24, 1), 60);
   const where: import("@prisma/client").Prisma.FighterWhereInput = {};
-  if (opts.sport) where.sport = opts.sport as PFighter["sport"];
+  // sports[] (verified disciplines), NOT the legacy `sport` label. A crossover
+  // athlete appears in every directory they have evidence for.
+  if (opts.sport) Object.assign(where, competesInDiscipline(opts.sport));
   if (opts.country) where.countryCode = opts.country.toUpperCase();
   if (opts.status === "active") where.active = true;
   if (opts.status === "inactive") where.active = false;
@@ -244,9 +253,26 @@ export async function getRankingDivisions(sportValue: string): Promise<RankingDi
 }
 
 /**
- * Pound-for-pound for a sport. Boxing has a curated Ranking table; other
- * sports derive a top list straight from the fighter database (real fighters
- * ordered by record), so every sport has a populated P4P. Paginated, 10/page.
+ * Pound-for-pound for a sport — SOURCE-BACKED ROWS ONLY.
+ *
+ * `source: "generated"` rankings are excluded from every public read. They are
+ * derived from our own fighter table (top records, ordered by a rating we
+ * compute), which is a reasonable internal signal and NOT a pound-for-pound
+ * ranking anyone should be shown as fact.
+ *
+ * What made that concrete: the generated boxing P4P read
+ * "#1 Inoue, #2 Crawford, #3 Usyk, #4 Canelo, #5 Mariusz Wach" — the top four
+ * were surname-only stubs seeded by a ranking import with ZERO bouts, and the
+ * fifth was an artefact of a thin dataset. Once the boxing provider landed, the
+ * real Terence Crawford / Oleksandr Usyk / Canelo Álvarez profiles existed
+ * alongside those stubs, so the generated list linked readers to empty pages
+ * while the populated ones sat elsewhere. Generated MMA was the same shape.
+ *
+ * The curated lists (BJJ, wrestling, Muay Thai, kickboxing, bare-knuckle) are
+ * transcribed from named public rankings with a date and a confidence rubric —
+ * those are shown. See lib/rankings/curated/lists.
+ *
+ * An empty sport is honest; a guessed one is not. Paginated, 10/page.
  */
 export async function getPoundForPoundBySport(
   sportValue: string | undefined, page: number, limit = 10,
@@ -255,7 +281,26 @@ export async function getPoundForPoundBySport(
   // No sportValue → "All Sports": the top rated across every combat sport.
   const where = {
     isPoundForPound: true,
-    ...(sportValue ? { fighter: { sport: sportValue as PFighter["sport"] } } : {}),
+    // The gate. Applied to the COUNT as well as the rows, or the pager would
+    // promise pages of results the query then refuses to return.
+    source: { not: "generated" },
+    // ── The sport filter belongs to the RANKING, not to the fighter ─────────
+    //
+    // Filtering by the fighter's disciplines was tried and is wrong in both
+    // directions, measured against real data:
+    //
+    //   • it DESTROYS the curated lists. Gordon Ryan is the cited #1 BJJ P4P;
+    //     he has no bouts in our database, so a bout-evidence gate dropped him
+    //     and took BJJ from 10 entries to 3, bare-knuckle from 5 to 0. A
+    //     curated ranking IS its own verification — a named external authority
+    //     said it. Our bout coverage has no bearing on that.
+    //   • it LEAKS across disciplines. Mike Perry holds a curated BARE_KNUCKLE
+    //     P4P place and also has verified boxing bouts, so filtering by his
+    //     disciplines surfaced him as the sole entry in BOXING P4P.
+    //
+    // A ranking's discipline is a property of the RANKING (its weight class),
+    // and that is what the reader is asking about.
+    ...(sportValue ? { weightClass: { sport: sportValue as PFighter["sport"] } } : {}),
   };
 
   const total = await prisma.ranking.count({ where });
@@ -273,8 +318,8 @@ export async function getPoundForPoundBySport(
     skip, take: limit,
     include: { fighter: { include: { titles: true } } },
   });
-  // If any row is from a scrape/official import it's curated; else generated.
-  const anyCurated = await prisma.ranking.count({ where: { ...where, source: { not: "generated" } } });
+  // Everything that survives the filter is curated by definition — the second
+  // count this used to run could only ever return the same rows.
   return {
     items: rows.map((r) => ({
       rank: r.rank, previousRank: r.previousRank ?? undefined,
@@ -282,7 +327,7 @@ export async function getPoundForPoundBySport(
       fighter: mapFighter(r.fighter),
     })),
     total,
-    source: anyCurated > 0 ? "curated" : "generated",
+    source: "curated",
   };
 }
 
@@ -293,7 +338,9 @@ export async function getPredictionsPage(
   const skip = Math.max(0, page) * limit;
   const where = {
     result: "SCHEDULED" as const,
-    ...(sportValue ? { red: { sport: sportValue as PFighter["sport"] } } : {}),
+    // Verified disciplines, so a ONE Muay Thai bout appears under Muay Thai
+    // rather than under whichever label its red corner was imported with.
+    ...(sportValue ? { red: competesInDiscipline(sportValue) } : {}),
   };
   const [rows, total] = await Promise.all([
     prisma.fight.findMany({ where, orderBy: { date: "asc" }, skip, take: limit, include: FIGHT_INCLUDE }),
@@ -307,11 +354,19 @@ export async function getFighter(slug: string): Promise<Fighter | null> {
   return f ? mapFighter(f) : null;
 }
 
-export async function searchFighters(query: string): Promise<Fighter[]> {
+/**
+ * Fighter search. Optionally scoped to a DISCIPLINE.
+ *
+ * The discipline filter is `sports[]`, so searching Muay Thai returns Muay Thai
+ * specialists AND crossover ONE athletes with verified Muay Thai bouts — not
+ * only fighters an importer happened to label MUAY_THAI.
+ */
+export async function searchFighters(query: string, sport?: string | null): Promise<Fighter[]> {
   const q = query.trim();
   if (!q) return [];
   const rows = await prisma.fighter.findMany({
     where: {
+      ...competesInDiscipline(sport),
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { nickname: { contains: q, mode: "insensitive" } },
@@ -384,7 +439,10 @@ export async function getChampions(): Promise<Champion[]> {
 /** Current champions, optionally filtered to one sport (via the fighter). */
 export async function getChampionsBySport(sportValue?: string): Promise<Champion[]> {
   const rows = await prisma.champion.findMany({
-    where: { current: true, ...(sportValue ? { fighter: { sport: sportValue as PFighter["sport"] } } : {}) },
+    // Same rule as P4P: a title belongs to a DIVISION, and the division names
+    // the sport. Filtering by the holder's disciplines would drop curated
+    // champions we hold no bouts for and leak crossover athletes across sports.
+    where: { current: true, ...(sportValue ? { fighter: competesInDiscipline(sportValue) } : {}) },
     include: { fighter: { include: { titles: true } }, weightClass: true },
   });
   return rows.map((c) => ({
@@ -423,6 +481,7 @@ export function mapFight(f: PFightFull): Fight {
     scheduledRounds: f.scheduledRounds,
     titleFight: f.titleFight, mainEvent: f.mainEvent, coMain: f.coMain,
     result: f.result as FightResult,
+    ruleset: f.ruleset,
     winnerId: f.winnerId ?? undefined,
     method: (f.method as FightMethod) ?? undefined,
     roundEnded: f.roundEnded ?? undefined,
@@ -434,6 +493,9 @@ export function mapFight(f: PFightFull): Fight {
     prediction: mapPrediction(f.predictions),
   };
 }
+
+/** Completed cards per page on /results. Ten cards is a full scroll. */
+export const RESULTS_PAGE_SIZE = 10;
 
 const FIGHT_INCLUDE = {
   red: { include: { titles: true } },
@@ -454,6 +516,8 @@ function mapEvent(e: PEvent & { fights: PFightFull[] }): FightEvent {
     posterUrl: e.posterUrl ?? undefined, heroUrl: e.heroUrl ?? undefined,
     date: isoReq(e.date),
     status: e.status as EventStatus,
+    resultAttempts: e.resultAttempts,
+    resultCoveragePct: e.resultCoverage,
     fights: e.fights.map(mapFight),
   };
 }
@@ -467,14 +531,35 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
   return rows.map(mapEvent);
 }
 
-export async function getResults(): Promise<FightEvent[]> {
-  const rows = await prisma.event.findMany({
-    where: { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" }] },
-    orderBy: { date: "desc" },
-    take: 50,
-    include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
-  });
-  return rows.map(mapEvent);
+/**
+ * Completed cards, newest first, ONE PAGE at a time.
+ *
+ * This used to take 50 events and every bout on each, with the full Fighter
+ * record for both corners — roughly 500 fighter objects serialized into the RSC
+ * payload for a single scroll. The audit measured the result: 987KB of
+ * uncompressed HTML on the results landing page, nearly a megabyte before a
+ * reader has asked for anything beyond the most recent card.
+ *
+ * `total` comes back with the page so the UI can render real pagination instead
+ * of guessing whether a next page exists.
+ */
+export async function getResults(
+  page = 1,
+  pageSize = RESULTS_PAGE_SIZE,
+): Promise<{ events: FightEvent[]; total: number; page: number; pageSize: number }> {
+  const where = { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" as const }] };
+  const safePage = Math.max(1, Math.floor(page));
+  const [rows, total] = await Promise.all([
+    prisma.event.findMany({
+      where,
+      orderBy: { date: "desc" },
+      skip: (safePage - 1) * pageSize,
+      take: pageSize,
+      include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
+    }),
+    prisma.event.count({ where }),
+  ]);
+  return { events: rows.map(mapEvent), total, page: safePage, pageSize };
 }
 
 /**

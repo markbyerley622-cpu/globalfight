@@ -77,6 +77,33 @@ envVarGroups:
       # 3000ms is the rate at which that run stops being refused. It makes a full
       # ONE pass slower, which is the correct trade: an unthrottled pass that gets
       # 429'd returns nothing.
+      # ── PER-PROVIDER GATES ────────────────────────────────────────────────
+      # ENABLE_SCRAPER above is the master switch; these sit below it, one per
+      # sport, so a provider can ship and deploy while staying OFF until it has
+      # been watched on /admin/providers. A provider runs only when
+      # ENABLE_SCRAPER *and* its own flag are the exact string "true".
+      #
+      # Deliberately NOT set here — a blueprint that enables a new provider on
+      # merge is the thing these exist to prevent. Set them in the dashboard.
+      #
+      #   BOXING_PROVIDER_ENABLED     Wikipedia category discovery (live, verified:
+      #                               20 -> 149 events, 77 -> 1,157 bouts)
+      #   MUAYTHAI_PROVIDER_ENABLED   ONE official pages. Note that ONE's Muay Thai
+      #                               already arrives via the year-page path and is
+      #                               classified per bout, so this adds little today.
+      #   BJJ_PROVIDER_ENABLED        ADCC. adcombat.com answered HTTP 403 on
+      #                               2026-08-02 — leave OFF until that is resolved.
+      #   PROVIDER_BACKFILL_ENABLED   Allows the long historical walk. Keep OFF in
+      #                               production except while running one on purpose;
+      #                               the backfill scripts refuse to write without it.
+      - key: BOXING_PROVIDER_ENABLED
+        sync: false
+      - key: MUAYTHAI_PROVIDER_ENABLED
+        sync: false
+      - key: BJJ_PROVIDER_ENABLED
+        sync: false
+      - key: PROVIDER_BACKFILL_ENABLED
+        sync: false
       - key: SCRAPER_RATE_LIMIT_MS
         value: "3000"
       - key: SCRAPER_MAX_RETRIES
@@ -257,6 +284,20 @@ services:
       # Bearer token for POST /api/admin/seed-world/reset (removes all seed data).
       - key: SEED_WORLD_ADMIN_TOKEN
         generateValue: true
+      # ── THIS VARIABLE NOW GATES SEARCH INDEXING ──────────────────────────
+      # config.ts:isCanonicalHost() treats "an operator named the origin
+      # explicitly" as the signal that this deployment is the real one. While
+      # NEXT_PUBLIC_SITE_URL is unset, SITE.url falls back to RENDER_EXTERNAL_URL
+      # (a service slug, not a product address) and the audit found the
+      # consequence: canonical URLs, OG images, robots Host and the sitemap all
+      # pointing at globalfight.onrender.com, which returns 503 — search engines
+      # told a dead host was authoritative for the whole site.
+      #
+      # So with it unset the app now serves `robots.txt: Disallow: /` and
+      # `noindex` on every page. That is deliberate: being unindexed for a day
+      # is recoverable, being indexed under a host that stops resolving is not.
+      # SET THIS BEFORE LAUNCH or the site will not be indexed at all.
+      #
       # Must be a FULL origin (scheme included) — it's the base for password-reset
       # links and site metadata. `fromService property: host` yields a bare
       # hostname with no scheme, which produces broken links, so set it by hand

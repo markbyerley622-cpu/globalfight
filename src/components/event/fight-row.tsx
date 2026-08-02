@@ -1,5 +1,5 @@
 import { PlayCircle, Crown, Ban } from "lucide-react";
-import Link from "next/link";
+import { FighterLink } from "@/components/fighter-link";
 import type { BoutProgress } from "@/lib/card-segments";
 import { LocalTime } from "@/components/event/event-schedule";
 import type { Fight } from "@/lib/types";
@@ -169,10 +169,13 @@ function Corner({
   // rate is the card's "danger" tell, so surface it as a signal — tinted blood
   // when it's a real threat — rather than a faint afterthought.
   const ko = fighter.wins > 0 ? koPercentage(fighter.koWins, fighter.wins) : 0;
-  // The fighter is the central object — the whole block links to their profile.
+  // The fighter is the central object — the whole block links to their profile,
+  // unless the corner is an unannounced opponent, which is not a person and has
+  // no profile to link (FighterLink).
   return (
-    <Link
-      href={`/fighters/${fighter.slug}`}
+    <FighterLink
+      name={fighter.name}
+      slug={fighter.slug}
       className={`group/f flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 ${alignEnd ? "flex-row-reverse text-right" : "text-left"}`}
     >
       {/* The avatar carries the crown so the winner is identifiable from the
@@ -204,6 +207,6 @@ function Corner({
           )}
         </p>
       </div>
-    </Link>
+    </FighterLink>
   );
 }

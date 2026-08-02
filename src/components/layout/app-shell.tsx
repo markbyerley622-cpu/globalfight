@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { PillarNav } from "./pillar-nav";
 import { OnlineCount } from "./online-count";
 import { NotificationBell } from "./notification-bell";
+import { MessagesButton } from "./messages-button";
 import { ScrollRestoration } from "./scroll-restoration";
 import { useAuth } from "@/lib/auth-client";
 import { useTrackNavigation } from "@/lib/navigation-history";
@@ -141,6 +142,10 @@ export function AppShell({
               {/* In-app notifications — mounted for signed-in users only; anon
                   visitors have nothing to poll. This is the surface engine
                   notifications (pick results, fight-week, follows) land on. */}
+              {/* Messages sit LEFT of the bell: a DM is addressed to you
+                  personally, so it outranks engine notifications. Both are
+                  signed-in only. */}
+              {user && <MessagesButton />}
               {user && <NotificationBell />}
               <AccountMenu onOpenNav={() => setNavOpen(true)} />
               {/* Language lives at the very top-right of the header. */}

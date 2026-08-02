@@ -54,6 +54,7 @@ Verified empirically against a production build (red-team pass, 2026-07-26).
 | Follows / favourites / bookmarks | ✗ (401) | ✗ | CRUD own | own | own |
 | `Notification` | ✗ (401) | ✗ own-scoped | read/mark own | own | own |
 | `CheckIn` (location) | ✗ (401) | ✗ | CRUD own | own | own |
+| `Conversation` / `DirectMessage` (DMs) | ✗ (401) | ✗ (**404**, no existence oracle) | read/send as a member | — | — |
 | Fighter/Gym **claim** evidence (identity docs) | ✗ (404) | ✗ (404, no IDOR oracle) | claimant reads own | reviewer reads | reviewer reads |
 | Gym roster roles | — | ✗ | — | — | promote/demote; **owner demotable only via admin claim resolution** |
 | `/api/admin/*` | ✗ | ✗ (**403** API / **404** page) | ✗ | subset | full |
@@ -122,7 +123,10 @@ render; `userA … WHERE userId='userB'` returns **0**.
 
 - **Group A — owner-only read+write (RLS `USING (userId = app.user_id)`):**
   `Notification`, `FightPick`, `Session`, `Account`, `PushSubscription`,
-  `CheckIn`, `ForumBookmark`, `ForumSubscription`,
+  `CheckIn`, `ForumBookmark`, `ForumSubscription`, `ConversationMember`,
+  `Conversation`/`DirectMessage` (scoped via membership, not a `userId` column —
+  a DM is shared between two people, so ownership is "is a member of", and that
+  check lives in `lib/messages/repo`),
   `FavoriteFighter/Promotion/Event`, `UserFollow` (by `followerId`),
   `AnalyticsEvent`. `PasswordResetToken`: RLS on, **no** policy (server-only, by
   hash).

@@ -14,6 +14,7 @@ import * as cheerio from "cheerio";
 import { extractJsonLd, findType, str, obj } from "../../bkfc/extract/jsonld";
 import { clean, slugFromUrl } from "../../bkfc/normalize";
 import type { OneEvent, OneSport } from "../types";
+import { normalizeText } from "@/lib/text/entities";
 
 /** Assign a project sport from the event identity. */
 export function detectOneSport(slug: string, name: string): OneSport {
@@ -43,9 +44,19 @@ export function parseOneEventPage(html: string, url: string, now = new Date()): 
   const nodes = extractJsonLd($);
   const ld = findType(nodes, "Event");
 
+  // normalizeText, NOT a hand-rolled `.replace(/&amp;/g, "&")`.
+  //
+  // That is what this line used to be, and it handles exactly one entity. ONE's
+  // JSON-LD emits `&#038;` and `&#8217;` too, so eight cards were stored as
+  // "Kings &#038; Champions" and slugged `kings-038-champions` — while the same
+  // cards arrived from Wikipedia correctly named, producing a SECOND row each.
+  // The encoded copies held zero bouts; the decoded ones held the whole card.
+  //
+  // Every externally-sourced string goes through the shared normalizer. A local
+  // decode is always a partial decode.
   const name =
-    clean(str(ld, "name")?.replace(/&amp;/g, "&")) ??
-    clean($("h1").first().text()) ??
+    clean(normalizeText(str(ld, "name") ?? "")) ??
+    clean(normalizeText($("h1").first().text())) ??
     slug.replace(/-/g, " ");
 
   const date = isoOrNull(str(ld, "startDate"));

@@ -17,6 +17,7 @@ import { slugify } from "@/lib/utils";
 import { parseMethod } from "../bkfc/normalize";
 import type { WikiBout } from "./extract";
 import type { EventIdentity } from "./types";
+import { toRuleset, RULESET_CONFIDENCE } from "../ruleset";
 
 export const WIKI_SOURCE = "wikipedia";
 /** Editorially maintained + cited, but community-edited: below an official feed. */
@@ -59,6 +60,18 @@ export function toFightStub(b: WikiBout, index: number, isFullCard = true): Norm
     redExternalId,
     blueExternalId,
     weightClass: b.weightClass ?? undefined,
+    // The extractor has ALWAYS read the ruleset out of the weight-class cell
+    // ("Featherweight Muay Thai") and this mapper threw it away, so every bout
+    // downstream had to be classified from its EVENT — which is false for every
+    // mixed card and is what proposed reclassifying Superlek to MMA. It is now
+    // carried through. `stated` confidence: the source named it on the bout.
+    ...(toRuleset(b.ruleset)
+      ? {
+          ruleset: toRuleset(b.ruleset)!,
+          rulesetConfidence: RULESET_CONFIDENCE.stated,
+          rulesetSource: "wikipedia:bout-weight-class",
+        }
+      : {}),
     titleFight: b.titleFight,
     // Wikipedia lists the main event first — but ONLY when we are taking a whole card.
     //

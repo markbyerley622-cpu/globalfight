@@ -12,6 +12,14 @@ import type {
   Fighter, WeightClassRanking, Champion, FightEvent, Fight, Article, FighterListItem,
 } from "@/lib/types";
 import type { RankingDivision } from "@/lib/repo.prisma";
+
+/** One page of completed cards — see repo.prisma.getResults. */
+export interface ResultsPage {
+  events: FightEvent[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 import { cached, CACHE_TTL } from "@/lib/cache";
 import { maybeRefreshNews } from "@/lib/news/lazy-refresh";
 // Weight-class taxonomy (reference config — the divisions themselves, not mock
@@ -83,8 +91,20 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
   return cached("events:upcoming", CACHE_TTL.EVENTS, () => live(() => pg.getUpcomingEvents(), []));
 }
 
-export async function getResults(): Promise<FightEvent[]> {
-  return cached("events:results", CACHE_TTL.EVENTS, () => live(() => pg.getResults(), []));
+export async function getResults(page = 1): Promise<ResultsPage> {
+  const empty: ResultsPage = { events: [], total: 0, page, pageSize: 0 };
+  // ONLY page 1 is cached, under the key ingest already invalidates.
+  //
+  // Per-page keys ("events:results:4") would each need invalidating, and
+  // `invalidate()` deletes one exact key — it cannot scan a prefix, and neither
+  // backend here is given a way to. Ingest calls invalidate("events:results"),
+  // so per-page keys would have silently gone stale for a full TTL after every
+  // scrape, showing a reader results the database had already corrected.
+  //
+  // Page 1 is the hot path (every reader, every crawler); deeper pages are rare
+  // and read straight from Postgres, which is bounded work — 10 cards.
+  if (page !== 1) return live(() => pg.getResults(page), empty);
+  return cached("events:results", CACHE_TTL.EVENTS, () => live(() => pg.getResults(1), empty));
 }
 
 export async function getEvent(slug: string): Promise<FightEvent | null> {

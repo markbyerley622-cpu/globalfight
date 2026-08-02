@@ -13,8 +13,16 @@ import { prisma } from "../src/lib/db.ts";
 const apply = process.argv.includes("--apply");
 const TEST_NAME = /^page test event|^test event|^example event/i;
 
+// PAST *and* FUTURE. This used to scan only past events, which is exactly why
+// "Page Test Event 5" through "10" survived: they are dated in the FUTURE, so
+// they sat at the very top of the upcoming schedule — the first six cards a
+// visitor would ever see — while the cleanup tool reported nothing wrong.
+//
+// The safety rules are unchanged and do the real work: no bouts, no engagement,
+// and either a test-fixture name or no provenance at all. A future event a
+// provider actually ingested is still left alone.
 const empty = await prisma.event.findMany({
-  where: { date: { lt: new Date() }, fights: { none: {} } },
+  where: { fights: { none: {} } },
   select: {
     id: true, name: true, slug: true, date: true, promotion: true,
     externalIds: { select: { source: true } },
@@ -55,8 +63,11 @@ if (!apply) {
   const res = await prisma.event.deleteMany({ where: { id: { in: ids } } });
   console.log(`\ndeleted ${res.count} event(s).`);
 
-  const left = await prisma.event.count({ where: { date: { lt: new Date() }, fights: { none: {} } } });
-  console.log(`past events with no bouts now: ${left}`);
+  const [left, upcomingLeft] = await Promise.all([
+    prisma.event.count({ where: { fights: { none: {} } } }),
+    prisma.event.count({ where: { fights: { none: {} }, date: { gte: new Date() } } }),
+  ]);
+  console.log(`events with no bouts now: ${left} (${upcomingLeft} of them upcoming)`);
 }
 
 await prisma.$disconnect();

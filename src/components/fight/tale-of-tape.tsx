@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { FighterLink } from "@/components/fighter-link";
 import { Flag } from "@/components/flag";
 import { formatRecord, koPercentage } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -75,9 +75,7 @@ function Corner({ f, tone, alignEnd }: { f: TapeFighter; tone: "red" | "blue"; a
       <span className={cn("text-[0.6rem] font-bold uppercase tracking-wider", tone === "red" ? "text-blood-400" : "text-volt-400")}>
         {tone === "red" ? "Red corner" : "Blue corner"}
       </span>
-      <Link href={`/fighters/${f.slug}`} className="mt-0.5 block truncate font-display text-base font-bold leading-tight text-chalk hover:text-blood-300 hover:underline">
-        {f.name}
-      </Link>
+      <FighterLink name={f.name} slug={f.slug} className="mt-0.5 block truncate font-display text-base font-bold leading-tight text-chalk hover:text-blood-300 hover:underline" />
       {f.nickname && <p className="truncate text-xs italic text-fog">&ldquo;{f.nickname}&rdquo;</p>}
       <p className={cn("mt-1 flex items-center gap-1.5 text-xs text-mist", alignEnd && "justify-end")}>
         <Flag code={f.countryCode} name={f.nationality} />

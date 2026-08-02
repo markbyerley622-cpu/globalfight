@@ -28,6 +28,39 @@ export function winningCorner(fight: Pick<Fight, "result" | "winnerId" | "red" |
 }
 
 /**
+ * How a decided-or-not bout should READ, for any surface that lists outcomes.
+ *
+ * This lives here, next to `winningCorner`, because it shipped inline in
+ * `/results` as `fight.winnerId === fight.red.slug` — an id compared against a
+ * slug, so it was false for every bout in the database and the page credited the
+ * BLUE corner with winning every fight, including draws, no-contests and bouts
+ * with no recorded result. Inline view logic is why that was never caught by a
+ * test; the rule is only trustworthy if it is a function with cases.
+ *
+ * The invariant: a winner is NAMED only when a stored `winnerId` identifies one.
+ * Anything else degrades to an honest neutral state, never to a corner default.
+ */
+export type BoutOutcomeView =
+  | { kind: "win"; winner: Fight["red"]; loser: Fight["red"] }
+  | { kind: "draw" }
+  | { kind: "no-contest" }
+  | { kind: "cancelled" }
+  | { kind: "pending" };
+
+export function boutOutcomeView(
+  fight: Pick<Fight, "result" | "winnerId" | "red" | "blue" | "cancelled">,
+): BoutOutcomeView {
+  if (fight.cancelled) return { kind: "cancelled" };
+  if (fight.result === "DRAW") return { kind: "draw" };
+  if (fight.result === "NO_CONTEST") return { kind: "no-contest" };
+  const corner = winningCorner(fight);
+  if (!corner) return { kind: "pending" };
+  return corner === "red"
+    ? { kind: "win", winner: fight.red, loser: fight.blue }
+    : { kind: "win", winner: fight.blue, loser: fight.red };
+}
+
+/**
  * A fighter's current streak from their fight history (newest-first). Positive =
  * win streak, negative = losing streak, 0 = last bout wasn't a win/loss. Derived
  * — no new data needed. `fighterKey` is the fighter's id or slug.

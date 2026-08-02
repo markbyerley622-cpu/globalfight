@@ -10,6 +10,8 @@
 // still gets a consistent mark beside its title — no broken images, no blank
 // space. `brand` is the org's primary colour; `mark` is the short monogram.
 
+import type { Ruleset } from "@prisma/client";
+
 export interface Promotion {
   slug: string;
   name: string;
@@ -21,6 +23,20 @@ export interface Promotion {
   logo?: string;
   /** Lower-case phrases that identify this promotion in a free-text field. */
   aliases: string[];
+  /**
+   * The ruleset EVERY bout this promotion runs is contested under — set only
+   * for promotions that run exactly one.
+   *
+   * This is the promotion-level fact that Event.sport was being asked to carry
+   * and could not. A UFC card is MMA throughout, so when a source gives us no
+   * per-bout ruleset the promotion legitimately answers for the bout. A ONE card
+   * runs MMA, Muay Thai, kickboxing and grappling in one night, so ONE has NO
+   * value here and its unannotated bouts stay UNKNOWN.
+   *
+   * Undefined means "multi-ruleset, or not established" — both of which must
+   * fall through to UNKNOWN rather than to a guess.
+   */
+  ruleset?: Ruleset;
 }
 
 // Order matters: the resolver takes the FIRST alias match, so put more specific
@@ -33,13 +49,13 @@ export interface Promotion {
 export const PROMOTIONS: Promotion[] = [
   { slug: "road-to-ufc", name: "Road to UFC", mark: "RTU", brand: "#d20a0a", logo: "/promotions/road-to-ufc.svg", aliases: ["road to ufc"] },
   { slug: "dwcs", name: "Dana White's Contender Series", mark: "DWCS", brand: "#d20a0a", logo: "/promotions/dwcs.svg", aliases: ["contender series", "dana white", "dwcs"] },
-  { slug: "ufc", name: "UFC", mark: "UFC", brand: "#d20a0a", logo: "/promotions/ufc.png", aliases: ["ufc", "ultimate fighting"] },
+  { slug: "ufc", name: "UFC", mark: "UFC", brand: "#d20a0a", logo: "/promotions/ufc.png", aliases: ["ufc", "ultimate fighting"], ruleset: "MMA" },
   { slug: "one", name: "ONE Championship", mark: "ONE", brand: "#e8112d", logo: "/promotions/one.png", aliases: ["one championship", "one fight night", "one friday fights", "onefc", "one fc"] },
-  { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.png", aliases: ["pfl", "professional fighters league"] },
-  { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.png", aliases: ["bellator"] },
-  { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.png", aliases: ["bkfc", "bare knuckle", "bare-knuckle"] },
-  { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.png", aliases: ["glory kickboxing", "glory"] },
-  { slug: "rizin", name: "RIZIN", mark: "RIZ", brand: "#c9a227", logo: "/promotions/rizin.svg", aliases: ["rizin"] },
+  { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.png", aliases: ["pfl", "professional fighters league"], ruleset: "MMA" },
+  { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.png", aliases: ["bellator"], ruleset: "MMA" },
+  { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.png", aliases: ["bkfc", "bare knuckle", "bare-knuckle"], ruleset: "BARE_KNUCKLE" },
+  { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.png", aliases: ["glory kickboxing", "glory"], ruleset: "KICKBOXING" },
+  { slug: "rizin", name: "RIZIN", mark: "RIZ", brand: "#c9a227", logo: "/promotions/rizin.svg", aliases: ["rizin"], ruleset: "MMA" },
   { slug: "ksw", name: "KSW", mark: "KSW", brand: "#d0021b", logo: "/promotions/ksw.svg", aliases: ["ksw", "konfrontacja"] },
   { slug: "oktagon", name: "Oktagon MMA", mark: "OKT", brand: "#00a3e0", logo: "/promotions/oktagon.svg", aliases: ["oktagon"] },
   { slug: "cage-warriors", name: "Cage Warriors", mark: "CW", brand: "#d10a11", logo: "/promotions/cage-warriors.svg", aliases: ["cage warriors"] },
@@ -184,8 +200,88 @@ export function promotionFromText(text?: string | null): string | null {
   return findByAlias(q)?.name ?? null;
 }
 
+/**
+ * The ruleset a promotion runs, when it runs exactly one — otherwise null.
+ *
+ * The ONLY legitimate promotion-level source of a bout's ruleset, and it is
+ * legitimate precisely because it is conditional. A UFC card is MMA throughout,
+ * so when ESPN gives us a weight class and no ruleset the promotion answers for
+ * the bout. ONE has no entry, so its unannotated bouts stay UNKNOWN rather than
+ * inheriting a label from the card — which is the defect Fight.ruleset exists
+ * to fix.
+ *
+ * Returns null for an unknown or placeholder promotion, so a caller can never
+ * accidentally treat "Various" as single-ruleset.
+ */
+export function rulesetForPromotion(promotion?: string | null): Ruleset | null {
+  const q = (promotion ?? "").trim();
+  if (!q || GENERIC_PROMOTION.test(q)) return null;
+  return findByAlias(q)?.ruleset ?? null;
+}
+
 /** Display label for a promotion string — collapses placeholders to the neutral
  *  "Multiple promotions" and normalises known aliases to their canonical name. */
 export function promotionLabel(promotion?: string | null): string {
   return resolvePromotion(promotion).name;
+}
+
+/**
+ * An event title with the promotion's own name taken off the front — for use
+ * ONLY where the promotion's mark is rendered immediately beside it.
+ *
+ * A UFC card currently reads, top to bottom: the logo, then "UFC", then
+ * "UFC 322". The organisation is stated three times before the reader gets to
+ * the one thing that distinguishes this card from the other 321. Dropping the
+ * adjacent text handles the second; this handles the third, so the card reads
+ * "[UFC mark] 322".
+ *
+ * ── Why this is conditional on a real logo ────────────────────────────────
+ *
+ * The caller must only apply this when an actual brand mark renders. The
+ * monogram fallback is a coloured badge with initials in it, and "322" beside a
+ * generic badge identifies nothing — the prefix is carrying real information
+ * there. The rule is "never say it twice", not "always strip it".
+ *
+ * Conservative by construction. It strips a LEADING promotion token and any
+ * separator, and it refuses to return something meaningless:
+ *
+ *   "UFC 322"                      -> "322"
+ *   "UFC Fight Night: Smith vs Jones" -> "Fight Night: Smith vs Jones"
+ *   "ONE Friday Fights 46"         -> "Friday Fights 46"
+ *   "PFL"                          -> "PFL"   (stripping leaves nothing)
+ *   "Road to UFC 3"                -> "Road to UFC 3"  (not a leading match)
+ */
+export function eventTitleBesideMark(name: string, promotion?: string | null): string {
+  const title = (name ?? "").trim();
+  if (!title) return title;
+  const p = resolvePromotion(promotion);
+  if (p.slug === FALLBACK.slug) return title;
+
+  // ONLY the canonical name and the monogram — never `aliases`.
+  //
+  // Aliases are a MATCHING vocabulary ("one friday fights", "one fight night"),
+  // deliberately broad so free text resolves to an org. Stripping by them
+  // destroys the thing the title is for: "ONE Friday Fights 46" would become
+  // "46", losing the series and colliding with "ONE 46", a different card.
+  // Longest first, so "ONE Championship 172" loses the full name rather than
+  // just "ONE" and leaving "Championship 172".
+  const candidates = [p.name, p.mark].filter(Boolean).sort((a, b) => b.length - a.length);
+
+  for (const token of candidates) {
+    const t = token.trim();
+    if (!t || !title.toLowerCase().startsWith(t.toLowerCase())) continue;
+
+    // The match must end on a WORD BOUNDARY. Without this the monogram eats the
+    // start of a longer word that merely begins the same way — Bellator's mark
+    // is "BEL", and "Bellator 301" would render as "lator 301".
+    const next = title.charAt(t.length);
+    if (next && /[a-z0-9]/i.test(next)) continue;
+
+    const rest = title.slice(t.length).replace(/^[\s:\u2013\u2014-]+/, "").trim();
+    // Never strip down to nothing: a title that IS just the promotion keeps it,
+    // because an empty card title is worse than a repeated one.
+    if (rest.length === 0) return title;
+    return rest;
+  }
+  return title;
 }

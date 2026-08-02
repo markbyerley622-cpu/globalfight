@@ -1,14 +1,14 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 778,
+    "queries": 928,
     "high": 0,
-    "medium": 68,
-    "low": 147,
-    "info": 563,
-    "public": 518,
-    "userOwned": 169,
-    "shared": 91,
+    "medium": 76,
+    "low": 161,
+    "info": 691,
+    "public": 627,
+    "userOwned": 209,
+    "shared": 92,
     "admin": 0
   },
   "models": [
@@ -271,6 +271,14 @@
       ]
     },
     {
+      "name": "Follow",
+      "klass": "USER_OWNED",
+      "auto": true,
+      "ownerFields": [
+        "userId"
+      ]
+    },
+    {
       "name": "Account",
       "klass": "USER_OWNED",
       "auto": false,
@@ -330,6 +338,12 @@
     },
     {
       "name": "FighterAlias",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "FightImport",
       "klass": "PUBLIC",
       "auto": true,
       "ownerFields": []
@@ -484,6 +498,26 @@
       ]
     },
     {
+      "name": "Conversation",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "ConversationMember",
+      "klass": "USER_OWNED",
+      "auto": true,
+      "ownerFields": [
+        "userId"
+      ]
+    },
+    {
+      "name": "DirectMessage",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
       "name": "UserFollow",
       "klass": "USER_OWNED",
       "auto": false,
@@ -520,6 +554,18 @@
       "ownerFields": [
         "userId"
       ]
+    },
+    {
+      "name": "ResultEvidence",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "ResultCandidate",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
     }
   ],
   "findings": [
@@ -876,7 +922,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 226,
+      "line": 235,
       "fn": "battles",
       "model": "Battle",
       "method": "findMany",
@@ -889,7 +935,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 249,
+      "line": 258,
       "fn": "fresh",
       "model": "Battle",
       "method": "findUnique",
@@ -902,7 +948,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 253,
+      "line": 262,
       "fn": "resolveFightBattles",
       "model": "Battle",
       "method": "update",
@@ -915,7 +961,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 270,
+      "line": 279,
       "fn": "resolveFightBattles",
       "model": "Battle",
       "method": "update",
@@ -1045,7 +1091,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 158,
+      "line": 179,
       "fn": "c",
       "model": "FighterClaim",
       "method": "findUnique",
@@ -1058,7 +1104,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 183,
+      "line": 204,
       "fn": "existing",
       "model": "FighterClaim",
       "method": "findUnique",
@@ -1071,7 +1117,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 190,
+      "line": 211,
       "fn": "claim",
       "model": "FighterClaim",
       "method": "upsert",
@@ -1084,7 +1130,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 216,
+      "line": 237,
       "fn": "rows",
       "model": "FighterClaim",
       "method": "findMany",
@@ -1097,7 +1143,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 260,
+      "line": 281,
       "fn": "claim",
       "model": "FighterClaim",
       "method": "findUnique",
@@ -1110,7 +1156,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 271,
+      "line": 292,
       "fn": "superseded",
       "model": "FighterClaim",
       "method": "findMany",
@@ -1123,7 +1169,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 278,
+      "line": 299,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "update",
@@ -1136,7 +1182,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 279,
+      "line": 300,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "updateMany",
@@ -1149,7 +1195,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 293,
+      "line": 319,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "update",
@@ -1162,7 +1208,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 306,
+      "line": 332,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "update",
@@ -1172,6 +1218,84 @@
       "severity": "MEDIUM",
       "confidence": "high",
       "why": "Shared model with no relationship filter — confirm both parties' access is validated."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 115,
+      "fn": "existing",
+      "model": "Follow",
+      "method": "findUnique",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 126,
+      "fn": "toggleFollow",
+      "model": "Follow",
+      "method": "delete",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 212,
+      "fn": "rows",
+      "model": "FavoriteFighter",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 214,
+      "fn": "rows",
+      "model": "FavoritePromotion",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 215,
+      "fn": "rows",
+      "model": "FavoriteEvent",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 218,
+      "fn": "rows",
+      "model": "Follow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
     },
     {
       "file": "src/lib/follows.ts",
@@ -1214,7 +1338,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 556,
+      "line": 561,
       "fn": "onBattleRoomMessage",
       "model": "Battle",
       "method": "update",
@@ -1227,7 +1351,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 672,
+      "line": 677,
       "fn": "toggleBookmark",
       "model": "ForumBookmark",
       "method": "delete",
@@ -1240,7 +1364,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 680,
+      "line": 685,
       "fn": "toggleSubscription",
       "model": "ForumSubscription",
       "method": "delete",
@@ -1250,6 +1374,19 @@
       "severity": "MEDIUM",
       "confidence": "medium",
       "why": "Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 264,
+      "fn": "getMutualFollowers",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
     },
     {
       "file": "src/lib/geo/presence.ts",
@@ -1292,7 +1429,7 @@
     },
     {
       "file": "src/lib/identity/event-room.ts",
-      "line": 79,
+      "line": 80,
       "fn": "_getEventRoom",
       "model": "FightPick",
       "method": "findMany",
@@ -1305,7 +1442,20 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 43,
+      "line": 48,
+      "fn": "audienceFor",
+      "model": "FavoriteEvent",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
+    },
+    {
+      "file": "src/lib/intelligence/return-engine.ts",
+      "line": 50,
       "fn": "audienceFor",
       "model": "FavoritePromotion",
       "method": "findMany",
@@ -1318,7 +1468,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 46,
+      "line": 53,
       "fn": "audienceFor",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -1331,7 +1481,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 101,
+      "line": 109,
       "fn": "unpickedFollowers",
       "model": "FavoriteEvent",
       "method": "findMany",
@@ -1344,7 +1494,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 102,
+      "line": 110,
       "fn": "unpickedFollowers",
       "model": "FightPick",
       "method": "findMany",
@@ -1357,7 +1507,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 125,
+      "line": 166,
       "fn": "before",
       "model": "Notification",
       "method": "findMany",
@@ -1370,7 +1520,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 155,
+      "line": 196,
       "fn": "created",
       "model": "Notification",
       "method": "findMany",
@@ -1383,7 +1533,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 360,
+      "line": 401,
       "fn": "follows",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -1464,6 +1614,45 @@
       "line": 89,
       "fn": "user",
       "model": "User",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/app/api/cron/refresh-images/route.ts",
+      "line": 77,
+      "fn": "onSubjectDone",
+      "model": "Fighter",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/app/api/cron/refresh-images/route.ts",
+      "line": 89,
+      "fn": "onSubjectDone",
+      "model": "Fighter",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/app/api/cron/refresh-images/route.ts",
+      "line": 94,
+      "fn": "onSubjectDone",
+      "model": "Fighter",
       "method": "update",
       "klass": "PUBLIC",
       "kind": "write",
@@ -1578,7 +1767,7 @@
     },
     {
       "file": "src/app/api/profile/image/route.ts",
-      "line": 41,
+      "line": 48,
       "fn": "POST",
       "model": "User",
       "method": "update",
@@ -1682,7 +1871,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 208,
+      "line": 215,
       "fn": "saveEvent",
       "model": "Event",
       "method": "update",
@@ -1695,7 +1884,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 279,
+      "line": 291,
       "fn": "unlockEventFields",
       "model": "Event",
       "method": "update",
@@ -1708,7 +1897,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 178,
+      "line": 180,
       "fn": "saveFight",
       "model": "Fight",
       "method": "update",
@@ -1721,7 +1910,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 228,
+      "line": 257,
       "fn": "writes",
       "model": "Fight",
       "method": "update",
@@ -1734,7 +1923,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 315,
+      "line": 344,
       "fn": "removeFight",
       "model": "Fight",
       "method": "update",
@@ -1747,7 +1936,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 320,
+      "line": 349,
       "fn": "removeFight",
       "model": "Fight",
       "method": "delete",
@@ -2189,7 +2378,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 274,
+      "line": 283,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "update",
@@ -2202,7 +2391,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 275,
+      "line": 284,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "update",
@@ -2215,7 +2404,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 293,
+      "line": 302,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "update",
@@ -2228,7 +2417,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 301,
+      "line": 310,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "update",
@@ -2280,7 +2469,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 30,
+      "line": 32,
       "fn": "u",
       "model": "User",
       "method": "upsert",
@@ -2306,7 +2495,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 34,
+      "line": 35,
       "fn": "f",
       "model": "Fighter",
       "method": "upsert",
@@ -2319,7 +2508,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 46,
+      "line": 47,
       "fn": "upsertBout",
       "model": "Fight",
       "method": "upsert",
@@ -2332,7 +2521,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 68,
+      "line": 75,
       "fn": "event",
       "model": "Event",
       "method": "upsert",
@@ -2436,7 +2625,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 83,
+      "line": 93,
       "fn": "updateProfileMeta",
       "model": "Fighter",
       "method": "update",
@@ -2449,7 +2638,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 107,
+      "line": 128,
       "fn": "setFighterAvatar",
       "model": "Fighter",
       "method": "update",
@@ -2462,7 +2651,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 127,
+      "line": 148,
       "fn": "setSocial",
       "model": "FighterSocial",
       "method": "upsert",
@@ -2475,7 +2664,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 148,
+      "line": 169,
       "fn": "deleteChild",
       "model": "FighterAchievement",
       "method": "delete",
@@ -2488,7 +2677,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 149,
+      "line": 170,
       "fn": "deleteChild",
       "model": "FighterSponsor",
       "method": "delete",
@@ -2501,7 +2690,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 150,
+      "line": 171,
       "fn": "deleteChild",
       "model": "FighterSocial",
       "method": "delete",
@@ -2514,7 +2703,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 151,
+      "line": 172,
       "fn": "deleteChild",
       "model": "FighterMedia",
       "method": "delete",
@@ -2527,7 +2716,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 277,
+      "line": 298,
       "fn": "reviewClaim",
       "model": "Fighter",
       "method": "update",
@@ -2540,7 +2729,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 170,
+      "line": 175,
       "fn": "ensureForumSeed",
       "model": "ForumCategory",
       "method": "upsert",
@@ -2553,7 +2742,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 176,
+      "line": 181,
       "fn": "ensureForumSeed",
       "model": "ForumCategory",
       "method": "deleteMany",
@@ -2566,7 +2755,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 314,
+      "line": 319,
       "fn": "getThread",
       "model": "ForumThread",
       "method": "update",
@@ -2579,7 +2768,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 406,
+      "line": 411,
       "fn": "deleteThread",
       "model": "ForumThread",
       "method": "delete",
@@ -2592,7 +2781,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 454,
+      "line": 459,
       "fn": "createPost",
       "model": "ForumThread",
       "method": "update",
@@ -2605,7 +2794,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 580,
+      "line": 585,
       "fn": "updated",
       "model": "ForumPost",
       "method": "update",
@@ -2618,7 +2807,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 597,
+      "line": 602,
       "fn": "deletePost",
       "model": "ForumPost",
       "method": "update",
@@ -2631,7 +2820,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 600,
+      "line": 605,
       "fn": "deletePost",
       "model": "ForumThread",
       "method": "update",
@@ -2644,7 +2833,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 642,
+      "line": 647,
       "fn": "addReaction",
       "model": "ForumThread",
       "method": "update",
@@ -2657,7 +2846,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 654,
+      "line": 659,
       "fn": "addReaction",
       "model": "ForumPost",
       "method": "update",
@@ -2670,7 +2859,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 686,
+      "line": 691,
       "fn": "t",
       "model": "ForumThread",
       "method": "update",
@@ -2683,7 +2872,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 710,
+      "line": 715,
       "fn": "createReport",
       "model": "ForumReport",
       "method": "upsert",
@@ -2709,7 +2898,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 191,
+      "line": 195,
       "fn": "recomputeRating",
       "model": "Gym",
       "method": "update",
@@ -2722,7 +2911,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 275,
+      "line": 293,
       "fn": "toggleHelpful",
       "model": "GymReview",
       "method": "update",
@@ -2748,20 +2937,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 46,
-      "fn": "resolveFightPicks",
-      "model": "Fight",
-      "method": "update",
-      "klass": "PUBLIC",
-      "kind": "write",
-      "ownership": "unscoped",
-      "severity": "LOW",
-      "confidence": "high",
-      "why": "Public model write — relies on app-layer auth (expected)."
-    },
-    {
-      "file": "src/lib/intelligence/resolve.ts",
-      "line": 79,
+      "line": 142,
       "fn": "user",
       "model": "User",
       "method": "update",
@@ -2774,8 +2950,8 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 92,
-      "fn": "resolveFightPicks",
+      "line": 155,
+      "fn": "claimed",
       "model": "User",
       "method": "update",
       "klass": "PUBLIC",
@@ -2787,10 +2963,10 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 138,
-      "fn": "resolveFightPicks",
+      "line": 249,
+      "fn": "stampResolved",
       "model": "Fight",
-      "method": "update",
+      "method": "updateMany",
       "klass": "PUBLIC",
       "kind": "write",
       "ownership": "unscoped",
@@ -2803,6 +2979,32 @@
       "line": 62,
       "fn": "withLease",
       "model": "JobLease",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 69,
+      "fn": "convo",
+      "model": "Conversation",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 229,
+      "fn": "sendMessage",
+      "model": "Conversation",
       "method": "update",
       "klass": "PUBLIC",
       "kind": "write",
@@ -2982,7 +3184,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 32,
+      "line": 33,
       "fn": "wc",
       "model": "WeightClass",
       "method": "upsert",
@@ -2995,7 +3197,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 72,
+      "line": 73,
       "fn": "ingestList",
       "model": "Ranking",
       "method": "upsert",
@@ -3008,7 +3210,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 84,
+      "line": 94,
       "fn": "ingestList",
       "model": "Ranking",
       "method": "deleteMany",
@@ -3021,7 +3223,7 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 32,
+      "line": 33,
       "fn": "wc",
       "model": "WeightClass",
       "method": "upsert",
@@ -3034,7 +3236,7 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 70,
+      "line": 79,
       "fn": "generateP4P",
       "model": "Ranking",
       "method": "deleteMany",
@@ -3047,7 +3249,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 107,
+      "line": 108,
       "fn": "ingestConnector",
       "model": "Ranking",
       "method": "upsert",
@@ -3060,7 +3262,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 184,
+      "line": 194,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "update",
@@ -3073,9 +3275,100 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 50,
+      "line": 51,
       "fn": "after",
       "model": "User",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 82,
+      "fn": "collectEvidence",
+      "model": "ResultEvidence",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 164,
+      "fn": "rescoreCandidate",
+      "model": "ResultCandidate",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 231,
+      "fn": "publishCandidate",
+      "model": "Fight",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 240,
+      "fn": "publishCandidate",
+      "model": "ResultCandidate",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 291,
+      "fn": "recordIngestEvidence",
+      "model": "ResultEvidence",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 320,
+      "fn": "recordIngestEvidence",
+      "model": "ResultCandidate",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 99,
+      "fn": "reviewCandidate",
+      "model": "ResultCandidate",
       "method": "update",
       "klass": "PUBLIC",
       "kind": "write",
@@ -3099,7 +3392,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 49,
+      "line": 177,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -3112,9 +3405,22 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 52,
+      "line": 180,
       "fn": "runJob",
       "model": "ScrapeJob",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 393,
+      "fn": "recordResultAttempts",
+      "model": "Event",
       "method": "update",
       "klass": "PUBLIC",
       "kind": "write",
@@ -3151,7 +3457,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 82,
+      "line": 93,
       "fn": "upsertFighter",
       "model": "Fighter",
       "method": "update",
@@ -3164,7 +3470,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 86,
+      "line": 97,
       "fn": "row",
       "model": "Fighter",
       "method": "upsert",
@@ -3177,7 +3483,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 112,
+      "line": 123,
       "fn": "linkFighterExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -3190,7 +3496,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 186,
+      "line": 221,
       "fn": "upsertEvent",
       "model": "Event",
       "method": "update",
@@ -3203,7 +3509,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 194,
+      "line": 229,
       "fn": "row",
       "model": "Event",
       "method": "upsert",
@@ -3216,7 +3522,20 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 230,
+      "line": 316,
+      "fn": "refreshCardCompletion",
+      "model": "Event",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 332,
       "fn": "linkEventExternalId",
       "model": "EventExternalId",
       "method": "upsert",
@@ -3229,7 +3548,20 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 266,
+      "line": 377,
+      "fn": "recordFightImport",
+      "model": "FightImport",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 394,
       "fn": "linkCornerExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -3242,7 +3574,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 305,
+      "line": 436,
       "fn": "redId",
       "model": "Fighter",
       "method": "upsert",
@@ -3255,7 +3587,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 308,
+      "line": 439,
       "fn": "blueId",
       "model": "Fighter",
       "method": "upsert",
@@ -3268,7 +3600,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 342,
+      "line": 581,
       "fn": "outcome",
       "model": "Fight",
       "method": "update",
@@ -3281,7 +3613,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 347,
+      "line": 601,
       "fn": "created",
       "model": "Fight",
       "method": "upsert",
@@ -3606,7 +3938,20 @@
     },
     {
       "file": "src/app/api/auth/signup/route.ts",
-      "line": 68,
+      "line": 48,
+      "fn": "taken",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/api/auth/signup/route.ts",
+      "line": 135,
       "fn": "existing",
       "model": "User",
       "method": "findUnique",
@@ -3619,20 +3964,7 @@
     },
     {
       "file": "src/app/api/auth/signup/route.ts",
-      "line": 75,
-      "fn": "POST",
-      "model": "User",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/app/api/auth/signup/route.ts",
-      "line": 80,
+      "line": 144,
       "fn": "user",
       "model": "User",
       "method": "create",
@@ -3642,6 +3974,19 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/app/api/auth/username/remind/route.ts",
+      "line": 76,
+      "fn": "user",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/app/api/claims/[id]/evidence/route.ts",
@@ -3681,6 +4026,19 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/app/api/cron/refresh-images/route.ts",
+      "line": 41,
+      "fn": "rows",
+      "model": "Fighter",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/app/api/events/[slug]/calendar.ics/route.ts",
@@ -3798,6 +4156,19 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Shared model with a relationship/owner filter."
+    },
+    {
+      "file": "src/app/api/gyms/[slug]/follow/route.ts",
+      "line": 27,
+      "fn": "gym",
+      "model": "Gym",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/app/api/gyms/[slug]/members/route.ts",
@@ -4034,6 +4405,45 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/app/api/me/notifications/route.ts",
+      "line": 58,
+      "fn": "actors",
+      "model": "User",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/api/me/notifications/route.ts",
+      "line": 66,
+      "fn": "followedBack",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/app/api/messages/route.ts",
+      "line": 36,
+      "fn": "target",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/app/api/profile/route.ts",
       "line": 107,
       "fn": "GET",
@@ -4087,7 +4497,7 @@
     },
     {
       "file": "src/app/api/search/route.ts",
-      "line": 52,
+      "line": 66,
       "fn": "GET",
       "model": "Gym",
       "method": "findMany",
@@ -4100,7 +4510,7 @@
     },
     {
       "file": "src/app/api/search/route.ts",
-      "line": 63,
+      "line": 77,
       "fn": "GET",
       "model": "User",
       "method": "findMany",
@@ -4152,10 +4562,23 @@
     },
     {
       "file": "src/app/events/[slug]/page.tsx",
-      "line": 128,
+      "line": 181,
       "fn": "EventPage",
       "model": "User",
       "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/events/[slug]/page.tsx",
+      "line": 196,
+      "fn": "hasProviderProvenance",
+      "model": "EventExternalId",
+      "method": "count",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",
@@ -4191,7 +4614,7 @@
     },
     {
       "file": "src/app/fights/[slug]/page.tsx",
-      "line": 31,
+      "line": 32,
       "fn": "loadFight",
       "model": "Fight",
       "method": "findFirst",
@@ -4282,7 +4705,7 @@
     },
     {
       "file": "src/app/gyms/[slug]/page.tsx",
-      "line": 20,
+      "line": 23,
       "fn": "loadGym",
       "model": "Gym",
       "method": "findUnique",
@@ -4295,7 +4718,7 @@
     },
     {
       "file": "src/app/gyms/[slug]/page.tsx",
-      "line": 46,
+      "line": 49,
       "fn": "gym",
       "model": "Gym",
       "method": "findUnique",
@@ -4308,7 +4731,7 @@
     },
     {
       "file": "src/app/gyms/[slug]/page.tsx",
-      "line": 77,
+      "line": 80,
       "fn": "GymPage",
       "model": "Gym",
       "method": "findMany",
@@ -4333,8 +4756,34 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/app/invite/[username]/opengraph-image.tsx",
+      "line": 22,
+      "fn": "u",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/invite/[username]/page.tsx",
+      "line": 22,
+      "fn": "loadInviter",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 32,
+      "line": 39,
       "fn": "MyPredictionsPage",
       "model": "FightPick",
       "method": "findMany",
@@ -4347,7 +4796,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 48,
+      "line": 57,
       "fn": "MyPredictionsPage",
       "model": "User",
       "method": "findUnique",
@@ -4360,7 +4809,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 49,
+      "line": 61,
       "fn": "MyPredictionsPage",
       "model": "FightPick",
       "method": "count",
@@ -4373,7 +4822,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 50,
+      "line": 64,
       "fn": "MyPredictionsPage",
       "model": "FightPick",
       "method": "count",
@@ -4386,7 +4835,7 @@
     },
     {
       "file": "src/app/sitemap.ts",
-      "line": 43,
+      "line": 44,
       "fn": "sitemap",
       "model": "Fight",
       "method": "findMany",
@@ -4398,8 +4847,34 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/app/u/[username]/followers/page.tsx",
+      "line": 11,
+      "fn": "loadUser",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/u/[username]/following/page.tsx",
+      "line": 11,
+      "fn": "loadUser",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/app/u/[username]/opengraph-image.tsx",
-      "line": 15,
+      "line": 16,
       "fn": "u",
       "model": "User",
       "method": "findUnique",
@@ -4412,7 +4887,7 @@
     },
     {
       "file": "src/app/u/[username]/page.tsx",
-      "line": 26,
+      "line": 32,
       "fn": "loadUser",
       "model": "User",
       "method": "findUnique",
@@ -4425,7 +4900,7 @@
     },
     {
       "file": "src/app/u/[username]/page.tsx",
-      "line": 52,
+      "line": 63,
       "fn": "PublicProfile",
       "model": "User",
       "method": "count",
@@ -4593,6 +5068,19 @@
       "why": "Owner-scoped read/write on a private model."
     },
     {
+      "file": "src/lib/admin/cron-health.ts",
+      "line": 140,
+      "fn": "rows",
+      "model": "ScrapeJob",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/lib/admin/data-health.ts",
       "line": 44,
       "fn": "rows",
@@ -4750,7 +5238,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 75,
+      "line": 76,
       "fn": "clash",
       "model": "Event",
       "method": "findFirst",
@@ -4763,7 +5251,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 112,
+      "line": 113,
       "fn": "mains",
       "model": "Fight",
       "method": "count",
@@ -4776,7 +5264,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 168,
+      "line": 169,
       "fn": "before",
       "model": "Event",
       "method": "findUnique",
@@ -4789,7 +5277,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 213,
+      "line": 220,
       "fn": "saveEvent",
       "model": "AuditLog",
       "method": "create",
@@ -4802,7 +5290,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 241,
+      "line": 253,
       "fn": "createDraftEvent",
       "model": "Event",
       "method": "findUnique",
@@ -4815,7 +5303,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 243,
+      "line": 255,
       "fn": "ev",
       "model": "Event",
       "method": "create",
@@ -4828,7 +5316,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 257,
+      "line": 269,
       "fn": "createDraftEvent",
       "model": "AuditLog",
       "method": "create",
@@ -4841,7 +5329,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 272,
+      "line": 284,
       "fn": "before",
       "model": "Event",
       "method": "findUnique",
@@ -4854,7 +5342,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 280,
+      "line": 292,
       "fn": "unlockEventFields",
       "model": "AuditLog",
       "method": "create",
@@ -4867,7 +5355,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 296,
+      "line": 308,
       "fn": "entry",
       "model": "AuditLog",
       "method": "findUnique",
@@ -4880,7 +5368,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 310,
+      "line": 322,
       "fn": "rows",
       "model": "AuditLog",
       "method": "findMany",
@@ -4893,7 +5381,7 @@
     },
     {
       "file": "src/lib/admin/events.ts",
-      "line": 317,
+      "line": 329,
       "fn": "actors",
       "model": "User",
       "method": "findMany",
@@ -4906,7 +5394,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 47,
+      "line": 49,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -4919,7 +5407,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 95,
+      "line": 97,
       "fn": "siblings",
       "model": "Fight",
       "method": "findMany",
@@ -4932,7 +5420,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 149,
+      "line": 151,
       "fn": "before",
       "model": "Fight",
       "method": "findUnique",
@@ -4945,7 +5433,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 183,
+      "line": 185,
       "fn": "saveFight",
       "model": "AuditLog",
       "method": "create",
@@ -4958,7 +5446,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 208,
+      "line": 237,
       "fn": "existing",
       "model": "Fight",
       "method": "findMany",
@@ -4971,7 +5459,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 242,
+      "line": 271,
       "fn": "reorderFights",
       "model": "AuditLog",
       "method": "create",
@@ -4984,7 +5472,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 250,
+      "line": 279,
       "fn": "ev",
       "model": "Event",
       "method": "findUnique",
@@ -4997,7 +5485,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 263,
+      "line": 292,
       "fn": "ev",
       "model": "Event",
       "method": "findUnique",
@@ -5010,7 +5498,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 270,
+      "line": 299,
       "fn": "createFight",
       "model": "Fighter",
       "method": "findUnique",
@@ -5023,7 +5511,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 271,
+      "line": 300,
       "fn": "createFight",
       "model": "Fighter",
       "method": "findUnique",
@@ -5036,7 +5524,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 277,
+      "line": 306,
       "fn": "createFight",
       "model": "Fight",
       "method": "findUnique",
@@ -5049,7 +5537,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 280,
+      "line": 309,
       "fn": "fight",
       "model": "Fight",
       "method": "create",
@@ -5062,7 +5550,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 290,
+      "line": 319,
       "fn": "createFight",
       "model": "AuditLog",
       "method": "create",
@@ -5075,7 +5563,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 306,
+      "line": 335,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -5088,7 +5576,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 316,
+      "line": 345,
       "fn": "removeFight",
       "model": "AuditLog",
       "method": "create",
@@ -5101,7 +5589,7 @@
     },
     {
       "file": "src/lib/admin/fights.ts",
-      "line": 321,
+      "line": 350,
       "fn": "removeFight",
       "model": "AuditLog",
       "method": "create",
@@ -5274,6 +5762,175 @@
       "fn": "ids",
       "model": "Fighter",
       "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 81,
+      "fn": "getGraphHealth",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 82,
+      "fn": "getGraphHealth",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 83,
+      "fn": "getGraphHealth",
+      "model": "Fighter",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 84,
+      "fn": "getGraphHealth",
+      "model": "Fighter",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 85,
+      "fn": "getGraphHealth",
+      "model": "Fighter",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 86,
+      "fn": "getGraphHealth",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 92,
+      "fn": "getGraphHealth",
+      "model": "Fighter",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 153,
+      "fn": "grouped",
+      "model": "EventExternalId",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 171,
+      "fn": "getProviderHealth",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 172,
+      "fn": "getProviderHealth",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 214,
+      "fn": "getProviderHealth",
+      "model": "Event",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 215,
+      "fn": "getProviderHealth",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/provider-health.ts",
+      "line": 224,
+      "fn": "bouts",
+      "model": "Fight",
+      "method": "count",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",
@@ -5491,7 +6148,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 31,
+      "line": 40,
       "fn": "pick",
       "model": "FightPick",
       "method": "findUnique",
@@ -5504,7 +6161,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 39,
+      "line": 48,
       "fn": "mine",
       "model": "Battle",
       "method": "findFirst",
@@ -5517,7 +6174,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 45,
+      "line": 54,
       "fn": "open",
       "model": "Battle",
       "method": "findFirst",
@@ -5530,7 +6187,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 51,
+      "line": 60,
       "fn": "joined",
       "model": "Battle",
       "method": "updateMany",
@@ -5543,7 +6200,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 57,
+      "line": 66,
       "fn": "matched",
       "model": "Battle",
       "method": "create",
@@ -5556,7 +6213,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 71,
+      "line": 80,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -5569,7 +6226,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 77,
+      "line": 86,
       "fn": "users",
       "model": "User",
       "method": "findMany",
@@ -5582,20 +6239,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 107,
-      "fn": "challengeUser",
-      "model": "FightPick",
-      "method": "findUnique",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
-    },
-    {
-      "file": "src/lib/battles.ts",
-      "line": 108,
+      "line": 116,
       "fn": "challengeUser",
       "model": "FightPick",
       "method": "findUnique",
@@ -5609,6 +6253,19 @@
     {
       "file": "src/lib/battles.ts",
       "line": 117,
+      "fn": "challengeUser",
+      "model": "FightPick",
+      "method": "findUnique",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/battles.ts",
+      "line": 126,
       "fn": "existing",
       "model": "Battle",
       "method": "findFirst",
@@ -5621,7 +6278,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 131,
+      "line": 140,
       "fn": "blocking",
       "model": "Battle",
       "method": "findFirst",
@@ -5634,7 +6291,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 147,
+      "line": 156,
       "fn": "waiting",
       "model": "Battle",
       "method": "findFirst",
@@ -5647,7 +6304,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 152,
+      "line": 161,
       "fn": "joined",
       "model": "Battle",
       "method": "updateMany",
@@ -5660,7 +6317,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 159,
+      "line": 168,
       "fn": "result",
       "model": "Battle",
       "method": "updateMany",
@@ -5673,7 +6330,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 163,
+      "line": 172,
       "fn": "created",
       "model": "Battle",
       "method": "create",
@@ -5686,7 +6343,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 185,
+      "line": 194,
       "fn": "row",
       "model": "Rivalry",
       "method": "findUnique",
@@ -5699,7 +6356,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 187,
+      "line": 196,
       "fn": "bumpRivalry",
       "model": "Rivalry",
       "method": "create",
@@ -5712,7 +6369,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 204,
+      "line": 213,
       "fn": "bumpRivalry",
       "model": "Rivalry",
       "method": "update",
@@ -5725,7 +6382,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 235,
+      "line": 244,
       "fn": "rows",
       "model": "FightPick",
       "method": "groupBy",
@@ -5738,7 +6395,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 241,
+      "line": 250,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -5751,7 +6408,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 260,
+      "line": 269,
       "fn": "resolveFightBattles",
       "model": "FightPick",
       "method": "findUnique",
@@ -5764,7 +6421,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 261,
+      "line": 270,
       "fn": "resolveFightBattles",
       "model": "FightPick",
       "method": "findUnique",
@@ -5777,7 +6434,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 284,
+      "line": 293,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "findUnique",
@@ -5790,7 +6447,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 285,
+      "line": 294,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "findUnique",
@@ -5959,7 +6616,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 78,
+      "line": 80,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -5972,7 +6629,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 108,
+      "line": 112,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -5985,7 +6642,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 133,
+      "line": 138,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -5998,7 +6655,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 190,
+      "line": 195,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -6011,7 +6668,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 205,
+      "line": 215,
       "fn": "getFightRoom",
       "model": "FightPick",
       "method": "findUnique",
@@ -6024,7 +6681,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 216,
+      "line": 226,
       "fn": "getFightRoom",
       "model": "FightPick",
       "method": "findMany",
@@ -6037,7 +6694,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 219,
+      "line": 229,
       "fn": "getFightRoom",
       "model": "Rivalry",
       "method": "findMany",
@@ -6050,7 +6707,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 258,
+      "line": 268,
       "fn": "rows",
       "model": "ForumPost",
       "method": "findMany",
@@ -6063,7 +6720,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 281,
+      "line": 291,
       "fn": "loadViewerBattle",
       "model": "Battle",
       "method": "findFirst",
@@ -6076,7 +6733,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 302,
+      "line": 312,
       "fn": "rivalry",
       "model": "Rivalry",
       "method": "findUnique",
@@ -6089,7 +6746,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 349,
+      "line": 359,
       "fn": "getRoomSummaries",
       "model": "ForumThread",
       "method": "findMany",
@@ -6102,7 +6759,7 @@
     },
     {
       "file": "src/lib/community/rooms.ts",
-      "line": 351,
+      "line": 361,
       "fn": "getRoomSummaries",
       "model": "Battle",
       "method": "findMany",
@@ -6140,10 +6797,49 @@
       "why": "Public model read — world-readable by design."
     },
     {
-      "file": "src/lib/events-query.ts",
-      "line": 187,
-      "fn": "queryEvents",
-      "model": "Event",
+      "file": "src/lib/entities/registry.ts",
+      "line": 46,
+      "fn": "rows",
+      "model": "FighterAlias",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/entities/registry.ts",
+      "line": 181,
+      "fn": "resolveFighterByName",
+      "model": "FighterAlias",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/entities/registry.ts",
+      "line": 188,
+      "fn": "resolveFighterByName",
+      "model": "Fighter",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/entities/registry.ts",
+      "line": 200,
+      "fn": "extra",
+      "model": "Fighter",
       "method": "findMany",
       "klass": "PUBLIC",
       "kind": "read",
@@ -6154,7 +6850,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 194,
+      "line": 244,
       "fn": "queryEvents",
       "model": "Event",
       "method": "count",
@@ -6167,7 +6863,46 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 235,
+      "line": 247,
+      "fn": "queryEvents",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unknown",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/events-query.ts",
+      "line": 257,
+      "fn": "queryEvents",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/events-query.ts",
+      "line": 264,
+      "fn": "queryEvents",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/events-query.ts",
+      "line": 309,
       "fn": "getEventFacets",
       "model": "Event",
       "method": "groupBy",
@@ -6180,7 +6915,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 240,
+      "line": 314,
       "fn": "getEventFacets",
       "model": "Event",
       "method": "groupBy",
@@ -6479,7 +7214,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 35,
+      "line": 40,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -6492,7 +7227,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 67,
+      "line": 73,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -6505,7 +7240,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 74,
+      "line": 80,
       "fn": "audit",
       "model": "AuditLog",
       "method": "create",
@@ -6518,7 +7253,20 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 119,
+      "line": 89,
+      "fn": "before",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/fighters/profile.ts",
+      "line": 140,
       "fn": "addAchievement",
       "model": "FighterAchievement",
       "method": "create",
@@ -6531,7 +7279,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 123,
+      "line": 144,
       "fn": "addSponsor",
       "model": "FighterSponsor",
       "method": "create",
@@ -6544,7 +7292,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 135,
+      "line": 156,
       "fn": "addMedia",
       "model": "FighterMedia",
       "method": "create",
@@ -6557,7 +7305,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 140,
+      "line": 161,
       "fn": "achievement",
       "model": "FighterAchievement",
       "method": "findUnique",
@@ -6570,7 +7318,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 141,
+      "line": 162,
       "fn": "sponsor",
       "model": "FighterSponsor",
       "method": "findUnique",
@@ -6583,7 +7331,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 142,
+      "line": 163,
       "fn": "social",
       "model": "FighterSocial",
       "method": "findUnique",
@@ -6596,7 +7344,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 143,
+      "line": 164,
       "fn": "media",
       "model": "FighterMedia",
       "method": "findUnique",
@@ -6609,7 +7357,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 156,
+      "line": 177,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -6622,7 +7370,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 180,
+      "line": 201,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -6634,8 +7382,164 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/lib/follow-targets.ts",
+      "line": 122,
+      "fn": "toggleFollow",
+      "model": "Follow",
+      "method": "create",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 139,
+      "fn": "row",
+      "model": "UserFollow",
+      "method": "findUnique",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 150,
+      "fn": "row",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 151,
+      "fn": "row",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 165,
+      "fn": "row",
+      "model": "Follow",
+      "method": "findUnique",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 176,
+      "fn": "followerCount",
+      "model": "UserFollow",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 177,
+      "fn": "followerCount",
+      "model": "FavoriteFighter",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 178,
+      "fn": "followerCount",
+      "model": "FavoritePromotion",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 179,
+      "fn": "followerCount",
+      "model": "FavoriteEvent",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 181,
+      "fn": "followerCount",
+      "model": "Follow",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 203,
+      "fn": "rows",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/follow-targets.ts",
+      "line": 249,
+      "fn": "rows",
+      "model": "User",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/lib/following.ts",
-      "line": 147,
+      "line": 164,
       "fn": "rows",
       "model": "OddsSnapshot",
       "method": "findMany",
@@ -6648,7 +7552,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 163,
+      "line": 180,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -6661,7 +7565,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 210,
+      "line": 227,
       "fn": "getFollowGraph",
       "model": "FavoriteEvent",
       "method": "findMany",
@@ -6674,7 +7578,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 211,
+      "line": 228,
       "fn": "getFollowGraph",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -6687,7 +7591,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 212,
+      "line": 229,
       "fn": "getFollowGraph",
       "model": "FavoritePromotion",
       "method": "findMany",
@@ -6700,7 +7604,20 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 213,
+      "line": 232,
+      "fn": "getFollowGraph",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/following.ts",
+      "line": 233,
       "fn": "getFollowGraph",
       "model": "User",
       "method": "findUnique",
@@ -6713,7 +7630,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 258,
+      "line": 279,
       "fn": "getFollowingFeed",
       "model": "Fighter",
       "method": "findMany",
@@ -6726,7 +7643,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 266,
+      "line": 287,
       "fn": "getFollowingFeed",
       "model": "Ranking",
       "method": "findMany",
@@ -6739,7 +7656,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 278,
+      "line": 299,
       "fn": "getFollowingFeed",
       "model": "Event",
       "method": "findMany",
@@ -6752,7 +7669,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 298,
+      "line": 319,
       "fn": "getFollowingFeed",
       "model": "Event",
       "method": "findMany",
@@ -6765,7 +7682,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 308,
+      "line": 329,
       "fn": "getFollowingFeed",
       "model": "Fight",
       "method": "findMany",
@@ -6778,7 +7695,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 326,
+      "line": 347,
       "fn": "getFollowingFeed",
       "model": "Notification",
       "method": "findMany",
@@ -6791,7 +7708,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 344,
+      "line": 365,
       "fn": "getFollowingFeed",
       "model": "Article",
       "method": "findMany",
@@ -6804,7 +7721,20 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 700,
+      "line": 383,
+      "fn": "getFollowingFeed",
+      "model": "Activity",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/following.ts",
+      "line": 769,
       "fn": "rows",
       "model": "Rivalry",
       "method": "findMany",
@@ -6817,7 +7747,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 733,
+      "line": 802,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -6830,7 +7760,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 762,
+      "line": 831,
       "fn": "getFollowingSummary",
       "model": "FavoriteEvent",
       "method": "count",
@@ -6843,7 +7773,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 763,
+      "line": 832,
       "fn": "getFollowingSummary",
       "model": "FavoriteFighter",
       "method": "count",
@@ -6856,7 +7786,7 @@
     },
     {
       "file": "src/lib/following.ts",
-      "line": 764,
+      "line": 833,
       "fn": "getFollowingSummary",
       "model": "FavoritePromotion",
       "method": "count",
@@ -7051,7 +7981,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 189,
+      "line": 194,
       "fn": "cats",
       "model": "ForumCategory",
       "method": "findMany",
@@ -7064,7 +7994,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 204,
+      "line": 209,
       "fn": "viewerFlags",
       "model": "ForumBookmark",
       "method": "findMany",
@@ -7077,7 +8007,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 205,
+      "line": 210,
       "fn": "viewerFlags",
       "model": "ForumSubscription",
       "method": "findMany",
@@ -7090,7 +8020,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 217,
+      "line": 222,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -7103,7 +8033,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 258,
+      "line": 263,
       "fn": "subs",
       "model": "ForumSubscription",
       "method": "findMany",
@@ -7116,7 +8046,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 273,
+      "line": 278,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -7129,7 +8059,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 290,
+      "line": 295,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -7142,21 +8072,8 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 305,
+      "line": 310,
       "fn": "t",
-      "model": "ForumThread",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/forum/repo.ts",
-      "line": 323,
-      "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
       "klass": "PUBLIC",
@@ -7169,6 +8086,19 @@
     {
       "file": "src/lib/forum/repo.ts",
       "line": 328,
+      "fn": "thread",
+      "model": "ForumThread",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/forum/repo.ts",
+      "line": 333,
       "fn": "rows",
       "model": "ForumPost",
       "method": "findMany",
@@ -7181,7 +8111,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 363,
+      "line": 368,
       "fn": "category",
       "model": "ForumCategory",
       "method": "findUnique",
@@ -7194,7 +8124,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 367,
+      "line": 372,
       "fn": "author",
       "model": "User",
       "method": "findUnique",
@@ -7207,7 +8137,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 372,
+      "line": 377,
       "fn": "createThread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -7220,7 +8150,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 375,
+      "line": 380,
       "fn": "thread",
       "model": "ForumThread",
       "method": "create",
@@ -7233,7 +8163,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 400,
+      "line": 405,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -7246,7 +8176,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 417,
+      "line": 422,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -7259,7 +8189,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 432,
+      "line": 437,
       "fn": "q",
       "model": "ForumPost",
       "method": "findFirst",
@@ -7272,7 +8202,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 445,
+      "line": 450,
       "fn": "post",
       "model": "ForumPost",
       "method": "create",
@@ -7285,7 +8215,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 499,
+      "line": 504,
       "fn": "posts",
       "model": "ForumPost",
       "method": "findMany",
@@ -7298,7 +8228,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 512,
+      "line": 517,
       "fn": "mentioned",
       "model": "User",
       "method": "findMany",
@@ -7311,7 +8241,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 559,
+      "line": 564,
       "fn": "onBattleRoomMessage",
       "model": "Rivalry",
       "method": "updateMany",
@@ -7324,7 +8254,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 560,
+      "line": 565,
       "fn": "me",
       "model": "User",
       "method": "findUnique",
@@ -7337,7 +8267,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 561,
+      "line": 566,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -7350,7 +8280,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 575,
+      "line": 580,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -7363,7 +8293,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 591,
+      "line": 596,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -7376,7 +8306,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 612,
+      "line": 617,
       "fn": "existing",
       "model": "ForumReaction",
       "method": "findUnique",
@@ -7389,7 +8319,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 614,
+      "line": 619,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -7402,7 +8332,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 625,
+      "line": 630,
       "fn": "addReaction",
       "model": "ForumReaction",
       "method": "deleteMany",
@@ -7415,7 +8345,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 629,
+      "line": 634,
       "fn": "addReaction",
       "model": "ForumReaction",
       "method": "create",
@@ -7428,7 +8358,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 639,
+      "line": 644,
       "fn": "reactionCount",
       "model": "ForumReaction",
       "method": "count",
@@ -7441,7 +8371,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 646,
+      "line": 651,
       "fn": "all",
       "model": "ForumReaction",
       "method": "findMany",
@@ -7454,7 +8384,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 656,
+      "line": 661,
       "fn": "thread",
       "model": "ForumPost",
       "method": "findUnique",
@@ -7467,7 +8397,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 664,
+      "line": 669,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -7480,7 +8410,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 671,
+      "line": 676,
       "fn": "existing",
       "model": "ForumBookmark",
       "method": "findUnique",
@@ -7493,7 +8423,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 673,
+      "line": 678,
       "fn": "toggleBookmark",
       "model": "ForumBookmark",
       "method": "create",
@@ -7506,7 +8436,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 679,
+      "line": 684,
       "fn": "existing",
       "model": "ForumSubscription",
       "method": "findUnique",
@@ -7519,7 +8449,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 681,
+      "line": 686,
       "fn": "toggleSubscription",
       "model": "ForumSubscription",
       "method": "create",
@@ -7532,7 +8462,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 694,
+      "line": 699,
       "fn": "rows",
       "model": "ForumBookmark",
       "method": "findMany",
@@ -7649,19 +8579,6 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 48,
-      "fn": "loadViewer",
-      "model": "UserFollow",
-      "method": "findMany",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
-    },
-    {
-      "file": "src/lib/geo/people.ts",
       "line": 49,
       "fn": "loadViewer",
       "model": "UserFollow",
@@ -7677,6 +8594,19 @@
       "file": "src/lib/geo/people.ts",
       "line": 50,
       "fn": "loadViewer",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 51,
+      "fn": "loadViewer",
       "model": "GymMember",
       "method": "findMany",
       "klass": "SHARED",
@@ -7688,7 +8618,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 113,
+      "line": 114,
       "fn": "rows",
       "model": "User",
       "method": "findMany",
@@ -7701,7 +8631,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 179,
+      "line": 180,
       "fn": "setFollow",
       "model": "UserFollow",
       "method": "deleteMany",
@@ -7714,7 +8644,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 183,
+      "line": 184,
       "fn": "setFollow",
       "model": "UserFollow",
       "method": "upsert",
@@ -7727,7 +8657,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 197,
+      "line": 198,
       "fn": "me",
       "model": "User",
       "method": "findUnique",
@@ -7737,19 +8667,6 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/geo/people.ts",
-      "line": 214,
-      "fn": "getFollowCounts",
-      "model": "UserFollow",
-      "method": "count",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
     },
     {
       "file": "src/lib/geo/people.ts",
@@ -7763,6 +8680,58 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 216,
+      "fn": "getFollowCounts",
+      "model": "UserFollow",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 263,
+      "fn": "getMutualFollowers",
+      "model": "UserFollow",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 307,
+      "fn": "rows",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 313,
+      "fn": "rows",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
     },
     {
       "file": "src/lib/geo/presence.ts",
@@ -7856,8 +8825,34 @@
       "why": "Owner-scoped read/write on a private model."
     },
     {
+      "file": "src/lib/gym-notifications.ts",
+      "line": 38,
+      "fn": "gymRef",
+      "model": "Gym",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/gym-notifications.ts",
+      "line": 61,
+      "fn": "author",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/lib/gym-reviews.ts",
-      "line": 101,
+      "line": 103,
       "fn": "getGymReviewData",
       "model": "GymReview",
       "method": "groupBy",
@@ -7870,7 +8865,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 102,
+      "line": 104,
       "fn": "getGymReviewData",
       "model": "GymReview",
       "method": "aggregate",
@@ -7883,20 +8878,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 107,
-      "fn": "getGymReviewData",
-      "model": "GymReview",
-      "method": "count",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/gym-reviews.ts",
-      "line": 108,
+      "line": 109,
       "fn": "getGymReviewData",
       "model": "GymReview",
       "method": "count",
@@ -7912,6 +8894,19 @@
       "line": 110,
       "fn": "getGymReviewData",
       "model": "GymReview",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/gym-reviews.ts",
+      "line": 112,
+      "fn": "getGymReviewData",
+      "model": "GymReview",
       "method": "findFirst",
       "klass": "PUBLIC",
       "kind": "read",
@@ -7922,7 +8917,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 115,
+      "line": 117,
       "fn": "getGymReviewData",
       "model": "GymReview",
       "method": "findMany",
@@ -7935,7 +8930,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 127,
+      "line": 129,
       "fn": "votes",
       "model": "GymReviewVote",
       "method": "findMany",
@@ -7948,7 +8943,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 186,
+      "line": 190,
       "fn": "agg",
       "model": "GymReview",
       "method": "aggregate",
@@ -7961,7 +8956,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 211,
+      "line": 215,
       "fn": "membership",
       "model": "GymMember",
       "method": "findUnique",
@@ -7974,7 +8969,20 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 240,
+      "line": 248,
+      "fn": "prior",
+      "model": "GymReview",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/gym-reviews.ts",
+      "line": 253,
       "fn": "submitGymReview",
       "model": "GymReview",
       "method": "upsert",
@@ -7987,7 +8995,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 252,
+      "line": 270,
       "fn": "deleteGymReview",
       "model": "GymReview",
       "method": "updateMany",
@@ -8000,7 +9008,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 264,
+      "line": 282,
       "fn": "review",
       "model": "GymReview",
       "method": "findUnique",
@@ -8013,7 +9021,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 268,
+      "line": 286,
       "fn": "existing",
       "model": "GymReviewVote",
       "method": "findUnique",
@@ -8026,7 +9034,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 270,
+      "line": 288,
       "fn": "toggleHelpful",
       "model": "GymReviewVote",
       "method": "delete",
@@ -8039,7 +9047,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 272,
+      "line": 290,
       "fn": "toggleHelpful",
       "model": "GymReviewVote",
       "method": "create",
@@ -8052,7 +9060,7 @@
     },
     {
       "file": "src/lib/gym-reviews.ts",
-      "line": 274,
+      "line": 292,
       "fn": "helpfulCount",
       "model": "GymReviewVote",
       "method": "count",
@@ -8091,7 +9099,7 @@
     },
     {
       "file": "src/lib/identity/event-room.ts",
-      "line": 55,
+      "line": 56,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -8104,7 +9112,7 @@
     },
     {
       "file": "src/lib/identity/event-room.ts",
-      "line": 71,
+      "line": 72,
       "fn": "_getEventRoom",
       "model": "FightPick",
       "method": "groupBy",
@@ -8117,7 +9125,7 @@
     },
     {
       "file": "src/lib/identity/event-room.ts",
-      "line": 73,
+      "line": 74,
       "fn": "_getEventRoom",
       "model": "FightPick",
       "method": "count",
@@ -8130,65 +9138,13 @@
     },
     {
       "file": "src/lib/identity/event-room.ts",
-      "line": 76,
+      "line": 77,
       "fn": "_getEventRoom",
       "model": "FightPick",
       "method": "count",
       "klass": "USER_OWNED",
       "kind": "read",
       "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
-    },
-    {
-      "file": "src/lib/identity/just-happened.ts",
-      "line": 80,
-      "fn": "events",
-      "model": "Event",
-      "method": "findMany",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/identity/just-happened.ts",
-      "line": 113,
-      "fn": "_getJustHappened",
-      "model": "FightPick",
-      "method": "groupBy",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
-    },
-    {
-      "file": "src/lib/identity/just-happened.ts",
-      "line": 116,
-      "fn": "_getJustHappened",
-      "model": "FightPick",
-      "method": "findMany",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
-    },
-    {
-      "file": "src/lib/identity/just-happened.ts",
-      "line": 127,
-      "fn": "rep",
-      "model": "ReputationEvent",
-      "method": "groupBy",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
       "severity": "INFO",
       "confidence": "high",
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
@@ -8311,8 +9267,73 @@
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
     },
     {
+      "file": "src/lib/identity/recent-events.ts",
+      "line": 87,
+      "fn": "events",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/recent-events.ts",
+      "line": 127,
+      "fn": "_getRecentEvents",
+      "model": "FightPick",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/identity/recent-events.ts",
+      "line": 130,
+      "fn": "_getRecentEvents",
+      "model": "FightPick",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/identity/recent-events.ts",
+      "line": 135,
+      "fn": "_getRecentEvents",
+      "model": "Fight",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/recent-events.ts",
+      "line": 148,
+      "fn": "rep",
+      "model": "ReputationEvent",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 55,
+      "line": 56,
       "fn": "_getEventScorecard",
       "model": "User",
       "method": "findUnique",
@@ -8325,7 +9346,7 @@
     },
     {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 59,
+      "line": 60,
       "fn": "_getEventScorecard",
       "model": "Event",
       "method": "findUnique",
@@ -8338,7 +9359,7 @@
     },
     {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 68,
+      "line": 69,
       "fn": "picks",
       "model": "FightPick",
       "method": "findMany",
@@ -8351,7 +9372,7 @@
     },
     {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 87,
+      "line": 88,
       "fn": "_getEventScorecard",
       "model": "ReputationEvent",
       "method": "aggregate",
@@ -8364,7 +9385,7 @@
     },
     {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 93,
+      "line": 94,
       "fn": "_getEventScorecard",
       "model": "CardAward",
       "method": "count",
@@ -8377,7 +9398,7 @@
     },
     {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 95,
+      "line": 96,
       "fn": "_getEventScorecard",
       "model": "User",
       "method": "count",
@@ -8390,7 +9411,7 @@
     },
     {
       "file": "src/lib/identity/scorecard.ts",
-      "line": 96,
+      "line": 97,
       "fn": "_getEventScorecard",
       "model": "User",
       "method": "count",
@@ -8429,7 +9450,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 88,
+      "line": 89,
       "fn": "getTodayBriefing",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -8442,7 +9463,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 94,
+      "line": 95,
       "fn": "getTodayBriefing",
       "model": "UserFollow",
       "method": "findMany",
@@ -8455,7 +9476,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 111,
+      "line": 112,
       "fn": "getTodayBriefing",
       "model": "FightPick",
       "method": "findMany",
@@ -8468,7 +9489,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 128,
+      "line": 129,
       "fn": "getTodayBriefing",
       "model": "Fight",
       "method": "findMany",
@@ -8481,7 +9502,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 146,
+      "line": 147,
       "fn": "getTodayBriefing",
       "model": "Ranking",
       "method": "findMany",
@@ -8494,7 +9515,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 159,
+      "line": 160,
       "fn": "getTodayBriefing",
       "model": "Activity",
       "method": "findMany",
@@ -8507,7 +9528,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 171,
+      "line": 172,
       "fn": "getTodayBriefing",
       "model": "GymMember",
       "method": "findFirst",
@@ -8520,7 +9541,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 178,
+      "line": 179,
       "fn": "getTodayBriefing",
       "model": "Fight",
       "method": "findMany",
@@ -8533,7 +9554,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 194,
+      "line": 195,
       "fn": "getTodayBriefing",
       "model": "ReputationEvent",
       "method": "aggregate",
@@ -8546,7 +9567,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 195,
+      "line": 196,
       "fn": "getTodayBriefing",
       "model": "User",
       "method": "findUnique",
@@ -8559,7 +9580,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 200,
+      "line": 201,
       "fn": "rank",
       "model": "User",
       "method": "count",
@@ -8572,7 +9593,7 @@
     },
     {
       "file": "src/lib/identity/today.ts",
-      "line": 207,
+      "line": 208,
       "fn": "here",
       "model": "CheckIn",
       "method": "count",
@@ -8585,7 +9606,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 90,
+      "line": 91,
       "fn": "_getVictoryCard",
       "model": "User",
       "method": "findUnique",
@@ -8598,7 +9619,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 97,
+      "line": 98,
       "fn": "_getVictoryCard",
       "model": "Fight",
       "method": "findUnique",
@@ -8611,7 +9632,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 111,
+      "line": 112,
       "fn": "pick",
       "model": "FightPick",
       "method": "findUnique",
@@ -8624,7 +9645,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 120,
+      "line": 121,
       "fn": "_getVictoryCard",
       "model": "ReputationEvent",
       "method": "aggregate",
@@ -8637,7 +9658,7 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 126,
+      "line": 127,
       "fn": "_getVictoryCard",
       "model": "FightPick",
       "method": "groupBy",
@@ -8647,19 +9668,6 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
-    },
-    {
-      "file": "src/lib/identity/victory-card.ts",
-      "line": 131,
-      "fn": "_getVictoryCard",
-      "model": "User",
-      "method": "count",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/lib/identity/victory-card.ts",
@@ -8676,7 +9684,20 @@
     },
     {
       "file": "src/lib/identity/victory-card.ts",
-      "line": 135,
+      "line": 133,
+      "fn": "_getVictoryCard",
+      "model": "User",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/identity/victory-card.ts",
+      "line": 136,
       "fn": "_getVictoryCard",
       "model": "FightPick",
       "method": "count",
@@ -8689,7 +9710,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 26,
+      "line": 65,
       "fn": "loadFight",
       "model": "Fight",
       "method": "findUnique",
@@ -8702,10 +9723,10 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 72,
-      "fn": "resolveFightPicks",
+      "line": 136,
+      "fn": "claim",
       "model": "FightPick",
-      "method": "update",
+      "method": "updateMany",
       "klass": "USER_OWNED",
       "kind": "write",
       "ownership": "scoped",
@@ -8715,7 +9736,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 163,
+      "line": 282,
       "fn": "pending",
       "model": "Fight",
       "method": "count",
@@ -8728,7 +9749,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 168,
+      "line": 287,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -8741,7 +9762,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 173,
+      "line": 292,
       "fn": "notifyCardSummary",
       "model": "FightPick",
       "method": "groupBy",
@@ -8754,7 +9775,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 174,
+      "line": 293,
       "fn": "notifyCardSummary",
       "model": "FightPick",
       "method": "groupBy",
@@ -8767,7 +9788,7 @@
     },
     {
       "file": "src/lib/intelligence/resolve.ts",
-      "line": 205,
+      "line": 334,
       "fn": "due",
       "model": "Fight",
       "method": "findMany",
@@ -8780,7 +9801,7 @@
     },
     {
       "file": "src/lib/intelligence/result-ops.ts",
-      "line": 33,
+      "line": 44,
       "fn": "resultOps",
       "model": "Fight",
       "method": "count",
@@ -8793,7 +9814,7 @@
     },
     {
       "file": "src/lib/intelligence/result-ops.ts",
-      "line": 34,
+      "line": 45,
       "fn": "resultOps",
       "model": "Fight",
       "method": "count",
@@ -8806,7 +9827,33 @@
     },
     {
       "file": "src/lib/intelligence/result-ops.ts",
-      "line": 35,
+      "line": 48,
+      "fn": "resultOps",
+      "model": "FightPick",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/intelligence/result-ops.ts",
+      "line": 49,
+      "fn": "resultOps",
+      "model": "Battle",
+      "method": "count",
+      "klass": "SHARED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/intelligence/result-ops.ts",
+      "line": 52,
       "fn": "resultOps",
       "model": "Fight",
       "method": "findMany",
@@ -8819,7 +9866,7 @@
     },
     {
       "file": "src/lib/intelligence/result-ops.ts",
-      "line": 41,
+      "line": 58,
       "fn": "resultOps",
       "model": "Fight",
       "method": "findMany",
@@ -8832,7 +9879,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 32,
+      "line": 34,
       "fn": "fights",
       "model": "Fight",
       "method": "findMany",
@@ -8845,7 +9892,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 49,
+      "line": 56,
       "fn": "audienceFor",
       "model": "FightPick",
       "method": "groupBy",
@@ -8858,7 +9905,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 131,
+      "line": 172,
       "fn": "res",
       "model": "Notification",
       "method": "createMany",
@@ -8871,20 +9918,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 190,
-      "fn": "runReturnEngine",
-      "model": "Event",
-      "method": "findMany",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/intelligence/return-engine.ts",
-      "line": 194,
+      "line": 231,
       "fn": "runReturnEngine",
       "model": "Event",
       "method": "findMany",
@@ -8898,6 +9932,19 @@
     {
       "file": "src/lib/intelligence/return-engine.ts",
       "line": 235,
+      "fn": "runReturnEngine",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/intelligence/return-engine.ts",
+      "line": 276,
       "fn": "closing",
       "model": "Event",
       "method": "findMany",
@@ -8910,7 +9957,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 303,
+      "line": 344,
       "fn": "atRisk",
       "model": "User",
       "method": "findMany",
@@ -8923,7 +9970,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 344,
+      "line": 385,
       "fn": "fights",
       "model": "Fight",
       "method": "findMany",
@@ -8936,7 +9983,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 420,
+      "line": 461,
       "fn": "top",
       "model": "User",
       "method": "findMany",
@@ -8949,7 +9996,7 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 460,
+      "line": 501,
       "fn": "events",
       "model": "Event",
       "method": "findMany",
@@ -8962,12 +10009,155 @@
     },
     {
       "file": "src/lib/intelligence/return-engine.ts",
-      "line": 481,
+      "line": 522,
       "fn": "active",
       "model": "AnalyticsEvent",
       "method": "findMany",
       "klass": "USER_OWNED",
       "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 62,
+      "fn": "other",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 80,
+      "fn": "openConversation",
+      "model": "ConversationMember",
+      "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 90,
+      "fn": "convo",
+      "model": "Conversation",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 101,
+      "fn": "rows",
+      "model": "Conversation",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 122,
+      "fn": "counts",
+      "model": "DirectMessage",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 156,
+      "fn": "members",
+      "model": "ConversationMember",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 162,
+      "fn": "unreadMessageCount",
+      "model": "DirectMessage",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 185,
+      "fn": "rows",
+      "model": "DirectMessage",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 225,
+      "fn": "sendMessage",
+      "model": "DirectMessage",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 234,
+      "fn": "sendMessage",
+      "model": "ConversationMember",
+      "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 253,
+      "fn": "markRead",
+      "model": "ConversationMember",
+      "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
       "ownership": "scoped",
       "severity": "INFO",
       "confidence": "high",
@@ -9235,7 +10425,7 @@
     },
     {
       "file": "src/lib/notifications-store.ts",
-      "line": 36,
+      "line": 34,
       "fn": "notify",
       "model": "Notification",
       "method": "createMany",
@@ -9248,7 +10438,33 @@
     },
     {
       "file": "src/lib/notifications-store.ts",
-      "line": 64,
+      "line": 92,
+      "fn": "alreadyHad",
+      "model": "Notification",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/notifications-store.ts",
+      "line": 100,
+      "fn": "notifyMany",
+      "model": "Notification",
+      "method": "createMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/notifications-store.ts",
+      "line": 122,
       "fn": "listNotifications",
       "model": "Notification",
       "method": "findMany",
@@ -9261,7 +10477,20 @@
     },
     {
       "file": "src/lib/notifications-store.ts",
-      "line": 68,
+      "line": 145,
+      "fn": "rows",
+      "model": "Notification",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/notifications-store.ts",
+      "line": 156,
       "fn": "unreadCount",
       "model": "Notification",
       "method": "count",
@@ -9274,10 +10503,36 @@
     },
     {
       "file": "src/lib/notifications-store.ts",
-      "line": 72,
+      "line": 160,
       "fn": "markAllRead",
       "model": "Notification",
       "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/notifications-store.ts",
+      "line": 171,
+      "fn": "markRead",
+      "model": "Notification",
+      "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/notifications-store.ts",
+      "line": 181,
+      "fn": "deleteNotifications",
+      "model": "Notification",
+      "method": "deleteMany",
       "klass": "USER_OWNED",
       "kind": "write",
       "ownership": "scoped",
@@ -9534,7 +10789,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 32,
+      "line": 33,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -9547,7 +10802,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 46,
+      "line": 47,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -9560,7 +10815,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 62,
+      "line": 66,
       "fn": "existing",
       "model": "FightPick",
       "method": "findUnique",
@@ -9573,7 +10828,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 66,
+      "line": 70,
       "fn": "castPick",
       "model": "FightPick",
       "method": "upsert",
@@ -9586,7 +10841,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 81,
+      "line": 85,
       "fn": "clearPick",
       "model": "FightPick",
       "method": "deleteMany",
@@ -9599,7 +10854,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 86,
+      "line": 90,
       "fn": "rows",
       "model": "FightPick",
       "method": "groupBy",
@@ -9612,7 +10867,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 104,
+      "line": 108,
       "fn": "row",
       "model": "FightPick",
       "method": "findUnique",
@@ -9625,7 +10880,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 119,
+      "line": 123,
       "fn": "rows",
       "model": "FightPick",
       "method": "findMany",
@@ -9638,7 +10893,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 137,
+      "line": 141,
       "fn": "rows",
       "model": "FightPick",
       "method": "groupBy",
@@ -9768,7 +11023,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 43,
+      "line": 44,
       "fn": "existing",
       "model": "Fighter",
       "method": "findUnique",
@@ -9781,7 +11036,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 45,
+      "line": 46,
       "fn": "created",
       "model": "Fighter",
       "method": "create",
@@ -9794,7 +11049,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 54,
+      "line": 55,
       "fn": "protectedRows",
       "model": "Ranking",
       "method": "count",
@@ -9807,7 +11062,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 62,
+      "line": 63,
       "fn": "prior",
       "model": "Ranking",
       "method": "findMany",
@@ -9820,7 +11075,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 77,
+      "line": 78,
       "fn": "ingestList",
       "model": "RankSnapshot",
       "method": "create",
@@ -9833,7 +11088,7 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 48,
+      "line": 57,
       "fn": "curated",
       "model": "Ranking",
       "method": "count",
@@ -9846,20 +11101,20 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 53,
+      "line": 62,
       "fn": "fighters",
       "model": "Fighter",
       "method": "findMany",
       "klass": "PUBLIC",
       "kind": "read",
-      "ownership": "unscoped",
+      "ownership": "unknown",
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 72,
+      "line": 81,
       "fn": "generateP4P",
       "model": "Ranking",
       "method": "create",
@@ -9872,7 +11127,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 39,
+      "line": 40,
       "fn": "existing",
       "model": "Fighter",
       "method": "findUnique",
@@ -9885,7 +11140,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 41,
+      "line": 42,
       "fn": "created",
       "model": "Fighter",
       "method": "create",
@@ -9898,7 +11153,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 56,
+      "line": 57,
       "fn": "found",
       "model": "WeightClass",
       "method": "findFirst",
@@ -9911,7 +11166,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 61,
+      "line": 62,
       "fn": "created",
       "model": "WeightClass",
       "method": "create",
@@ -9924,7 +11179,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 94,
+      "line": 95,
       "fn": "existing",
       "model": "Ranking",
       "method": "findUnique",
@@ -9937,7 +11192,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 114,
+      "line": 115,
       "fn": "ingestConnector",
       "model": "RankSnapshot",
       "method": "create",
@@ -9950,7 +11205,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 61,
+      "line": 69,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -9963,7 +11218,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 86,
+      "line": 96,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -9976,7 +11231,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 151,
+      "line": 161,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -9989,7 +11244,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 182,
+      "line": 192,
       "fn": "existing",
       "model": "Fighter",
       "method": "findUnique",
@@ -10002,7 +11257,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 189,
+      "line": 199,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "findUnique",
@@ -10015,7 +11270,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 190,
+      "line": 200,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "create",
@@ -10028,7 +11283,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 196,
+      "line": 206,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -10041,7 +11296,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 216,
+      "line": 226,
       "fn": "wcs",
       "model": "WeightClass",
       "method": "findMany",
@@ -10054,7 +11309,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 227,
+      "line": 237,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -10067,7 +11322,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 260,
+      "line": 306,
       "fn": "total",
       "model": "Ranking",
       "method": "count",
@@ -10080,7 +11335,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 263,
+      "line": 309,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -10093,20 +11348,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 276,
-      "fn": "anyCurated",
-      "model": "Ranking",
-      "method": "count",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/repo.prisma.ts",
-      "line": 298,
+      "line": 346,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "findMany",
@@ -10119,7 +11361,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 299,
+      "line": 347,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "count",
@@ -10132,7 +11374,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 305,
+      "line": 353,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -10145,7 +11387,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 312,
+      "line": 367,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -10158,7 +11400,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 326,
+      "line": 382,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findUnique",
@@ -10171,7 +11413,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 327,
+      "line": 383,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -10184,7 +11426,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 360,
+      "line": 416,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -10197,7 +11439,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 362,
+      "line": 418,
       "fn": "rows",
       "model": "OddsSnapshot",
       "method": "findMany",
@@ -10210,7 +11452,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 385,
+      "line": 441,
       "fn": "rows",
       "model": "Champion",
       "method": "findMany",
@@ -10223,7 +11465,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 460,
+      "line": 526,
       "fn": "rows",
       "model": "Event",
       "method": "findMany",
@@ -10236,8 +11478,8 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 469,
-      "fn": "rows",
+      "line": 553,
+      "fn": "getResults",
       "model": "Event",
       "method": "findMany",
       "klass": "PUBLIC",
@@ -10249,7 +11491,20 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 485,
+      "line": 560,
+      "fn": "getResults",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/repo.prisma.ts",
+      "line": 572,
       "fn": "e",
       "model": "Event",
       "method": "findFirst",
@@ -10262,7 +11517,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 497,
+      "line": 584,
       "fn": "f",
       "model": "Fight",
       "method": "findFirst",
@@ -10275,7 +11530,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 505,
+      "line": 592,
       "fn": "fighter",
       "model": "Fighter",
       "method": "findUnique",
@@ -10288,7 +11543,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 507,
+      "line": 594,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -10301,7 +11556,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 516,
+      "line": 603,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -10314,7 +11569,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 543,
+      "line": 630,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -10327,7 +11582,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 557,
+      "line": 644,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -10340,7 +11595,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 568,
+      "line": 655,
       "fn": "a",
       "model": "Article",
       "method": "findFirst",
@@ -10353,7 +11608,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 572,
+      "line": 659,
       "fn": "a",
       "model": "Article",
       "method": "findUnique",
@@ -10366,7 +11621,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 47,
+      "line": 48,
       "fn": "awardReputation",
       "model": "ReputationEvent",
       "method": "create",
@@ -10379,7 +11634,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 93,
+      "line": 103,
       "fn": "getReputationLeaders",
       "model": "User",
       "method": "findMany",
@@ -10392,7 +11647,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 163,
+      "line": 173,
       "fn": "grouped",
       "model": "ReputationEvent",
       "method": "groupBy",
@@ -10405,7 +11660,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 175,
+      "line": 185,
       "fn": "users",
       "model": "User",
       "method": "findMany",
@@ -10417,8 +11672,164 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 49,
+      "fn": "fight",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 63,
+      "fn": "articles",
+      "model": "Article",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 126,
+      "fn": "rows",
+      "model": "ResultEvidence",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 161,
+      "fn": "existing",
+      "model": "ResultCandidate",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 206,
+      "fn": "candidate",
+      "model": "ResultCandidate",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/pipeline.ts",
+      "line": 356,
+      "fn": "fights",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 22,
+      "fn": "rows",
+      "model": "ResultCandidate",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 43,
+      "fn": "evidence",
+      "model": "ResultEvidence",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 87,
+      "fn": "candidate",
+      "model": "ResultCandidate",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 118,
+      "fn": "reviewCandidate",
+      "model": "AuditLog",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 142,
+      "fn": "grouped",
+      "model": "ResultCandidate",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/results/queue.ts",
+      "line": 148,
+      "fn": "published",
+      "model": "ResultCandidate",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/lib/scraper/runner.ts",
-      "line": 46,
+      "line": 174,
       "fn": "job",
       "model": "ScrapeJob",
       "method": "create",
@@ -10430,11 +11841,531 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
-      "file": "src/lib/scraper/runner.ts",
-      "line": 192,
+      "file": "src/lib/scraper/wikicard/audit.ts",
+      "line": 105,
       "fn": "rows",
       "model": "Event",
       "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/audit.ts",
+      "line": 124,
+      "fn": "ev",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/audit.ts",
+      "line": 140,
+      "fn": "fights",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/audit.ts",
+      "line": 153,
+      "fn": "imports",
+      "model": "FightImport",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 163,
+      "fn": "found",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 206,
+      "fn": "found",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 237,
+      "fn": "fights",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 251,
+      "fn": "aliasRows",
+      "model": "FighterAlias",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 311,
+      "fn": "fight",
+      "model": "Fight",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 325,
+      "fn": "ev",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 377,
+      "fn": "fights",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 454,
+      "fn": "countWikiGaps",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 462,
+      "fn": "countWikiGaps",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 469,
+      "fn": "countWikiGaps",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 479,
+      "fn": "countWikiGaps",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/wikicard/targets.ts",
+      "line": 487,
+      "fn": "countWikiGaps",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 68,
+      "fn": "gymRows",
+      "model": "Gym",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 77,
+      "fn": "searchFollowState",
+      "model": "FavoriteFighter",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 83,
+      "fn": "searchFollowState",
+      "model": "FavoriteEvent",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 89,
+      "fn": "searchFollowState",
+      "model": "Follow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 95,
+      "fn": "searchFollowState",
+      "model": "FavoritePromotion",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 101,
+      "fn": "searchFollowState",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 108,
+      "fn": "searchFollowState",
+      "model": "Fighter",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 114,
+      "fn": "searchFollowState",
+      "model": "Follow",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 121,
+      "fn": "searchFollowState",
+      "model": "FavoritePromotion",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/search-follow.ts",
+      "line": 128,
+      "fn": "searchFollowState",
+      "model": "User",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/audience.ts",
+      "line": 50,
+      "fn": "eventRef",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 56,
+      "fn": "row",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 81,
+      "fn": "fights",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 366,
+      "fn": "row",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 371,
+      "fn": "f",
+      "model": "Fight",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 393,
+      "fn": "notifyOfficialResults",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 394,
+      "fn": "notifyOfficialResults",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/event-triggers.ts",
+      "line": 400,
+      "fn": "event",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/fighter-triggers.ts",
+      "line": 42,
+      "fn": "fightRef",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/fighter-triggers.ts",
+      "line": 55,
+      "fn": "snapshotFight",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/fighter-triggers.ts",
+      "line": 206,
+      "fn": "fighter",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/fighter-triggers.ts",
+      "line": 246,
+      "fn": "fighter",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/fighter-triggers.ts",
+      "line": 294,
+      "fn": "fighter",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/person-triggers.ts",
+      "line": 37,
+      "fn": "personRef",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/social/triggers.ts",
+      "line": 101,
+      "fn": "fight",
+      "model": "Fight",
+      "method": "findUnique",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",
@@ -10548,7 +12479,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 128,
+      "line": 139,
       "fn": "exists",
       "model": "FighterAlias",
       "method": "findFirst",
@@ -10561,7 +12492,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 130,
+      "line": 141,
       "fn": "recordAliases",
       "model": "FighterAlias",
       "method": "create",
@@ -10574,7 +12505,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 182,
+      "line": 217,
       "fn": "current",
       "model": "Event",
       "method": "findUnique",
@@ -10588,6 +12519,58 @@
     {
       "file": "src/services/sync/persist.ts",
       "line": 289,
+      "fn": "event",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 296,
+      "fn": "refreshCardCompletion",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 297,
+      "fn": "refreshCardCompletion",
+      "model": "Fight",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 308,
+      "fn": "sources",
+      "model": "EventExternalId",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 417,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findFirst",
@@ -10600,7 +12583,20 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 335,
+      "line": 455,
+      "fn": "existing",
+      "model": "Fight",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 468,
       "fn": "existing",
       "model": "Fight",
       "method": "findUnique",

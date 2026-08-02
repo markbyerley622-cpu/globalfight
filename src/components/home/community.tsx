@@ -22,23 +22,37 @@ export async function Community() {
               <p className="px-4 py-8 text-center text-sm text-fog">No discussions yet — <Link href="/forums" className="text-blood-400 hover:text-blood-300">start one</Link>.</p>
             )}
             {threads.map((t) => (
-              <Link
-                key={t.id}
-                href={`/forums/${t.categorySlug}/${t.slug}`}
-                className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-ink-800/60"
-              >
+              // Overlay link, not a wrapper: the author must be reachable, and
+              // an <a> inside an <a> is invalid HTML. Same pattern as thread-card.
+              <div key={t.id} className="group relative flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-ink-800/60">
+                <Link
+                  href={`/forums/${t.categorySlug}/${t.slug}`}
+                  aria-label={t.title}
+                  className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blood-400"
+                />
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-ink-800 text-mist">
                   {t.pinned ? <Pin className="size-4 text-gold-400" /> : <Flame className="size-4 text-blood-400" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-sm font-semibold text-chalk">{t.title}</p>
-                  <p className="text-xs text-fog">{t.categoryName} · by {t.authorName} · {timeAgo(t.lastPostAt)}</p>
+                  <p className="text-xs text-fog">
+                    {t.categoryName} · by{" "}
+                    {t.authorUsername ? (
+                      <Link href={`/u/${t.authorUsername}`} className="relative z-10 font-semibold hover:text-blood-300 hover:underline">
+                        {t.authorName}
+                      </Link>
+                    ) : (
+                      t.authorName
+                    )}
+                    {" · "}
+                    {timeAgo(t.lastPostAt)}
+                  </p>
                 </div>
                 <div className="hidden shrink-0 items-center gap-4 text-xs text-mist sm:flex">
                   <span className="flex items-center gap-1"><MessageSquare className="size-3.5" />{t.replyCount}</span>
                   <span className="flex items-center gap-1"><Eye className="size-3.5" />{t.views}</span>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 

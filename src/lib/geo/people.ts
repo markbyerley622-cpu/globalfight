@@ -218,6 +218,60 @@ export async function getFollowCounts(userId: string) {
   return { followers, following };
 }
 
+/** A mutual connection, named — social proof needs names, not just a number. */
+export interface MutualFollower {
+  username: string | null;
+  name: string | null;
+  image: string | null;
+}
+
+export interface Mutuals {
+  /** Total people the viewer follows who also follow `profileId`. */
+  count: number;
+  /** The first few, for "Followed by A, B and 4 others you follow". */
+  sample: MutualFollower[];
+}
+
+/**
+ * People the VIEWER follows who also follow this profile.
+ *
+ * "27 followers" tells a stranger nothing — it is the same number for a
+ * respected analyst and for someone who bought an audience. "Followed by three
+ * people you follow" is the signal that actually transfers trust, and it is the
+ * one piece of social proof that cannot be gamed against a specific viewer.
+ *
+ * Needs no new table: UserFollow already stores (followerId, followingId), so a
+ * mutual is an intersection of two sets we hold. Returns an empty result for a
+ * signed-out viewer or for your own profile, where the question is meaningless.
+ */
+export async function getMutualFollowers(
+  viewerId: string | null | undefined,
+  profileId: string,
+  sampleSize = 3,
+): Promise<Mutuals> {
+  if (!viewerId || viewerId === profileId) return { count: 0, sample: [] };
+
+  // "Follows the profile, AND is followed by the viewer" — one query, expressed
+  // as a relation filter so the intersection happens in Postgres rather than by
+  // pulling both follower lists into memory.
+  const where = {
+    followingId: profileId,
+    follower: { followers: { some: { followerId: viewerId } } },
+  };
+
+  const [count, rows] = await Promise.all([
+    prisma.userFollow.count({ where }),
+    prisma.userFollow.findMany({
+      where,
+      take: sampleSize,
+      orderBy: { createdAt: "desc" },
+      select: { follower: { select: { username: true, name: true, image: true } } },
+    }),
+  ]);
+
+  return { count, sample: rows.map((r) => r.follower) };
+}
+
 /** A person as they appear in a follower list. */
 export interface FollowListPerson {
   username: string;

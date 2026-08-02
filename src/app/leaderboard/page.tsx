@@ -110,7 +110,7 @@ export default async function LeaderboardPage({
 const MEDAL = ["text-gold-300", "text-mist", "text-gold-600"];
 
 function Avatar({ leader, size }: { leader: Leader; size: number }) {
-  const letter = (leader.name ?? leader.username ?? "?").slice(0, 1).toUpperCase();
+  const letter = publicDisplayName(leader).slice(0, 1).toUpperCase();
   return leader.image ? (
     <Image
       src={leader.image}
@@ -188,8 +188,11 @@ function LeaderRow({ leader, rank }: { leader: Leader; rank: number }) {
         </span>
         <Avatar leader={leader} size={36} />
         <span className="min-w-0 flex-1">
+          {/* The podium above already used publicDisplayName; this row did not,
+              so the main list published the raw `name` — which is whatever was
+              typed at signup, and people type their email address there. */}
           <span className="block truncate font-display text-sm font-bold text-chalk">
-            {leader.name ?? leader.username ?? "Anonymous"}
+            {publicDisplayName(leader)}
           </span>
           <span className="mt-0.5 flex items-center gap-3 text-[0.68rem] text-fog">
             <span className="inline-flex items-center gap-1"><Target className="size-3" /> {leader.accuracy}% acc</span>

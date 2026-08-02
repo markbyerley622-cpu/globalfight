@@ -115,7 +115,11 @@ function mapThread(t: ThreadRow, viewer?: { bookmarked: Set<string>; following: 
   return {
     id: t.id, slug: t.slug, title: t.title, kind: t.kind,
     categorySlug: t.category.slug, categoryName: t.category.name,
-    authorName: t.author.name ?? t.author.username ?? "Member", authorId: t.authorId,
+    // publicDisplayName, not `name ?? username`: User.name holds whatever was
+    // typed at signup and people type their email address into it. The raw
+    // fallback published it on every thread card. See lib/display-name.
+    authorName: publicDisplayName(t.author), authorId: t.authorId,
+    authorUsername: t.author.username,
     authorRole: t.author.registryRole, authorAppRole: t.author.role,
     authorSport: t.author.fighterProfile?.sport ?? null,
     authorImage: t.author.image,
@@ -138,7 +142,7 @@ function mapPost(p: PostRow, viewerId?: string): ForumPostDTO {
   }
   return {
     id: p.id, threadId: p.threadId, content: p.deleted ? "" : p.content,
-    authorId: p.authorId, authorName: p.author.name ?? p.author.username ?? "Member",
+    authorId: p.authorId, authorName: publicDisplayName(p.author),
     authorUsername: p.author.username, authorImage: p.author.image,
     authorRole: p.author.registryRole, authorAppRole: p.author.role,
     authorSport: p.author.fighterProfile?.sport ?? null,
@@ -437,7 +441,7 @@ export async function createPost(input: {
     if (q) {
       quote = {
         quotedId: q.id,
-        quotedAuthor: q.author.name ?? q.author.username ?? "Member",
+        quotedAuthor: publicDisplayName(q.author),
         quotedExcerpt: excerptOf(q.content, 240),
       };
     }

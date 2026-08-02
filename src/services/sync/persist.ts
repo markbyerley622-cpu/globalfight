@@ -1,4 +1,4 @@
-// Persist aggregated provider records into the canonical Fighter/Event/Fight
+﻿// Persist aggregated provider records into the canonical Fighter/Event/Fight
 // tables. Identity is resolved through the dedupe engine so the same fighter or
 // card arriving from several sources lands on one row; provenance is recorded in
 // the *ExternalId link tables when present.
@@ -10,13 +10,18 @@
 import type { FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
-import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
+import {
+  preventResultDowngrade, requireAttributedWinner, preventRulesetDowngrade,
+  assertWinnerMatchesCorners, resolveWinnerForCorners,
+} from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { onResultWritten } from "@/lib/intelligence/resolve";
 import { recordIngestEvidence } from "@/lib/results/pipeline";
 import { notifyEventChanges, snapshotEvent } from "@/lib/social/event-triggers";
 import { notifyFightAnnounced, notifyFightChanges } from "@/lib/social/fighter-triggers";
 import { slugify } from "@/lib/utils";
+import { normalizeText } from "@/lib/text/entities";
+import { RULESET_CONFIDENCE } from "@/lib/scraper/ruleset";
 import { toCountryCode } from "@/lib/countries";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
@@ -44,7 +49,7 @@ export async function persistAggregated(
   return persistEvents(sport, records as NormalizedEvent[]);
 }
 
-// ─── fighters ────────────────────────────────────────────────────────────
+// â”€â”€â”€ fighters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function persistFighters(sport: Sport, fighters: NormalizedFighter[]): Promise<number> {
   let written = 0;
@@ -91,7 +96,7 @@ async function upsertFighter(sport: Sport, f: NormalizedFighter): Promise<string
     const slug = slugify(f.name);
     const row = await prisma.fighter.upsert({
       where: { slug },
-      update: fill, // sport intentionally not updated — first source owns it
+      update: fill, // sport intentionally not updated â€” first source owns it
       create: {
         slug, sport, name: f.name,
         nickname: f.nickname ?? null,
@@ -121,7 +126,7 @@ async function linkFighterExternalId(fighterId: string, f: NormalizedFighter): P
       create: { fighterId, source: f._meta.source, externalId: f.externalId, confidence: f._meta.confidence },
     });
   } catch {
-    /* additive table not migrated yet — core enrichment already applied */
+    /* additive table not migrated yet â€” core enrichment already applied */
   }
 }
 
@@ -141,7 +146,7 @@ async function recordAliases(fighterId: string, f: NormalizedFighter): Promise<v
   }
 }
 
-// ─── events ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function persistEvents(sport: Sport, events: NormalizedEvent[]): Promise<number> {
   let written = 0;
@@ -165,19 +170,34 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
   const date = new Date(ev.date);
   if (Number.isNaN(+date)) throw new Error(`invalid date: ${ev.date}`);
 
-  const match = await resolveEvent({ source: ev._meta.source, externalId: ev.externalId, name: ev.name, sport, date: ev.date });
+  // THE CHOKEPOINT. Every provider's events arrive here, so the name is
+  // normalized once, at the boundary, rather than trusted to each extractor.
+  //
+  // ONE's extractor hand-rolled a partial entity decode and eight cards were
+  // stored as "Kings &#038; Champions", slugged `kings-038-champions`, and then
+  // failed to match the correctly-named copy Wikipedia had already written â€”
+  // two rows per card, one empty, one holding the bouts. A provider-local
+  // decode is always a partial decode, and the next provider would have found
+  // its own way to do the same thing. Normalizing here means it cannot recur
+  // whatever a future extractor forgets.
+  //
+  // This is the DISPLAY value (entities resolved, whitespace collapsed).
+  // Matching uses canonicalizeTitle separately â€” see lib/text/entities.
+  const name = normalizeText(ev.name) || ev.name;
+
+  const match = await resolveEvent({ source: ev._meta.source, externalId: ev.externalId, name, sport, date: ev.date });
 
   // The card's shape BEFORE this write, so the notification layer can tell an
   // announcement from a re-ingest. Taken here rather than inside the branches
   // below because an unmatched event may still resolve to an existing row via its
-  // slug in the upsert — in which case it is an update, not an announcement, and a
+  // slug in the upsert â€” in which case it is an update, not an announcement, and a
   // snapshot taken only on the `match.eventId` path would have called it new.
   const before = match.eventId
     ? await snapshotEvent({ id: match.eventId })
-    : await snapshotEvent({ slug: slugify(ev.name) || slugify(`${ev.name}-${ev.date.slice(0, 10)}`) });
+    : await snapshotEvent({ slug: slugify(name) || slugify(`${name}-${ev.date.slice(0, 10)}`) });
 
   const fill = defined({
-    name: ev.name,
+    name,
     promotion: ev.promotion,
     venue: ev.venue,
     city: ev.city,
@@ -205,12 +225,12 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
     await recordConflicts("Event", match.eventId, fill, locked, (current ?? {}) as Record<string, unknown>, ev._meta.source);
     eventId = match.eventId;
   } else {
-    const slug = slugify(ev.name) || slugify(`${ev.name}-${ev.date.slice(0, 10)}`);
+    const slug = slugify(name) || slugify(`${name}-${ev.date.slice(0, 10)}`);
     const row = await prisma.event.upsert({
       where: { slug },
       update: fill,
       create: {
-        slug, sport, name: ev.name,
+        slug, sport, name,
         promotion: ev.promotion ?? null,
         venue: ev.venue ?? null,
         city: ev.city ?? null,
@@ -245,7 +265,7 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
   // upsertFight, which is the only place that knows whether a given bout is new.
   await notifyEventChanges(before, eventId);
 
-  await invalidate(`event:${slugify(ev.name)}`);
+  await invalidate(`event:${slugify(name)}`);
 }
 
 /**
@@ -258,7 +278,7 @@ async function upsertEvent(sport: Sport, ev: NormalizedEvent): Promise<void> {
  * It CLEARS as readily as it sets, and that matters more than it looks: a card
  * that gains a late bout, or whose result an operator un-decides, must re-enter
  * the queue. A completion flag that could only ever be set would eventually be a
- * claim with no evidence behind it — the derived value is always recomputed here,
+ * claim with no evidence behind it â€” the derived value is always recomputed here,
  * never trusted from last time.
  *
  * Best-effort: this is bookkeeping, and it must never be the reason a
@@ -282,7 +302,7 @@ async function refreshCardCompletion(eventId: string): Promise<void> {
 
     // TERMINAL: past, still has undecided bouts, and every source that covers it
     // is a one-shot import. No later visit can add anything, so this is not
-    // "incomplete" — it is finished, with gaps the source itself has.
+    // "incomplete" â€” it is finished, with gaps the source itself has.
     let terminal: string | null = null;
     if (past && !complete && total > 0) {
       const sources = await prisma.eventExternalId.findMany({ where: { eventId }, select: { source: true } });
@@ -343,7 +363,7 @@ async function planCorner(
  * Record WHERE this bout came from. Best-effort: the table is additive and a
  * database that hasn't run `db:push` must still get the bout itself.
  *
- * `created` is the field that matters for cleanup — a row this import CREATED can be
+ * `created` is the field that matters for cleanup â€” a row this import CREATED can be
  * removed if the import turns out to be wrong; a row it merely updated predates it
  * and must not be.
  */
@@ -361,7 +381,7 @@ async function recordFightImport(
       create: { fightId, source, sourceRef: sourceRef ?? null, created },
     });
   } catch {
-    /* additive table not migrated yet — the bout itself already landed */
+    /* additive table not migrated yet â€” the bout itself already landed */
   }
 }
 
@@ -401,11 +421,14 @@ async function upsertFight(
     weightClassId = wc?.id;
   }
 
-  const slug = slugify(`${ev.name}-${stub.redName}-vs-${stub.blueName}`);
+  // Normalized here too: a bout slug built from an encoded card name inherits
+  // the same corruption, so `kings-038-champions-a-vs-b` would have been the
+  // fight-level version of the duplicate-event bug.
+  const slug = slugify(`${normalizeText(ev.name)}-${stub.redName}-vs-${stub.blueName}`);
   const date = new Date(ev.date);
 
   // Atomic core: any corner fighters that must be created land together with the
-  // fight, or not at all — a mid-write failure never leaves orphan corner
+  // fight, or not at all â€” a mid-write failure never leaves orphan corner
   // fighters created for a bout that didn't persist. Only fast writes are inside;
   // the slow dedupe reads (above) and additive provenance (below) stay outside.
   const outcome = await prisma.$transaction(async (tx) => {
@@ -416,41 +439,17 @@ async function upsertFight(
       ? (await tx.fighter.upsert({ where: { slug: bluePlan.slug }, update: {}, create: { slug: bluePlan.slug, sport, name: bluePlan.name } })).id
       : bluePlan.id;
 
-    let winnerId: string | undefined;
-    if (stub.winnerExternalId) {
-      if (stub.winnerExternalId === stub.redExternalId) winnerId = redId;
-      else if (stub.winnerExternalId === stub.blueExternalId) winnerId = blueId;
-    }
-
-    const data = defined({
-      eventId,
-      redId, blueId,
-      weightClassId,
-      scheduledRounds: stub.scheduledRounds,
-      titleFight: stub.titleFight,
-      mainEvent: stub.mainEvent,
-      orderOnCard: stub.mainEvent ? 0 : index + 1,
-      result: stub.result,
-      method: stub.method,
-      roundEnded: stub.roundEnded,
-      winnerId,
-      date,
-    });
-
-    // ── IDENTITY: the corner PAIR on this event, then the slug ────────────────
+    // ── IDENTITY FIRST. The existing bout is loaded BEFORE the winner is
+    //    resolved, and that ordering IS the fix.
     //
-    // A bout is "the same bout" when it is the same two fighters on the same card.
-    // Keying on a name-derived slug alone was wrong the moment two pipelines built
-    // that name differently — and they do: the odds pipeline creates production's
-    // boxing/MMA bouts as `{red}-vs-{blue}` under a synthetic daily card, while this
-    // function builds `{eventName}-{red}-vs-{blue}`. Same bout, two slugs.
+    // A bout is "the same bout" when it is the same two fighters on the same
+    // card. Keying on a name-derived slug alone was wrong the moment two
+    // pipelines built that name differently, and they do: the odds pipeline
+    // creates production's boxing/MMA bouts as `{red}-vs-{blue}` under a
+    // synthetic daily card, while this function builds
+    // `{eventName}-{red}-vs-{blue}`. Same bout, two slugs.
     //
-    // The consequence was silent and severe: a Wikipedia result would be written to a
-    // NEW row while every pick, battle and prediction stayed on the original. The
-    // ingest job would report written=1, the reader's prediction would never settle,
-    // and the card would show two copies of the same fight.
-    //
-    // Corner order is not part of identity either — sources disagree about which
+    // Corner ORDER is not part of identity either: sources disagree about which
     // fighter is "red", so both orientations resolve to the one bout.
     const existing =
       (await tx.fight.findFirst({
@@ -462,24 +461,123 @@ async function upsertFight(
           ],
         },
       })) ??
-      // Fallback: same bout name on a card we haven't matched by corners (a fighter
-      // row that was since deduped and re-pointed).
+      // Fallback: same bout NAME on a card we did not match by corners (a
+      // fighter row since deduped and re-pointed). THIS is the path that wrote
+      // the impossible states: it matches by name while the fighter rows differ,
+      // so the stored corners are not the incoming ones.
       (await tx.fight.findUnique({ where: { slug } }));
+
+    // ── THE CORNERS THAT WILL ACTUALLY BE STORED ────────────────────────────
+    // An existing bout is never re-seated (FightPick stores "RED"/"BLUE", so
+    // swapping corners inverts every pick on it), so for an existing row the
+    // FINAL corners are the STORED ones, not the incoming ones. Everything below
+    // validates against these.
+    const finalRedId = existing?.redId ?? redId;
+    const finalBlueId = existing?.blueId ?? blueId;
+
+    // The provider's own corner resolution, mapped to fighter ids.
+    let candidateWinner: string | undefined;
+    if (stub.winnerExternalId) {
+      if (stub.winnerExternalId === stub.redExternalId) candidateWinner = redId;
+      else if (stub.winnerExternalId === stub.blueExternalId) candidateWinner = blueId;
+    }
+
+    // Resolve against the FINAL corners. When the incoming winner names a
+    // fighter row that is not on the stored bout - a near-duplicate the deduper
+    // missed, "Soe Lin Oo" against a stored "Soe Htet Oo" - it is DROPPED rather
+    // than mapped across. Mapping would be a guess about identity, and a wrong
+    // winner silently rewrites a fighter's record.
+    const { winnerId, unmatched } = resolveWinnerForCorners(candidateWinner, finalRedId, finalBlueId);
+    if (unmatched) {
+      log.warn(
+        {
+          source, slug, fightId: existing?.id,
+          incomingWinner: candidateWinner, storedRed: finalRedId, storedBlue: finalBlueId,
+          red: stub.redName, blue: stub.blueName,
+        },
+        "persist:winner-not-on-stored-bout - dropped rather than mapped across",
+      );
+    }
+
+    // The match above fails whenever a source is internally inconsistent, and it
+    // fails SILENTLY: `winnerId` stays undefined while `stub.result` is still
+    // "WIN". Writing that pair records a bout won by nobody â€” unusable for
+    // records and settlement, and an invalid state every reader then has to
+    // guess about. An unattributed win is downgraded to SCHEDULED so the
+    // harvester retries it against a source that can name the winner.
+    // Validated against the FINAL corners, so validation and the write now agree.
+    const { update: outcome, rejected: unattributed } = requireAttributedWinner(
+      { result: stub.result, method: stub.method, roundEnded: stub.roundEnded, winnerId: winnerId ?? undefined },
+      { redId: finalRedId, blueId: finalBlueId },
+    );
+    if (unattributed) {
+      log.warn(
+        { source, slug, red: stub.redName, blue: stub.blueName, winnerExternalId: stub.winnerExternalId ?? null },
+        "persist:unattributable-win - downgraded to SCHEDULED",
+      );
+    }
+
+    // The bout's ruleset, when the PROVIDER stated it. Never derived from the
+    // event here — a provider that does not know leaves it unset and the column
+    // stays UNKNOWN, which a backfill can close later. Guessing now would be
+    // indistinguishable from knowing.
+    const rulesetFields = stub.ruleset
+      ? {
+          ruleset: stub.ruleset,
+          rulesetConfidence: stub.rulesetConfidence ?? RULESET_CONFIDENCE.stated,
+          rulesetSource: stub.rulesetSource ?? source,
+          rulesetUpdatedAt: new Date(),
+        }
+      : {};
+
+    const data = defined({
+      eventId,
+      redId, blueId,
+      weightClassId,
+      ...rulesetFields,
+      scheduledRounds: stub.scheduledRounds,
+      titleFight: stub.titleFight,
+      mainEvent: stub.mainEvent,
+      orderOnCard: stub.mainEvent ? 0 : index + 1,
+      result: outcome.result,
+      method: outcome.method,
+      roundEnded: outcome.roundEnded,
+      winnerId: outcome.winnerId,
+      date,
+    });
+
     if (existing) {
       // THREE guards now, in order:
       //  (1) never re-seat the CORNERS of a bout that already exists. FightPick
       //      stores "RED"/"BLUE", not a fighter id, so swapping redId/blueId would
       //      silently invert the meaning of every pick, battle and graded result on
       //      the bout. A source reporting the corners the other way round is the
-      //      same bout (that is why identity ignores order) — it is not a licence to
+      //      same bout (that is why identity ignores order) â€” it is not a licence to
       //      rewrite which corner is which. `winnerId` is a Fighter id and therefore
       //      orientation-independent, so the result still lands correctly.
       //  (2) never let a later sync un-decide a bout back to SCHEDULED.
       //  (3) never overwrite operator-locked fields.
+      //  (4) never let a weaker source replace a STATED ruleset. Providers that
+      //      cannot supply one run on the same cron and touch the same rows, so
+      //      without this the last writer wins and a known Muay Thai bout is
+      //      silently downgraded to UNKNOWN by the next unrelated ingest.
       const { redId: _r, blueId: _b, ...corneless } = data;
-      const guarded = preventResultDowngrade(existing.result, corneless);
+      const guarded = preventRulesetDowngrade(
+        existing,
+        preventResultDowngrade(existing.result, corneless),
+      );
       const update = stripLocked(guarded, existing.lockedFields);
       if (Object.keys(update).length > 0) {
+        // THE INVARIANT, asserted against the EXACT values being committed.
+        // `update` may or may not carry a winner (the downgrade guards can strip
+        // it), so the effective winner is the incoming one when present and the
+        // stored one otherwise — and either must sit on the stored corners.
+        assertWinnerMatchesCorners(
+          "winnerId" in update ? (update.winnerId as string | null) : existing.winnerId,
+          existing.redId,
+          existing.blueId,
+          `update ${existing.id} (${source})`,
+        );
         await tx.fight.update({ where: { id: existing.id }, data: update });
       }
       // Did THIS write decide a bout that wasn't decided before? That transition is
@@ -488,8 +586,17 @@ async function upsertFight(
         existing.result === "SCHEDULED" &&
         typeof update.result === "string" &&
         update.result !== "SCHEDULED";
-      return { fightId: existing.id, existing, data, redId, blueId, decided };
+      // FINAL corners, not the incoming ones. recordIngestEvidence derives
+      // "RED"/"BLUE" by comparing the winner against these, so returning the
+      // incoming pair was the SAME ordering bug one layer down: on the slug
+      // fallback it would have labelled the evidence with a corner from a bout
+      // the row does not have.
+      return { fightId: existing.id, existing, data, redId: finalRedId, blueId: finalBlueId, decided };
     }
+
+    // A brand-new row: the incoming corners ARE the final corners, so the
+    // invariant is asserted against them.
+    assertWinnerMatchesCorners(outcome.winnerId as string | null, redId, blueId, `create ${slug} (${source})`);
 
     const created = await tx.fight.upsert({
       where: { slug },
@@ -503,10 +610,10 @@ async function upsertFight(
         titleFight: stub.titleFight ?? false,
         mainEvent: stub.mainEvent ?? false,
         orderOnCard: stub.mainEvent ? 0 : index + 1,
-        result: stub.result ?? "SCHEDULED",
-        method: stub.method ?? null,
-        roundEnded: stub.roundEnded ?? null,
-        winnerId: winnerId ?? null,
+        result: outcome.result ?? "SCHEDULED",
+        method: outcome.method ?? null,
+        roundEnded: outcome.roundEnded ?? null,
+        winnerId: outcome.winnerId ?? null,
         date,
       },
     });
@@ -518,7 +625,7 @@ async function upsertFight(
       data,
       redId,
       blueId,
-      decided: (stub.result ?? "SCHEDULED") !== "SCHEDULED",
+      decided: (outcome.result ?? "SCHEDULED") !== "SCHEDULED",
     };
   });
 
@@ -562,14 +669,14 @@ async function upsertFight(
 
   // SETTLEMENT, fired by the write that caused it. Ingest used to stop at
   // Fight.result and leave every prediction on the bout open until a cron happened
-  // to run — the gap that let a decided fight coexist with an open prediction.
+  // to run â€” the gap that let a decided fight coexist with an open prediction.
   // onResultWritten never throws: the result is the fact, settlement is a
   // consequence, and resolveDuePicks re-tries anything that fails here.
   if (outcome.decided) {
     // AUDIT TRAIL, before settlement. Wikipedia and the official providers write
     // results directly and always have; this records what they said as evidence and
-    // stamps the bout as published-by-them, so every verified result in the product —
-    // whether it came from an ingest or from the intelligence pipeline — has the same
+    // stamps the bout as published-by-them, so every verified result in the product â€”
+    // whether it came from an ingest or from the intelligence pipeline â€” has the same
     // history behind it in /admin/results. Bookkeeping only: it never gates the write
     // and never throws.
     const decidedWinner =

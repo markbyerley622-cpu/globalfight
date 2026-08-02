@@ -10,6 +10,7 @@
 // ════════════════════════════════════════════════════════════════════════
 
 import { log } from "@/lib/scraper/logger";
+import { normalizeText } from "@/lib/text/entities";
 
 const UA = "CombatRegisterBot/2.0 (+https://combat-register.vercel.app/bot)";
 const WIKI_API = "https://en.wikipedia.org/w/api.php";
@@ -58,8 +59,11 @@ interface WikidataEntity {
 const claimValue = (e: WdEntity | undefined, prop: string) =>
   e?.claims?.[prop]?.[0]?.mainsnak?.datavalue?.value;
 
-const stripHtml = (s: string) =>
-  s.replace(/<[^>]+>/g, " ").replace(/&#?\w+;/g, " ").replace(/\s+/g, " ").trim();
+// Tags are removed; entities are DECODED, not deleted. The old version replaced
+// every `&…;` with a space, so "Isn&#8217;t" became "Isn t" and "Kings &amp;
+// Champions" became "Kings Champions" — silently editing the text it was meant
+// to be cleaning. normalizeText resolves entities to a fixpoint instead.
+const stripHtml = (s: string) => normalizeText(s.replace(/<[^>]+>/g, " "));
 
 // A licence string we're allowed to display with attribution. Non-free / fair-use
 // files (which exist on en.wiki but never on Commons) are rejected.

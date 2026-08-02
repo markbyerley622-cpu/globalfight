@@ -27,6 +27,22 @@ export function PromotionLogo({
   promotion?: string | null;
   size?: keyof typeof SIZES;
   className?: string;
+  /**
+   * Label the mark with the promotion's name WHEN THE MARK CANNOT SPEAK FOR
+   * ITSELF — i.e. only for the monogram fallback.
+   *
+   * This is deliberately not "always show the name". Surfaces kept pairing an
+   * official logo with the same name in text, so a UFC row read "[UFC logo] UFC"
+   * above a title that said "UFC 322" — the org named three times before
+   * anything distinguished the card. The recent-events rail and the schedule
+   * page each did it their own way, which is how it drifted back after the event
+   * card fixed it locally.
+   *
+   * Putting the rule HERE is what stops it drifting again: a caller cannot
+   * accidentally double up, because it no longer renders the name itself. A real
+   * logo already identifies the org; a coloured "MF" badge does not, so that one
+   * keeps its label.
+   */
   showName?: boolean;
   /**
    * Pass `false` when the CALLER already renders the promotion name beside the
@@ -49,7 +65,9 @@ export function PromotionLogo({
   // label) the mark is DECORATIVE: empty alt, no title. That is the standard
   // treatment for an image sitting next to text that already says the same
   // thing. Otherwise the mark IS the label and keeps the accessible name.
-  const decorative = showName || labelledBy === false;
+  // The name is rendered only when there is no real logo to carry it.
+  const nameVisible = showName && !p.logo;
+  const decorative = nameVisible || labelledBy === false;
   const accessibleName = decorative ? "" : p.name;
 
   const mark = p.logo ? (
@@ -84,7 +102,7 @@ export function PromotionLogo({
     </span>
   );
 
-  if (!showName) return <span className={className}>{mark}</span>;
+  if (!nameVisible) return <span className={className}>{mark}</span>;
 
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
