@@ -13,7 +13,10 @@ import { BackButton } from "@/components/back-button";
 import { ShareMenu } from "@/components/share-menu";
 import { timeAgo } from "@/lib/utils";
 import { publicDisplayName } from "@/lib/display-name";
-import { getFollowCounts } from "@/lib/geo/people";
+import { getFollowCounts, getMutualFollowers } from "@/lib/geo/people";
+import { getCurrentUser } from "@/lib/auth";
+import { isFollowing } from "@/lib/follow-targets";
+import { FollowButton } from "@/components/follow-button";
 
 const ROLE_LABEL: Record<string, string> = {
   fighter: "Fighter", coach: "Coach", gym: "Gym", promoter: "Promoter",
@@ -48,7 +51,12 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const u = await loadUser(username);
   if (!u?.username) notFound();
 
-  const [stats, activity, rankedTotal, trainingNow, followCounts] = await Promise.all([
+  // Resolved first: the follow state and the mutuals both depend on who is
+  // looking, and both belong in the wave below rather than after it.
+  const viewer = await getCurrentUser();
+  const isSelf = viewer?.id === u.id;
+
+  const [stats, activity, rankedTotal, trainingNow, followCounts, viewerFollows, mutuals] = await Promise.all([
     getProfileStats(u.id),
     getUserActivity(u.id, 8),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
@@ -58,6 +66,8 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
     getTrainingNowFor(u.id),
     // Added to the EXISTING parallel wave rather than a new round-trip.
     getFollowCounts(u.id),
+    viewer && !isSelf ? isFollowing(viewer.id, { type: "person", id: u.id }) : Promise.resolve(false),
+    getMutualFollowers(viewer?.id, u.id),
   ]);
 
   const displayName = publicDisplayName(u);
@@ -147,7 +157,50 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             </span>
             <span className="text-[0.7rem] uppercase tracking-wide text-fog">Following</span>
           </Link>
+
+          {/* THE ACTION. Both counts were here and the button was not, so a
+              visitor could see that a person had followers and had no way to
+              become one — the counts advertised a capability the page did not
+              offer. Not rendered on your own profile: self-follow is refused by
+              the API, so a button there is a guaranteed dead end. */}
+          {!isSelf && (
+            <FollowButton
+              kind="person"
+              slug={u.username}
+              name={displayName}
+              initialFollowing={viewerFollows}
+              size="sm"
+            />
+          )}
         </div>
+
+        {/* Social proof that survives scrutiny. A raw follower count reads the
+            same for a respected analyst and for a bought audience; "followed by
+            people you follow" is the one signal that cannot be gamed against a
+            specific viewer. Needs no new table — it is an intersection of
+            UserFollow with itself. */}
+        {mutuals.count > 0 && (
+          <p className="mt-2 text-center text-xs text-fog sm:text-left">
+            Followed by{" "}
+            {mutuals.sample.map((m, i) => (
+              <span key={m.username ?? i}>
+                {i > 0 && (i === mutuals.sample.length - 1 ? " and " : ", ")}
+                {m.username ? (
+                  <Link href={`/u/${m.username}`} className="font-semibold text-mist hover:text-blood-300 hover:underline">
+                    {publicDisplayName(m)}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-mist">{publicDisplayName(m)}</span>
+                )}
+              </span>
+            ))}
+            {mutuals.count > mutuals.sample.length && (
+              <> and {(mutuals.count - mutuals.sample.length).toLocaleString()} other
+                {mutuals.count - mutuals.sample.length === 1 ? "" : "s"}</>
+            )}
+            {" "}you follow
+          </p>
+        )}
 
         {/* Status chips */}
         {chips.length > 0 && (
