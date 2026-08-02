@@ -32,6 +32,7 @@ import { wikiPage } from "../tournament/wiki";
 import { MAX_CARD_BOUTS } from "./sync";
 import { splitYearPage, type YearPageSection } from "./year-split";
 import { yearPageTitle, type YearPageSource } from "./config";
+import { dominantSport } from "../ruleset";
 
 /** Distinct from "wikipedia" and "wikipedia-index": a third query wrote these. */
 export const YEAR_SOURCE = "wikipedia-year";
@@ -146,7 +147,12 @@ function buildEvent(
   return {
     externalId,
     name,
-    sport: source.sport,
+    // READ from the card, not assumed from the promotion. ONE runs four rulesets
+    // and states each bout's inside the weight class ("Featherweight Muay Thai"),
+    // so pinning every ONE card to the source's configured MMA filed ~250 ONE
+    // Friday Fights / ONE Lumpinee cards — ONE's Muay Thai series — under MMA.
+    // Falls back to source.sport when no bout names a ruleset. See lib/scraper/ruleset.
+    sport: dominantSport(fights, source.sport),
     promotion: source.promotion,
     venue: section.venue ?? undefined,
     city: section.city ?? undefined,

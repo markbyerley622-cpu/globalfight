@@ -142,5 +142,50 @@ export const YEAR_PAGE_SOURCES: YearPageSource[] = [
 export const yearSourceFor = (key: string): YearPageSource | undefined =>
   YEAR_PAGE_SOURCES.find((s) => s.key === key.toLowerCase());
 
+// ════════════════════════════════════════════════════════════════════════
+//  MUAY THAI — the source ladder, walked 2026-08-02. Read this before adding
+//  a Muay Thai scraper; four of the obvious candidates are dead ends and the
+//  fifth was already being ingested under the wrong sport.
+//
+//  ONE Friday Fights / ONE Lumpinee — SOLVED, no new provider needed.
+//    ONE's Muay Thai and kickboxing series at Lumpinee. Already read by the
+//    `one` year-page source above (Wikipedia's "List of ONE Championship
+//    events" counts 347 ONE + ONE Friday Fights cards, and the year round-ups
+//    carry them). They were stored as MMA because this config pins one sport
+//    per promotion. ONE states each bout's ruleset inside the weight class
+//    ("Featherweight Muay Thai", "Women's Atomweight Kickboxing" — verified on
+//    ONE Friday Fights 46), so the card's sport is now DERIVED from its bouts.
+//    See lib/scraper/ruleset. This is the project's largest Muay Thai corpus
+//    and it cost no new requests.
+//
+//  Rajadamnern Stadium / Rajadamnern World Series (RWS) — NO SOURCE.
+//    RWS has no article of its own. A search returns only fighter biographies
+//    that mention competing on it ("Rajadamnern World Series debut", tournament
+//    titles). "Rajadamnern Stadium" is a venue article with no event index.
+//    There is nothing to parse. Revisit only if an RWS article appears.
+//
+//  Thai Fight — INDEX EXISTS, NO BOUTS.
+//    The "Thai Fight" article carries a 106-row table, # | Event | Date | Venue
+//    | City, covering 2010-08-29 to 2025-06-08. But the Event names DO NOT LINK
+//    to per-card articles (only venues and cities are linked), and the index
+//    path needs a linked card article to extract results from. Running it would
+//    add 106 EMPTY CARDS — the exact failure the `disabled` flag exists for, and
+//    worse than showing the promotion as uncovered. Needs a different capability
+//    (a source that publishes Thai Fight results), not a config entry.
+//
+//  Max Muay Thai — NO SOURCE.
+//    The article is prose: History, Notable competitors, References. No event
+//    table in any form.
+//
+//  Lumpinee Boxing Stadium, Bangla Boxing Stadium, Super Champ Muay Thai —
+//    venue and programme articles surfaced by search; none carries an event
+//    index table. Not registered.
+//
+//  Still unchecked, in rough order of likely yield: RWS's own site (rwsmuaythai
+//  .com) for a JSON endpoint, Thai Fight's official site, and whether ONE's
+//  numbered cards' Muay Thai title bouts are now correctly split out by the
+//  ruleset derivation above.
+// ════════════════════════════════════════════════════════════════════════
+
 export const yearPageTitle = (s: YearPageSource, year: number): string =>
   s.titleTemplate.replace("{year}", String(year));
