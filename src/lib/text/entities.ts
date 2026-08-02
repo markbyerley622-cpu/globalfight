@@ -117,3 +117,90 @@ export function normalizeText(input: string): string {
 export function hasHtmlEntity(input: string): boolean {
   return typeof input === "string" && /&(#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);/i.test(input);
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  canonicalizeTitle — the MATCHING key. Never stored, never displayed.
+//
+//  normalizeText above produces the value we STORE: the title as a human
+//  should read it, entities resolved. This produces the value we MATCH on,
+//  and the two must not be confused — folding case and punctuation is right
+//  for deciding "is this the same card?" and wrong for showing someone a name.
+//
+//  ── THE BUG THIS EXISTS TO PREVENT ──────────────────────────────────────
+//
+//  ONE's extractor hand-rolled `.replace(/&amp;/g, "&")`, which handles one
+//  entity out of the three its JSON-LD emits. Eight cards were stored as
+//  "Kings &#038; Champions" and slugged `kings-038-champions`, while the SAME
+//  cards arrived from Wikipedia correctly named. Deduplication compared an
+//  encoded string with a decoded one, correctly concluded they differed, and
+//  wrote a second row per card — the encoded copy empty, the decoded one
+//  holding all ten bouts.
+//
+//  The rule that follows: NEVER compare two externally-sourced titles without
+//  canonicalizing both, and canonicalize before hashing or deriving an id.
+// ════════════════════════════════════════════════════════════════════════
+
+// Typographic variants that mean the same character to a reader.
+//
+// Built from ESCAPED strings via the RegExp constructor, for the same reason
+// CONTROL_CHARS above is: it keeps this file plain-ASCII, so an editor, a diff
+// or a re-encode can never silently corrupt a class made of invisible and
+// look-alike characters. (Writing the space class literally also trips
+// no-irregular-whitespace.)
+const PUNCT_FOLD: Array<[RegExp, string]> = [
+  // Smart quotes / primes -> ASCII apostrophe.
+  [new RegExp("[\\u2018\\u2019\\u201A\\u201B\\u2032]", "g"), "'"],
+  // Smart double quotes / double prime -> ASCII quote.
+  [new RegExp("[\\u201C\\u201D\\u201E\\u201F\\u2033]", "g"), '"'],
+  // Every dash-like character -> hyphen. "Fight Night <emdash> Smith" and
+  // "Fight Night - Smith" are one card billed by two sources.
+  [new RegExp("[\\u2010-\\u2015\\u2212\\u2043]", "g"), "-"],
+  // Ellipsis -> three dots, so punctuation stripping treats it consistently.
+  [new RegExp("\\u2026", "g"), "..."],
+  // Non-breaking, en/em, thin, narrow and ideographic spaces -> plain space.
+  [new RegExp("[\\u00A0\\u2000-\\u200A\\u202F\\u205F\\u3000]", "g"), " "],
+];
+
+/**
+ * The canonical form of a title, for MATCHING and hashing only.
+ *
+ * Order is deliberate:
+ *   1. decode entities to a fixpoint — otherwise every later step operates on
+ *      `&#038;` rather than on `&`, which is the whole bug;
+ *   2. NFKC — composed vs decomposed accents, and full-width characters,
+ *      compare equal;
+ *   3. fold typographic punctuation to ASCII;
+ *   4. `&` -> " and ", because sources genuinely disagree on this one
+ *      ("Kings & Champions" vs "Kings and Champions") and it is the exact
+ *      collision in the data;
+ *   5. lowercase, strip remaining punctuation, collapse whitespace.
+ *
+ * Returns "" for empty input. NOT reversible, NOT for display or storage.
+ */
+export function canonicalizeTitle(input: string | null | undefined): string {
+  if (typeof input !== "string" || input.length === 0) return "";
+
+  let out = decodeHtmlEntities(input).normalize("NFKC").replace(CONTROL_CHARS, "");
+  for (const [re, to] of PUNCT_FOLD) out = out.replace(re, to);
+
+  return out
+    .toLowerCase()
+    // "&" and "and" are the same word to a reader and to a promoter.
+    .replace(/\s*&\s*/g, " and ")
+    // Anything that is not a letter or number becomes a space, so
+    // "UFC 300: Pereira vs. Hill" and "UFC 300 - Pereira vs Hill" agree.
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Do two externally-sourced titles refer to the same thing?
+ *
+ * Always use this rather than `a === b` on raw source strings — that
+ * comparison is what let an encoded and a decoded copy of one card coexist.
+ */
+export function sameTitle(a: string | null | undefined, b: string | null | undefined): boolean {
+  const ca = canonicalizeTitle(a);
+  return ca.length > 0 && ca === canonicalizeTitle(b);
+}

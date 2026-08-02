@@ -14,6 +14,7 @@
 import { prisma } from "../src/lib/db.ts";
 import { isPlaceholderName } from "../src/lib/entities/placeholder.ts";
 import { winningCorner } from "../src/lib/event-format.ts";
+import { hasHtmlEntity } from "../src/lib/text/entities.ts";
 
 const argv = process.argv.slice(2);
 const flag = (name: string) => argv.includes(`--${name}`);
@@ -240,6 +241,36 @@ async function imageCoverage() {
   });
 }
 
+// ── 8b. Raw HTML entities in stored text ───────────────────────────────────
+// The corruption that produced eight duplicate ONE events: a provider-local
+// `.replace(/&amp;/g, "&")` decoded one entity and left `&#038;` and `&#8217;`
+// in the stored name, which then went through slugify as "038" and "8217" and
+// could never match the correctly-named copy of the same card.
+async function htmlEntities() {
+  if (!wanted("entities")) return;
+  const [events, fighters] = await Promise.all([
+    prisma.event.findMany({ select: { slug: true, name: true } }),
+    prisma.fighter.findMany({ select: { slug: true, name: true } }),
+  ]);
+  const badEvents = events.filter((e) => hasHtmlEntity(e.name));
+  const badFighters = fighters.filter((f) => hasHtmlEntity(f.name));
+
+  report({
+    id: "entities",
+    label: "Events whose stored name contains an HTML entity",
+    why: "The name is wrong on screen AND unmatchable: slugify turns \"&#038;\" into \"038\", so the same card from another source becomes a second, empty event.",
+    count: badEvents.length,
+    samples: badEvents.slice(0, LIST_CAP).map((e) => `${e.slug} "${e.name}"`),
+  });
+  report({
+    id: "entities",
+    label: "Fighters whose stored name contains an HTML entity",
+    why: "Same failure at the fighter level — an encoded name never dedupes against its decoded twin.",
+    count: badFighters.length,
+    samples: badFighters.slice(0, LIST_CAP).map((f) => `${f.slug} "${f.name}"`),
+  });
+}
+
 // ── 9. The social graph ────────────────────────────────────────────────────
 // Follows are only "working" if the whole chain holds: a user has a username
 // (no handle, no profile URL, no follow target), the UserFollow row exists, and
@@ -289,6 +320,7 @@ async function main() {
   await staleStatus();
   await sportDrift();
   await imageCoverage();
+  await htmlEntities();
   await socialGraph();
 
   const broken = findings.filter((f) => f.count > 0).length;
