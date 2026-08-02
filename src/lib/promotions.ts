@@ -10,6 +10,8 @@
 // still gets a consistent mark beside its title — no broken images, no blank
 // space. `brand` is the org's primary colour; `mark` is the short monogram.
 
+import type { Ruleset } from "@prisma/client";
+
 export interface Promotion {
   slug: string;
   name: string;
@@ -21,6 +23,20 @@ export interface Promotion {
   logo?: string;
   /** Lower-case phrases that identify this promotion in a free-text field. */
   aliases: string[];
+  /**
+   * The ruleset EVERY bout this promotion runs is contested under — set only
+   * for promotions that run exactly one.
+   *
+   * This is the promotion-level fact that Event.sport was being asked to carry
+   * and could not. A UFC card is MMA throughout, so when a source gives us no
+   * per-bout ruleset the promotion legitimately answers for the bout. A ONE card
+   * runs MMA, Muay Thai, kickboxing and grappling in one night, so ONE has NO
+   * value here and its unannotated bouts stay UNKNOWN.
+   *
+   * Undefined means "multi-ruleset, or not established" — both of which must
+   * fall through to UNKNOWN rather than to a guess.
+   */
+  ruleset?: Ruleset;
 }
 
 // Order matters: the resolver takes the FIRST alias match, so put more specific
@@ -33,13 +49,13 @@ export interface Promotion {
 export const PROMOTIONS: Promotion[] = [
   { slug: "road-to-ufc", name: "Road to UFC", mark: "RTU", brand: "#d20a0a", logo: "/promotions/road-to-ufc.svg", aliases: ["road to ufc"] },
   { slug: "dwcs", name: "Dana White's Contender Series", mark: "DWCS", brand: "#d20a0a", logo: "/promotions/dwcs.svg", aliases: ["contender series", "dana white", "dwcs"] },
-  { slug: "ufc", name: "UFC", mark: "UFC", brand: "#d20a0a", logo: "/promotions/ufc.png", aliases: ["ufc", "ultimate fighting"] },
+  { slug: "ufc", name: "UFC", mark: "UFC", brand: "#d20a0a", logo: "/promotions/ufc.png", aliases: ["ufc", "ultimate fighting"], ruleset: "MMA" },
   { slug: "one", name: "ONE Championship", mark: "ONE", brand: "#e8112d", logo: "/promotions/one.png", aliases: ["one championship", "one fight night", "one friday fights", "onefc", "one fc"] },
-  { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.png", aliases: ["pfl", "professional fighters league"] },
-  { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.png", aliases: ["bellator"] },
-  { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.png", aliases: ["bkfc", "bare knuckle", "bare-knuckle"] },
-  { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.png", aliases: ["glory kickboxing", "glory"] },
-  { slug: "rizin", name: "RIZIN", mark: "RIZ", brand: "#c9a227", logo: "/promotions/rizin.svg", aliases: ["rizin"] },
+  { slug: "pfl", name: "PFL", mark: "PFL", brand: "#e4002b", logo: "/promotions/pfl.png", aliases: ["pfl", "professional fighters league"], ruleset: "MMA" },
+  { slug: "bellator", name: "Bellator", mark: "BEL", brand: "#c8a24a", logo: "/promotions/bellator.png", aliases: ["bellator"], ruleset: "MMA" },
+  { slug: "bkfc", name: "BKFC", mark: "BKFC", brand: "#c8102e", logo: "/promotions/bkfc.png", aliases: ["bkfc", "bare knuckle", "bare-knuckle"], ruleset: "BARE_KNUCKLE" },
+  { slug: "glory", name: "GLORY", mark: "GLO", brand: "#e2001a", logo: "/promotions/glory.png", aliases: ["glory kickboxing", "glory"], ruleset: "KICKBOXING" },
+  { slug: "rizin", name: "RIZIN", mark: "RIZ", brand: "#c9a227", logo: "/promotions/rizin.svg", aliases: ["rizin"], ruleset: "MMA" },
   { slug: "ksw", name: "KSW", mark: "KSW", brand: "#d0021b", logo: "/promotions/ksw.svg", aliases: ["ksw", "konfrontacja"] },
   { slug: "oktagon", name: "Oktagon MMA", mark: "OKT", brand: "#00a3e0", logo: "/promotions/oktagon.svg", aliases: ["oktagon"] },
   { slug: "cage-warriors", name: "Cage Warriors", mark: "CW", brand: "#d10a11", logo: "/promotions/cage-warriors.svg", aliases: ["cage warriors"] },
@@ -182,6 +198,25 @@ export function promotionFromText(text?: string | null): string | null {
   const q = (text ?? "").trim();
   if (!q) return null;
   return findByAlias(q)?.name ?? null;
+}
+
+/**
+ * The ruleset a promotion runs, when it runs exactly one — otherwise null.
+ *
+ * The ONLY legitimate promotion-level source of a bout's ruleset, and it is
+ * legitimate precisely because it is conditional. A UFC card is MMA throughout,
+ * so when ESPN gives us a weight class and no ruleset the promotion answers for
+ * the bout. ONE has no entry, so its unannotated bouts stay UNKNOWN rather than
+ * inheriting a label from the card — which is the defect Fight.ruleset exists
+ * to fix.
+ *
+ * Returns null for an unknown or placeholder promotion, so a caller can never
+ * accidentally treat "Various" as single-ruleset.
+ */
+export function rulesetForPromotion(promotion?: string | null): Ruleset | null {
+  const q = (promotion ?? "").trim();
+  if (!q || GENERIC_PROMOTION.test(q)) return null;
+  return findByAlias(q)?.ruleset ?? null;
 }
 
 /** Display label for a promotion string — collapses placeholders to the neutral

@@ -47,11 +47,19 @@ export const RULESET_CONFIDENCE = {
   /** The source named the ruleset on the bout itself ("Featherweight Muay Thai"). */
   stated: 1,
   /**
-   * Derived from a promotion that only ever runs ONE ruleset (GLORY is
-   * kickboxing; a World Judo Championship is judo). Sound, but a step removed
-   * from the bout, so a stated value supersedes it.
+   * Derived from a promotion that runs exactly one ruleset (UFC is MMA, GLORY is
+   * kickboxing). Stronger than the event-sport derivation because it is a fact
+   * about the ORGANISATION rather than about one card's billing, but still a
+   * step removed from the bout, so a stated value supersedes it.
    */
-  singleRulesetPromotion: 0.8,
+  singleRulesetPromotion: 0.9,
+  /**
+   * Derived from the EVENT's sport, and only where that sport is one no
+   * multi-ruleset promotion uses (a World Judo Championship is judo throughout).
+   * The weakest of the three, because it reads a card's billing rather than a
+   * fact about the organisation — so a promotion or a stated value supersedes it.
+   */
+  singleRulesetSport: 0.8,
 } as const;
 
 /**

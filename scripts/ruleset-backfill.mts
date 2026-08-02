@@ -19,6 +19,7 @@
 // Those bouts stay UNKNOWN until a re-ingest states the ruleset per bout.
 import { prisma } from "../src/lib/db.ts";
 import { toRuleset, rulesetFromSingleRulesetSport, RULESET_CONFIDENCE } from "../src/lib/scraper/ruleset.ts";
+import { rulesetForPromotion } from "../src/lib/promotions.ts";
 import type { Sport } from "../src/lib/types.ts";
 import type { Ruleset } from "@prisma/client";
 
@@ -54,12 +55,27 @@ async function main() {
       continue;
     }
 
-    // 2. Implied by a single-ruleset promotion.
+    // 2. The PROMOTION runs exactly one ruleset. A UFC card is MMA throughout,
+    //    so when ESPN supplies a weight class and no ruleset the organisation
+    //    answers for the bout. ONE has no entry and falls through — its
+    //    unannotated bouts must stay UNKNOWN rather than inherit the card.
+    const byPromotion = rulesetForPromotion(f.event?.promotion);
+    if (byPromotion) {
+      plan.set(f.id, {
+        ruleset: byPromotion,
+        confidence: RULESET_CONFIDENCE.singleRulesetPromotion,
+        source: "promotion:single-ruleset",
+      });
+      bySource.set("promotion:single-ruleset", (bySource.get("promotion:single-ruleset") ?? 0) + 1);
+      continue;
+    }
+
+    // 3. The EVENT's sport, where no multi-ruleset promotion uses it.
     const implied = rulesetFromSingleRulesetSport(f.event?.sport as Sport | undefined);
     if (implied) {
       plan.set(f.id, {
         ruleset: implied,
-        confidence: RULESET_CONFIDENCE.singleRulesetPromotion,
+        confidence: RULESET_CONFIDENCE.singleRulesetSport,
         source: "event:single-ruleset-sport",
       });
       bySource.set("event:single-ruleset-sport", (bySource.get("event:single-ruleset-sport") ?? 0) + 1);
