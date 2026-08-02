@@ -16,6 +16,10 @@ const isoOrNull = (d: Date | null) => (d ? d.toISOString() : null);
 
 export interface PublicProfile {
   slug: string; name: string; nickname: string | null; sport: string;
+  /** Canonical discipline graph — computed from bout rulesets, not imported. */
+  primarySport: string | null;
+  sports: string[];
+  disciplineTier: string | null;
   nationality: string | null; countryCode: string | null; residence: string | null; active: boolean;
   wins: number; losses: number; draws: number; noContests: number; koWins: number;
   bio: string | null; gym: string | null; promoter: string | null; tagline: string | null;
@@ -47,6 +51,7 @@ export async function getFighterPublicProfile(slug: string): Promise<PublicProfi
   const licensed = !f.imageUrl && f.photoLicense ? imageProxyUrl(f.photoUrl) : null;
   return {
     slug: f.slug, name: f.name, nickname: f.nickname, sport: f.sport,
+    primarySport: f.primarySport, sports: f.sports, disciplineTier: f.disciplineTier,
     nationality: f.nationality, countryCode: f.countryCode, residence: f.residence, active: f.active,
     wins: f.wins, losses: f.losses, draws: f.draws, noContests: f.noContests, koWins: f.koWins,
     bio: f.bio, gym: f.gym, promoter: f.promoter, tagline: f.tagline,

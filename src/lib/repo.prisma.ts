@@ -481,6 +481,7 @@ export function mapFight(f: PFightFull): Fight {
     scheduledRounds: f.scheduledRounds,
     titleFight: f.titleFight, mainEvent: f.mainEvent, coMain: f.coMain,
     result: f.result as FightResult,
+    ruleset: f.ruleset,
     winnerId: f.winnerId ?? undefined,
     method: (f.method as FightMethod) ?? undefined,
     roundEnded: f.roundEnded ?? undefined,

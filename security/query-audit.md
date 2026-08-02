@@ -56,16 +56,16 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/evidence/scan.ts:77` | scanEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/scan.ts:89` | scanEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/feed/notify.ts:56` | followers | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/fighters/profile.ts:174` | c | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:199` | existing | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:206` | claim | FighterClaim (SHARED) | upsert · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:232` | rows | FighterClaim (SHARED) | findMany · unknown | Shared model; dynamic `where` — verify the caller validates the relationship. |
-| `src/lib/fighters/profile.ts:276` | claim | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:287` | superseded | FighterClaim (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:294` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:295` | reviewClaim | FighterClaim (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:314` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/fighters/profile.ts:327` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:179` | c | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:204` | existing | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:211` | claim | FighterClaim (SHARED) | upsert · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:237` | rows | FighterClaim (SHARED) | findMany · unknown | Shared model; dynamic `where` — verify the caller validates the relationship. |
+| `src/lib/fighters/profile.ts:281` | claim | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:292` | superseded | FighterClaim (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:299` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:300` | reviewClaim | FighterClaim (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:319` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/fighters/profile.ts:332` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/follow-targets.ts:115` | existing | Follow (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/follow-targets.ts:126` | toggleFollow | Follow (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/follow-targets.ts:212` | rows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |

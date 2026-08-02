@@ -17,7 +17,7 @@ import { RecordDonut, StatBar } from "@/components/charts";
 import { getFighter, getFighterFights } from "@/lib/repo";
 import { winningCorner, currentStreak } from "@/lib/event-format";
 import { isPlaceholderName, isPlaceholderSlug } from "@/lib/entities/placeholder";
-import { resolveFighterRecord, canShowStreak } from "@/lib/fighters/record";
+import { resolveFighterRecord, canShowStreak, recordsByDiscipline } from "@/lib/fighters/record";
 import { isFollowingFighter } from "@/lib/follows";
 import { FollowButton } from "@/components/follow-button";
 import { getFighterPublicProfile } from "@/lib/fighters/profile";
@@ -94,6 +94,9 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
   // The headline record: the imported one when we have it, otherwise counted
   // from settled bouts, otherwise NOTHING. Never zeros standing in for absence.
   const record = resolveFighterRecord(profile, fights, slug);
+  // Per-discipline records, from the bout rulesets. Read from the canonical
+  // graph — no discipline is resolved here.
+  const byDiscipline = recordsByDiscipline(fights, slug);
   const showStreak = canShowStreak(record, past.length);
   const age = ageFrom(fighter.birthDate);
   const ko = koPercentage(fighter.koWins, fighter.wins);
@@ -268,6 +271,80 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                   }`}
                 >
                   {streak > 0 ? `${streak}-fight win streak` : `${-streak}-fight skid`}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* DISCIPLINES — the canonical graph, read not recomputed.
+              Records are grouped per discipline and never summed: a fighter's
+              Muay Thai record and their MMA record are different facts, and
+              merging them produces a number that describes nobody. */}
+          {byDiscipline.records.length > 0 && (
+            <div className="card-surface space-y-3 p-6">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="font-display text-sm font-bold uppercase tracking-wide text-fog">Disciplines</h3>
+                {profile.disciplineTier && (
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
+                      profile.disciplineTier === "HIGH"
+                        ? "bg-up/15 text-up"
+                        : profile.disciplineTier === "MEDIUM"
+                          ? "bg-volt-500/15 text-volt-400"
+                          : "bg-ink-800 text-fog"
+                    }`}
+                    title={
+                      profile.disciplineTier === "HIGH"
+                        ? "Every bout's ruleset was stated by the source."
+                        : profile.disciplineTier === "MEDIUM"
+                          ? "Rulesets derived from single-ruleset promotions."
+                          : "No bout evidence — an imported label only."
+                    }
+                  >
+                    {profile.disciplineTier === "HIGH" ? "Verified" : profile.disciplineTier === "MEDIUM" ? "Derived" : "Imported"}
+                  </span>
+                )}
+              </div>
+
+              {profile.primarySport && (
+                <p className="text-xs text-fog">
+                  Primary{" "}
+                  <span className="font-display text-sm font-bold text-chalk">
+                    {SPORT_LABEL[profile.primarySport] ?? profile.primarySport}
+                  </span>
+                  {profile.sports.length > 1 && (
+                    <>
+                      {" · also competes in "}
+                      <span className="text-mist">
+                        {profile.sports
+                          .filter((s) => s !== profile.primarySport)
+                          .map((s) => SPORT_LABEL[s] ?? s)
+                          .join(", ")}
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
+
+              <ul className="space-y-1.5">
+                {byDiscipline.records.map((r) => (
+                  <li key={r.ruleset} className="flex items-baseline justify-between gap-3 rounded-lg bg-ink-950/40 px-3 py-2">
+                    <span className="truncate text-xs font-semibold text-mist">
+                      {SPORT_LABEL[r.ruleset] ?? r.ruleset.replace(/_/g, " ")}
+                    </span>
+                    <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-chalk">
+                      {r.wins}-{r.losses}-{r.draws}
+                      {r.noContests > 0 && <span className="text-fog"> ({r.noContests} NC)</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              {byDiscipline.unknown > 0 && (
+                // Never folded into a discipline they might not belong to.
+                <p className="text-[0.65rem] leading-snug text-fog">
+                  {byDiscipline.unknown} further {byDiscipline.unknown === 1 ? "bout" : "bouts"} on record whose
+                  ruleset no source stated — not counted above.
                 </p>
               )}
             </div>

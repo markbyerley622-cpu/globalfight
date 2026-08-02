@@ -109,6 +109,68 @@ export function resolveFighterRecord(
 }
 
 /**
+ * Records split by DISCIPLINE — never summed across them.
+ *
+ * A fighter's Muay Thai record and their MMA record are different facts. The
+ * single headline record merges them, which for a crossover athlete produces a
+ * number that describes nobody: Superlek's Muay Thai record says what he is,
+ * and adding two kickboxing bouts to it says nothing at all.
+ *
+ * Grouped by the BOUT's ruleset, so it is the same authority the rest of the
+ * platform uses. Bouts whose ruleset is UNKNOWN are gathered under `unknown`
+ * rather than folded into a discipline they might not belong to — an honest
+ * "3 bouts we cannot categorise" beats a wrong total.
+ *
+ * Ordered by bout count, so the discipline a fighter is most defined by leads.
+ */
+export interface DisciplineRecord {
+  /** Ruleset enum value, e.g. "MUAY_THAI". */
+  ruleset: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  noContests: number;
+  bouts: number;
+}
+
+export function recordsByDiscipline(
+  fights: Fight[],
+  fighterKey: string,
+): { records: DisciplineRecord[]; unknown: number } {
+  const byRuleset = new Map<string, DisciplineRecord>();
+  let unknown = 0;
+
+  for (const f of fights) {
+    if (f.cancelled || f.result === "SCHEDULED") continue;
+    const isRed = isCorner(f.red, fighterKey);
+    const isBlue = isCorner(f.blue, fighterKey);
+    if (!isRed && !isBlue) continue;
+
+    const rs = f.ruleset && f.ruleset !== "UNKNOWN" ? f.ruleset : null;
+    if (!rs) { unknown += 1; continue; }
+
+    const rec = byRuleset.get(rs) ?? { ruleset: rs, wins: 0, losses: 0, draws: 0, noContests: 0, bouts: 0 };
+
+    if (f.result === "NO_CONTEST") rec.noContests += 1;
+    else if (f.result === "DRAW") rec.draws += 1;
+    else {
+      const corner = winningCorner(f);
+      // Decided but unattributable — counted as a bout, credited to neither.
+      if (!corner) { rec.bouts += 1; byRuleset.set(rs, rec); continue; }
+      if ((corner === "red") === isRed) rec.wins += 1;
+      else rec.losses += 1;
+    }
+    rec.bouts += 1;
+    byRuleset.set(rs, rec);
+  }
+
+  return {
+    records: [...byRuleset.values()].sort((a, b) => b.bouts - a.bouts || a.ruleset.localeCompare(b.ruleset)),
+    unknown,
+  };
+}
+
+/**
  * A streak is only meaningful on a record foundation we trust.
  *
  * The audit also found "1-fight skid" on the same profile whose record was

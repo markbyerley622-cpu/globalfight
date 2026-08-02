@@ -141,6 +141,13 @@ export interface Fight {
   mainEvent: boolean;
   coMain: boolean;
   result: FightResult;
+  /**
+   * The rules THIS BOUT was contested under (Fight.ruleset). "UNKNOWN" when no
+   * source stated it. Carried so a profile can group records by discipline
+   * without re-opening the database — a fighter's Muay Thai record and their
+   * MMA record are different facts and must never be summed.
+   */
+  ruleset?: string | null;
   winnerId?: string;
   method?: FightMethod;
   roundEnded?: number;

@@ -1091,7 +1091,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 174,
+      "line": 179,
       "fn": "c",
       "model": "FighterClaim",
       "method": "findUnique",
@@ -1104,7 +1104,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 199,
+      "line": 204,
       "fn": "existing",
       "model": "FighterClaim",
       "method": "findUnique",
@@ -1117,7 +1117,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 206,
+      "line": 211,
       "fn": "claim",
       "model": "FighterClaim",
       "method": "upsert",
@@ -1130,7 +1130,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 232,
+      "line": 237,
       "fn": "rows",
       "model": "FighterClaim",
       "method": "findMany",
@@ -1143,7 +1143,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 276,
+      "line": 281,
       "fn": "claim",
       "model": "FighterClaim",
       "method": "findUnique",
@@ -1156,7 +1156,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 287,
+      "line": 292,
       "fn": "superseded",
       "model": "FighterClaim",
       "method": "findMany",
@@ -1169,7 +1169,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 294,
+      "line": 299,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "update",
@@ -1182,7 +1182,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 295,
+      "line": 300,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "updateMany",
@@ -1195,7 +1195,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 314,
+      "line": 319,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "update",
@@ -1208,7 +1208,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 327,
+      "line": 332,
       "fn": "reviewClaim",
       "model": "FighterClaim",
       "method": "update",
@@ -2625,7 +2625,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 88,
+      "line": 93,
       "fn": "updateProfileMeta",
       "model": "Fighter",
       "method": "update",
@@ -2638,7 +2638,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 123,
+      "line": 128,
       "fn": "setFighterAvatar",
       "model": "Fighter",
       "method": "update",
@@ -2651,7 +2651,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 143,
+      "line": 148,
       "fn": "setSocial",
       "model": "FighterSocial",
       "method": "upsert",
@@ -2664,7 +2664,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 164,
+      "line": 169,
       "fn": "deleteChild",
       "model": "FighterAchievement",
       "method": "delete",
@@ -2677,7 +2677,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 165,
+      "line": 170,
       "fn": "deleteChild",
       "model": "FighterSponsor",
       "method": "delete",
@@ -2690,7 +2690,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 166,
+      "line": 171,
       "fn": "deleteChild",
       "model": "FighterSocial",
       "method": "delete",
@@ -2703,7 +2703,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 167,
+      "line": 172,
       "fn": "deleteChild",
       "model": "FighterMedia",
       "method": "delete",
@@ -2716,7 +2716,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 293,
+      "line": 298,
       "fn": "reviewClaim",
       "model": "Fighter",
       "method": "update",
@@ -3262,7 +3262,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 190,
+      "line": 194,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "update",
@@ -7214,7 +7214,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 36,
+      "line": 40,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -7227,7 +7227,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 68,
+      "line": 73,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -7240,7 +7240,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 75,
+      "line": 80,
       "fn": "audit",
       "model": "AuditLog",
       "method": "create",
@@ -7253,7 +7253,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 84,
+      "line": 89,
       "fn": "before",
       "model": "Fighter",
       "method": "findUnique",
@@ -7266,7 +7266,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 135,
+      "line": 140,
       "fn": "addAchievement",
       "model": "FighterAchievement",
       "method": "create",
@@ -7279,7 +7279,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 139,
+      "line": 144,
       "fn": "addSponsor",
       "model": "FighterSponsor",
       "method": "create",
@@ -7292,7 +7292,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 151,
+      "line": 156,
       "fn": "addMedia",
       "model": "FighterMedia",
       "method": "create",
@@ -7305,7 +7305,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 156,
+      "line": 161,
       "fn": "achievement",
       "model": "FighterAchievement",
       "method": "findUnique",
@@ -7318,7 +7318,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 157,
+      "line": 162,
       "fn": "sponsor",
       "model": "FighterSponsor",
       "method": "findUnique",
@@ -7331,7 +7331,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 158,
+      "line": 163,
       "fn": "social",
       "model": "FighterSocial",
       "method": "findUnique",
@@ -7344,7 +7344,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 159,
+      "line": 164,
       "fn": "media",
       "model": "FighterMedia",
       "method": "findUnique",
@@ -7357,7 +7357,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 172,
+      "line": 177,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -7370,7 +7370,7 @@
     },
     {
       "file": "src/lib/fighters/profile.ts",
-      "line": 196,
+      "line": 201,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -11205,7 +11205,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 65,
+      "line": 69,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11218,7 +11218,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 92,
+      "line": 96,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11231,7 +11231,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 157,
+      "line": 161,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -11244,7 +11244,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 188,
+      "line": 192,
       "fn": "existing",
       "model": "Fighter",
       "method": "findUnique",
@@ -11257,7 +11257,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 195,
+      "line": 199,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "findUnique",
@@ -11270,7 +11270,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 196,
+      "line": 200,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "create",
@@ -11283,7 +11283,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 202,
+      "line": 206,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11296,7 +11296,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 222,
+      "line": 226,
       "fn": "wcs",
       "model": "WeightClass",
       "method": "findMany",
@@ -11309,7 +11309,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 233,
+      "line": 237,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11322,7 +11322,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 302,
+      "line": 306,
       "fn": "total",
       "model": "Ranking",
       "method": "count",
@@ -11335,7 +11335,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 305,
+      "line": 309,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11348,7 +11348,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 342,
+      "line": 346,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "findMany",
@@ -11361,7 +11361,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 343,
+      "line": 347,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "count",
@@ -11374,7 +11374,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 349,
+      "line": 353,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -11387,7 +11387,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 363,
+      "line": 367,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11400,7 +11400,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 378,
+      "line": 382,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findUnique",
@@ -11413,7 +11413,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 379,
+      "line": 383,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11426,7 +11426,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 412,
+      "line": 416,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -11439,7 +11439,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 414,
+      "line": 418,
       "fn": "rows",
       "model": "OddsSnapshot",
       "method": "findMany",
@@ -11452,7 +11452,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 437,
+      "line": 441,
       "fn": "rows",
       "model": "Champion",
       "method": "findMany",
@@ -11465,7 +11465,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 521,
+      "line": 526,
       "fn": "rows",
       "model": "Event",
       "method": "findMany",
@@ -11478,7 +11478,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 548,
+      "line": 553,
       "fn": "getResults",
       "model": "Event",
       "method": "findMany",
@@ -11491,7 +11491,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 555,
+      "line": 560,
       "fn": "getResults",
       "model": "Event",
       "method": "count",
@@ -11504,7 +11504,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 567,
+      "line": 572,
       "fn": "e",
       "model": "Event",
       "method": "findFirst",
@@ -11517,7 +11517,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 579,
+      "line": 584,
       "fn": "f",
       "model": "Fight",
       "method": "findFirst",
@@ -11530,7 +11530,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 587,
+      "line": 592,
       "fn": "fighter",
       "model": "Fighter",
       "method": "findUnique",
@@ -11543,7 +11543,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 589,
+      "line": 594,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -11556,7 +11556,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 598,
+      "line": 603,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -11569,7 +11569,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 625,
+      "line": 630,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -11582,7 +11582,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 639,
+      "line": 644,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -11595,7 +11595,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 650,
+      "line": 655,
       "fn": "a",
       "model": "Article",
       "method": "findFirst",
@@ -11608,7 +11608,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 654,
+      "line": 659,
       "fn": "a",
       "model": "Article",
       "method": "findUnique",
