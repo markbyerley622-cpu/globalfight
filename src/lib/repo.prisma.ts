@@ -454,6 +454,8 @@ function mapEvent(e: PEvent & { fights: PFightFull[] }): FightEvent {
     posterUrl: e.posterUrl ?? undefined, heroUrl: e.heroUrl ?? undefined,
     date: isoReq(e.date),
     status: e.status as EventStatus,
+    resultAttempts: e.resultAttempts,
+    resultCoveragePct: e.resultCoverage,
     fights: e.fights.map(mapFight),
   };
 }

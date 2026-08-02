@@ -118,6 +118,15 @@ export interface FightEvent {
   heroUrl?: string;
   date: string;
   status: EventStatus;
+  /**
+   * Results-harvest bookkeeping, carried so a surface can derive an HONEST
+   * completeness state (lib/events/result-coverage) rather than asserting
+   * "Final". Without `resultAttempts`/`resultCoveragePct` a card whose source
+   * has been exhausted is indistinguishable from one still arriving, and the
+   * reader is told to keep waiting for bouts nobody ever published.
+   */
+  resultAttempts?: number;
+  resultCoveragePct?: number | null;
   fights: Fight[];
 }
 

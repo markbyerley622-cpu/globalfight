@@ -10,7 +10,7 @@
 import type { FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
-import { preventResultDowngrade } from "@/lib/intelligence/result-integrity";
+import { preventResultDowngrade, requireAttributedWinner } from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { onResultWritten } from "@/lib/intelligence/resolve";
 import { recordIngestEvidence } from "@/lib/results/pipeline";
@@ -422,6 +422,23 @@ async function upsertFight(
       else if (stub.winnerExternalId === stub.blueExternalId) winnerId = blueId;
     }
 
+    // The match above fails whenever a source is internally inconsistent, and it
+    // fails SILENTLY: `winnerId` stays undefined while `stub.result` is still
+    // "WIN". Writing that pair records a bout won by nobody — unusable for
+    // records and settlement, and an invalid state every reader then has to
+    // guess about. An unattributed win is downgraded to SCHEDULED so the
+    // harvester retries it against a source that can name the winner.
+    const { update: outcome, rejected: unattributed } = requireAttributedWinner(
+      { result: stub.result, method: stub.method, roundEnded: stub.roundEnded, winnerId },
+      { redId, blueId },
+    );
+    if (unattributed) {
+      console.warn(
+        `[persist] ${source}: dropped an unattributable WIN on ${stub.redName} vs ${stub.blueName} ` +
+          `(winnerExternalId=${stub.winnerExternalId ?? "none"} matched neither corner)`,
+      );
+    }
+
     const data = defined({
       eventId,
       redId, blueId,
@@ -430,10 +447,10 @@ async function upsertFight(
       titleFight: stub.titleFight,
       mainEvent: stub.mainEvent,
       orderOnCard: stub.mainEvent ? 0 : index + 1,
-      result: stub.result,
-      method: stub.method,
-      roundEnded: stub.roundEnded,
-      winnerId,
+      result: outcome.result,
+      method: outcome.method,
+      roundEnded: outcome.roundEnded,
+      winnerId: outcome.winnerId,
       date,
     });
 
@@ -503,10 +520,10 @@ async function upsertFight(
         titleFight: stub.titleFight ?? false,
         mainEvent: stub.mainEvent ?? false,
         orderOnCard: stub.mainEvent ? 0 : index + 1,
-        result: stub.result ?? "SCHEDULED",
-        method: stub.method ?? null,
-        roundEnded: stub.roundEnded ?? null,
-        winnerId: winnerId ?? null,
+        result: outcome.result ?? "SCHEDULED",
+        method: outcome.method ?? null,
+        roundEnded: outcome.roundEnded ?? null,
+        winnerId: outcome.winnerId ?? null,
         date,
       },
     });
@@ -518,7 +535,7 @@ async function upsertFight(
       data,
       redId,
       blueId,
-      decided: (stub.result ?? "SCHEDULED") !== "SCHEDULED",
+      decided: (outcome.result ?? "SCHEDULED") !== "SCHEDULED",
     };
   });
 
