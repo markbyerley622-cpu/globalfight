@@ -6,6 +6,7 @@ import {
 import { checkPassword } from "@/lib/password-policy";
 import { isPublishableName } from "@/lib/display-name";
 import { MINIMUM_AGE, AGE_POLICY_VERSION } from "@/lib/age-policy";
+import { LEGAL_POLICY_VERSION } from "@/lib/legal-config";
 import { hit, clientIp, POLICY } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -132,6 +133,20 @@ export async function POST(req: Request) {
     );
   }
 
+  // Consent to the Terms and Privacy Notice. Enforced HERE and not only in the
+  // form, because a client-side tick is a UI affordance, not a record: anyone
+  // posting straight to this route would otherwise create an account having
+  // agreed to nothing, and we would have no way to tell those accounts apart.
+  if (body.termsAccepted !== true) {
+    return NextResponse.json(
+      {
+        error: "You must accept the Terms of Service and Privacy Notice to create an account.",
+        code: "TERMS_REQUIRED",
+      },
+      { status: 400 },
+    );
+  }
+
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) {
     return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
@@ -147,6 +162,8 @@ export async function POST(req: Request) {
       ageConfirmed: true,
       ageConfirmedAt: new Date(),
       agePolicyVersion: AGE_POLICY_VERSION,
+      termsAcceptedAt: new Date(),
+      termsVersion: LEGAL_POLICY_VERSION,
     },
     select: {
       id: true, name: true, email: true, username: true, image: true, bannerUrl: true,

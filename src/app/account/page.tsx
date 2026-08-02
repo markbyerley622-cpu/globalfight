@@ -16,6 +16,7 @@ import { isPublishableName } from "@/lib/display-name";
 import { cn } from "@/lib/utils";
 import { REGISTRY_ROLE_DEFS, roleLabel } from "@/lib/roles";
 import { FighterProfilePanel } from "@/components/fighters/fighter-profile-panel";
+import { ConsentDialog, type ConsentTopic } from "@/components/legal/consent-dialog";
 
 const FEATURES = [
   { icon: Heart, t: "Favorite fighters", d: "Follow your favorites and get their fight alerts." },
@@ -34,6 +35,9 @@ export default function AccountPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [registryAck, setRegistryAck] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [consentTopic, setConsentTopic] = useState<ConsentTopic | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -61,10 +65,21 @@ export default function AccountPage() {
       setError(`You must confirm you are at least ${MINIMUM_AGE} to create an account.`);
       return;
     }
+    // Checked in JS as well as with `required`, because the browser check is the
+    // only thing standing between an unread policy and a consent we would later
+    // have to prove. The server enforces it too — see api/auth/signup.
+    if (isSignup && !registryAck) {
+      setError("Please confirm you understand how registry information is published.");
+      return;
+    }
+    if (isSignup && !termsAccepted) {
+      setError("Please read and accept the Terms of Service and Privacy Notice to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
       if (isSignup) {
-        await signup({ name, email, password, registryRole: role, ageConfirmed });
+        await signup({ name, email, password, registryRole: role, ageConfirmed, termsAccepted });
         track("signup", { role });
         setSuccess("Account created — you're signed in.");
       } else {
@@ -282,10 +297,50 @@ export default function AccountPage() {
                   <span>{t(AGE_STATEMENT)}</span>
                 </label>
                 <label className="flex items-start gap-2 text-xs text-mist">
-                  <input type="checkbox" className="mt-0.5 size-4 accent-blood-500" required />
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 accent-blood-500"
+                    checked={registryAck}
+                    onChange={(e) => setRegistryAck(e.target.checked)}
+                    required
+                  />
                   <span>
                     I agree that public, source-backed professional information may appear in the registry, and I will not
                     submit private personal data of others.
+                  </span>
+                </label>
+                {/*
+                  The consent that makes the notice binding. Both documents are
+                  reachable WITHOUT leaving the form — a link that navigates away
+                  loses everything typed, so in practice nobody reads it and the
+                  tick means nothing. The dialog opens over the form instead.
+                */}
+                <label className="flex items-start gap-2 text-xs text-mist">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 accent-blood-500"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    required
+                  />
+                  <span>
+                    I have read and agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setConsentTopic("terms")}
+                      className="font-medium text-blood-400 underline underline-offset-2 hover:text-blood-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+                    >
+                      Terms of Service
+                    </button>{" "}
+                    and the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setConsentTopic("privacy")}
+                      className="font-medium text-blood-400 underline underline-offset-2 hover:text-blood-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+                    >
+                      Privacy Notice
+                    </button>
+                    .
                   </span>
                 </label>
               </>
@@ -328,6 +383,10 @@ export default function AccountPage() {
           ))}
         </div>
       </div>
+
+      {consentTopic && (
+        <ConsentDialog topic={consentTopic} onClose={() => setConsentTopic(null)} />
+      )}
     </>
   );
 }

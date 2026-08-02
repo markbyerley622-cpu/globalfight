@@ -1270,6 +1270,14 @@ model User {
   ageConfirmed     Boolean   @default(false) // "I am at least MINIMUM_AGE"
   ageConfirmedAt   DateTime?
   agePolicyVersion String? // which wording they agreed to
+  // Consent to the Terms and Privacy Notice, recorded the same way. WHEN they
+  // agreed and WHICH VERSION they agreed to are the only things that make a
+  // consent demonstrable later (UK/EU GDPR Art. 7(1)) — a boolean alone cannot
+  // answer "what did they actually accept?" once the wording changes.
+  // Null for accounts created before the tick existed; never backfilled, because
+  // inventing a consent nobody gave is the one thing worse than not having one.
+  termsAcceptedAt  DateTime?
+  termsVersion     String?
   // Set when a user tells us they are under age: the account is restricted pending
   // deletion rather than silently kept.
   underageFlagged  Boolean   @default(false)

@@ -42,8 +42,17 @@ envVarGroups:
       #   curl: (7) Failed to connect to globalfight port 443
       # A literal value is defined once, shared by every cron, and can't drift.
       # If Render assigns a different origin, change it here (host only, no scheme).
+      #
+      # CORRECTED 2026-08-02. This read `globalfight.onrender.com`, which is NOT
+      # the host Render assigned — that name 503s. Every cron job had been curling
+      # a dead origin since the blueprint was first applied, which is why
+      # `cron:doctor` reported "No run has EVER been recorded" for news, events,
+      # odds and wikicards alike. The jobs were firing; nothing was answering.
+      #
+      # If you rename the service or attach a custom domain, change it HERE and
+      # nowhere else, and keep it in step with NEXT_PUBLIC_SITE_URL below.
       - key: APP_HOST
-        value: globalfight.onrender.com
+        value: globalfight-p69k.onrender.com
       - key: AUTH_SECRET
         generateValue: true
       # THE ingestion gate — as of 2026-08-01 the only one. The per-source legal
@@ -179,6 +188,43 @@ envVarGroups:
         value: "30"
       - key: LOG_LEVEL
         value: info
+      # ── LEGAL IDENTITY — REQUIRED BEFORE THE SITE IS PUBLIC ────────────────
+      #
+      # /privacy, /terms, /cookies, /copyright, /community-guidelines and
+      # /data-sources all render from these. UNSET, THEY DO NOT FAIL — they
+      # publish placeholder text that says the page "must not be relied upon",
+      # which is the one failure mode a legal page must not have: it looks like
+      # a policy, so nobody checks it, and it binds nothing.
+      #
+      # A privacy notice must be published BEFORE you collect personal data
+      # (UK/EU GDPR Art. 13, Australian Privacy Principle 5) — not after launch.
+      # Sign-up already collects an email and a password, so this is live now.
+      #
+      # LEGAL_ENTITY_NAME     the person or company that is the data controller.
+      #                       A sole trader's own name is valid; "Combat Reviews"
+      #                       alone is not, unless that is a registered entity.
+      # LEGAL_ENTITY_ADDRESS  a real postal address. Required — a data subject
+      #                       must be able to reach the controller off-platform.
+      # LEGAL_JURISDICTION    governing law, e.g. "England and Wales".
+      # POLICY_EFFECTIVE_DATE ISO date, e.g. "2026-08-02". Change it whenever the
+      #                       substance changes, and tell users when it is material.
+      #
+      # The three addresses may be the same mailbox; they are separate keys so you
+      # can route them later without editing the pages.
+      - key: LEGAL_ENTITY_NAME
+        sync: false
+      - key: LEGAL_ENTITY_ADDRESS
+        sync: false
+      - key: LEGAL_CONTACT_EMAIL
+        sync: false
+      - key: PRIVACY_CONTACT_EMAIL
+        sync: false
+      - key: COPYRIGHT_CONTACT_EMAIL
+        sync: false
+      - key: LEGAL_JURISDICTION
+        sync: false
+      - key: POLICY_EFFECTIVE_DATE
+        sync: false
       # ── Fill these in the Render dashboard (never commit real values) ──────
       - key: ODDS_API_KEY
         sync: false

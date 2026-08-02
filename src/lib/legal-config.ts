@@ -12,6 +12,22 @@
 //  papered over.
 // ════════════════════════════════════════════════════════════════════════
 
+/**
+ * The version of the Terms + Privacy Notice a user is agreeing to at sign-up,
+ * stored on their account as `termsVersion`.
+ *
+ * BUMP THIS whenever the substance of either document changes — not for a typo,
+ * but for anything that alters what someone agreed to (a new processor, a new
+ * data category, a change of controller). It is what lets you answer "who has
+ * accepted the current terms and who is still on the old ones", which is the
+ * only reason to record a consent at all.
+ *
+ * Deliberately a constant and NOT read from POLICY_EFFECTIVE_DATE: the version
+ * a user accepted must be fixed at the moment they accepted it, and an env var
+ * can be edited afterwards, silently rewriting history.
+ */
+export const LEGAL_POLICY_VERSION = "2026-08-02";
+
 export const LEGAL_FIELDS = [
   "LEGAL_ENTITY_NAME",
   "LEGAL_ENTITY_ADDRESS",

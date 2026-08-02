@@ -31,6 +31,8 @@ interface SignupInput {
   password: string;
   registryRole: string;
   ageConfirmed: boolean;
+  /** Acceptance of the Terms + Privacy Notice. The route rejects anything else. */
+  termsAccepted: boolean;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);

@@ -64,6 +64,62 @@ export const DATA_CATEGORIES: DataCategory[] = [
     source: "prisma/schema.prisma — ForumThread, ForumPost",
   },
   {
+    category: "Private messages",
+    data: "The text of direct messages you send, who they were sent to, when they were sent and read, and which conversations you have archived.",
+    purpose: "To deliver your messages and show you what is unread.",
+    lawfulBasis: "Contract — the feature cannot work otherwise.",
+    retention:
+      "Until you delete your account, which deletes the messages you sent. NOT END-TO-END ENCRYPTED: they are stored in our database and, like any other content, are readable by an administrator with database access. Do not send anything you would not put in an email. We do not scan them for advertising and never sell them.",
+    source: "prisma/schema.prisma — Conversation, ConversationMember, DirectMessage",
+  },
+  {
+    category: "Predictions and picks",
+    data: "The fighter you picked in each bout, your confidence, when you picked, whether it was correct, your streaks, accuracy and leaderboard position, and any head-to-head battles you enter.",
+    purpose: "To score your predictions and rank them against other people's.",
+    lawfulBasis: "Contract — this is the core of the service.",
+    retention:
+      "Until you delete your account. PUBLIC BY DEFAULT: your picks, accuracy and leaderboard position are visible to anyone under the display name you choose. NO MONEY IS STAKED and no gambling takes place — picks score points only.",
+    source: "prisma/schema.prisma — FightPick, Prediction, Battle",
+  },
+  {
+    category: "Location on the community map",
+    data:
+      "An approximate pin you place YOURSELF, a visibility setting, and check-ins you make at a gym or event. We do NOT read your device's GPS, we do not ask for the browser location permission, and we never track you in the background.",
+    purpose: "To show people and gyms near you on the community map.",
+    lawfulBasis: "Consent — the map is HIDDEN by default and stays hidden until you turn it on.",
+    retention:
+      "Until you change your visibility or delete your account. Set visibility back to hidden and the pin stops being published immediately. A pin you place yourself is the point of the design: a precise device location is not collected, so it cannot leak.",
+    source: "prisma/schema.prisma — User.mapVisibility/mapLat/mapLng, CheckIn",
+  },
+  {
+    category: "Follows and favourites",
+    data: "The people you follow, who follows you, and the fighters, events and promotions you favourite.",
+    purpose: "To build your feed and notify you about what you follow.",
+    lawfulBasis: "Contract / legitimate interests.",
+    retention: "Until you unfollow or delete your account. Follower and following counts are public.",
+    source: "prisma/schema.prisma — UserFollow, FavoriteFighter, FavoritePromotion, FavoriteEvent",
+  },
+  {
+    category: "Notifications",
+    data:
+      "Notifications generated for you, and — only if you turn on push — the subscription your BROWSER issues: an endpoint URL at your browser vendor plus two encryption keys.",
+    purpose: "To tell you when a fight you follow is resolved or someone replies to you.",
+    lawfulBasis: "Consent for push (your browser asks first, and you may refuse). Legitimate interests for in-app notifications.",
+    retention:
+      "Deleted when you disable push, when the browser vendor reports the subscription as expired, or when you delete your account. A push subscription is bound to that one browser and cannot be used to identify you elsewhere.",
+    source: "prisma/schema.prisma — Notification, PushSubscription; src/lib/push/send.ts",
+  },
+  {
+    category: "Usage analytics",
+    data:
+      "Aggregate events — pages viewed, predictions made, follows — linked to your account id when you are signed in, and to NO identifier at all when you are not.",
+    purpose: "To understand which parts of the site are used and what is broken.",
+    lawfulBasis: "Legitimate interests — improving the service.",
+    retention:
+      "FIRST-PARTY AND COOKIELESS: stored in our own database, no third-party analytics script, no advertising identifier, nothing written to your device. It is never sold or shared.",
+    source: "prisma/schema.prisma — AnalyticsEvent",
+  },
+  {
     category: "Moderation and reports",
     data: "Reports you make or that are made about your content, and moderator decisions.",
     purpose: "To keep the community safe and to allow appeals.",
@@ -127,6 +183,31 @@ export const PROCESSORS: Processor[] = [
     location: "US",
     dataSent: "Your email address, to send password-reset links.",
     active: true,
+  },
+  {
+    name: "CARTO / OpenStreetMap",
+    role: "Map tiles for the community map",
+    location: "EU / US",
+    dataSent:
+      "Your IP address and the map area you are looking at — sent by YOUR BROWSER directly to the tile server, as any image request is. We send them nothing about you, and no pin or account id is included.",
+    active: true,
+    note: "Only when you open the map. Every other page loads no tiles and contacts them not at all.",
+  },
+  {
+    name: "flagcdn.com",
+    role: "Country flag images",
+    location: "US",
+    dataSent: "Your IP address, as with any externally-hosted image.",
+    active: true,
+  },
+  {
+    name: "Your browser vendor's push service (Google, Mozilla, Apple or Microsoft)",
+    role: "Delivering push notifications",
+    location: "Global",
+    dataSent:
+      "The notification, to the endpoint YOUR BROWSER issued. Only if you enable push. The message body is encrypted to keys held by your browser, so the push service relays it without being able to read it.",
+    active: true,
+    note: "We do not choose this processor — your browser does, by issuing the endpoint.",
   },
   {
     name: "Deepgram",
