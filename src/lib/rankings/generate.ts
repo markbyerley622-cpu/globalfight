@@ -16,6 +16,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { fighterRating, isRankable } from "@/lib/rankings/engine";
 import { SPORT_LABEL } from "@/lib/sports";
+import { rankableInDiscipline } from "@/lib/fighters/discipline-query";
 
 const MAX_RANKED = 100;
 
@@ -43,15 +44,23 @@ async function ensureP4PWeightClass(sportValue: string): Promise<string> {
   return wc.id;
 }
 
+/**
+ * Generated P4P for a sport.
+ *
+ * Fighter selection uses `rankableInDiscipline` — verified bout evidence only.
+ * The previous `{ sport: sportValue }` ranked on the imported label, which is
+ * how the boxing list came to read "#1 Inoue, #2 Crawford, #3 Usyk" off four
+ * surname-only stubs with zero bouts between them.
+ */
 export async function generateP4P(sportValue: string): Promise<GenerateResult> {
   // Never clobber curated (scraped) rankings.
   const curated = await prisma.ranking.count({
-    where: { isPoundForPound: true, source: { not: "generated" }, fighter: { sport: sportValue as never } },
+    where: { isPoundForPound: true, source: { not: "generated" }, fighter: rankableInDiscipline(sportValue) },
   });
   if (curated > 0) return { sport: sportValue, ranked: 0, unranked: 0, skipped: "curated rankings present" };
 
   const fighters = await prisma.fighter.findMany({
-    where: { sport: sportValue as never },
+    where: rankableInDiscipline(sportValue),
     select: { id: true, wins: true, losses: true, draws: true, noContests: true, koWins: true, totalRounds: true },
   });
   if (fighters.length === 0) return { sport: sportValue, ranked: 0, unranked: 0, skipped: "no fighters" };
@@ -67,7 +76,7 @@ export async function generateP4P(sportValue: string): Promise<GenerateResult> {
 
   // Atomically replace this sport's generated P4P.
   await prisma.$transaction([
-    prisma.ranking.deleteMany({ where: { isPoundForPound: true, source: "generated", fighter: { sport: sportValue as never } } }),
+    prisma.ranking.deleteMany({ where: { isPoundForPound: true, source: "generated", fighter: rankableInDiscipline(sportValue) } }),
     ...eligible.map((e, i) =>
       prisma.ranking.create({
         data: {

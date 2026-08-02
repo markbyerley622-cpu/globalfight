@@ -3223,7 +3223,7 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 32,
+      "line": 33,
       "fn": "wc",
       "model": "WeightClass",
       "method": "upsert",
@@ -3236,7 +3236,7 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 70,
+      "line": 79,
       "fn": "generateP4P",
       "model": "Ranking",
       "method": "deleteMany",
@@ -3262,7 +3262,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 185,
+      "line": 190,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "update",
@@ -11088,7 +11088,7 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 48,
+      "line": 57,
       "fn": "curated",
       "model": "Ranking",
       "method": "count",
@@ -11101,20 +11101,20 @@
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 53,
+      "line": 62,
       "fn": "fighters",
       "model": "Fighter",
       "method": "findMany",
       "klass": "PUBLIC",
       "kind": "read",
-      "ownership": "unscoped",
+      "ownership": "unknown",
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/lib/rankings/generate.ts",
-      "line": 72,
+      "line": 81,
       "fn": "generateP4P",
       "model": "Ranking",
       "method": "create",
@@ -11205,7 +11205,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 62,
+      "line": 65,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11218,7 +11218,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 87,
+      "line": 92,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11231,7 +11231,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 152,
+      "line": 157,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -11244,7 +11244,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 183,
+      "line": 188,
       "fn": "existing",
       "model": "Fighter",
       "method": "findUnique",
@@ -11257,7 +11257,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 190,
+      "line": 195,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "findUnique",
@@ -11270,7 +11270,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 191,
+      "line": 196,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "create",
@@ -11283,7 +11283,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 197,
+      "line": 202,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11296,7 +11296,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 217,
+      "line": 222,
       "fn": "wcs",
       "model": "WeightClass",
       "method": "findMany",
@@ -11309,7 +11309,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 228,
+      "line": 233,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11322,7 +11322,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 281,
+      "line": 302,
       "fn": "total",
       "model": "Ranking",
       "method": "count",
@@ -11335,7 +11335,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 284,
+      "line": 305,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11348,7 +11348,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 319,
+      "line": 342,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "findMany",
@@ -11361,7 +11361,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 320,
+      "line": 343,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "count",
@@ -11374,7 +11374,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 326,
+      "line": 349,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -11387,7 +11387,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 333,
+      "line": 363,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -11400,7 +11400,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 347,
+      "line": 378,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findUnique",
@@ -11413,7 +11413,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 348,
+      "line": 379,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -11426,7 +11426,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 381,
+      "line": 412,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -11439,7 +11439,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 383,
+      "line": 414,
       "fn": "rows",
       "model": "OddsSnapshot",
       "method": "findMany",
@@ -11452,7 +11452,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 406,
+      "line": 437,
       "fn": "rows",
       "model": "Champion",
       "method": "findMany",
@@ -11465,7 +11465,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 487,
+      "line": 521,
       "fn": "rows",
       "model": "Event",
       "method": "findMany",
@@ -11478,7 +11478,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 514,
+      "line": 548,
       "fn": "getResults",
       "model": "Event",
       "method": "findMany",
@@ -11491,7 +11491,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 521,
+      "line": 555,
       "fn": "getResults",
       "model": "Event",
       "method": "count",
@@ -11504,7 +11504,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 533,
+      "line": 567,
       "fn": "e",
       "model": "Event",
       "method": "findFirst",
@@ -11517,7 +11517,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 545,
+      "line": 579,
       "fn": "f",
       "model": "Fight",
       "method": "findFirst",
@@ -11530,7 +11530,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 553,
+      "line": 587,
       "fn": "fighter",
       "model": "Fighter",
       "method": "findUnique",
@@ -11543,7 +11543,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 555,
+      "line": 589,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -11556,7 +11556,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 564,
+      "line": 598,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -11569,7 +11569,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 591,
+      "line": 625,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -11582,7 +11582,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 605,
+      "line": 639,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -11595,7 +11595,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 616,
+      "line": 650,
       "fn": "a",
       "model": "Article",
       "method": "findFirst",
@@ -11608,7 +11608,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 620,
+      "line": 654,
       "fn": "a",
       "model": "Article",
       "method": "findUnique",

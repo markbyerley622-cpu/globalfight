@@ -22,6 +22,13 @@ import type {
 // Forum repository (DB-backed, realtime) lives in its own module and is
 // surfaced here so repo.prisma remains the single Prisma entry point.
 export * from "@/lib/forum/repo";
+// THE canonical discipline predicate. Nothing in this file writes
+// `{ sport: X }` against Fighter any more — see lib/fighters/discipline-query.
+// `rankableInDiscipline` is deliberately NOT used here: every ranking surface in
+// this file is CURATED, and a curated list is its own verification. The strict
+// predicate belongs to generateP4P, which computes an ordering rather than
+// transcribing one.
+import { competesInDiscipline } from "@/lib/fighters/discipline-query";
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : undefined);
 const isoReq = (d: Date) => d.toISOString();
@@ -70,7 +77,9 @@ export async function getFightersPage(opts: {
 }): Promise<{ items: import("@/lib/types").FighterListItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(opts.limit ?? 24, 1), 60);
   const where: import("@prisma/client").Prisma.FighterWhereInput = {};
-  if (opts.sport) where.sport = opts.sport as PFighter["sport"];
+  // sports[] (verified disciplines), NOT the legacy `sport` label. A crossover
+  // athlete appears in every directory they have evidence for.
+  if (opts.sport) Object.assign(where, competesInDiscipline(opts.sport));
   if (opts.country) where.countryCode = opts.country.toUpperCase();
   if (opts.status === "active") where.active = true;
   if (opts.status === "inactive") where.active = false;
@@ -275,7 +284,23 @@ export async function getPoundForPoundBySport(
     // The gate. Applied to the COUNT as well as the rows, or the pager would
     // promise pages of results the query then refuses to return.
     source: { not: "generated" },
-    ...(sportValue ? { fighter: { sport: sportValue as PFighter["sport"] } } : {}),
+    // ── The sport filter belongs to the RANKING, not to the fighter ─────────
+    //
+    // Filtering by the fighter's disciplines was tried and is wrong in both
+    // directions, measured against real data:
+    //
+    //   • it DESTROYS the curated lists. Gordon Ryan is the cited #1 BJJ P4P;
+    //     he has no bouts in our database, so a bout-evidence gate dropped him
+    //     and took BJJ from 10 entries to 3, bare-knuckle from 5 to 0. A
+    //     curated ranking IS its own verification — a named external authority
+    //     said it. Our bout coverage has no bearing on that.
+    //   • it LEAKS across disciplines. Mike Perry holds a curated BARE_KNUCKLE
+    //     P4P place and also has verified boxing bouts, so filtering by his
+    //     disciplines surfaced him as the sole entry in BOXING P4P.
+    //
+    // A ranking's discipline is a property of the RANKING (its weight class),
+    // and that is what the reader is asking about.
+    ...(sportValue ? { weightClass: { sport: sportValue as PFighter["sport"] } } : {}),
   };
 
   const total = await prisma.ranking.count({ where });
@@ -313,7 +338,9 @@ export async function getPredictionsPage(
   const skip = Math.max(0, page) * limit;
   const where = {
     result: "SCHEDULED" as const,
-    ...(sportValue ? { red: { sport: sportValue as PFighter["sport"] } } : {}),
+    // Verified disciplines, so a ONE Muay Thai bout appears under Muay Thai
+    // rather than under whichever label its red corner was imported with.
+    ...(sportValue ? { red: competesInDiscipline(sportValue) } : {}),
   };
   const [rows, total] = await Promise.all([
     prisma.fight.findMany({ where, orderBy: { date: "asc" }, skip, take: limit, include: FIGHT_INCLUDE }),
@@ -327,11 +354,19 @@ export async function getFighter(slug: string): Promise<Fighter | null> {
   return f ? mapFighter(f) : null;
 }
 
-export async function searchFighters(query: string): Promise<Fighter[]> {
+/**
+ * Fighter search. Optionally scoped to a DISCIPLINE.
+ *
+ * The discipline filter is `sports[]`, so searching Muay Thai returns Muay Thai
+ * specialists AND crossover ONE athletes with verified Muay Thai bouts — not
+ * only fighters an importer happened to label MUAY_THAI.
+ */
+export async function searchFighters(query: string, sport?: string | null): Promise<Fighter[]> {
   const q = query.trim();
   if (!q) return [];
   const rows = await prisma.fighter.findMany({
     where: {
+      ...competesInDiscipline(sport),
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { nickname: { contains: q, mode: "insensitive" } },
@@ -404,7 +439,10 @@ export async function getChampions(): Promise<Champion[]> {
 /** Current champions, optionally filtered to one sport (via the fighter). */
 export async function getChampionsBySport(sportValue?: string): Promise<Champion[]> {
   const rows = await prisma.champion.findMany({
-    where: { current: true, ...(sportValue ? { fighter: { sport: sportValue as PFighter["sport"] } } : {}) },
+    // Same rule as P4P: a title belongs to a DIVISION, and the division names
+    // the sport. Filtering by the holder's disciplines would drop curated
+    // champions we hold no bouts for and leak crossover athletes across sports.
+    where: { current: true, ...(sportValue ? { fighter: competesInDiscipline(sportValue) } : {}) },
     include: { fighter: { include: { titles: true } }, weightClass: true },
   });
   return rows.map((c) => ({
