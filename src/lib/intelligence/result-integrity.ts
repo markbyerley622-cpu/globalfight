@@ -14,6 +14,89 @@ export function isDecided(result: FightResult | null | undefined): boolean {
   return result != null && result !== "SCHEDULED";
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  THE WINNER INVARIANT. One definition, asserted immediately before every write.
+//
+//  At the moment a Fight row is committed, exactly one of these is true:
+//      winnerId === redId
+//      winnerId === blueId
+//      winnerId === null
+//  Nothing else is ever legal.
+//
+//  ── WHY AN ASSERTION AND NOT JUST A VALIDATOR ─────────────────────────────
+//
+//  requireAttributedWinner already validated the winner — against the INCOMING
+//  corners. persist then discarded those corners (an existing bout must never be
+//  re-seated: FightPick stores "RED"/"BLUE", so swapping corners inverts every
+//  pick on the bout) and kept the STORED ones. Validation and persistence were
+//  looking at two different pairs.
+//
+//  Eight rows in production data reached the impossible state that way, all via
+//  the slug fallback, where a bout matches by NAME while its fighter rows differ:
+//      red "Soe Htet Oo"            winner "Soe Lin Oo"
+//      red "Pentor SP Kansard…"     winner "Pentor SP.Kansart…"
+//      red "Fritz Aldin Biagtan"    winner "Fritz Biagtan"
+//
+//  A validator can be called at the wrong moment. An assertion placed at the
+//  write itself cannot: whatever a future code path does to the data on the way
+//  down, it is checked against the exact values being committed. That is the
+//  difference between fixing this bug and eliminating the class.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Thrown when a write would commit a winner who is not on the bout. */
+export class WinnerInvariantError extends Error {
+  constructor(readonly detail: { winnerId: string; redId: string; blueId: string; context: string }) {
+    super(
+      `Winner invariant violated (${detail.context}): winnerId=${detail.winnerId} ` +
+        `is neither redId=${detail.redId} nor blueId=${detail.blueId}`,
+    );
+    this.name = "WinnerInvariantError";
+  }
+}
+
+/**
+ * The last line of defence. Call with the EXACT values about to be written.
+ *
+ * Throws rather than repairing: by this point the data has already passed the
+ * places that could have corrected it, so a violation is a logic error in the
+ * pipeline and must not be papered over. Inside persist it aborts a single
+ * bout's transaction, so one bad row can never be committed and the rest of the
+ * card still lands.
+ */
+export function assertWinnerMatchesCorners(
+  winnerId: string | null | undefined,
+  redId: string,
+  blueId: string,
+  context: string,
+): void {
+  if (!winnerId) return;
+  if (winnerId === redId || winnerId === blueId) return;
+  throw new WinnerInvariantError({ winnerId, redId, blueId, context });
+}
+
+/**
+ * Resolve the winner against the corners that will ACTUALLY be stored.
+ *
+ * `candidate` is the winner as the provider's own corner resolution produced it.
+ * When the bout already exists its stored corners win, and the candidate may
+ * name a fighter row that is not on it — a near-duplicate created by a naming
+ * difference the deduper did not catch.
+ *
+ * Returns null in that case rather than trying to map across. Mapping would mean
+ * deciding that "Soe Lin Oo" and "Soe Htet Oo" are the same person, which is
+ * exactly the guess that corrupts a result. A dropped winner is recoverable by a
+ * later ingest; a wrong one silently rewrites a fighter's record.
+ */
+export function resolveWinnerForCorners(
+  candidate: string | null | undefined,
+  redId: string,
+  blueId: string,
+): { winnerId: string | null; unmatched: boolean } {
+  if (!candidate) return { winnerId: null, unmatched: false };
+  if (candidate === redId || candidate === blueId) return { winnerId: candidate, unmatched: false };
+  return { winnerId: null, unmatched: true };
+}
+
 /**
  * A decided WIN must name one of the bout's own two corners.
  *

@@ -3457,7 +3457,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 90,
+      "line": 93,
       "fn": "upsertFighter",
       "model": "Fighter",
       "method": "update",
@@ -3470,7 +3470,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 94,
+      "line": 97,
       "fn": "row",
       "model": "Fighter",
       "method": "upsert",
@@ -3483,7 +3483,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 120,
+      "line": 123,
       "fn": "linkFighterExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -3496,7 +3496,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 218,
+      "line": 221,
       "fn": "upsertEvent",
       "model": "Event",
       "method": "update",
@@ -3509,7 +3509,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 226,
+      "line": 229,
       "fn": "row",
       "model": "Event",
       "method": "upsert",
@@ -3522,7 +3522,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 313,
+      "line": 316,
       "fn": "refreshCardCompletion",
       "model": "Event",
       "method": "update",
@@ -3535,7 +3535,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 329,
+      "line": 332,
       "fn": "linkEventExternalId",
       "model": "EventExternalId",
       "method": "upsert",
@@ -3548,7 +3548,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 374,
+      "line": 377,
       "fn": "recordFightImport",
       "model": "FightImport",
       "method": "upsert",
@@ -3561,7 +3561,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 391,
+      "line": 394,
       "fn": "linkCornerExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -3574,7 +3574,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 433,
+      "line": 436,
       "fn": "redId",
       "model": "Fighter",
       "method": "upsert",
@@ -3587,7 +3587,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 436,
+      "line": 439,
       "fn": "blueId",
       "model": "Fighter",
       "method": "upsert",
@@ -3600,7 +3600,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 541,
+      "line": 581,
       "fn": "outcome",
       "model": "Fight",
       "method": "update",
@@ -3613,7 +3613,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 552,
+      "line": 601,
       "fn": "created",
       "model": "Fight",
       "method": "upsert",
@@ -12479,7 +12479,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 136,
+      "line": 139,
       "fn": "exists",
       "model": "FighterAlias",
       "method": "findFirst",
@@ -12492,7 +12492,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 138,
+      "line": 141,
       "fn": "recordAliases",
       "model": "FighterAlias",
       "method": "create",
@@ -12505,7 +12505,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 214,
+      "line": 217,
       "fn": "current",
       "model": "Event",
       "method": "findUnique",
@@ -12518,7 +12518,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 286,
+      "line": 289,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -12531,7 +12531,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 293,
+      "line": 296,
       "fn": "refreshCardCompletion",
       "model": "Fight",
       "method": "count",
@@ -12544,7 +12544,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 294,
+      "line": 297,
       "fn": "refreshCardCompletion",
       "model": "Fight",
       "method": "count",
@@ -12557,7 +12557,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 305,
+      "line": 308,
       "fn": "sources",
       "model": "EventExternalId",
       "method": "findMany",
@@ -12570,7 +12570,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 414,
+      "line": 417,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findFirst",
@@ -12583,7 +12583,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 507,
+      "line": 455,
       "fn": "existing",
       "model": "Fight",
       "method": "findFirst",
@@ -12596,7 +12596,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 518,
+      "line": 468,
       "fn": "existing",
       "model": "Fight",
       "method": "findUnique",

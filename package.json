@@ -44,6 +44,7 @@
     "migrate:disciplines": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/discipline-migrate.mts",
     "audit:disciplines": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/discipline-audit.mts",
     "dm:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/dm-smoke.mts",
+    "repair:invalid-winners": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/repair-invalid-winners.mts",
     "repair:entity-duplicates": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/merge-entity-duplicates.mts",
     "audit:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/audit-wikicards.mts",
     "cleanup:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/cleanup-wikicards.mts",

@@ -10,7 +10,10 @@
 import type { FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stripLocked } from "@/lib/admin/provenance";
-import { preventResultDowngrade, requireAttributedWinner, preventRulesetDowngrade } from "@/lib/intelligence/result-integrity";
+import {
+  preventResultDowngrade, requireAttributedWinner, preventRulesetDowngrade,
+  assertWinnerMatchesCorners, resolveWinnerForCorners,
+} from "@/lib/intelligence/result-integrity";
 import { recordConflicts } from "@/lib/admin/reconcile";
 import { onResultWritten } from "@/lib/intelligence/resolve";
 import { recordIngestEvidence } from "@/lib/results/pipeline";
@@ -436,10 +439,64 @@ async function upsertFight(
       ? (await tx.fighter.upsert({ where: { slug: bluePlan.slug }, update: {}, create: { slug: bluePlan.slug, sport, name: bluePlan.name } })).id
       : bluePlan.id;
 
-    let winnerId: string | undefined;
+    // ── IDENTITY FIRST. The existing bout is loaded BEFORE the winner is
+    //    resolved, and that ordering IS the fix.
+    //
+    // A bout is "the same bout" when it is the same two fighters on the same
+    // card. Keying on a name-derived slug alone was wrong the moment two
+    // pipelines built that name differently, and they do: the odds pipeline
+    // creates production's boxing/MMA bouts as `{red}-vs-{blue}` under a
+    // synthetic daily card, while this function builds
+    // `{eventName}-{red}-vs-{blue}`. Same bout, two slugs.
+    //
+    // Corner ORDER is not part of identity either: sources disagree about which
+    // fighter is "red", so both orientations resolve to the one bout.
+    const existing =
+      (await tx.fight.findFirst({
+        where: {
+          eventId,
+          OR: [
+            { redId, blueId },
+            { redId: blueId, blueId: redId },
+          ],
+        },
+      })) ??
+      // Fallback: same bout NAME on a card we did not match by corners (a
+      // fighter row since deduped and re-pointed). THIS is the path that wrote
+      // the impossible states: it matches by name while the fighter rows differ,
+      // so the stored corners are not the incoming ones.
+      (await tx.fight.findUnique({ where: { slug } }));
+
+    // ── THE CORNERS THAT WILL ACTUALLY BE STORED ────────────────────────────
+    // An existing bout is never re-seated (FightPick stores "RED"/"BLUE", so
+    // swapping corners inverts every pick on it), so for an existing row the
+    // FINAL corners are the STORED ones, not the incoming ones. Everything below
+    // validates against these.
+    const finalRedId = existing?.redId ?? redId;
+    const finalBlueId = existing?.blueId ?? blueId;
+
+    // The provider's own corner resolution, mapped to fighter ids.
+    let candidateWinner: string | undefined;
     if (stub.winnerExternalId) {
-      if (stub.winnerExternalId === stub.redExternalId) winnerId = redId;
-      else if (stub.winnerExternalId === stub.blueExternalId) winnerId = blueId;
+      if (stub.winnerExternalId === stub.redExternalId) candidateWinner = redId;
+      else if (stub.winnerExternalId === stub.blueExternalId) candidateWinner = blueId;
+    }
+
+    // Resolve against the FINAL corners. When the incoming winner names a
+    // fighter row that is not on the stored bout - a near-duplicate the deduper
+    // missed, "Soe Lin Oo" against a stored "Soe Htet Oo" - it is DROPPED rather
+    // than mapped across. Mapping would be a guess about identity, and a wrong
+    // winner silently rewrites a fighter's record.
+    const { winnerId, unmatched } = resolveWinnerForCorners(candidateWinner, finalRedId, finalBlueId);
+    if (unmatched) {
+      log.warn(
+        {
+          source, slug, fightId: existing?.id,
+          incomingWinner: candidateWinner, storedRed: finalRedId, storedBlue: finalBlueId,
+          red: stub.redName, blue: stub.blueName,
+        },
+        "persist:winner-not-on-stored-bout - dropped rather than mapped across",
+      );
     }
 
     // The match above fails whenever a source is internally inconsistent, and it
@@ -448,14 +505,15 @@ async function upsertFight(
     // records and settlement, and an invalid state every reader then has to
     // guess about. An unattributed win is downgraded to SCHEDULED so the
     // harvester retries it against a source that can name the winner.
+    // Validated against the FINAL corners, so validation and the write now agree.
     const { update: outcome, rejected: unattributed } = requireAttributedWinner(
-      { result: stub.result, method: stub.method, roundEnded: stub.roundEnded, winnerId },
-      { redId, blueId },
+      { result: stub.result, method: stub.method, roundEnded: stub.roundEnded, winnerId: winnerId ?? undefined },
+      { redId: finalRedId, blueId: finalBlueId },
     );
     if (unattributed) {
-      console.warn(
-        `[persist] ${source}: dropped an unattributable WIN on ${stub.redName} vs ${stub.blueName} ` +
-          `(winnerExternalId=${stub.winnerExternalId ?? "none"} matched neither corner)`,
+      log.warn(
+        { source, slug, red: stub.redName, blue: stub.blueName, winnerExternalId: stub.winnerExternalId ?? null },
+        "persist:unattributable-win - downgraded to SCHEDULED",
       );
     }
 
@@ -488,34 +546,6 @@ async function upsertFight(
       date,
     });
 
-    // â”€â”€ IDENTITY: the corner PAIR on this event, then the slug â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //
-    // A bout is "the same bout" when it is the same two fighters on the same card.
-    // Keying on a name-derived slug alone was wrong the moment two pipelines built
-    // that name differently â€” and they do: the odds pipeline creates production's
-    // boxing/MMA bouts as `{red}-vs-{blue}` under a synthetic daily card, while this
-    // function builds `{eventName}-{red}-vs-{blue}`. Same bout, two slugs.
-    //
-    // The consequence was silent and severe: a Wikipedia result would be written to a
-    // NEW row while every pick, battle and prediction stayed on the original. The
-    // ingest job would report written=1, the reader's prediction would never settle,
-    // and the card would show two copies of the same fight.
-    //
-    // Corner order is not part of identity either â€” sources disagree about which
-    // fighter is "red", so both orientations resolve to the one bout.
-    const existing =
-      (await tx.fight.findFirst({
-        where: {
-          eventId,
-          OR: [
-            { redId, blueId },
-            { redId: blueId, blueId: redId },
-          ],
-        },
-      })) ??
-      // Fallback: same bout name on a card we haven't matched by corners (a fighter
-      // row that was since deduped and re-pointed).
-      (await tx.fight.findUnique({ where: { slug } }));
     if (existing) {
       // THREE guards now, in order:
       //  (1) never re-seat the CORNERS of a bout that already exists. FightPick
@@ -538,6 +568,16 @@ async function upsertFight(
       );
       const update = stripLocked(guarded, existing.lockedFields);
       if (Object.keys(update).length > 0) {
+        // THE INVARIANT, asserted against the EXACT values being committed.
+        // `update` may or may not carry a winner (the downgrade guards can strip
+        // it), so the effective winner is the incoming one when present and the
+        // stored one otherwise — and either must sit on the stored corners.
+        assertWinnerMatchesCorners(
+          "winnerId" in update ? (update.winnerId as string | null) : existing.winnerId,
+          existing.redId,
+          existing.blueId,
+          `update ${existing.id} (${source})`,
+        );
         await tx.fight.update({ where: { id: existing.id }, data: update });
       }
       // Did THIS write decide a bout that wasn't decided before? That transition is
@@ -546,8 +586,17 @@ async function upsertFight(
         existing.result === "SCHEDULED" &&
         typeof update.result === "string" &&
         update.result !== "SCHEDULED";
-      return { fightId: existing.id, existing, data, redId, blueId, decided };
+      // FINAL corners, not the incoming ones. recordIngestEvidence derives
+      // "RED"/"BLUE" by comparing the winner against these, so returning the
+      // incoming pair was the SAME ordering bug one layer down: on the slug
+      // fallback it would have labelled the evidence with a corner from a bout
+      // the row does not have.
+      return { fightId: existing.id, existing, data, redId: finalRedId, blueId: finalBlueId, decided };
     }
+
+    // A brand-new row: the incoming corners ARE the final corners, so the
+    // invariant is asserted against them.
+    assertWinnerMatchesCorners(outcome.winnerId as string | null, redId, blueId, `create ${slug} (${source})`);
 
     const created = await tx.fight.upsert({
       where: { slug },
