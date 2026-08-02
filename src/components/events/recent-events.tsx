@@ -3,7 +3,7 @@ import { Check, Flame, ArrowRight, Zap, Swords, Hourglass } from "lucide-react";
 import type { RecentEvent } from "@/lib/identity/recent-events";
 import { SportPosterArt } from "@/components/events/sport-poster-art";
 import { PromotionLogo } from "@/components/promotion-logo";
-import { resolvePromotion } from "@/lib/promotions";
+import { resolvePromotion, eventTitleBesideMark } from "@/lib/promotions";
 import { sportAccent } from "@/lib/event-card-image";
 import { SPORT_LABEL } from "@/lib/sports";
 import { resultCoverage } from "@/lib/events/result-coverage";
@@ -74,6 +74,9 @@ function Card({ e }: { e: RecentEvent }) {
   const promo = resolvePromotion(e.promotion);
   const hasRealPromo = promo.slug !== "combat";
   const accent = hasRealPromo ? promo.brand : sportAccent(e.sport);
+  // Same rule as the event card: with an official mark beside it, the title
+  // drops the org's own name. Only for a real logo — see eventTitleBesideMark.
+  const cardTitle = hasRealPromo && promo.logo ? eventTitleBesideMark(e.name, e.promotion) : e.name;
   const sportLabel = SPORT_LABEL[e.sport] ?? "Combat";
   const resolved = !!m?.resolved;
   // One definition of result completeness, shared with the event header and the
@@ -110,12 +113,10 @@ function Card({ e }: { e: RecentEvent }) {
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
           <span className="flex min-h-[1.5rem] min-w-0 items-center gap-1.5">
-            {hasRealPromo && (
-              <>
-                <PromotionLogo promotion={e.promotion} size="sm" />
-                <span className="truncate text-[0.68rem] font-semibold uppercase tracking-wide text-chalk drop-shadow">{promo.name}</span>
-              </>
-            )}
+            {/* The mark speaks for itself when it is a real logo; the name is
+                rendered only for the monogram fallback. This rail used to print
+                both, so a UFC row read "[UFC logo] UFC" above "UFC 322". */}
+            {hasRealPromo && <PromotionLogo promotion={e.promotion} size="sm" showName />}
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {/* A finished card leads with HOW it ended; that's the fact a fan
@@ -171,7 +172,7 @@ function Card({ e }: { e: RecentEvent }) {
               {m.redName} <span className="text-blood-400">vs</span> {m.blueName}
             </p>
           ) : (
-            <p className="truncate font-display text-base font-black leading-tight text-chalk drop-shadow">{e.name}</p>
+            <p className="truncate font-display text-base font-black leading-tight text-chalk drop-shadow">{cardTitle}</p>
           )}
         </div>
       </div>

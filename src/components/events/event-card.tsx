@@ -9,7 +9,7 @@ import { PromotionLogo } from "@/components/promotion-logo";
 import { FollowButton } from "@/components/follow-button";
 import { ShareMenu } from "@/components/share-menu";
 import { AddToCalendar } from "@/components/event/add-to-calendar";
-import { resolvePromotion } from "@/lib/promotions";
+import { resolvePromotion, eventTitleBesideMark } from "@/lib/promotions";
 import { SPORT_LABEL } from "@/lib/sports";
 import { formatDate } from "@/lib/utils";
 import { resolveEventMedia } from "@/lib/events/media-resolver";
@@ -39,6 +39,13 @@ export function EventCard({ event }: { event: EventCardData }) {
   // we never advertise it. Real promotions keep their brand colour; unattributed
   // events take the SPORT's signature colour so the card still has an identity.
   const hasRealPromo = promo.slug !== "combat";
+  // When an official mark renders, the title drops the promotion's own name:
+  // "[UFC mark] 322" rather than "[UFC mark] UFC 322". Only when the mark is a
+  // real logo — beside a monogram badge, "322" identifies nothing. The FULL name
+  // is still what share, calendar, follow and the provider lookups receive.
+  const cardTitle = hasRealPromo && promo.logo
+    ? eventTitleBesideMark(event.name, event.promotion)
+    : event.name;
   const accent = hasRealPromo ? promo.brand : sportAccent(event.sport);
   const sportLabel = SPORT_LABEL[event.sport] ?? "Combat";
   const location = [event.city, event.country].filter(Boolean).join(", ");
@@ -73,15 +80,10 @@ export function EventCard({ event }: { event: EventCardData }) {
                 NAME (hover and screen readers still get it), and the event title
                 carries it in writing. Text appears only when the promotion has
                 no logo to speak for it. */}
-            {hasRealPromo && (
-              promo.logo
-                ? <PromotionLogo promotion={event.promotion} size="sm" />
-                : (
-                  <span className="text-xs font-semibold uppercase tracking-wide text-chalk drop-shadow">
-                    {event.promotionName}
-                  </span>
-                )
-            )}
+            {/* The logo-vs-name choice is the component's, not this card's — it
+                was reimplemented here, in the recent-events rail and on the
+                schedule page, and drifted apart. See PromotionLogo.showName. */}
+            {hasRealPromo && <PromotionLogo promotion={event.promotion} size="sm" showName />}
           </span>
           {/* Top-right = the combat sport (Boxing / MMA / …), the fastest thing to
               scan a card by. A LIVE or cancelled event still flags its status too. */}
@@ -121,14 +123,14 @@ export function EventCard({ event }: { event: EventCardData }) {
               />
             </div>
           ) : (
-            <p className="font-display text-lg font-black leading-tight text-chalk drop-shadow">{event.name}</p>
+            <p className="font-display text-lg font-black leading-tight text-chalk drop-shadow">{cardTitle}</p>
           )}
           {event.mainEvent && (() => {
             const intel = matchupIntel(event.mainEvent.redRank, event.mainEvent.blueRank);
             return intel ? (
               <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wider text-volt-300 drop-shadow">{intel}</p>
             ) : (
-              <p className="mt-1 truncate text-xs text-mist">{event.name}</p>
+              <p className="mt-1 truncate text-xs text-mist">{cardTitle}</p>
             );
           })()}
         </div>

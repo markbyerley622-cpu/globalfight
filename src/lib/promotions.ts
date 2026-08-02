@@ -189,3 +189,64 @@ export function promotionFromText(text?: string | null): string | null {
 export function promotionLabel(promotion?: string | null): string {
   return resolvePromotion(promotion).name;
 }
+
+/**
+ * An event title with the promotion's own name taken off the front — for use
+ * ONLY where the promotion's mark is rendered immediately beside it.
+ *
+ * A UFC card currently reads, top to bottom: the logo, then "UFC", then
+ * "UFC 322". The organisation is stated three times before the reader gets to
+ * the one thing that distinguishes this card from the other 321. Dropping the
+ * adjacent text handles the second; this handles the third, so the card reads
+ * "[UFC mark] 322".
+ *
+ * ── Why this is conditional on a real logo ────────────────────────────────
+ *
+ * The caller must only apply this when an actual brand mark renders. The
+ * monogram fallback is a coloured badge with initials in it, and "322" beside a
+ * generic badge identifies nothing — the prefix is carrying real information
+ * there. The rule is "never say it twice", not "always strip it".
+ *
+ * Conservative by construction. It strips a LEADING promotion token and any
+ * separator, and it refuses to return something meaningless:
+ *
+ *   "UFC 322"                      -> "322"
+ *   "UFC Fight Night: Smith vs Jones" -> "Fight Night: Smith vs Jones"
+ *   "ONE Friday Fights 46"         -> "Friday Fights 46"
+ *   "PFL"                          -> "PFL"   (stripping leaves nothing)
+ *   "Road to UFC 3"                -> "Road to UFC 3"  (not a leading match)
+ */
+export function eventTitleBesideMark(name: string, promotion?: string | null): string {
+  const title = (name ?? "").trim();
+  if (!title) return title;
+  const p = resolvePromotion(promotion);
+  if (p.slug === FALLBACK.slug) return title;
+
+  // ONLY the canonical name and the monogram — never `aliases`.
+  //
+  // Aliases are a MATCHING vocabulary ("one friday fights", "one fight night"),
+  // deliberately broad so free text resolves to an org. Stripping by them
+  // destroys the thing the title is for: "ONE Friday Fights 46" would become
+  // "46", losing the series and colliding with "ONE 46", a different card.
+  // Longest first, so "ONE Championship 172" loses the full name rather than
+  // just "ONE" and leaving "Championship 172".
+  const candidates = [p.name, p.mark].filter(Boolean).sort((a, b) => b.length - a.length);
+
+  for (const token of candidates) {
+    const t = token.trim();
+    if (!t || !title.toLowerCase().startsWith(t.toLowerCase())) continue;
+
+    // The match must end on a WORD BOUNDARY. Without this the monogram eats the
+    // start of a longer word that merely begins the same way — Bellator's mark
+    // is "BEL", and "Bellator 301" would render as "lator 301".
+    const next = title.charAt(t.length);
+    if (next && /[a-z0-9]/i.test(next)) continue;
+
+    const rest = title.slice(t.length).replace(/^[\s:\u2013\u2014-]+/, "").trim();
+    // Never strip down to nothing: a title that IS just the promotion keeps it,
+    // because an empty card title is worse than a repeated one.
+    if (rest.length === 0) return title;
+    return rest;
+  }
+  return title;
+}
