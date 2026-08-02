@@ -1291,6 +1291,8 @@ model User {
   following         UserFollow[]         @relation("Follower")
   followers         UserFollow[]         @relation("Following")
   pushSubscriptions PushSubscription[]
+  conversations     ConversationMember[]
+  sentMessages      DirectMessage[]      @relation("MessageSender")
 
   @@index([reputation])
   // The people layer's hot path: "visible users who have a resolved point".
@@ -2169,6 +2171,66 @@ model CheckIn {
 /// person" — favourites covered fighters, promotions and events only — so
 /// "Friends Only" visibility had nothing to resolve against and the Following
 /// pillar had no people in it. One row per direction; mutual follow is both.
+/// ── Direct messages ────────────────────────────────────────────────────────
+///
+/// One-to-one only, deliberately. A group thread needs its own membership
+/// lifecycle (invite, leave, rename, who-can-add) and a different read model;
+/// building the pair case first keeps the schema honest rather than shipping a
+/// group table nothing populates. `pairKey` is what makes it 1:1 and safe:
+/// the two user ids, sorted and joined, so the SAME two people can only ever
+/// have ONE conversation no matter who opens it first, enforced by the database
+/// rather than by a check-then-create race (see CLAUDE.md rule 4).
+model Conversation {
+  id String @id @default(cuid())
+  /// "<lowerId>:<higherId>" — sorted, so it is orientation-independent.
+  pairKey String @unique
+
+  createdAt DateTime @default(now())
+  /// Denormalised so the inbox can order without touching the message table.
+  /// Written in the same transaction as the message it describes.
+  lastMessageAt DateTime @default(now())
+
+  members  ConversationMember[]
+  messages DirectMessage[]
+
+  @@index([lastMessageAt])
+}
+
+/// A participant, and their read position. `lastReadAt` is a WATERMARK rather
+/// than a per-message read flag: unread is then a count of messages newer than
+/// it, which needs no write per message and cannot drift out of sync with the
+/// thread.
+model ConversationMember {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt DateTime?
+  /// Leaving hides the thread without destroying the other person's copy of the
+  /// conversation — a message is shared history, not one user's row.
+  archivedAt DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model DirectMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  body String @db.Text
+
+  createdAt DateTime @default(now())
+
+  /// The inbox and the thread both read newest-first within a conversation.
+  @@index([conversationId, createdAt])
+}
+
 model UserFollow {
   id          String @id @default(cuid())
   followerId  String

@@ -125,4 +125,12 @@ export const POLICY = {
   // one-line script for putting any thread at the top of the forum. Bounded per
   // IP+thread: generous for a human sharing to a few places, useless for a loop.
   threadShare: { limit: 10, windowMs: 60 * 60_000 },
+  // A DM is a write that lands in someone else's inbox and generates a
+  // notification badge, so it is the one text write where the abuse target is a
+  // PERSON rather than a page. Bounded tighter than a forum post for that
+  // reason, while staying well above a fast back-and-forth conversation.
+  directMessage: { limit: 60, windowMs: 15 * 60_000 },
+  // Opening a conversation creates rows against another user. Much rarer than
+  // sending, and the natural shape of a harassment script, so it is tighter.
+  conversationOpen: { limit: 20, windowMs: 60 * 60_000 },
 } as const;

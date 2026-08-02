@@ -17,6 +17,7 @@ import { getFollowCounts, getMutualFollowers } from "@/lib/geo/people";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowing } from "@/lib/follow-targets";
 import { FollowButton } from "@/components/follow-button";
+import { MessageButton } from "@/components/messages/message-button";
 
 const ROLE_LABEL: Record<string, string> = {
   fighter: "Fighter", coach: "Coach", gym: "Gym", promoter: "Promoter",
@@ -164,13 +165,19 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
               offer. Not rendered on your own profile: self-follow is refused by
               the API, so a button there is a guaranteed dead end. */}
           {!isSelf && (
-            <FollowButton
-              kind="person"
-              slug={u.username}
-              name={displayName}
-              initialFollowing={viewerFollows}
-              size="sm"
-            />
+            <>
+              <FollowButton
+                kind="person"
+                slug={u.username}
+                name={displayName}
+                initialFollowing={viewerFollows}
+                size="sm"
+              />
+              {/* A conversation starts HERE and nowhere else — there is no
+                  "compose" screen with a recipient picker, because that is the
+                  shape that makes unsolicited messaging easy. */}
+              <MessageButton username={u.username} name={displayName} />
+            </>
           )}
         </div>
 

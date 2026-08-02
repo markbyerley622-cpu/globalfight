@@ -87,7 +87,7 @@ async function duplicateEvents() {
 async function orphanFighters() {
   if (!wanted("orphan-fighters")) return;
   const rows = await prisma.fighter.findMany({
-    where: { redCorner: { none: {} }, blueCorner: { none: {} } },
+    where: { fightsAsRed: { none: {} }, fightsAsBlue: { none: {} } },
     select: { slug: true, name: true, wins: true, losses: true, draws: true },
     take: 5000,
   });
@@ -222,10 +222,10 @@ async function sportDrift() {
 async function imageCoverage() {
   if (!wanted("images")) return;
   const [total, withImage] = await Promise.all([
-    prisma.fighter.count({ where: { OR: [{ redCorner: { some: {} } }, { blueCorner: { some: {} } }] } }),
+    prisma.fighter.count({ where: { OR: [{ fightsAsRed: { some: {} } }, { fightsAsBlue: { some: {} } }] } }),
     prisma.fighter.count({
       where: {
-        OR: [{ redCorner: { some: {} } }, { blueCorner: { some: {} } }],
+        OR: [{ fightsAsRed: { some: {} } }, { fightsAsBlue: { some: {} } }],
         AND: [{ OR: [{ imageUrl: { not: null } }, { thumbUrl: { not: null } }, { photoUrl: { not: null } }] }],
       },
     }),
@@ -240,6 +240,45 @@ async function imageCoverage() {
   });
 }
 
+// ── 9. The social graph ────────────────────────────────────────────────────
+// Follows are only "working" if the whole chain holds: a user has a username
+// (no handle, no profile URL, no follow target), the UserFollow row exists, and
+// both ends still resolve. A dangling half is invisible in the UI — the count
+// simply reads one lower than it should.
+async function socialGraph() {
+  if (!wanted("social")) return;
+  const [users, withUsername, follows, mutualPairs] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { username: { not: null } } }),
+    prisma.userFollow.count(),
+    prisma.userFollow.count({
+      where: { follower: { followers: { some: {} } } },
+    }),
+  ]);
+
+  console.log(`  ..  Social graph: ${users} users, ${withUsername} with a handle, ${follows} follow edges`);
+
+  const handleless = users - withUsername;
+  report({
+    id: "social",
+    label: "Users with no username",
+    why: "No handle means no /u/ profile, so they cannot be linked to, followed, or shown in a follower list — they are invisible to the social graph.",
+    count: handleless,
+    samples: handleless
+      ? (await prisma.user.findMany({ where: { username: null }, select: { id: true, email: true }, take: LIST_CAP }))
+          .map((u) => `${u.id} (${u.email ? u.email.split("@")[0] + "@…" : "no email"})`)
+      : [],
+  });
+
+  // Not a fault — a health signal. A social product with zero edges has a
+  // discovery problem, not a bug, and the two need different responses.
+  if (follows === 0) {
+    console.log("        NOTE: zero follow edges. The follow path is wired but nobody has used it.");
+  } else {
+    console.log(`        ${mutualPairs} of those edges are from someone who is themselves followed.`);
+  }
+}
+
 async function main() {
   console.log("\n  Entity-graph integrity — reads only, writes nothing\n");
   await duplicateEvents();
@@ -250,6 +289,7 @@ async function main() {
   await staleStatus();
   await sportDrift();
   await imageCoverage();
+  await socialGraph();
 
   const broken = findings.filter((f) => f.count > 0).length;
   console.log(`\n  ${findings.length} checks, ${broken} with findings.`);

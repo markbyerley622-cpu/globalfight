@@ -35,6 +35,7 @@
     "cards:mark-complete": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/mark-complete.mts",
     "test:tournament": "node --import tsx --test \"src/lib/scraper/tournament/__tests__/**/*.test.ts\"",
     "audit:integrity": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/integrity-audit.mts",
+    "dm:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/dm-smoke.mts",
     "audit:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/audit-wikicards.mts",
     "cleanup:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/cleanup-wikicards.mts",
     "test": "node --import tsx --test \"src/lib/**/__tests__/**/*.test.ts\"",
