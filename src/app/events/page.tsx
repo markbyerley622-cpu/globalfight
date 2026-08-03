@@ -5,6 +5,7 @@ import { EventFilters } from "@/components/events/event-filters";
 import { EventCard } from "@/components/events/event-card";
 import { Pager } from "@/components/pager";
 import { queryEvents, getEventFacets, type EventFilters as Filters } from "@/lib/events-query";
+import { getCrowdForFightIds, getMyPicksForFightIds } from "@/lib/picks";
 import { getCurrentUser } from "@/lib/auth";
 import { getFollowedEventIds } from "@/lib/follows";
 import { getRecentEvents } from "@/lib/identity/recent-events";
@@ -92,6 +93,16 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
     isDefaultView ? getRecentEvents(viewer?.id ?? null) : Promise.resolve([]),
   ]);
 
+  // Quick Pick on the card needs the crowd and the viewer's own call for each
+  // headline bout. TWO queries for the whole page, not two per card — the same
+  // batching rule `followedIds` already follows above. A per-card read here
+  // would be 24 round-trips on a 12-card page.
+  const headlineIds = events.map((e) => e.mainEvent?.fightId).filter((id): id is string => Boolean(id));
+  const [crowdByFightId, myPickByFightId] = await Promise.all([
+    headlineIds.length ? getCrowdForFightIds(headlineIds) : Promise.resolve(new Map()),
+    viewer && headlineIds.length ? getMyPicksForFightIds(viewer.id, headlineIds) : Promise.resolve(new Map()),
+  ]);
+
   return (
     <>
       <PageHero
@@ -152,7 +163,14 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {events.map((e) => <EventCard key={e.id} event={e} />)}
+            {events.map((e) => (
+              <EventCard
+                key={e.id}
+                event={e}
+                crowd={e.mainEvent ? crowdByFightId.get(e.mainEvent.fightId) ?? null : null}
+                myPick={e.mainEvent ? myPickByFightId.get(e.mainEvent.fightId) ?? null : null}
+              />
+            ))}
           </div>
         )}
 

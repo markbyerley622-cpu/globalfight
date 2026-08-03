@@ -57,6 +57,12 @@ export interface EventCard {
     red: string;
     blue: string;
     titleFight: boolean;
+    /** The bout's own id and slug — the card's Quick Pick writes to the slug,
+     *  and the id is what batches the crowd/pick reads for a whole page. */
+    fightId: string;
+    fightSlug: string;
+    /** SCHEDULED bouts are pickable; anything else renders as a result. */
+    scheduled: boolean;
     /** Profile slugs, so the headline names link to the fighters. */
     redSlug: string;
     blueSlug: string;
@@ -191,6 +197,12 @@ const CARD_SELECT = {
     where: { mainEvent: true },
     take: 1,
     select: {
+      // id + slug so the card can mount the SAME pick control the event page
+      // uses, writing to the same endpoint. Without these the card could name
+      // the headline bout but gave nobody a way to call it.
+      id: true,
+      slug: true,
+      result: true,
       titleFight: true,
       red: { select: FIGHTER_CARD_SELECT },
       blue: { select: FIGHTER_CARD_SELECT },
@@ -278,6 +290,7 @@ export async function queryEvents(
         mainEvent: m
           ? {
               red: decodeHtmlEntities(m.red.name), blue: decodeHtmlEntities(m.blue.name), titleFight: m.titleFight,
+              fightId: m.id, fightSlug: m.slug, scheduled: m.result === "SCHEDULED",
               redSlug: m.red.slug, blueSlug: m.blue.slug,
               redRecord: formatRecord(m.red.wins, m.red.losses, m.red.draws, m.red.noContests),
               blueRecord: formatRecord(m.blue.wins, m.blue.losses, m.blue.draws, m.blue.noContests),

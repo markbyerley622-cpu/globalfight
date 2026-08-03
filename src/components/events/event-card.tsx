@@ -19,6 +19,8 @@ import { resolveWatch, resolveTickets } from "@/lib/events/providers";
 import { matchupIntel } from "@/lib/events/matchup";
 import type { EventCard as EventCardData, FighterRank } from "@/lib/events-query";
 import { FighterLink } from "@/components/fighter-link";
+import { BoutPick } from "@/components/predictions/bout-pick";
+import type { CrowdRead, MyPick } from "@/lib/picks";
 import { isPlaceholderName } from "@/lib/entities/placeholder";
 
 /**
@@ -33,7 +35,15 @@ import { isPlaceholderName } from "@/lib/entities/placeholder";
  * action taken here behaves identically to one taken inside — no per-surface
  * variants, no duplicated logic.
  */
-export function EventCard({ event }: { event: EventCardData }) {
+export function EventCard({
+  event, crowd = null, myPick = null,
+}: {
+  event: EventCardData;
+  /** Crowd split for the HEADLINE bout — batched once per page by the caller. */
+  crowd?: CrowdRead | null;
+  /** The viewer's own call on the headline bout, if signed in and already made. */
+  myPick?: MyPick | null;
+}) {
   const promo = resolvePromotion(event.promotion);
   // A generic/placeholder promotion ("Multiple promotions") is not a real org —
   // we never advertise it. Real promotions keep their brand colour; unattributed
@@ -180,6 +190,37 @@ export function EventCard({ event }: { event: EventCardData }) {
         })()}
 
         {/* Act without opening the event. Same components as the event page. */}
+        {/* ── QUICK PICK ────────────────────────────────────────────────────
+            The headline bout, callable without opening the card.
+
+            This is the whole point: the card already tells you who is fighting
+            and when, and then asked you to navigate before you could do the one
+            thing the product is for. A tap here writes to the same endpoint the
+            event page and the bout page use — one control, one backend, so a
+            call made from the grid is the same call made anywhere else.
+
+            Only for a SCHEDULED headline bout. A finished or cancelled card gets
+            nothing rather than a dead control. */}
+        {event.mainEvent && event.mainEvent.scheduled && !isDone && !isOff && (
+          <div className="mt-3 border-t border-ink-800 pt-3">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-wider text-fog">
+              <Swords className="size-3 text-blood-400" /> Quick Pick · Main event
+            </p>
+            <BoutPick
+              variant="compact"
+              fightSlug={event.mainEvent.fightSlug}
+              redName={event.mainEvent.red}
+              blueName={event.mainEvent.blue}
+              initialCrowd={crowd ?? { red: 0, blue: 0, total: 0 }}
+              initialPick={myPick ?? null}
+              // Picks close at first bell. A LIVE card must show the call that was
+              // made without pretending it can still be changed.
+              locked={isLive}
+              lockedNote={isLive ? "Card has started" : undefined}
+            />
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-800 pt-3">
           <FollowButton kind="event" slug={event.slug} name={event.name} initialFollowing={event.following} size="sm" label="Remind me" />
           {!isDone && !isOff && (
