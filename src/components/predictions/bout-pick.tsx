@@ -197,8 +197,13 @@ export function BoutPick({
                 aria-label={`${m.label} finish`}
                 aria-pressed={pick.method === m.value}
                 onClick={() => send(pick.corner, pick.confidence, pick.method === m.value ? null : m.value)}
+                // min-h-6 = 24px, WCAG 2.2 AA (2.5.8). The corner pills above are
+                // the primary control and get the full 44px; method and
+                // confidence are secondary refinements made AFTER the decision,
+                // and giving them 44px too would undo the compression this
+                // variant exists for. 24px is the floor, not a rounding.
                 className={cn(
-                  "tap rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold transition-colors",
+                  "tap inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold transition-colors",
                   pick.method === m.value
                     ? "border-blood-500 bg-blood-500/20 text-chalk"
                     : "border-ink-700 text-fog hover:border-ink-600 hover:text-mist",
@@ -215,9 +220,9 @@ export function BoutPick({
                   aria-label={`Confidence ${n} of 5`}
                   aria-pressed={(pick.confidence ?? 0) >= n}
                   onClick={() => send(pick.corner, n, pick.method)}
-                  className="tap px-0.5 py-1"
+                  className="tap inline-flex min-h-6 min-w-6 items-center justify-center p-1"
                 >
-                  <Star className={cn("size-3 transition-colors", (pick.confidence ?? 0) >= n ? "fill-gold-400 text-gold-400" : "text-ink-600")} />
+                  <Star className={cn("size-3.5 transition-colors", (pick.confidence ?? 0) >= n ? "fill-gold-400 text-gold-400" : "text-ink-600")} />
                 </button>
               ))}
             </div>
@@ -426,7 +431,11 @@ function CompactCorner({
       aria-pressed={picked}
       aria-label={`Pick ${name}`}
       className={cn(
-        "tap relative flex items-center justify-between gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-all",
+        // min-h-11 = 44px. MEASURED at 33px before this: `py-2` on a single
+        // line of 12px text gives a 33px box, which is under every published
+        // minimum touch target (WCAG 2.5.5 / Apple HIG / Material all land at
+        // 44–48px) and this is the single most-tapped control on the page.
+        "tap relative flex min-h-11 items-center justify-between gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-all",
         disabled ? "cursor-default" : "active:scale-95",
         picked
           ? tone === "red"
