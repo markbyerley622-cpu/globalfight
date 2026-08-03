@@ -232,8 +232,12 @@ export interface RankingDivision {
  * or the filter would promise sports the page then refuses to show.
  */
 export async function getSportsWithRankings(): Promise<string[]> {
+  // No source filter: this must mirror what the READ will actually serve, and
+  // the read falls back to the rating engine for a sport with no source-backed
+  // list. Filtering to non-generated here would mark a sport "no rankings yet"
+  // in the filter while its page rendered a full list — the two disagreeing is
+  // worse than either answer alone.
   const rows = await prisma.ranking.findMany({
-    where: { source: { not: "generated" } },
     distinct: ["weightClassId"],
     select: { weightClass: { select: { sport: true } } },
   });
@@ -366,8 +370,46 @@ export async function getPoundForPoundBySport(
     ...(organisation ? { organisation } : {}),
   };
 
+  // ── Source-backed first; the rating engine ONLY where nothing else exists ──
+  //
+  // Generated rows used to be excluded from every read, full stop. The reason
+  // was real and is worth restating: the generated boxing P4P once read
+  // "#1 Inoue, #2 Crawford, #3 Usyk, #4 Canelo, #5 Mariusz Wach", because the
+  // top four were surname-only stubs a ranking import had created with ZERO
+  // bouts, and the fifth was an artefact of a thin dataset.
+  //
+  // That defect has since been fixed at its cause rather than papered over at
+  // the read: generate.ts now selects through `rankableInDiscipline` (verified
+  // BOUT evidence, not the imported label) and `isRankable` (a minimum number of
+  // recorded bouts). A zero-bout stub can no longer enter the list at all.
+  //
+  // So the blanket exclusion now costs more than it saves — it is why judo,
+  // taekwondo, wrestling and sambo showed nothing despite carrying thousands of
+  // decided bouts each at 100% ruleset coverage. The rule is now precedence, not
+  // prohibition: a source-backed list ALWAYS wins, and the engine fills only a
+  // sport that has none. It can never contradict an official ranking, because it
+  // is never consulted when one exists.
   const total = await prisma.ranking.count({ where });
-  if (total === 0) return { items: [], total: 0, source: "none" };
+  if (total === 0) {
+    const genWhere = { ...where, source: "generated" };
+    const genTotal = await prisma.ranking.count({ where: genWhere });
+    if (genTotal === 0) return { items: [], total: 0, source: "none" };
+    const genRows = await prisma.ranking.findMany({
+      where: genWhere,
+      orderBy: { rank: "asc" },
+      skip, take: limit,
+      include: { fighter: { include: { titles: true } } },
+    });
+    return {
+      items: genRows.map((r) => ({
+        rank: r.rank, previousRank: r.previousRank ?? undefined,
+        movement: r.movement as RankMovement, rating: r.rating ?? undefined,
+        fighter: mapFighter(r.fighter),
+      })),
+      total: genTotal,
+      source: "generated",
+    };
+  }
 
   const rows = await prisma.ranking.findMany({
     where,
@@ -377,7 +419,14 @@ export async function getPoundForPoundBySport(
     // transparent cross-sport leaderboard that surfaces each sport rather than
     // burying the ones the rating engine doesn't score. Rated fighters break
     // ties within a rank so the boxing/MMA #1s still lead the pack of #1s.
-    orderBy: sportValue ? { rank: "asc" } : [{ rank: "asc" }, { rating: { sort: "desc", nulls: "last" } }],
+    // Within a sport, group each LIST before ordering by rank. A sport can hold
+    // several P4P lists at once — UFC men's and UFC women's are both real, and
+    // both start at #1 — so ordering by rank alone interleaved them into
+    // "#1, #1, #2, #2, #3, #3", which reads as duplicate ranks rather than as
+    // two lists. Grouping by (organisation, weightClass) keeps each list whole.
+    orderBy: sportValue
+      ? [{ organisation: "asc" }, { weightClassId: "asc" }, { rank: "asc" }]
+      : [{ rank: "asc" }, { rating: { sort: "desc", nulls: "last" } }],
     skip, take: limit,
     include: { fighter: { include: { titles: true } } },
   });

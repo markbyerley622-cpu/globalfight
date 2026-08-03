@@ -65,7 +65,9 @@
     "audit:crons": "node --import tsx scripts/cron-coverage.mts",
     "rankings:ingest": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/rankings-ingest.mts",
     "doctor:production": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/production-doctor.mts",
-    "audit:providers": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/provider-doctor.mts"
+    "audit:providers": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/provider-doctor.mts",
+    "p4p:generate": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/p4p-generate.mts",
+    "backfill:records": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/records-backfill.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

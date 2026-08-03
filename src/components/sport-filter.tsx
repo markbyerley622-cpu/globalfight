@@ -55,7 +55,7 @@ export function SportFilter({ availableSlugs }: { availableSlugs?: string[] } = 
             onClick={() => { if (!soon) pick(p.slug); }}
             disabled={soon}
             aria-disabled={soon}
-            title={soon ? `${p.label} rankings are not published yet` : undefined}
+            title={soon ? `No official ${p.label} rankings available yet` : undefined}
             className={cn(
               "shrink-0 rounded-full border px-4 py-2 font-display text-xs font-semibold uppercase tracking-wide transition-colors",
               soon
@@ -66,7 +66,12 @@ export function SportFilter({ availableSlugs }: { availableSlugs?: string[] } = 
             )}
           >
             {p.label}
-            {soon && <span className="ml-1.5 text-[0.6rem] font-normal tracking-normal opacity-70">{t("Soon")}</span>}
+            {/* "No ranking" rather than "Soon". Soon is a promise about a date
+                we cannot keep: these sports are empty because no authority
+                publishes a list we can use, and for several of them that may
+                never change. Stating the fact is both truer and more useful —
+                the reader learns the sport is unranked, not that we are late. */}
+            {soon && <span className="ml-1.5 text-[0.6rem] font-normal tracking-normal opacity-70">{t("No ranking")}</span>}
           </button>
         );
       })}

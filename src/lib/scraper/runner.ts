@@ -20,6 +20,7 @@ import { syncBKFC } from "@/lib/scraper/bkfc";
 import { generateAllP4P } from "@/lib/rankings/generate";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
+import { applyDerivedRecords } from "@/lib/fighters/derive-records";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
 import { syncADCC } from "@/lib/scraper/adcc";
@@ -246,6 +247,20 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
       //     engine then skips those sports.
       //  2. RATING ENGINE — record-based P4P for the sports curated doesn't cover
       //     (Boxing, MMA). Never clobbers curated. See docs/RANKING_ENGINE.md.
+      // 0. RECORDS FIRST — the rating engine reads Fighter.wins/losses/draws,
+      //    and no provider that writes bouts ever writes those columns. Before
+      //    this ran, 13 fighters out of 10,419 had a record while the database
+      //    held 13,603 decided bouts, so isRankable() rejected everyone and the
+      //    engine produced an empty list for every sport. It looked like a
+      //    broken ranker; its input had simply never been populated.
+      //
+      //    Mode "grow": fills an empty record, and updates one that accounts for
+      //    fewer bouts than we now hold. It cannot replace a fuller
+      //    provider-published career record with our partial count.
+      await safe("p4p:records", async () => {
+        const r = await applyDerivedRecords({ apply: true, mode: "grow" });
+        return `updated=${r.updated} preserved=${r.preserved} unchanged=${r.unchanged}`;
+      });
       await safe("p4p:curated", async () =>
         (await ingestCuratedP4P()).reduce((n, r) => n + r.ranked, 0),
       );
