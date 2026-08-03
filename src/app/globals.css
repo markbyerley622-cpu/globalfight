@@ -301,6 +301,18 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Quick Pick's second row — method + confidence — revealing once a corner is
+   chosen. A short rise rather than a fade alone, so the row reads as having
+   ARRIVED in response to the tap instead of merely existing. 160ms is inside
+   the 150–200ms band where a transition is felt as responsive rather than
+   watched. Honours prefers-reduced-motion like every other motion here. */
+@keyframes quickPickReveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.qp-reveal { animation: quickPickReveal 160ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .qp-reveal { animation: none; } }
+
 @keyframes marquee {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

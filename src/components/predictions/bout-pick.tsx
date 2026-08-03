@@ -165,30 +165,35 @@ export function BoutPick({
           <CompactCorner
             name={redName} picked={pick?.corner === "RED"} tone="red"
             underdog={redUnderdog} disabled={locked} busy={busy}
-            pct={crowd.total ? redPct : null}
+            dimmed={pick != null && pick.corner !== "RED"}
             onClick={() => send("RED", pick?.corner === "RED" ? pick.confidence : null, pick?.corner === "RED" ? pick.method : null)}
           />
           <CompactCorner
             name={blueName} picked={pick?.corner === "BLUE"} tone="blue"
             underdog={blueUnderdog} disabled={locked} busy={busy}
-            pct={crowd.total ? 100 - redPct : null}
+            dimmed={pick != null && pick.corner !== "BLUE"}
             onClick={() => send("BLUE", pick?.corner === "BLUE" ? pick.confidence : null, pick?.corner === "BLUE" ? pick.method : null)}
           />
         </div>
 
-        {/* The crowd, as one hairline. Absent at zero rather than explained. */}
+        {/* The crowd — percentages either side of a two-tone bar, so the split
+            reads in the SAME red/blue vocabulary as the pills above it.
+            Absent entirely at zero rather than a bar at 50/50, which would
+            claim a consensus that does not exist. */}
         {crowd.total > 0 && (
           <div className="mt-2 flex items-center gap-2">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-volt-500/30">
-              <div className="h-full rounded-full bg-blood-500 transition-all duration-500" style={{ width: `${redPct}%` }} />
+            <span className="w-8 shrink-0 text-[0.65rem] font-bold tabular-nums text-blood-400">{redPct}%</span>
+            <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-ink-800">
+              <div className="h-full bg-blood-500 transition-all duration-500" style={{ width: `${redPct}%` }} />
+              <div className="h-full flex-1 bg-volt-500 transition-all duration-500" />
             </div>
-            <span className="shrink-0 text-[0.6rem] tabular-nums text-fog">{crowd.total.toLocaleString()}</span>
+            <span className="w-8 shrink-0 text-right text-[0.65rem] font-bold tabular-nums text-volt-400">{100 - redPct}%</span>
           </div>
         )}
 
         {/* Second row: only after a call, and only when it can still change. */}
         {pick && !locked && (
-          <div className={cn("mt-2 flex flex-wrap items-center gap-1.5 transition-all", flash && "scale-[1.01]")}>
+          <div className={cn("qp-reveal mt-2 flex flex-wrap items-center gap-1.5 transition-all", flash && "scale-[1.01]")}>
             <CheckCircle2 className={cn("size-3.5 shrink-0 text-up", flash && "animate-pulse")} />
             {METHODS.map((m) => (
               <button
@@ -411,16 +416,16 @@ export function BoutPick({
  * IS the reward — a pick that saved silently felt like nothing had happened.
  */
 function CompactCorner({
-  name, picked, tone, pct, underdog = false, disabled = false, busy = false, onClick,
+  name, picked, tone, underdog = false, disabled = false, busy = false, dimmed = false, onClick,
 }: {
   name: string;
   picked: boolean;
   tone: "red" | "blue";
-  /** Crowd share for this corner, or null when nobody has picked yet. */
-  pct: number | null;
   underdog?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  /** A call was made and it was not this corner — recede, do not vanish. */
+  dimmed?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -435,22 +440,42 @@ function CompactCorner({
         // line of 12px text gives a 33px box, which is under every published
         // minimum touch target (WCAG 2.5.5 / Apple HIG / Material all land at
         // 44–48px) and this is the single most-tapped control on the page.
-        "tap relative flex min-h-11 items-center justify-between gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-all",
-        disabled ? "cursor-default" : "active:scale-95",
+        //
+        // COLOUR CARRIES THE CORNER. Combat sports already has this vocabulary —
+        // red corner, blue corner — so the pills used to be two identical
+        // neutral rectangles that made a fan read two names to work out which
+        // was which. Tinted at rest, solid when chosen; no "Red corner" /
+        // "Blue corner" label needed, which is what buys the vertical space
+        // this variant runs on.
+        "tap relative flex min-h-11 w-full items-center justify-between gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-all duration-200",
+        disabled ? "cursor-default" : "active:scale-[0.98]",
         picked
+          // Chosen: solid corner colour, white text. AA-safe — white on
+          // blood-600 and on volt-600 both clear 4.5:1 at this weight.
           ? tone === "red"
-            ? "border-blood-500 bg-blood-500/20 text-chalk shadow-glow-red"
-            : "border-volt-500 bg-volt-500/20 text-chalk"
-          : disabled
-            ? "border-ink-800 text-fog"
-            : "border-ink-700 text-mist hover:border-ink-600 hover:bg-ink-800",
+            ? "border-blood-500 bg-blood-600 font-bold text-white shadow-glow-red"
+            : "border-volt-500 bg-volt-600 font-bold text-white"
+          : dimmed
+            // The corner NOT chosen. Recedes rather than disappearing — it is
+            // still the way to change your mind, so it must stay legible and
+            // tappable, just quieter than the call you actually made.
+            ? tone === "red"
+              ? "border-blood-500/20 bg-blood-500/[0.04] text-fog opacity-60 hover:opacity-100"
+              : "border-volt-500/20 bg-volt-500/[0.04] text-fog opacity-60 hover:opacity-100"
+            : disabled
+              ? "border-ink-800 text-fog"
+              // At rest: lightly tinted so the corner is readable at a glance.
+              : tone === "red"
+                ? "border-blood-500/35 bg-blood-500/10 text-chalk hover:border-blood-500/70 hover:bg-blood-500/20"
+                : "border-volt-500/35 bg-volt-500/10 text-chalk hover:border-volt-500/70 hover:bg-volt-500/20",
       )}
     >
+      {/* truncate + min-w-0 — a long Thai or Brazilian name must ellipsis, never
+          wrap the pill to two lines and break the row's rhythm. */}
       <span className="min-w-0 truncate font-display text-xs font-bold leading-tight">{name}</span>
       <span className="flex shrink-0 items-center gap-1">
         {underdog && <Flame className="size-3 text-gold-400" aria-label="Underdog" />}
-        {pct !== null && <span className="text-[0.6rem] tabular-nums text-fog">{pct}%</span>}
-        {picked && <CheckCircle2 className="size-3.5 text-up" />}
+        {picked && <CheckCircle2 className="size-4" />}
       </span>
     </button>
   );

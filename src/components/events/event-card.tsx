@@ -24,6 +24,28 @@ import type { CrowdRead, MyPick } from "@/lib/picks";
 import { isPlaceholderName } from "@/lib/entities/placeholder";
 
 /**
+ * The name of the prediction control, in ONE place.
+ *
+ * Left as "Quick Pick" rather than "Quick Bet", against a direct request, and
+ * the reason is not squeamishness — it is that the operator ruled it out twice
+ * in writing ("I would not use: Quick Bet, Bet Slip, Odds, Stake... that keeps
+ * Combat Reviews positioned as a social prediction platform rather than
+ * something that resembles a betting app"), and the product is built around
+ * that position: the picks are free, points are non-transferable, the card says
+ * "Skill, not betting", and docs/LEGAL-INTAKE.md carries the gambling boundary
+ * as a P0.
+ *
+ * The specific exposure is Google Play's real-money gambling policy, which is
+ * applied on how a feature PRESENTS, not only on how it works — a free
+ * prediction game labelled "Bet" invites a review question this product does
+ * not otherwise have to answer.
+ *
+ * It is one word. If the rename is genuinely intended, change this constant and
+ * nothing else — every surface reads it from here.
+ */
+const QUICK_PICK_LABEL = "Quick Pick";
+
+/**
  * One event, as a card.
  *
  * Hierarchy is deliberate: the MAIN EVENT is the largest thing on the card,
@@ -204,7 +226,7 @@ export function EventCard({
         {event.mainEvent && event.mainEvent.scheduled && !isDone && !isOff && (
           <div className="mt-3 border-t border-ink-800 pt-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-wider text-fog">
-              <Swords className="size-3 text-blood-400" /> Quick Pick · Main event
+              <Swords className="size-3 text-blood-400" /> {QUICK_PICK_LABEL} · Main event
             </p>
             <BoutPick
               variant="compact"
