@@ -276,6 +276,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           />
         ) : (
         <>
+        {/* Said ONCE, above the card, instead of under all twelve bouts.
+            "Make your call — earn points if it lands. Skill, not betting." was
+            correct copy in the wrong place: repeated per bout it became the
+            single largest block of text on the page, and the sentence that
+            matters legally is the one a reader has stopped reading. */}
+        <p className="mb-3 flex items-center gap-1.5 text-[0.7rem] text-fog">
+          <Swords className="size-3.5 shrink-0 text-blood-400" />
+          Tap a corner to call each bout — correct calls earn points. Skill, not betting.
+        </p>
         {/* Compressed: the top bouts (main event + co-main + one) render; the
             rest tuck behind a "View N more predictions" toggle so a reader reaches
             the card talk + coverage without scrolling past every bout. */}
@@ -406,6 +415,11 @@ function BoutPrediction({ fight, crowd, myPick, market, eventDate }: { fight: Fi
         marketRedP={market?.redP ?? null}
         locked={locked}
         lockedNote={locked ? STATUS_PRESENTATION[status].detail : undefined}
+        // Compact on the card: this control repeats once per bout, and the full
+        // variant's headings and explainer copy are correct once and noise
+        // twelve times. The card states "Skill, not betting" ONCE, above the
+        // first bout — see the card header — rather than under every one.
+        variant="compact"
       />
     );
   }
