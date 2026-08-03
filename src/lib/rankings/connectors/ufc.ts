@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
 import type { RankingConnector, RankingEntry } from "../connector";
 import { normalizeWeightClass } from "../connector";
+import { BOT_HEADERS } from "@/lib/http-identity";
 
 // ════════════════════════════════════════════════════════════════════════
 //  MMA ranking connector — UFC.com official rankings (first provider).
@@ -13,9 +14,9 @@ import { normalizeWeightClass } from "../connector";
 //  UFC.com is server-rendered (Drupal). Each division is a `.view-grouping` with
 //  a header, a champion, and 15 ranked rows — and the page renders every division
 //  TWICE, so we de-duplicate by (gender, division). We parse SEMANTIC content
-//  (division name, rank, fighter name), never presentation. Pound-for-pound
-//  groups are skipped in v1 (MMA P4P stays engine/curated-driven); this connector
-//  owns the weight-class divisions. parse is a PURE function for fixture testing.
+//  (division name, rank, fighter name), never presentation. The pound-for-pound
+//  grouping is ingested too, flagged isPoundForPound so it is stored as a P4P
+//  list rather than a weight class. parse is a PURE function for fixture testing.
 // ════════════════════════════════════════════════════════════════════════
 
 const SOURCE_URL = "https://www.ufc.com/rankings";
@@ -45,15 +46,23 @@ export function parseUfcRankings(html: string, now: Date = new Date()): RankingE
   $(".view-grouping").each((_, g) => {
     const header = $(g).find(".view-grouping-header").first().text().trim().replace(/\s+/g, " ");
     if (!header) return;
-    // v1 owns weight-class divisions; P4P stays engine/curated-driven.
-    if (/pound-for-pound/i.test(header)) return;
+
+    // Pound-for-pound is a REAL grouping on this page and is now ingested as
+    // one. It used to be skipped ("P4P stays engine/curated-driven"), which
+    // left the product with no promotion P4P at all: the rating engine's output
+    // is excluded from every public read, and the curated lists deliberately
+    // exclude MMA. So the sport with the most-cited P4P list in combat sports
+    // showed an empty P4P page while the official list sat un-parsed.
+    const isP4P = /pound-for-pound/i.test(header);
 
     const female = /women/i.test(header);
     const gender = female ? "female" : "male";
     const base = header.replace(/women'?s/i, "").replace(/division|top rank/i, "").trim();
     if (!base) return;
     // Women's divisions keep the prefix so they never collide with the men's.
-    const weightClass = (female ? "Women's " : "") + normalizeWeightClass(base);
+    const weightClass = isP4P
+      ? (female ? "Women's " : "") + "Pound-for-Pound"
+      : (female ? "Women's " : "") + normalizeWeightClass(base);
 
     const key = `${gender}|${weightClass}`;
     if (seenDivisions.has(key)) return; // UFC renders each division twice
@@ -62,7 +71,8 @@ export function parseUfcRankings(html: string, now: Date = new Date()): RankingE
     // Champion → rank 0 (ingest keeps contenders; champions are a documented
     // follow-up to the Champion table, but we surface them for that work).
     const champ = nameOf($, $(g).find(".rankings--athlete--champion, .views-field-field-champion, .info").first().get(0) as Element);
-    if (champ && !isChampionOrNoise(champ)) {
+    // A P4P grouping has no champion — only the divisions do.
+    if (!isP4P && champ && !isChampionOrNoise(champ)) {
       entries.push({
         name: champ, weightClass, rank: 0, gender, kind: "professional",
         countryCode: null, organisation: "UFC", sport: "mma", effectiveDate, sourceUrl: SOURCE_URL,
@@ -76,7 +86,7 @@ export function parseUfcRankings(html: string, now: Date = new Date()): RankingE
       const name = nameOf($, tr);
       if (isChampionOrNoise(name)) return;
       entries.push({
-        name, weightClass, rank, gender, kind: "professional",
+        name, weightClass, rank, gender, kind: "professional", isPoundForPound: isP4P,
         countryCode: null, organisation: "UFC", sport: "mma", effectiveDate, sourceUrl: SOURCE_URL,
       });
     });
@@ -91,11 +101,18 @@ export function parseUfcRankings(html: string, now: Date = new Date()): RankingE
  * partial ranking (the runner records the failure and moves on).
  */
 export function validateUfcRankings(entries: RankingEntry[]): void {
-  const divisions = new Set(entries.map((e) => `${e.gender}|${e.weightClass}`));
+  // The MIN_DIVISIONS floor counts WEIGHT-CLASS divisions only. P4P is excluded
+  // from the count deliberately: it is a division-shaped grouping, so counting
+  // it would let a page that rendered nothing but P4P clear a floor that exists
+  // to prove the weight-class tables parsed.
+  const divisions = new Set(entries.filter((e) => !e.isPoundForPound).map((e) => `${e.gender}|${e.weightClass}`));
   if (divisions.size < MIN_DIVISIONS) {
     throw new Error(`UFC parse produced only ${divisions.size} divisions (< ${MIN_DIVISIONS}) — refusing to publish a partial ranking`);
   }
-  for (const div of divisions) {
+  // Per-group sanity runs over EVERY grouping including P4P — the floor above
+  // excludes P4P from counting, but a malformed P4P table must still refuse.
+  const groups = new Set(entries.map((e) => `${e.gender}|${e.weightClass}`));
+  for (const div of groups) {
     const ranks = entries.filter((e) => `${e.gender}|${e.weightClass}` === div && e.rank >= 1).map((e) => e.rank);
     // A near-empty division signals a broken parse (real ones list ~15).
     if (ranks.length < 5) {
@@ -115,10 +132,14 @@ export const ufcMmaConnector: RankingConnector = {
   id: "ufc-mma",
   label: "UFC.com Official Rankings (MMA)",
   trust: "official",
-  licensed: false, // owner-controlled; registry flag is the source of truth
+  licensed: true, // registry (sources.ts) remains the source of truth for this
   async fetch(): Promise<RankingEntry[]> {
     const res = await fetch(SOURCE_URL, {
-      headers: { "user-agent": "GlobalFightBot/1.0 (+https://globalfight.onrender.com)" },
+      // BOT_HEADERS, not a local string. This connector hardcoded its own
+      // User-Agent naming globalfight.onrender.com — a host that answers 503 —
+      // so it advertised a dead contact address from outside the one-identity
+      // policy in lib/http-identity that exists to prevent exactly that drift.
+      headers: { ...BOT_HEADERS },
       signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) throw new Error(`UFC fetch ${res.status}`);

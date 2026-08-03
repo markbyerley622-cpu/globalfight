@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { RankMovement } from "@/lib/types";
-import { ArrowUp, ArrowDown, Minus, Sparkles } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 export function Badge({
   children, className, tone = "neutral",
@@ -33,7 +33,12 @@ export function MovementIndicator({ movement, delta }: { movement: RankMovement;
     return <span className="inline-flex items-center gap-0.5 text-up text-xs font-bold"><ArrowUp className="size-3" />{delta ?? ""}</span>;
   if (movement === "DOWN")
     return <span className="inline-flex items-center gap-0.5 text-down text-xs font-bold"><ArrowDown className="size-3" />{delta ?? ""}</span>;
-  if (movement === "NEW")
-    return <span className="inline-flex items-center gap-0.5 text-gold-400 text-xs font-bold"><Sparkles className="size-3" />NEW</span>;
+  // "NEW" renders as the same neutral dash as "SAME". It used to be a gold
+  // ✨NEW pill, and the reason that was wrong is mechanical: movementFor()
+  // returns "NEW" whenever previousRank is null, which is EVERY row on a list's
+  // first ingest. So a freshly-ingested division showed fifteen "NEW" badges —
+  // the badge marked "we have no history yet", not "this fighter just broke in",
+  // and it read as unfinished placeholder UI on exactly the screens a first-time
+  // visitor lands on. The movement is still stored; it is simply not decorated.
   return <span className="text-fog"><Minus className="size-3" /></span>;
 }

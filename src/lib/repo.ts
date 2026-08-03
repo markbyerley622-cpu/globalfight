@@ -162,13 +162,23 @@ export async function getArticle(slug: string): Promise<Article | null> {
 type WithFallback<T> = { data: T; usedFallback: boolean };
 type FightersPageOpts = { sport?: string; country?: string; status?: string; q?: string; cursor?: string; limit?: number };
 
-export async function getRankingDivisionsSafe(sportValue: string): Promise<WithFallback<RankingDivision[]>> {
-  return { data: await live(() => pg.getRankingDivisions(sportValue), []), usedFallback: false };
+export async function getRankingDivisionsSafe(sportValue: string, organisation?: string): Promise<WithFallback<RankingDivision[]>> {
+  return { data: await live(() => pg.getRankingDivisions(sportValue, organisation), []), usedFallback: false };
 }
 
-export async function getPoundForPoundPage(sportValue: string | undefined, page: number, limit = 10) {
+/** Sports with at least one publishable ranking row — the rest render as "Soon". */
+export async function getSportsWithRankingsSafe(): Promise<string[]> {
+  return live(() => pg.getSportsWithRankings(), []);
+}
+
+/** Organisations publishing a ranking for this sport — drives the org filter. */
+export async function getRankingOrganisationsSafe(sportValue: string): Promise<string[]> {
+  return live(() => pg.getRankingOrganisations(sportValue), []);
+}
+
+export async function getPoundForPoundPage(sportValue: string | undefined, page: number, limit = 10, organisation?: string) {
   const data = await live(
-    () => pg.getPoundForPoundBySport(sportValue, page, limit),
+    () => pg.getPoundForPoundBySport(sportValue, page, limit, organisation),
     { items: [] as RankedFighterLite[], total: 0, source: "none" as const },
   );
   return { ...data, usedFallback: false };

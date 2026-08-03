@@ -27,7 +27,7 @@ const at = new Date("2026-07-24T00:00:00Z");
 
 test("parses champions as rank 0 with country", () => {
   const rows = parseWbaFemale(FIXTURE, at);
-  const champ = rows.find((r) => r.rank === 0 && r.weightClass === "Heavyweight");
+  const champ = rows.find((r) => r.rank === 0 && r.weightClass === "Women's Heavyweight");
   assert.ok(champ, "heavyweight champion present");
   assert.equal(champ!.name, "CLARESSA SHIELDS");
   assert.equal(champ!.countryCode, "US");
@@ -37,7 +37,7 @@ test("parses champions as rank 0 with country", () => {
 
 test("parses contenders and drops NOT RATED", () => {
   const rows = parseWbaFemale(FIXTURE, at);
-  const hw = rows.filter((r) => r.weightClass === "Heavyweight" && r.rank >= 1);
+  const hw = rows.filter((r) => r.weightClass === "Women's Heavyweight" && r.rank >= 1);
   assert.deepEqual(hw.map((r) => [r.rank, r.name]), [
     [2, "MINELLIS BLANCO"],
     [3, "ANNIE MAZEROLLE"],
@@ -47,7 +47,7 @@ test("parses contenders and drops NOT RATED", () => {
 
 test("normalizes division labels and carries them across the pair", () => {
   const rows = parseWbaFemale(FIXTURE, at);
-  assert.ok(rows.some((r) => r.weightClass === "Super Lightweight" && r.name === "KYLIE EPPERSON"));
+  assert.ok(rows.some((r) => r.weightClass === "Women's Super Lightweight" && r.name === "KYLIE EPPERSON"));
   // every row is tagged with a real division, never blank
   assert.ok(rows.every((r) => r.weightClass.length > 0));
 });

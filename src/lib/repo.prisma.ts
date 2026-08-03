@@ -221,8 +221,59 @@ export interface RankingDivision {
   rankings: RankedFighter[];
 }
 
-/** Divisional rankings for one sport. Empty array → no divisions for that sport. */
-export async function getRankingDivisions(sportValue: string): Promise<RankingDivision[]> {
+/**
+ * Sports that have at least one PUBLISHABLE ranking row — the sports whose
+ * ranking screens will render something.
+ *
+ * Used to mark every other sport "Soon" in the filter instead of letting a
+ * reader walk into an empty table. Measured, not configured: a sport appears
+ * the moment its first row is ingested, so there is no second list to forget to
+ * update. Mirrors the exact gate the read queries apply (`source != 'generated'`),
+ * or the filter would promise sports the page then refuses to show.
+ */
+export async function getSportsWithRankings(): Promise<string[]> {
+  const rows = await prisma.ranking.findMany({
+    where: { source: { not: "generated" } },
+    distinct: ["weightClassId"],
+    select: { weightClass: { select: { sport: true } } },
+  });
+  return [...new Set(rows.map((r) => String(r.weightClass.sport)))];
+}
+
+/**
+ * Which organisations publish a ranking for this sport — "UFC", "ONE", "WBA"…
+ *
+ * Drives the organisation filter. Derived from the rows that actually exist, so
+ * a promotion appears the moment its first list is ingested and disappears when
+ * it stops being carried; there is no second list to keep in step. The
+ * cross-promotional rows (organisation "") are excluded — they are the "All"
+ * option, not an organisation.
+ */
+export async function getRankingOrganisations(sportValue: string): Promise<string[]> {
+  const rows = await prisma.ranking.findMany({
+    where: {
+      organisation: { not: "" },
+      source: { not: "generated" },
+      weightClass: { sport: sportValue as PFighter["sport"] },
+    },
+    distinct: ["organisation"],
+    select: { organisation: true },
+    orderBy: { organisation: "asc" },
+  });
+  return rows.map((r) => r.organisation);
+}
+
+/**
+ * Divisional rankings for one sport. Empty array → no divisions for that sport.
+ *
+ * `organisation` scopes to one promotion's list ("UFC", "ONE", …). Undefined
+ * means every organisation, which is why the rows are ordered by organisation
+ * before rank — without that a division holding both a UFC and a ONE list would
+ * interleave two unrelated ladders into one nonsensical 1,1,2,2,3,3.
+ */
+export async function getRankingDivisions(
+  sportValue: string, organisation?: string,
+): Promise<RankingDivision[]> {
   const wcs = await prisma.weightClass.findMany({
     // Exclude pound-for-pound anchor weight classes (the `p4p-*` ones we create
     // for generated rankings, and the legacy boxing `pound-for-pound`).
@@ -235,8 +286,17 @@ export async function getRankingDivisions(sportValue: string): Promise<RankingDi
   const out: RankingDivision[] = [];
   for (const wc of wcs) {
     const rows = await prisma.ranking.findMany({
-      where: { weightClassId: wc.id, isPoundForPound: false },
-      orderBy: { rank: "asc" },
+      where: {
+        weightClassId: wc.id,
+        isPoundForPound: false,
+        // Generated rows are excluded from every public read (see the long note
+        // on getPoundForPoundBySport). This query used to omit that filter, so
+        // rating-engine output that the P4P page correctly refused to show was
+        // being published here anyway.
+        source: { not: "generated" },
+        ...(organisation ? { organisation } : {}),
+      },
+      orderBy: organisation ? { rank: "asc" } : [{ organisation: "asc" }, { rank: "asc" }],
       take: 9,
       include: { fighter: { include: { titles: true } } },
     });
@@ -275,7 +335,7 @@ export async function getRankingDivisions(sportValue: string): Promise<RankingDi
  * An empty sport is honest; a guessed one is not. Paginated, 10/page.
  */
 export async function getPoundForPoundBySport(
-  sportValue: string | undefined, page: number, limit = 10,
+  sportValue: string | undefined, page: number, limit = 10, organisation?: string,
 ): Promise<{ items: RankedFighter[]; total: number; source: "curated" | "generated" | "none" }> {
   const skip = Math.max(0, page) * limit;
   // No sportValue → "All Sports": the top rated across every combat sport.
@@ -301,6 +361,9 @@ export async function getPoundForPoundBySport(
     // A ranking's discipline is a property of the RANKING (its weight class),
     // and that is what the reader is asking about.
     ...(sportValue ? { weightClass: { sport: sportValue as PFighter["sport"] } } : {}),
+    // Scope to one promotion's P4P list. Undefined = every list this sport has,
+    // including the cross-promotional curated one (organisation "").
+    ...(organisation ? { organisation } : {}),
   };
 
   const total = await prisma.ranking.count({ where });

@@ -36,10 +36,19 @@ export const RANKING_SOURCES: RankingSource[] = [
   // ── MMA — promotion official rankings ─────────────────────────────────
   // UFC is the first MMA provider; PFL / ONE / Sherdog / Tapology plug in as
   // additional RankingConnector modules without engine changes.
-  { id: "ufc-mma", label: "UFC.com Official Rankings", organisation: "UFC", url: "https://www.ufc.com/rankings", tier: 1, trust: "official", scope: "mma/divisions", licensed: false, connectorReady: true, notes: "Server-rendered, verified (11 divisions × top-15). Set licensed:true + RANKINGS_INGEST_ENABLED=true to go live." },
+  // LICENSED 2026-08-03 on the owner's explicit instruction. Ingests UFC.com's
+  // official weight-class divisions AND its pound-for-pound table (the P4P
+  // grouping used to be skipped by the parser; see connectors/ufc.ts).
+  // Still requires RANKINGS_INGEST_ENABLED=true — this flag is one of two locks.
+  { id: "ufc-mma", label: "UFC.com Official Rankings", organisation: "UFC", url: "https://www.ufc.com/rankings", tier: 1, trust: "official", scope: "mma/divisions+p4p", licensed: true, connectorReady: true, notes: "Server-rendered, verified (11 divisions × top-15, plus P4P). Live." },
 
   // ── Tier 1 — official sanctioning bodies (boxing) ─────────────────────
-  { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: true, notes: "Reference connector — server-rendered HTML tables, verified end-to-end (193 entries/16 divisions). Set licensed:true + RANKINGS_INGEST_ENABLED=true to go live." },
+  // LICENSED 2026-08-03 on the owner's explicit instruction.
+  // FEMALE ratings only — that is the whole of this source. Its divisions are
+  // emitted as "Women's <division>" so they never share a WeightClass row with
+  // men's boxing and are never presented as unqualified "Boxing" rankings.
+  // A men's boxing source is still missing; see the WBC/WBO/IBF entries below.
+  { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: true, connectorReady: true, notes: "Server-rendered HTML tables, verified end-to-end (193 entries/16 divisions). Live." },
   { id: "wbc-female", label: "WBC Female", organisation: "WBC", url: "https://wbcboxing.com/en/main-ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "wbo-female", label: "WBO Female", organisation: "WBO", url: "https://wboboxing.com/wborankings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "ibf-female", label: "IBF/USBA Female", organisation: "IBF", url: "https://www.ibf-usba-boxing.com/ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },

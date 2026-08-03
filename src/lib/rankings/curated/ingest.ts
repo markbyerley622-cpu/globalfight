@@ -71,8 +71,11 @@ async function ingestList(list: CuratedList): Promise<CuratedIngestStat> {
     const previousRank = priorRank.get(fighterId) ?? null;
     const movement = movementFor(previousRank, entry.rank);
     await prisma.ranking.upsert({
-      where: { weightClassId_isPoundForPound_fighterId: { weightClassId, isPoundForPound: true, fighterId } },
-      create: { weightClassId, fighterId, isPoundForPound: true, rank: entry.rank, previousRank, movement, source: CURATED },
+      // organisation "" — a curated cross-sport P4P list belongs to the SPORT,
+      // not to any promotion. The promotion-scoped lists (UFC, ONE, …) carry
+      // their own organisation and sit alongside these rather than colliding.
+      where: { weightClassId_isPoundForPound_fighterId_organisation: { weightClassId, isPoundForPound: true, fighterId, organisation: "" } },
+      create: { weightClassId, fighterId, isPoundForPound: true, organisation: "", rank: entry.rank, previousRank, movement, source: CURATED },
       update: { rank: entry.rank, previousRank, movement, source: CURATED },
     });
     await prisma.rankSnapshot.create({

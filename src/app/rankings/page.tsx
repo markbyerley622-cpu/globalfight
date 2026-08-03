@@ -8,9 +8,10 @@ import { Pager } from "@/components/pager";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { MovementIndicator } from "@/components/ui/badge";
 import { Flag } from "@/components/flag";
-import { getRankingDivisionsSafe, getPoundForPoundPage } from "@/lib/repo";
+import { getRankingDivisionsSafe, getPoundForPoundPage, getRankingOrganisationsSafe, getSportsWithRankingsSafe } from "@/lib/repo";
+import { OrganisationFilter } from "@/components/organisation-filter";
 import { SampleDataNote } from "@/components/sample-data-note";
-import { SPORT_BY_SLUG, SPORT_LABEL } from "@/lib/sports";
+import { SPORT_BY_SLUG, SPORT_LABEL, SPORTS } from "@/lib/sports";
 import { getServerT } from "@/lib/i18n-server";
 import { formatRecord } from "@/lib/utils";
 import { flags } from "@/lib/feature-flags";
@@ -26,14 +27,14 @@ const LIMIT = 10;
 const DIV_PER_PAGE = 9;          // divisions per page (e.g. kickboxing has dozens)
 const PER_DIVISION = 9;          // ranked fighters shown per division
 
-export default async function RankingsPage({ searchParams }: { searchParams: Promise<{ sport?: string; page?: string }> }) {
+export default async function RankingsPage({ searchParams }: { searchParams: Promise<{ sport?: string; page?: string; org?: string }> }) {
 
   // Disabled for the public launch. The route itself refuses — hiding the nav
   // entry is not a control.
   if (!flags().rankingsEnabled) {
     return <FeatureUnavailable title="Rankings" reason="Rankings are not available. Our existing ranking data could not be traced to a licensed source, so it has been withdrawn. Rankings will return when a licensed source is in place." />;
   }
-  const { sport: sportSlug, page: pageStr } = await searchParams;
+  const { sport: sportSlug, page: pageStr, org: orgParam } = await searchParams;
   // No "All Sports" on rankings — default to MMA so the page always serves a sport.
   if (!sportSlug) redirect("/rankings?sport=mma");
   const sportEntry = SPORT_BY_SLUG[sportSlug];
@@ -41,10 +42,22 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
   const sportLabel = SPORT_LABEL[sportValue] ?? "MMA";
   const page = Math.max(0, Number(pageStr) - 1) || 0;
 
-  const { data: allDivisions, usedFallback: divFallback } = await getRankingDivisionsSafe(sportValue);
+  // The org filter is validated against the organisations this sport actually
+  // publishes, so a hand-typed ?org=NONSENSE falls back to "All" rather than
+  // rendering a confidently empty page.
+  const organisations = await getRankingOrganisationsSafe(sportValue);
+  const org = orgParam && organisations.includes(orgParam) ? orgParam : undefined;
+
+  // Sports with no publishable rankings are shown as "Soon" rather than being
+  // clickable into an empty table. Measured from the rows, so a sport lights up
+  // the moment its first list lands.
+  const ranked = await getSportsWithRankingsSafe();
+  const rankedSportSlugs = SPORTS.filter((s) => ranked.includes(s.value)).map((s) => s.slug);
+
+  const { data: allDivisions, usedFallback: divFallback } = await getRankingDivisionsSafe(sportValue, org);
   const t = await getServerT();
   const divisions = allDivisions.slice(page * DIV_PER_PAGE, page * DIV_PER_PAGE + DIV_PER_PAGE);
-  const list = allDivisions.length === 0 ? await getPoundForPoundPage(sportValue, page, LIMIT) : null;
+  const list = allDivisions.length === 0 ? await getPoundForPoundPage(sportValue, page, LIMIT, org) : null;
   const showSampleNote = (divFallback && allDivisions.length > 0) || (!!list?.usedFallback && list.items.length > 0);
 
   return (
@@ -56,7 +69,8 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
       />
 
       <div className="container-cr py-8">
-        <SportFilter />
+        <SportFilter availableSlugs={rankedSportSlugs} />
+        <OrganisationFilter organisations={organisations} />
 
         {showSampleNote && <SampleDataNote className="mt-6" />}
 
@@ -84,11 +98,11 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
             </>
           ) : list && list.items.length > 0 ? (
             <>
+              {/* Method/source chip removed on the owner's instruction — see the
+                  note in app/p4p/page.tsx. Provenance is still RECORDED, just
+                  not displayed. */}
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-display text-sm font-bold uppercase tracking-wide text-fog">{sportLabel} Rankings · {list.total} rated</h2>
-                <span className={`rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider ${list.source === "generated" ? "bg-volt-500/15 text-volt-300" : "bg-gold-500/15 text-gold-300"}`}>
-                  {list.source === "generated" ? "Rating engine · record-based" : "Curated rankings"}
-                </span>
               </div>
               {!sportValue && (
                 <p className="mb-4 rounded-lg border border-ink-700 bg-ink-900/50 p-3 text-xs leading-relaxed text-fog">

@@ -22,6 +22,15 @@ export interface RankingEntry {
   name: string;
   /** e.g. "Heavyweight", "Super Lightweight" — normalized weight-class label. */
   weightClass: string;
+  /**
+   * A cross-divisional pound-for-pound placing rather than a weight-class one.
+   *
+   * Without this the ingest had `isPoundForPound: false` hardcoded at every
+   * write, so NO connector could express a P4P list however plainly the source
+   * published one — every promotion's P4P table would have landed in the
+   * database as an ordinary division called "Pound-for-Pound".
+   */
+  isPoundForPound?: boolean;
   /** 1-based position. 0 = champion/unranked-holder where a body lists a titlist separately. */
   rank: number;
   gender: Gender;

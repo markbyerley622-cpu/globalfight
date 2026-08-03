@@ -3,11 +3,30 @@ import assert from "node:assert/strict";
 import { confidenceOf, normalizeWeightClass, TRUST } from "../connector";
 import { RANKING_SOURCES, ingestibleSources, sourceTierCounts } from "../sources";
 
-test("NOTHING is ingestible by default — every source is opt-in (compliance gate)", () => {
-  // Rankings were withdrawn pending a licensed source; the engine must not scrape
-  // anything until an owner flips both `licensed` and `connectorReady`.
-  assert.equal(ingestibleSources().length, 0);
-  assert.ok(RANKING_SOURCES.every((s) => s.licensed === false));
+// The set of sources the owner has cleared. Changing this list is a LICENSING
+// decision, so it is written here explicitly and the test below pins it: any
+// source that becomes ingestible without being added here fails the suite.
+//
+// This assertion used to be `ingestibleSources().length === 0` — correct while
+// rankings were withdrawn entirely, but it turns into a tripwire the moment a
+// source is legitimately cleared, and the tempting fix is to delete the test and
+// lose the guard with it. Pinning the exact set keeps the guard: it still fails
+// on an accidental or unreviewed flip, it just no longer forbids the decision.
+const LICENSED_SOURCE_IDS = ["ufc-mma", "wba-female"];
+
+test("only the explicitly-cleared sources are ingestible (compliance gate)", () => {
+  assert.deepEqual(ingestibleSources().map((s) => s.id).sort(), [...LICENSED_SOURCE_IDS].sort());
+
+  // Everything else must still be opt-in — no source may be licensed without
+  // being named above.
+  const unexpected = RANKING_SOURCES.filter((s) => s.licensed && !LICENSED_SOURCE_IDS.includes(s.id));
+  assert.deepEqual(unexpected.map((s) => s.id), [], "a source was licensed without being declared in this test");
+
+  // A licensed source with no parser must not silently count as ingestible.
+  for (const id of LICENSED_SOURCE_IDS) {
+    const s = RANKING_SOURCES.find((x) => x.id === id)!;
+    assert.equal(s.connectorReady, true, `${id} is licensed but has no ready connector`);
+  }
 });
 
 test("BoxRec is present as reference but flagged never-ingest", () => {

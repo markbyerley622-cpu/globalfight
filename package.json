@@ -60,7 +60,12 @@
     "seed:boot": "node --import tsx prisma/seed/boot.mts",
     "audit:i18n": "node --import tsx scripts/audit-i18n.mts",
     "audit:i18n:ci": "node --import tsx scripts/audit-i18n.mts --max=960",
-    "typecheck:scripts": "node scripts/check-scripts.mjs"
+    "typecheck:scripts": "node scripts/check-scripts.mjs",
+    "audit:launch": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/launch-audit.mts",
+    "audit:crons": "node --import tsx scripts/cron-coverage.mts",
+    "rankings:ingest": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/rankings-ingest.mts",
+    "doctor:production": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/production-doctor.mts",
+    "audit:providers": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/provider-doctor.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

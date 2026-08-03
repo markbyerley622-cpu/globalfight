@@ -28,10 +28,60 @@ export interface IngestStat {
   source: string;
   fetched: number;
   imported: number;
+  /** Titleholders (rank 0) written to the Champion table. */
+  championsImported: number;
   skippedByPrecedence: number;
   fightersCreated: number;
   ok: boolean;
   error?: string;
+}
+
+/**
+ * An organisation string → the SanctioningBody enum, or null when we have no
+ * enum member for it.
+ *
+ * Returning null (and skipping the champion) rather than guessing is the point:
+ * a champion row asserts "this person holds this organisation's title", and
+ * filing it under the wrong body is a worse outcome than not recording it. A
+ * new promotion is one enum member away from being supported.
+ */
+function sanctioningBodyFor(organisation: string): "WBA" | "WBC" | "IBF" | "WBO" | "IBO" | "BKFC" | "ONE" | "PFL" | "UFC" | "BELLATOR" | "GLORY" | "RIZIN" | "KSW" | null {
+  const key = organisation.trim().toUpperCase().replace(/[^A-Z]/g, "");
+  const known = ["WBA", "WBC", "IBF", "WBO", "IBO", "BKFC", "ONE", "PFL", "UFC", "BELLATOR", "GLORY", "RIZIN", "KSW"] as const;
+  return (known as readonly string[]).includes(key) ? (key as ReturnType<typeof sanctioningBodyFor>) : null;
+}
+
+/**
+ * Record the CURRENT titleholder of a division. Idempotent: re-ingesting the
+ * same champion is a no-op, and a new champion replaces the row in place.
+ *
+ * In place, and not by retiring the old row, because of the shape of the
+ * constraint: Champion is `@@unique([weightClassId, body, current])` on a
+ * BOOLEAN, which permits at most two rows per (division, body) for all time —
+ * one current, one not. Flipping a superseded champion to `current: false`
+ * therefore succeeds exactly once per division and then collides forever on the
+ * third titleholder.
+ *
+ * So Champion holds the present, and title HISTORY belongs to the `Title` model
+ * (fighterId + wonDate/lostDate + current), which is designed for it and has no
+ * such ceiling. Nothing is lost by updating here.
+ */
+async function upsertChampion(
+  { fighterId, weightClassId, organisation }: { fighterId: string; weightClassId: string; organisation: string },
+): Promise<boolean> {
+  const body = sanctioningBodyFor(organisation);
+  if (!body) return false;
+  const existing = await prisma.champion.findFirst({
+    where: { weightClassId, body, current: true },
+    select: { id: true, fighterId: true },
+  });
+  if (existing?.fighterId === fighterId) return false; // unchanged
+  if (existing) {
+    await prisma.champion.update({ where: { id: existing.id }, data: { fighterId, since: null, defenses: 0 } });
+    return true;
+  }
+  await prisma.champion.create({ data: { fighterId, weightClassId, body, current: true } });
+  return true;
 }
 
 /** Resolve a fighter by stable slug, creating a minimal record if unknown. */
@@ -76,24 +126,44 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
   // Defence in depth: a blocklisted source must never reach persistence even if
   // the registry were mis-edited to license it.
   if (INGEST_BLOCKLIST.has(connector.id)) {
-    return { source: connector.id, fetched: 0, imported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: "blocklisted source" };
+    return { source: connector.id, fetched: 0, imported: 0, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: "blocklisted source" };
   }
 
-  const stat: IngestStat = { source: connector.id, fetched: 0, imported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: true };
+  const stat: IngestStat = { source: connector.id, fetched: 0, imported: 0, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: true };
   const entries = await connector.fetch();
   stat.fetched = entries.length;
 
   for (const entry of entries) {
-    // v1 persists ranked contenders (rank ≥ 1); champions (rank 0) belong in the
-    // Champion table — a deliberate follow-up, not a silent drop of the list.
-    if (entry.rank < 1) continue;
     try {
       const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
       const { id: fighterId, created } = await resolveFighter(entry);
       if (created) stat.fightersCreated++;
 
+      // rank 0 = the titleholder the source lists above its contenders. These
+      // used to be `continue`d, and the consequence was measurable: the Champion
+      // table held ZERO rows for every sport, so /champions and every "current
+      // champion" surface rendered empty while the connectors were parsing the
+      // champion's name on every run and throwing it away.
+      if (entry.rank < 1) {
+        // Counts only what actually CHANGED — an unmapped organisation and an
+        // unchanged champion both return false, and reporting either as an
+        // import would make a no-op run look like it did work.
+        if (await upsertChampion({ fighterId, weightClassId, organisation: entry.organisation })) {
+          stat.championsImported++;
+        }
+        continue;
+      }
+
+      const isPoundForPound = entry.isPoundForPound === true;
+      const organisation = entry.organisation ?? "";
+      const key = {
+        weightClassId_isPoundForPound_fighterId_organisation: {
+          weightClassId, isPoundForPound, fighterId, organisation,
+        },
+      };
+
       const existing = await prisma.ranking.findUnique({
-        where: { weightClassId_isPoundForPound_fighterId: { weightClassId, isPoundForPound: false, fighterId } },
+        where: key,
         select: { rank: true, source: true },
       });
 
@@ -106,14 +176,14 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
       const movement = movementFor(previousRank, entry.rank);
 
       await prisma.ranking.upsert({
-        where: { weightClassId_isPoundForPound_fighterId: { weightClassId, isPoundForPound: false, fighterId } },
-        create: { weightClassId, fighterId, isPoundForPound: false, rank: entry.rank, previousRank, movement, source: connector.id },
+        where: key,
+        create: { weightClassId, fighterId, isPoundForPound, organisation, rank: entry.rank, previousRank, movement, source: connector.id },
         update: { rank: entry.rank, previousRank, movement, source: connector.id },
       });
 
       // Append-only history point (movement graphs, "highest ranking", weekly deltas).
       await prisma.rankSnapshot.create({
-        data: { fighterId, weightClass: entry.weightClass, isPoundForPound: false, rank: entry.rank },
+        data: { fighterId, weightClass: entry.weightClass, isPoundForPound, rank: entry.rank },
       });
 
       // FOLLOWERS. Gated inside the trigger on movement being MEANINGFUL — entering
@@ -149,7 +219,7 @@ export async function ingestAllRankings(): Promise<IngestStat[]> {
     try {
       stats.push(await ingestConnector(c));
     } catch (e) {
-      stats.push({ source: c.id, fetched: 0, imported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: (e as Error).message });
+      stats.push({ source: c.id, fetched: 0, imported: 0, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: (e as Error).message });
     }
   }
   return stats;

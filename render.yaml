@@ -134,6 +134,34 @@ envVarGroups:
         value: "2"
       - key: MEDIA_INGESTION_ENABLED
         value: "true"
+      # ── RANKINGS ──────────────────────────────────────────────────────────
+      # Two independent switches, both required, both fail-closed on anything
+      # but the exact string "true".
+      #
+      #   RANKINGS_ENABLED         serve /rankings, /p4p and /champions at all.
+      #                            While this is off those routes REFUSE (they do
+      #                            not merely hide), and robots.ts disallows them
+      #                            so a crawler cannot keep an empty page alive.
+      #   RANKINGS_INGEST_ENABLED  run the connector cron. A source is fetched
+      #                            only when this is on AND that source is
+      #                            licensed + connectorReady in
+      #                            src/lib/rankings/sources.ts.
+      #
+      # Turned on 2026-08-03 with ufc-mma and wba-female cleared in the registry.
+      # Nothing else is licensed, so nothing else is fetched.
+      #
+      # NOTE ON WHAT THESE ACTUALLY PUBLISH:
+      #   ufc-mma     UFC official divisions + the UFC pound-for-pound table.
+      #   wba-female  The WBA's FEMALE ratings — that is the entire source. Its
+      #               divisions are labelled "Women's <division>". There is still
+      #               NO men's boxing ranking source, so /rankings?sport=boxing
+      #               shows women's divisions only. That is honest, but it is not
+      #               the same thing as "boxing rankings" and should not be
+      #               described as such until a men's source is added.
+      - key: RANKINGS_ENABLED
+        value: "true"
+      - key: RANKINGS_INGEST_ENABLED
+        value: "true"
       # Own-profile avatar / banner uploads. NOT the same switch as
       # UGC_MEDIA_UPLOADS_ENABLED (clips + forum attachments), which stays off until
       # there is a moderation queue.
@@ -184,8 +212,25 @@ envVarGroups:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Fighters per hourly `refresh-enrich` run (photo + bio).
+      #
+      # RAISED 30 → 500 on 2026-08-03. At 30/hour against a 10,400-fighter roster
+      # with ~89% missing a photo, a full pass took ~13 days — so "fighter images
+      # are broken" was the accurate impression for a fortnight after any roster
+      # growth. 500/hour clears the same backlog in under a day and then costs
+      # nothing: the query only selects rows where lastProfileScrapedAt is null or
+      # stale, so a drained queue scans zero rows however large the batch is.
+      #
+      # The rate limiter (SCRAPER_RATE_LIMIT_MS=3000) still bounds the request
+      # rate, so this raises throughput per run, not requests per second. Each
+      # fighter is persisted as its outcome is known, so a run that exceeds
+      # maxDuration keeps everything it already did.
       - key: ENRICH_BATCH
-        value: "30"
+        value: "500"
+      # NOT raised: BOXING_ENRICH_LIMIT (default 15/day). That path is the Boxing
+      # Data API on RapidAPI's free tier, ~500 requests/MONTH, and 15/day is
+      # already ~450/month. Raising it buys a few days of speed and then 429s for
+      # the rest of the month. It moves when the plan does.
       - key: LOG_LEVEL
         value: info
       # ── LEGAL IDENTITY — REQUIRED BEFORE THE SITE IS PUBLIC ────────────────
@@ -367,6 +412,26 @@ services:
       - fromGroup: globalfight
 
   # ── Cron: events, odds, sync (daily) ─────────────────────────────────────
+  #
+  # FOUR ROUTES WERE ADDED HERE after an audit found that 7 of the 22
+  # /api/cron/* routes had NEVER been scheduled by this blueprint. A route with
+  # no cron does not fail — it simply never runs, so the feature it feeds looks
+  # like a data problem rather than a missing job. Each was traced to a symptom:
+  #
+  #   refresh-espn      The ESPN scoreboard is the provider that carries full MMA
+  #                     cards WITH winners for UFC/PFL/Bellator/ONE/RIZIN. Five
+  #                     requests total (one per league, current year only), so it
+  #                     is the cheapest results source we have and it was idle.
+  #   refresh-champions Writes the Champion table. It had never run, which is why
+  #                     that table held ZERO rows for every sport and /champions
+  #                     rendered empty.
+  #   refresh-mma       Current UFC roster → Fighter rows.
+  #   enrich-boxing     Fills physical stats + records for a bounded batch of
+  #                     BOXING fighters (~15/run, RapidAPI free-tier safe). Never
+  #                     running is a large part of why boxing profiles are thin.
+  #
+  # NOT added: refresh-people is a documented retired no-op (its BoxRec source was
+  # removed), so scheduling it would only burn a request to do nothing.
   - type: cron
     name: gf-cron-daily
     runtime: node
@@ -374,9 +439,52 @@ services:
     schedule: "0 4 * * *"
     buildCommand: "true"
     startCommand: >-
-      for p in refresh-events sync refresh-odds refresh-p4p; do
+      for p in refresh-events sync refresh-espn refresh-odds refresh-p4p refresh-champions refresh-mma enrich-boxing; do
         curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
+    envVars:
+      - fromGroup: globalfight
+
+  # ── Cron: rankings ingest (weekly, Mondays) ──────────────────────────────
+  # The connector run: official divisional + pound-for-pound lists per
+  # organisation (UFC, ONE, WBA…). Weekly because that is roughly how often a
+  # sanctioning body republishes; nothing is gained by asking four times a day.
+  #
+  # This is a NO-OP until RANKINGS_INGEST_ENABLED=true *and* the specific source
+  # is marked licensed in src/lib/rankings/sources.ts — two independent locks, so
+  # scheduling it here cannot start ingesting anything on its own. It is wired
+  # now so that flipping those switches is the only remaining step.
+  - type: cron
+    name: gf-cron-rankings
+    runtime: node
+    plan: starter
+    schedule: "0 8 * * 1"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-rankings" || true
+    envVars:
+      - fromGroup: globalfight
+
+  # ── Cron: retention sweep (daily) — COMPLIANCE, NOT A FEATURE ────────────
+  #
+  # Deletes identity documents past their retention window and purges stale
+  # password-reset tokens. Its own route comment says "Runs daily"; it had never
+  # been scheduled at all, which means every identity document ever uploaded has
+  # been retained indefinitely and expired reset tokens were never swept.
+  #
+  # Deliberately NOT wrapped in `|| true`, unlike the ingestion jobs above. A
+  # scraper that fails just retries next tick and the worst case is stale data.
+  # A retention sweep that fails silently means personal data is kept past the
+  # period we told people we would keep it, and a green cron dashboard is then
+  # actively misleading. Let this job go red.
+  - type: cron
+    name: gf-cron-retention
+    runtime: node
+    plan: starter
+    schedule: "30 2 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/evidence-cleanup"
     envVars:
       - fromGroup: globalfight
 

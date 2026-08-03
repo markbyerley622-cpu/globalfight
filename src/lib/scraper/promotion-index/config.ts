@@ -83,6 +83,42 @@ export const PROMOTION_INDEX_SOURCES: PromotionIndexSource[] = [
      */
     disabled: true,
   },
+  {
+    key: "adcc",
+    article: "ADCC Submission Fighting World Championship",
+    promotion: "ADCC",
+    sport: "BJJ",
+    // Submission grappling has no rounds; a single timed match.
+    scheduledRounds: 1,
+    sourceLadder:
+      "Checked 2026-08-03. (1) No official API. (2) adcombat.com — the provider in " +
+      "lib/scraper/adcc — answers HTTP 403 to our bot User-Agent. MEASURED: it serves " +
+      "200 to any UA beginning 'Mozilla/5.0' and 403 to both 'curl/8.0' and our bot " +
+      "string, so it is a generic WAF UA filter, not a targeted refusal. We do not " +
+      "spoof a browser to defeat it (see lib/http-identity), so that path yields " +
+      "nothing and the syncADCC harvest returns 0 events with a 'blocked: 403' " +
+      "warning. (3) ESPN carries no grappling league. (4) Wikipedia. " +
+      "MEASURED YIELD 2026-08-03: ZERO index rows, and the reason is structural. " +
+      "This article has no numbered event index at all — none of the 46 tables on it " +
+      "is a '# | Event | Date | Venue' listing. They are MEDAL TABLES: one per " +
+      "edition, giving winner / 2nd / 3rd per weight class and nothing else. Only two " +
+      "editions link to a card article of their own (2022 and 2024); every edition " +
+      "from 1998 onward is a medal table and no more. There is no bout-by-bout result " +
+      "for ADCC on Wikipedia to parse, so there is nothing here for this path or any " +
+      "other to read. " +
+      "That makes BJJ a SOURCE gap, not a parser gap — the same conclusion the " +
+      "tournament provider reached for sambo. adcombat.com holds the real data and " +
+      "refuses our bot; Wikipedia holds medal tables. Bringing BJJ to parity with MMA " +
+      "or boxing needs manual entry or a licensed grappling data provider, and no " +
+      "amount of scraper work reaches it. Recorded here so the next person does not " +
+      "repeat the search.",
+    /**
+     * Disabled on the evidence above: the run costs one request and returns zero
+     * rows every time. Kept registered because the ladder IS the finding — deleting
+     * the entry would leave "why is there only one BJJ event?" unanswered again.
+     */
+    disabled: true,
+  },
 ];
 
 export const indexSourceFor = (key: string): PromotionIndexSource | undefined =>

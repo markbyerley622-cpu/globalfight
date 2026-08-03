@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
 import type { RankingConnector, RankingEntry } from "../connector";
 import { normalizeWeightClass } from "../connector";
+import { BOT_HEADERS } from "@/lib/http-identity";
 
 // ════════════════════════════════════════════════════════════════════════
 //  WBA (World Boxing Association) — female world ratings connector.
@@ -63,7 +64,28 @@ export function parseWbaFemale(html: string, now: Date = new Date()): RankingEnt
   const entries: RankingEntry[] = [];
   let division: string | null = null;
 
-  const parseTable = (el: Element, weightClass: string) => {
+  // ── Every division on this page is a WOMEN'S division ────────────────────
+  //
+  // The source is the WBA's FEMALE ratings, and the connector emitted its
+  // divisions as bare "Heavyweight", "Lightweight" and so on. Downstream that is
+  // wrong twice over, because ingest resolves a WeightClass by (sport, name):
+  //
+  //   • These rows landed on the SAME WeightClass records that men's boxing
+  //     rankings would use, so adding any men's source later would have merged
+  //     two unrelated ladders into one division.
+  //   • The rankings page therefore presented WBA women's ratings under a plain
+  //     "Boxing → Heavyweight" heading, with nothing anywhere on the screen
+  //     saying they were women's rankings.
+  //
+  // Prefixing here — the same thing the UFC connector already does for its
+  // women's divisions — makes the division name carry the fact, so it survives
+  // into the WeightClass row, the URL slug and the heading without any screen
+  // needing to know where the rows came from.
+  const womens = (weightClass: string) =>
+    /^women'?s\b/i.test(weightClass) ? weightClass : `Women's ${weightClass}`;
+
+  const parseTable = (el: Element, rawWeightClass: string) => {
+    const weightClass = womens(rawWeightClass);
     $(el).find("tr").each((_, tr) => {
       const cells = $(tr).find("td, th").map((__, c) => $(c).text().trim().replace(/\s+/g, " ")).get();
       if (cells.length === 0) return;
@@ -127,10 +149,11 @@ export const wbaFemaleConnector: RankingConnector = {
   id: "wba-female",
   label: "WBA Female World Ratings",
   trust: "official",
-  licensed: false, // owner-controlled; the registry's flag is the source of truth
+  licensed: true, // registry (sources.ts) remains the source of truth for this
   async fetch(): Promise<RankingEntry[]> {
     const res = await fetch(SOURCE_URL, {
-      headers: { "user-agent": "GlobalFightBot/1.0 (+https://globalfight.onrender.com)" },
+      // BOT_HEADERS — see the identical note in connectors/ufc.ts.
+      headers: { ...BOT_HEADERS },
       signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) throw new Error(`WBA fetch ${res.status}`);

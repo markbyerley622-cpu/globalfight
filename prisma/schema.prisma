@@ -131,6 +131,10 @@ enum SanctioningBody {
   ONE // ONE Championship (promotion-as-sanctioning-body)
   PFL // Professional Fighters League (promotion-as-sanctioning-body)
   UFC // Ultimate Fighting Championship (promotion-as-sanctioning-body)
+  BELLATOR // Now a PFL brand, but its titles are still lineally its own
+  GLORY // GLORY Kickboxing
+  RIZIN // RIZIN Fighting Federation
+  KSW
 }
 
 enum EventStatus {
@@ -534,9 +538,27 @@ model Ranking {
   source          String       @default("import")
   updatedAt       DateTime     @updatedAt
 
-  @@unique([weightClassId, isPoundForPound, fighterId])
+  /// WHOSE ranking this is: "UFC", "ONE", "PFL", "BKFC", "GLORY", "WBA"…
+  /// Empty string = a cross-promotional list that belongs to the sport rather
+  /// than to any one organisation (the curated P4P lists are these).
+  ///
+  /// Empty string rather than NULL is deliberate: Postgres treats NULLs as
+  /// DISTINCT in a unique constraint, so a nullable column here would let the
+  /// same fighter be inserted into the same division without limit — the exact
+  /// duplicate the constraint exists to prevent.
+  ///
+  /// KNOWN LIMIT, recorded rather than hidden: WeightClass is keyed by (sport,
+  /// name), so UFC Lightweight and ONE Lightweight share one row even though
+  /// ONE's limit is 170lb and the UFC's is 155lb. Filtering by organisation
+  /// still returns the right PEOPLE in the right ORDER — the divisional weight
+  /// shown alongside is the sport's, not the promotion's. Per-promotion weight
+  /// limits need WeightClass keyed by organisation too; that is a follow-up.
+  organisation String @default("")
+
+  @@unique([weightClassId, isPoundForPound, fighterId, organisation])
   @@index([weightClassId, rank])
   @@index([isPoundForPound, rank])
+  @@index([organisation, isPoundForPound, rank])
 }
 
 // Time-series history — append-only, designed for millions of rows.

@@ -6,10 +6,9 @@ import { FighterAvatar } from "@/components/fighter-avatar";
 import { MovementIndicator } from "@/components/ui/badge";
 import { SportFilter } from "@/components/sport-filter";
 import { Pager } from "@/components/pager";
-import { getPoundForPoundPage } from "@/lib/repo";
-import { SampleDataNote } from "@/components/sample-data-note";
-import { curatedProvenance } from "@/lib/rankings/curated/lists";
-import { SPORT_BY_SLUG, SPORT_LABEL } from "@/lib/sports";
+import { getPoundForPoundPage, getRankingOrganisationsSafe, getSportsWithRankingsSafe } from "@/lib/repo";
+import { OrganisationFilter } from "@/components/organisation-filter";
+import { SPORT_BY_SLUG, SPORT_LABEL, SPORTS } from "@/lib/sports";
 import { getServerT } from "@/lib/i18n-server";
 import { Flag } from "@/components/flag";
 import { formatRecord } from "@/lib/utils";
@@ -24,23 +23,32 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 const LIMIT = 10;
 
-export default async function P4PPage({ searchParams }: { searchParams: Promise<{ sport?: string; page?: string }> }) {
+export default async function P4PPage({ searchParams }: { searchParams: Promise<{ sport?: string; page?: string; org?: string }> }) {
 
   // Disabled for the public launch. The route itself refuses — hiding the nav
   // entry is not a control.
   if (!flags().rankingsEnabled) {
     return <FeatureUnavailable title="Pound-for-Pound" reason="Rankings are not available. Our existing ranking data could not be traced to a licensed source, so it has been withdrawn. Rankings will return when a licensed source is in place." />;
   }
-  const { sport: sportSlug, page: pageStr } = await searchParams;
+  const { sport: sportSlug, page: pageStr, org: orgParam } = await searchParams;
   const sportEntry = sportSlug ? SPORT_BY_SLUG[sportSlug] : undefined;
   // undefined === "All Sports": the best pound-for-pound across every combat sport.
   const sportValue = sportEntry?.value;
   const sportLabel = sportValue ? SPORT_LABEL[sportValue] ?? "Boxing" : "All Combat Sports";
   const page = Math.max(0, Number(pageStr) - 1) || 0;
 
-  const { items, total, source, usedFallback } = await getPoundForPoundPage(sportValue, page, LIMIT);
+  // Organisation pills only make sense within ONE sport — across all sports the
+  // same acronym can mean different ladders, so "All Sports" gets no org filter.
+  const organisations = sportValue ? await getRankingOrganisationsSafe(sportValue) : [];
+  const org = orgParam && organisations.includes(orgParam) ? orgParam : undefined;
+
+  // Sports with no publishable rankings render as "Soon" in the filter instead
+  // of leading to an empty page. See the note in components/sport-filter.
+  const ranked = await getSportsWithRankingsSafe();
+  const rankedSportSlugs = SPORTS.filter((s) => ranked.includes(s.value)).map((s) => s.slug);
+
+  const { items, total } = await getPoundForPoundPage(sportValue, page, LIMIT, org);
   const hasNext = (page + 1) * LIMIT < total;
-  const generated = source === "generated";
   const podium = page === 0 ? items.slice(0, 3) : [];
   const rest = page === 0 ? items.slice(3) : items;
   const t = await getServerT();
@@ -54,9 +62,8 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
       />
 
       <div className="container-cr py-8">
-        <SportFilter />
-
-        {usedFallback && items.length > 0 && <SampleDataNote className="mt-6" />}
+        <SportFilter availableSlugs={rankedSportSlugs} />
+        <OrganisationFilter organisations={organisations} />
 
         {items.length === 0 ? (
           <div className="card-surface mt-6 p-10 text-center">
@@ -91,7 +98,6 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
           <div className="mt-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs uppercase tracking-wider text-fog">{sportLabel} · {total} {t("ranked")}</p>
-              <ProvenanceBadge generated={generated} sportValue={sportValue} />
             </div>
             {/* Podium (first page only) */}
             {podium.length > 0 && (
@@ -154,51 +160,12 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
   );
 }
 
-/**
- * Where a ranking came from — honest about method. Rating engine (algorithmic),
- * or curated (source-backed) with its confidence, freshness and the exact
- * sources it was compiled from. Never implies sanctioning-body approval.
- */
-function ProvenanceBadge({ generated, sportValue }: { generated: boolean; sportValue: string | undefined }) {
-  if (generated) {
-    return (
-      <span className="rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider bg-volt-500/15 text-volt-300">
-        Rating engine · record-based
-      </span>
-    );
-  }
-  const prov = sportValue ? curatedProvenance(sportValue) : null;
-  if (!prov) {
-    // "All Sports" mixes curated + rating engine.
-    return (
-      <span className="rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider bg-gold-500/15 text-gold-300">
-        Curated + rating engine
-      </span>
-    );
-  }
-  const conf = prov.confidence;
-  const confClass = conf === "HIGH" ? "bg-volt-500/15 text-volt-300"
-    : conf === "MEDIUM" ? "bg-gold-500/15 text-gold-300"
-    : "bg-ink-700 text-mist";
-  const when = new Date(`${prov.updated}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
-      <span className="rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider bg-gold-500/15 text-gold-300">
-        Curated · Source-backed
-      </span>
-      <span className={`rounded px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider ${confClass}`} title="Confidence reflects how well sources agree.">
-        {conf} confidence
-      </span>
-      <span className="text-[0.65rem] uppercase tracking-wider text-fog">Updated {when}</span>
-      <span className="w-full text-right text-[0.65rem] text-fog">
-        Compiled from{" "}
-        {prov.sources.map((s, i) => (
-          <span key={s.url}>
-            {i > 0 && ", "}
-            <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-blood-400 underline decoration-ink-700 underline-offset-2 hover:text-blood-300">{s.label}</a>
-          </span>
-        ))}
-      </span>
-    </div>
-  );
-}
+// The ProvenanceBadge that used to sit here — "Curated · Source-backed",
+// the confidence chip, "Updated <month>" and the "Compiled from <links>" line —
+// was removed on the owner's instruction: the compilation sources are not to be
+// surfaced to readers.
+//
+// The provenance itself is NOT gone. `sources`, `updated`, `confidence` and
+// `reason` are still recorded per list in lib/rankings/curated/lists.ts and are
+// still required by review for every entry. This removes the DISPLAY only, so
+// the internal record of where a ranking came from stays intact and auditable.
