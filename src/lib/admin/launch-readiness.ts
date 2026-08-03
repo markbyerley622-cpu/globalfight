@@ -4,6 +4,7 @@ import { flags } from "@/lib/feature-flags";
 import { missingLegalFields } from "@/lib/legal-config";
 import { isCanonicalHost, SITE } from "@/lib/config";
 import { ingestibleSources } from "@/lib/rankings/sources";
+import { isPushConfigured } from "@/lib/push/send";
 import { auditCronHealth } from "./cron-health";
 import { getProviderHealth } from "./provider-health";
 
@@ -197,6 +198,22 @@ export async function auditLaunchReadiness(): Promise<ReadinessReport> {
   } catch (e) {
     checks.push(bad("providers", "Providers", "Ingestion", `health check threw: ${(e as Error).message}`, "Investigate provider-health.ts.", "warn", 5));
   }
+
+  // ── Mobile / installability ────────────────────────────────────────────
+  // Everything Google Play's Trusted Web Activity path depends on. These are
+  // cheap file/env checks rather than a Lighthouse run, so they belong in the
+  // same command as everything else — a separate mobile audit nobody runs is
+  // how the assetlinks step gets discovered during submission instead of before.
+  const twaReady = set(env.TWA_PACKAGE_NAME) && set(env.TWA_SHA256_FINGERPRINTS);
+  checks.push(twaReady
+    ? ok("twa", "Mobile", "Digital Asset Links", `${env.TWA_PACKAGE_NAME}`, 10, true)
+    : bad("twa", "Mobile", "Digital Asset Links", "TWA_PACKAGE_NAME / TWA_SHA256_FINGERPRINTS unset",
+      "/.well-known/assetlinks.json returns 404, so a TWA opens with a URL BAR instead of as an app. Include BOTH your upload key and the Play App Signing key. This is not optional for Play.", "fail", 10, true));
+
+  checks.push(isPushConfigured()
+    ? ok("push", "Mobile", "Web push", "VAPID keys configured", 5, true)
+    : bad("push", "Mobile", "Web push", "VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY unset",
+      "Notification prompts are hidden and no push is ever sent (fails closed by design). Not a Play blocker, but it is the retention loop.", "warn", 5, true));
 
   // ── Cron ───────────────────────────────────────────────────────────────
   try {
