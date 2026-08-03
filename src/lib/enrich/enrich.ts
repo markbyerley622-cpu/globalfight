@@ -15,6 +15,7 @@
 //  then anything not refreshed in ENRICH_STALE_DAYS (default 30).
 // ════════════════════════════════════════════════════════════════════════
 
+import { toCountryCode } from "@/lib/countries";
 import { prisma } from "@/lib/db";
 import { log } from "@/lib/scraper/logger";
 import { fetchWikipediaProfile } from "./wikipedia";
@@ -26,12 +27,12 @@ const DELAY_MS = Number(process.env.ENRICH_DELAY_MS ?? 250);
 type FighterRow = {
   id: string; slug: string; name: string;
   imageUrl: string | null; photoUrl: string | null; heightCm: number | null; reachCm: number | null;
-  stance: string | null; birthDate: Date | null; nationality: string | null;
+  stance: string | null; birthDate: Date | null; nationality: string | null; countryCode: string | null;
 };
 
 const FIELDS = {
   id: true, slug: true, name: true, imageUrl: true, photoUrl: true,
-  heightCm: true, reachCm: true, stance: true, birthDate: true, nationality: true,
+  heightCm: true, reachCm: true, stance: true, birthDate: true, nationality: true, countryCode: true,
 } as const;
 
 export interface EnrichResult { slug: string; updated: boolean; gotImage: boolean; filled: string[] }
@@ -53,6 +54,18 @@ export async function enrichFighter(f: FighterRow): Promise<EnrichResult> {
   }
   fill("heightCm", wiki.heightCm);
   fill("nationality", wiki.nationality);
+  // countryCode alongside nationality, from the SAME fact.
+  //
+  // Enrichment set the nationality NAME and never the ISO code, and almost
+  // nothing renders the name: `Flag` resolves a code first and only falls back
+  // to a name when a caller passes one. Measured 2026-08-03, 221 fighters out of
+  // 10,419 had a countryCode — MMA, judo and taekwondo had literally zero — so
+  // every ranking row and profile drew the grey placeholder rather than a flag.
+  //
+  // toCountryCode is the same resolver the component uses, so a name that draws
+  // a flag at render also stores a code here, and one that does not resolves to
+  // undefined and stores nothing rather than a wrong guess.
+  fill("countryCode", toCountryCode(wiki.nationality));
   // ── Licensed fighter photo (Wikimedia Commons) ────────────────────────
   //
   // We do NOT re-host. We store the source URL plus the captured attribution

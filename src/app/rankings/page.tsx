@@ -117,7 +117,7 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
                     <FighterAvatar fighter={r.fighter} size="sm" />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 truncate font-display text-sm font-semibold text-chalk">
-                        <Flag code={r.fighter.countryCode} /> {r.fighter.name}
+                        <Flag code={r.fighter.countryCode} name={r.fighter.nationality} /> {r.fighter.name}
                       </p>
                       <p className="text-xs text-fog">{formatRecord(r.fighter.wins, r.fighter.losses, r.fighter.draws)}</p>
                     </div>

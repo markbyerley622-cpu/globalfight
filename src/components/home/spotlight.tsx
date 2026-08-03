@@ -30,7 +30,7 @@ export async function Spotlight() {
             <FighterAvatar fighter={fighter} size="xl" showFlag className="scale-110" />
             <div className="text-center lg:text-left">
               {fighter.nickname && <Badge tone="gold">“{fighter.nickname}”</Badge>}
-              <h3 className="mt-2 flex items-center justify-center gap-2 font-display text-3xl font-bold text-chalk lg:justify-start"><Flag code={fighter.countryCode} size="lg" /> {fighter.name}</h3>
+              <h3 className="mt-2 flex items-center justify-center gap-2 font-display text-3xl font-bold text-chalk lg:justify-start"><Flag code={fighter.countryCode} name={fighter.nationality} size="lg" /> {fighter.name}</h3>
               <p className="text-sm text-fog">{ageFrom(fighter.birthDate)} years old · {fighter.nationality}</p>
             </div>
           </div>

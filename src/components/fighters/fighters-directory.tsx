@@ -203,7 +203,7 @@ function Row({ f, t }: { f: Item; t: (k: string) => string }) {
         </span>
       </td>
       <td className="px-4 py-2.5 tabular-nums text-mist">{formatSportRecord(f)}</td>
-      <td className="px-4 py-2.5 text-mist"><span className="flex items-center gap-1.5">{f.countryCode && <Flag code={f.countryCode} />}{f.nationality ?? "—"}</span></td>
+      <td className="px-4 py-2.5 text-mist"><span className="flex items-center gap-1.5"><Flag code={f.countryCode} name={f.nationality} />{f.nationality ?? "—"}</span></td>
       <td className="px-4 py-2.5 text-mist">{f.residence ?? "—"}</td>
       <td className="px-4 py-2.5"><Badge tone={f.active ? "volt" : "neutral"}>{f.active ? t("Active") : t("Inactive")}</Badge></td>
       <td className="px-4 py-2.5"><Link href={`/fighters/${f.slug}`} className="text-xs font-semibold text-blood-400 hover:text-blood-300">{t("View")}</Link></td>

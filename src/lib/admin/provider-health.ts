@@ -134,6 +134,18 @@ const KNOWN: Array<{ source: string; label: string; sport: Sport | "multi"; flag
   { source: "bkfc", label: "BKFC", sport: "BARE_KNUCKLE", note: "Official site." },
   { source: "one", label: "ONE Championship (official)", sport: "multi", flag: "muayThaiProviderEnabled", note: "Official event pages." },
   { source: "adcc", label: "ADCC (adcombat.com)", sport: "BJJ", flag: "bjjProviderEnabled", note: "Source answered HTTP 403 on 2026-08-02 — see the ladder." },
+  // Both of these were WRITING ROWS while unregistered, so the dashboard flagged
+  // them with its own "add it to KNOWN" note on every run. An unregistered writer
+  // is worse than a missing one: it has no `state`, so it can go silent for weeks
+  // without ever being counted as silent.
+  {
+    source: "wikipedia-tournament", label: "Federation tournaments (Wikipedia)", sport: "multi",
+    note: "Bracket sports — wrestling / judo / taekwondo have full trees; sambo and BJJ are medal-table only.",
+  },
+  {
+    source: "matchroom", label: "Matchroom Boxing", sport: "BOXING",
+    note: "Card discovery only; bouts arrive via the Wikipedia results harvest.",
+  },
 ];
 
 const days = (from: Date): number => Math.floor((Date.now() - from.getTime()) / 86_400_000);

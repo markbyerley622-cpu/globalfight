@@ -42,7 +42,7 @@ export function RankingList({
               <FighterAvatar fighter={r.fighter} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 truncate font-display text-sm font-semibold text-chalk">
-                  <Flag code={r.fighter.countryCode} /> {r.fighter.name}
+                  <Flag code={r.fighter.countryCode} name={r.fighter.nationality} /> {r.fighter.name}
                 </p>
                 <p className="flex items-center gap-1.5 truncate text-xs text-fog">
                   {showSport && <span className="font-semibold uppercase tracking-wide text-blood-400">{SPORT_LABEL[r.fighter.sport] ?? r.fighter.sport}</span>}

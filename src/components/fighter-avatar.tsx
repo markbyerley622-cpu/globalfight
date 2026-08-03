@@ -23,7 +23,7 @@ const sizeMap = {
 export function FighterAvatar({
   fighter, size = "md", className, showFlag = false,
 }: {
-  fighter: Pick<Fighter, "name" | "imageUrl" | "thumbUrl" | "countryCode">;
+  fighter: Pick<Fighter, "name" | "imageUrl" | "thumbUrl" | "countryCode"> & { nationality?: string | null };
   size?: keyof typeof sizeMap;
   className?: string;
   showFlag?: boolean;
@@ -59,7 +59,7 @@ export function FighterAvatar({
       </div>
       {showFlag && fighter.countryCode && (
         <span className="absolute -bottom-1 -right-1 overflow-hidden rounded-[3px] bg-ink-900 ring-2 ring-ink-900">
-          <Flag code={fighter.countryCode} size="sm" />
+          <Flag code={fighter.countryCode} name={fighter.nationality} size="sm" />
         </span>
       )}
     </div>

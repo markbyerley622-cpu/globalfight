@@ -197,7 +197,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 <Badge tone={profile.active ? "red" : "neutral"}>{profile.active ? "Active" : "Inactive"}</Badge>
               </div>
               <h1 className="mt-2 flex flex-wrap items-center justify-center gap-3 font-display text-4xl font-bold uppercase tracking-tight text-chalk sm:text-5xl lg:justify-start lg:text-6xl">
-                <Flag code={profile.countryCode ?? undefined} size="lg" className="h-8 w-12" /> {profile.name}
+                <Flag code={profile.countryCode ?? undefined} name={profile.nationality} size="lg" className="h-8 w-12" /> {profile.name}
               </h1>
               <p className="mt-2 text-sm text-mist">
                 {[profile.nationality, profile.residence, record ? formatSportRecord({ ...record, sport: profile.sport }) : null]
