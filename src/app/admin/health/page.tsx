@@ -188,7 +188,7 @@ const OPS = [
   { action: "enrich-photos", label: "Enrich photos", icon: ImageDown, hint: "Pull licensed photos for upcoming-card fighters first (batch of 50)." },
   { action: "enrich-article-images", label: "Article images", icon: ImageDown, hint: "Fetch OpenGraph images for news articles that have none (batch of 50)." },
   { action: "repair-duplicates", label: "Merge duplicates", icon: GitMerge, hint: "Merge same-name fighters into the most-complete record (data-preserving)." },
-  { action: "refresh-p4p", label: "Refresh P4P", icon: Trophy, hint: "Re-ingest curated P4P + regenerate rating-engine P4P." },
+  { action: "refresh-p4p", label: "Regenerate rankings", icon: Trophy, hint: "Re-ingest curated P4P, regenerate rating-engine P4P AND divisional rankings for every sport with no curated source. Runs immediately — no need to wait for the daily cron." },
   { action: "refresh-rankings", label: "Refresh rankings", icon: ListOrdered, hint: "Run every licensed ranking connector." },
 ] as const;
 
@@ -248,6 +248,15 @@ function summarize(action: string, result: unknown): string {
   const r = result as Record<string, unknown>;
   if (action === "repair-duplicates") return `${r.merged ?? 0} merged across ${r.groups ?? 0} groups`;
   if (action === "enrich-photos") return `${(r as { photos?: number }).photos ?? 0} photos from ${(r as { scanned?: number }).scanned ?? 0} scanned`;
+  if (action === "refresh-p4p") {
+    type GenResult = { sport: string; ranked: number; skipped?: string };
+    const generated = (r.generated as GenResult[] | undefined) ?? [];
+    const divisions = (r.generatedDivisions as GenResult[] | undefined) ?? [];
+    const p4pRanked = generated.reduce((sum, g) => sum + g.ranked, 0);
+    const divisionsWithData = divisions.filter((d) => d.ranked > 0).length;
+    const divisionsRanked = divisions.reduce((sum, d) => sum + d.ranked, 0);
+    return `P4P: ${p4pRanked} ranked across ${generated.filter((g) => g.ranked > 0).length} sports · Divisions: ${divisionsRanked} ranked across ${divisionsWithData} divisions`;
+  }
   return "done";
 }
 
