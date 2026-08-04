@@ -195,3 +195,124 @@ export async function generateAllP4P(sportValues: string[]): Promise<GenerateRes
   }
   return results;
 }
+
+/**
+ * Each rankable fighter's CURRENT division: the weight class of their most
+ * recent ruleset-matching bout. Fighter carries no weight-class field of its
+ * own — only Fight does, per bout — so this is derived, never stored.
+ */
+async function currentDivisions(sportValue: string, fighterIds: string[]): Promise<Map<string, string>> {
+  if (fighterIds.length === 0) return new Map();
+  const idSet = new Set(fighterIds);
+  const fights = await prisma.fight.findMany({
+    where: {
+      ruleset: sportValue as never,
+      weightClassId: { not: null },
+      OR: [{ redId: { in: fighterIds } }, { blueId: { in: fighterIds } }],
+    },
+    orderBy: { date: "desc" },
+    select: { redId: true, blueId: true, weightClassId: true },
+  });
+  const div = new Map<string, string>();
+  for (const f of fights) {
+    for (const id of [f.redId, f.blueId]) {
+      if (!div.has(id) && idSet.has(id) && f.weightClassId) div.set(id, f.weightClassId);
+    }
+  }
+  return div;
+}
+
+/**
+ * Generated DIVISIONAL rankings for a sport — the weight-class equivalent of
+ * generateP4P, and the reason a divisional page could show every woman's
+ * division fully populated (WBA Female, licensed and curated) while every
+ * men's division showed nothing at all: no men's boxing source is licensed
+ * (see lib/rankings/sources.ts — WBC/WBO/IBF/EBU male are all
+ * `licensed: false`), and unlike P4P, divisional generation never existed as
+ * a fallback — `getRankingDivisions` unconditionally excluded
+ * `source: "generated"` with no "only when nothing curated exists" precedence
+ * to fall back on. Same rules as P4P: verified bout evidence only
+ * (rankableInDiscipline + isRankable), Misfits-only boxers excluded, curated
+ * data for a division is never touched, one board per weight class rather
+ * than per sport.
+ */
+export async function generateDivisions(sportValue: string): Promise<GenerateResult[]> {
+  const fighters = await prisma.fighter.findMany({
+    where: { ...rankableInDiscipline(sportValue), ...excludeSinglePromotionOnly(sportValue) },
+    select: { id: true, wins: true, losses: true, draws: true, noContests: true, koWins: true, totalRounds: true },
+  });
+  const eligibleBase = fighters.filter(isRankable);
+  if (eligibleBase.length === 0) return [];
+
+  const divisionOf = await currentDivisions(sportValue, eligibleBase.map((f) => f.id));
+  const byDivision = new Map<string, typeof eligibleBase>();
+  for (const f of eligibleBase) {
+    const weightClassId = divisionOf.get(f.id);
+    if (!weightClassId) continue; // no bout carries a weight class → can't be divisionally placed
+    if (!byDivision.has(weightClassId)) byDivision.set(weightClassId, []);
+    byDivision.get(weightClassId)!.push(f);
+  }
+
+  const results: GenerateResult[] = [];
+  for (const [weightClassId, group] of byDivision) {
+    // Never clobber a curated (source-backed) divisional list — same
+    // board-scoped precedence as generateP4P, one level down (per weight
+    // class instead of per sport).
+    const curated = await prisma.ranking.count({
+      where: { isPoundForPound: false, source: { not: "generated" }, weightClassId },
+    });
+    if (curated > 0) {
+      results.push({ sport: sportValue, ranked: 0, unranked: 0, skipped: "curated rankings present" });
+      continue;
+    }
+
+    const eligible = group
+      .map((f) => ({
+        id: f.id,
+        rating: fighterRating(f),
+        evidence: { wins: f.wins, losses: f.losses, draws: f.draws, noContests: f.noContests, koWins: f.koWins },
+      }))
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, MAX_RANKED);
+
+    await prisma.$transaction([
+      prisma.ranking.deleteMany({ where: { weightClassId, isPoundForPound: false, source: "generated" } }),
+      ...eligible.map((e, i) =>
+        prisma.ranking.create({
+          data: {
+            weightClassId, fighterId: e.id, isPoundForPound: false,
+            rank: i + 1, rating: e.rating, source: "generated", movement: "SAME",
+            evidence: e.evidence,
+          },
+        }),
+      ),
+    ]);
+
+    try {
+      await prisma.rankingSnapshot.createMany({
+        data: eligible.map((e, i) => ({
+          weightClassId, fighterId: e.id, isPoundForPound: false, organisation: "",
+          rank: i + 1, rating: e.rating, source: "generated", evidence: e.evidence,
+        })),
+      });
+    } catch (err) {
+      console.error(`[rankings] snapshot capture failed for ${sportValue} division ${weightClassId}:`, err);
+    }
+
+    results.push({ sport: sportValue, ranked: eligible.length, unranked: 0 });
+  }
+  return results;
+}
+
+export async function generateAllDivisions(sportValues: string[]): Promise<GenerateResult[]> {
+  const results: GenerateResult[] = [];
+  for (const s of sportValues) {
+    try {
+      results.push(...(await generateDivisions(s)));
+    } catch (err) {
+      console.error(`[rankings] generateDivisions(${s}) failed:`, err);
+      results.push({ sport: s, ranked: 0, unranked: 0, skipped: "error" });
+    }
+  }
+  return results;
+}

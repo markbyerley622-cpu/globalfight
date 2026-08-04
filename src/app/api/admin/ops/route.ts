@@ -6,7 +6,7 @@ import { enrichPending } from "@/lib/enrich/enrich";
 import { enrichArticleImages } from "@/lib/news/og-images";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
-import { generateAllP4P } from "@/lib/rankings/generate";
+import { generateAllP4P, generateAllDivisions } from "@/lib/rankings/generate";
 import { SPORTS } from "@/lib/sports";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,11 @@ const ACTIONS = {
   "refresh-p4p": async () => ({
     curated: await ingestCuratedP4P(),
     generated: await generateAllP4P(SPORTS.map((s) => s.value)),
+    // Divisional generation (per weight class, same rating engine, same
+    // curated-wins precedence) — this is the job that was missing entirely,
+    // which is why a licensed WBA Female source could populate every
+    // women's boxing division while every men's division showed nothing.
+    generatedDivisions: await generateAllDivisions(SPORTS.map((s) => s.value)),
   }),
 } as const;
 

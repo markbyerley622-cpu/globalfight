@@ -281,6 +281,16 @@ export async function getRankingOrganisations(sportValue: string): Promise<strin
  * means every organisation, which is why the rows are ordered by organisation
  * before rank — without that a division holding both a UFC and a ONE list would
  * interleave two unrelated ladders into one nonsensical 1,1,2,2,3,3.
+ *
+ * Curated-wins-generated-fills-empty, per DIVISION — the same precedence
+ * getPoundForPoundBySport applies per sport (see its long note). This used to
+ * hard-exclude every generated row, unconditionally, which is why a boxing
+ * reader could see every women's division fully populated (WBA Female is
+ * licensed and curated) and every men's division showing NOTHING: no men's
+ * boxing source is licensed at all (lib/rankings/sources.ts), and unlike
+ * P4P, there was no fallback for divisions to fall back to. An organisation
+ * filter always reads curated only — a named promotion's list is either that
+ * promotion's real list or nothing; the rating engine has no promotion.
  */
 export async function getRankingDivisions(
   sportValue: string, organisation?: string,
@@ -296,17 +306,18 @@ export async function getRankingDivisions(
   });
   const out: RankingDivision[] = [];
   for (const wc of wcs) {
+    const curatedWhere = {
+      weightClassId: wc.id,
+      isPoundForPound: false,
+      source: { not: "generated" },
+      ...(organisation ? { organisation } : {}),
+    };
+    const curatedCount = await prisma.ranking.count({ where: curatedWhere });
+    // Generated only ever fills a division an organisation filter can't see
+    // (it has no promotion), and only when curated has nothing for it.
+    const useGenerated = curatedCount === 0 && !organisation;
     const rows = await prisma.ranking.findMany({
-      where: {
-        weightClassId: wc.id,
-        isPoundForPound: false,
-        // Generated rows are excluded from every public read (see the long note
-        // on getPoundForPoundBySport). This query used to omit that filter, so
-        // rating-engine output that the P4P page correctly refused to show was
-        // being published here anyway.
-        source: { not: "generated" },
-        ...(organisation ? { organisation } : {}),
-      },
+      where: useGenerated ? { weightClassId: wc.id, isPoundForPound: false, source: "generated" } : curatedWhere,
       orderBy: organisation ? { rank: "asc" } : [{ organisation: "asc" }, { rank: "asc" }],
       take: 9,
       include: { fighter: { include: { titles: true } } },
