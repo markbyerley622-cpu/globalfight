@@ -12,6 +12,7 @@ import { formatSportRecord } from "@/lib/sports";
 import { safeFighterImageOrNull } from "@/lib/media-safe";
 import { SPORTS } from "@/lib/sports";
 import { recommendVideos } from "@/lib/feed/recommend";
+import { dbPersistServed } from "@/lib/feed/repo";
 import { getMyPicksForFightIds, getCrowdForFightIds } from "@/lib/picks";
 import { publicDisplayName } from "@/lib/display-name";
 
@@ -25,6 +26,43 @@ import { publicDisplayName } from "@/lib/display-name";
  * nouns later in the string are left exactly as they were.
  */
 const lowerFirst = (s: string): string => (s ? s[0].toLowerCase() + s.slice(1) : s);
+
+/**
+ * Unseen-first ordering + "mark as served" for a batch of articles, mirroring
+ * how lib/feed/repo.ts already treats video (FeedView/dbPersistServed) — this
+ * is the article-side twin (ArticleView), which did not exist before.
+ *
+ * Rows arrive already sorted newest-first (every caller queries `publishedAt
+ * desc`); this only REORDERS within that batch — unseen ones float to the
+ * front — and trims to `take`. It never invents freshness: if a user has
+ * already seen every candidate, they see the same (still newest) ones again
+ * rather than an empty band, because a repeat is a better failure mode than
+ * nothing.
+ */
+async function unseenFirstArticles<T extends { id: string }>(
+  userId: string, candidates: T[], take: number,
+): Promise<T[]> {
+  if (candidates.length === 0) return [];
+  const ids = candidates.map((c) => c.id);
+  const seenRows = await prisma.articleView.findMany({
+    where: { key: userId, articleId: { in: ids } },
+    select: { articleId: true },
+  });
+  const seen = new Set(seenRows.map((r) => r.articleId));
+  const ordered = [...candidates].sort((a, b) => Number(seen.has(a.id)) - Number(seen.has(b.id)));
+  const chosen = ordered.slice(0, take);
+
+  // Fire-and-forget: recording a view must never slow down or fail the read.
+  const now = new Date();
+  void Promise.all(
+    chosen.map((c) =>
+      prisma.articleView
+        .upsert({ where: { key_articleId: { key: userId, articleId: c.id } }, create: { key: userId, articleId: c.id, viewedAt: now }, update: { viewedAt: now } })
+        .catch(() => {}),
+    ),
+  );
+  return chosen;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The Following feed — the return leg of the loop.
@@ -365,7 +403,10 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
       ? prisma.article.findMany({
           where: { status: "PUBLISHED", publishedAt: { gte: recently }, OR: coverageTerms.map((t) => ({ title: { contains: t, mode: "insensitive" as const } })) },
           orderBy: { publishedAt: "desc" },
-          take: 10,
+          // Over-fetch: unseenFirstArticles below needs candidates BEYOND the
+          // final 10 to rotate through, or "unseen-first" has nothing to pick
+          // from and degenerates back into the same top-10-by-date every time.
+          take: 30,
           // publishedAt is nullable on the model; the WHERE above guarantees a
           // value, but the type doesn't, so it's narrowed at the mapping site.
           select: { id: true, slug: true, title: true, publishedAt: true, coverImageUrl: true, ogImageUrl: true, category: true, author: { select: { name: true } } },
@@ -391,6 +432,8 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
         })
       : Promise.resolve([]),
   ]);
+
+  const coverageUnseenFirst = await unseenFirstArticles(userId, coverage, 10);
 
   const items: FeedItem[] = [];
   const days = (d: Date) => Math.round((d.getTime() - now.getTime()) / 86_400_000);
@@ -584,7 +627,7 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
     });
   }
 
-  for (const a of coverage) {
+  for (const a of coverageUnseenFirst) {
     if (!a.publishedAt) continue; // unpublished has no place on a timeline
     items.push({
       id: `ar-${a.id}`,
@@ -617,6 +660,11 @@ export async function getFollowingFeed(userId: string, limit = 40): Promise<Feed
         viewerId: userId, preferUnseen: true, voice: "following", limit: 8,
       })
     : [];
+  // `preferUnseen` above only SINKS videos already marked served — nothing
+  // upstream of this call site ever wrote that mark for the Following/home
+  // surfaces (only the separate /clips reel engine did), so the sink had no
+  // history to act on and these bands could repeat the same clip forever.
+  if (recs.length) dbPersistServed(userId, recs.map((v) => v.id), now.getTime());
 
   const videoItems: FeedItem[] = recs.map((v) => ({
     id: `vd-${v.id}`,
@@ -798,16 +846,19 @@ export async function getRivals(userId: string, limit = 20): Promise<Rival[]> {
 
 // ── Corner Men ──────────────────────────────────────────────────────────────
 /** Recent published analysis — the creator side of the Following pillar. */
-export async function getCornerMen(limit = 12): Promise<FeedItem[]> {
-  const rows = await prisma.article.findMany({
+export async function getCornerMen(viewerId: string, limit = 12): Promise<FeedItem[]> {
+  const candidates = await prisma.article.findMany({
     where: { status: "PUBLISHED", publishedAt: { not: null } },
     orderBy: { publishedAt: "desc" },
-    take: limit,
+    // Over-fetch for the same reason as the Feed tab's coverage band — see
+    // unseenFirstArticles.
+    take: limit * 3,
     select: {
       id: true, slug: true, title: true, excerpt: true, publishedAt: true,
       author: { select: { name: true, username: true } },
     },
   });
+  const rows = await unseenFirstArticles(viewerId, candidates, limit);
 
   return rows.flatMap((a) =>
     a.publishedAt

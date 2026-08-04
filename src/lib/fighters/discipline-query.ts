@@ -77,3 +77,33 @@ export function fighterCompetesIn(sport?: Sport | string | null): { fighter: Pri
   if (!sport) return {};
   return { fighter: competesInDiscipline(sport) };
 }
+
+/**
+ * Excludes fighters that are a bare RANKING-LIST ARTIFACT rather than a
+ * profile: `resolveFighter` (lib/rankings/ingest.ts) creates a minimal
+ * `{ slug, name, sport, countryCode }` row for any ranked entry it can't
+ * match to an existing Fighter, so a licensed connector with no matching
+ * roster (WBA Female is the current example) silently materialises one
+ * Fighter row per ranked name — zero bouts, zero bio, existing purely to
+ * hang a Ranking row off. `competesInDiscipline`'s LOW tier deliberately
+ * keeps real-but-thin imports (a roster entry with a record, just no
+ * ruleset-tagged bout yet) browsable; this instead excludes rows with
+ * NO evidence at all, which is a different thing wearing the same tier.
+ *
+ * Directory-worthy: the DIRECTORY predicate (`competesInDiscipline`) minus
+ * these. Rankings, champion pages and anything rendering the ranking-list
+ * itself must keep using the fighter directly — a ranking-only stub still
+ * needs to render inside ITS ranking, it just shouldn't read as a browsable
+ * profile in a directory that implies "thousands of professional boxers"
+ * and delivers hundreds of blank ones instead.
+ */
+export function excludeRankingOnlyStubs(): Prisma.FighterWhereInput {
+  return {
+    NOT: {
+      wins: 0, losses: 0, draws: 0, noContests: 0,
+      fightsAsRed: { none: {} },
+      fightsAsBlue: { none: {} },
+      OR: [{ disciplineTier: "LOW" }, { disciplineTier: null }],
+    },
+  };
+}

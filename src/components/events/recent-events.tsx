@@ -56,7 +56,7 @@ export function RecentEvents({ events }: { events: RecentEvent[] }) {
 
       {/* Horizontal rail on mobile (data-hscroll: the shell must not treat a
           sideways scroll here as a section swipe), grid on wider screens. */}
-      <div data-hscroll className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
+      <div data-hscroll className="-mx-4 flex snap-x gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 hide-scrollbar sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
         {events.map((e) => <Card key={e.slug} e={e} />)}
       </div>
     </section>

@@ -537,6 +537,12 @@ model Ranking {
   rating          Float? // 0–100 point score
   source          String       @default("import")
   updatedAt       DateTime     @updatedAt
+  /// WHY this rank: for generated P4P, the record/rating math behind the
+  /// number ({ wins, losses, koWins, fightsCounted, rating }); for a curated
+  /// connector, whatever it published (a source URL, a division standing).
+  /// Never free text — always the machine-readable numbers/refs a consumer
+  /// or an auditor could recompute the rank from.
+  evidence        Json?
 
   /// WHOSE ranking this is: "UFC", "ONE", "PFL", "BKFC", "GLORY", "WBA"…
   /// Empty string = a cross-promotional list that belongs to the sport rather
@@ -559,6 +565,42 @@ model Ranking {
   @@index([weightClassId, rank])
   @@index([isPoundForPound, rank])
   @@index([organisation, isPoundForPound, rank])
+}
+
+/// Append-only history for Ranking. `Ranking` itself is the current board —
+/// a write to it overwrites the row, so there was never anywhere to ask "what
+/// was #1 last week." This is that: one row captured per fighter every time a
+/// board is (re)generated or synced, never updated, never deleted by normal
+/// operation. Keyed loosely (no FK to Ranking, which churns) rather than
+/// tightly, so a fighter's snapshot history survives their current Ranking
+/// row being deleted and recreated by the next generation pass.
+/// Article-level twin of FeedView (video). Without this, the Following feed's
+/// coverage band and Corner Men were a bare `ORDER BY publishedAt DESC LIMIT N`
+/// re-run on every visit — if nothing new had published, a user saw the exact
+/// same "3-day-old article" every time, because nothing on the read side knew
+/// they had already been shown it. See lib/following.ts `unseenFirstArticles`.
+model ArticleView {
+  key       String
+  articleId String
+  viewedAt  DateTime @default(now())
+
+  @@id([key, articleId])
+}
+
+model RankingSnapshot {
+  id              String   @id @default(cuid())
+  weightClassId   String
+  fighterId       String
+  isPoundForPound Boolean
+  organisation    String   @default("")
+  rank            Int
+  rating          Float?
+  source          String
+  evidence        Json?
+  capturedAt      DateTime @default(now())
+
+  @@index([weightClassId, isPoundForPound, organisation, fighterId, capturedAt])
+  @@index([fighterId, capturedAt])
 }
 
 // Time-series history — append-only, designed for millions of rows.

@@ -102,6 +102,43 @@ export interface PromoterCapability {
   note: string;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  TIER 2 — fighter PROFILE/DIRECTORY sources (not event/card sources — the
+//  gap this tier addresses is the fighter directory being ~85% WBA-Female
+//  ranking stubs with zero real male pros behind them; see
+//  lib/fighters/discipline-query.ts `excludeRankingOnlyStubs`).
+// ════════════════════════════════════════════════════════════════════════════
+
+export const BOXING_PROFILE_SOURCES: PromoterCapability[] = [
+  {
+    name: "British Boxers (britishboxers.uk)",
+    site: "https://britishboxers.uk",
+    robots: "permissive — 'Allow: /', only /admin /profile /api/ disallowed; sitemap declared",
+    sitemap: "https://britishboxers.uk/sitemap-fighters.xml",
+    structuredData: "none reachable — see note",
+    status: "unsupported",
+    note:
+      "Checked 2026-08-04. robots.txt and a dedicated fighters sitemap look ideal on paper — " +
+      "220 profile URLs (/fighters/{slug}), real British pros (Amir Khan, Adam Azim, Andy Cruz…). " +
+      "But the site is a fully client-rendered SPA (a Manus-hosted build: 'manus-runtime' script, " +
+      "no server HTML) — curl on a fighter page returns only the app shell and ~360KB of bundled " +
+      "React; no fighter data is present until client JS executes and fetches it. The only JSON-LD " +
+      "on the page is the site-wide SportsOrganization block, not a per-fighter Person schema. " +
+      "Scraping it for real would need headless-browser rendering (Playwright is already a " +
+      "devDependency for E2E tests, so the LIBRARY exists) to load each page and read the " +
+      "post-hydration DOM or intercept its XHR calls — but that means shipping a Chromium binary " +
+      "in the PRODUCTION runtime for a scrape job, which nothing here currently does, and is an " +
+      "infra decision (image size, Render build minutes, cold-start cost) bigger than a config " +
+      "entry. Also 220 profiles is a real but modest addition, not the 'thousands' gap this was " +
+      "chasing, and the site's own data provenance (does IT license from BoxRec/an official body, " +
+      "or compile independently?) is unstated on the page — worth a direct question to the site " +
+      "owner before building on it, given this project's current NO-GO cites unlicensed ingestion " +
+      "as an open finding. Left unsupported rather than half-built. Revisit if: (a) the licensing " +
+      "question gets an answer, and (b) a headless-render capability gets added for a reason that " +
+      "justifies the infra cost on its own.",
+  },
+];
+
 export const BOXING_PROMOTERS: PromoterCapability[] = [
   {
     name: "Matchroom Boxing",

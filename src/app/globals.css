@@ -321,6 +321,15 @@
    stutters/repaints with the rest of the shell. */
 .animate-marquee { animation: marquee 45s linear infinite; will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .animate-marquee { animation: none; } }
+/* Pause on hover — desktop pointers only. Scoped to (hover: hover) so a tap on
+   a touchscreen (which briefly enters a `:hover` state in most mobile browsers)
+   never freezes the marquee: touch users only ever get [data-visible="false"]
+   below, not this. */
+@media (hover: hover) and (pointer: fine) {
+  .sponsors-strip:hover .animate-marquee { animation-play-state: paused; }
+}
+/* IntersectionObserver-driven: stop animating work the compositor off-screen. */
+.animate-marquee[data-visible="false"] { animation-play-state: paused; }
 
 /* Prediction Victory Card — one subtle fade-rise on mount (Apple/Linear, not
    casino). Reduced-motion users get the resolved state with no movement. */

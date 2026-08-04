@@ -122,7 +122,12 @@ export function AppShell({
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Top bar — logo + actions row, with the Breaking ticker docked
             directly beneath inside the same header block. */}
-        <header className="z-40 shrink-0 border-b border-ink-800 bg-ink-950/90 backdrop-blur-xl">
+        {/* z-[500]: flex-item stacking context, must clear the map's internal
+            chrome (z-[420]-z-[450] in map-explorer.tsx/bottom-sheet.tsx) — those
+            layers are direct siblings of this header within the shell's
+            stacking context once they escape <main>'s non-positioned box, so a
+            merely-higher-looking z-40 still lost to them. */}
+        <header className="z-[500] shrink-0 border-b border-ink-800 bg-ink-950/90 backdrop-blur-xl">
           <div className="flex items-center gap-3 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
             {/* Logo always returns to a clean /events (event-centric home), with
                 no preserved sport/location/date filter state. */}
@@ -163,8 +168,12 @@ export function AppShell({
           </div>
         )}
 
-        {/* Single scroll region — pages drop in unchanged */}
-        <main ref={mainRef} id="main" className="hide-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        {/* Single scroll region — pages drop in unchanged.
+            cr-overscroll-contain: without it, flinging past the top/bottom
+            of #main lets the gesture chain into the WKWebView's own elastic
+            bounce, dragging the whole app shell (header/bottom bar) with it —
+            the "whole page moves" bug on iOS Safari/PWA standalone. */}
+        <main ref={mainRef} id="main" className="cr-overscroll-contain hide-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           {children}
           <div className="hidden lg:block">{footer}</div>
         </main>

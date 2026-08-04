@@ -61,9 +61,9 @@ export interface Sponsor {
  * Owner-supplied marks (michael@avonstowe.com). The owner asserts these are
  * real, permissioned partners and is the accountable approver.
  *
- * `href: null` on Kong Fight Tape and Combat Profile is deliberate and correct:
- * no destination has been confirmed for them. They were previously linked to
- * "/", which is a dead link wearing a partner's name.
+ * `href: null` on Kong Fight Tape is deliberate and correct: no destination
+ * has been confirmed for it. It was previously linked to "/", which is a
+ * dead link wearing a partner's name.
  */
 export const SPONSORS: readonly Sponsor[] = [
   {
@@ -108,21 +108,6 @@ export const SPONSORS: readonly Sponsor[] = [
     href: null, // no confirmed destination — renders unlinked, never guessed
     category: "equipment",
     priority: 30,
-    active: true,
-    startDate: "2026-07-15",
-    endDate: "2027-07-15",
-    agreementRef: "owner-supplied-2026-07-15",
-    approvedBy: "michael@avonstowe.com",
-  },
-  {
-    id: "combat-profile",
-    slug: "combat-profile",
-    name: "Combat Profile",
-    legalName: "Combat Profile",
-    logo: "/brand/partners/combat-profile.png",
-    href: null, // no confirmed destination — renders unlinked, never guessed
-    category: "media",
-    priority: 40,
     active: true,
     startDate: "2026-07-15",
     endDate: "2027-07-15",

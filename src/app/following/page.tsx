@@ -74,7 +74,7 @@ export default async function FollowingPage({
     tab === "feed" || tab === "events" ? getFollowingFeed(user.id) : Promise.resolve<FeedItem[]>([]),
     getFollowingSummary(user.id),
     tab === "rivals" ? getRivals(user.id) : Promise.resolve<Rival[]>([]),
-    tab === "corner" ? getCornerMen() : Promise.resolve<FeedItem[]>([]),
+    tab === "corner" ? getCornerMen(user.id) : Promise.resolve<FeedItem[]>([]),
   ]);
 
   const items = tab === "events" ? feed.filter((i) => EVENT_KINDS.has(i.kind)) : feed;

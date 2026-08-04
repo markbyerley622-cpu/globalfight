@@ -6,6 +6,7 @@ import { getProfileStats, type ProfileStats } from "@/lib/profile-stats";
 import { resolvePromotion } from "@/lib/promotions";
 import type { FightEvent } from "@/lib/types";
 import { recommendVideos, type VideoRec } from "@/lib/feed/recommend";
+import { dbPersistServed } from "@/lib/feed/repo";
 import { SPORTS } from "@/lib/sports";
 
 // ── Home recommendation layer ───────────────────────────────────────────────
@@ -95,9 +96,18 @@ export async function getHomeSections(userId: string | null, upcomingIn?: FightE
           return slug ? [slug as string] : [];
         }),
         viewerId: userId,
+        // Was missing here (present on the Following feed's own Watch band):
+        // without it this rail had no seen-suppression at all beyond muted
+        // channels/videos, so a signed-in user could get the same clip on
+        // every home load regardless of the Following feed already sinking it.
+        preferUnseen: true,
         limit: videoBudget,
       })
     : [];
+  // Same reasoning as the Following feed's Watch band: preferUnseen only
+  // sinks videos already marked served, so the mark has to actually get
+  // written here or the sink has nothing to work with.
+  if (userId && videos.length) dbPersistServed(userId, videos.map((v) => v.id), Date.now());
 
   return { personalized: true, live, continueWeek, becauseYouFollow, progress, trending, videos };
 }

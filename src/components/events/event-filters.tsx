@@ -114,7 +114,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   return (
     <div className="flex items-center gap-2">
       <span className="w-[4.5rem] shrink-0 text-[0.65rem] font-bold uppercase tracking-wider text-fog">{label}</span>
-      <div data-hscroll className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div data-hscroll className="flex gap-1.5 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {children}
       </div>
     </div>

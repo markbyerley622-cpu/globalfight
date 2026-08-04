@@ -28,7 +28,7 @@ export * from "@/lib/forum/repo";
 // this file is CURATED, and a curated list is its own verification. The strict
 // predicate belongs to generateP4P, which computes an ordering rather than
 // transcribing one.
-import { competesInDiscipline } from "@/lib/fighters/discipline-query";
+import { competesInDiscipline, excludeRankingOnlyStubs } from "@/lib/fighters/discipline-query";
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : undefined);
 const isoReq = (d: Date) => d.toISOString();
@@ -77,6 +77,13 @@ export async function getFightersPage(opts: {
 }): Promise<{ items: import("@/lib/types").FighterListItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(opts.limit ?? 24, 1), 60);
   const where: import("@prisma/client").Prisma.FighterWhereInput = {};
+  // Directory-worthy, not just tagged: a ranking connector with no roster
+  // match (WBA Female is the current example) writes a bare
+  // { slug, name, sport, countryCode } Fighter to hang its Ranking row off.
+  // Zero bouts, zero bio — a directory entry in name only. Excluding these
+  // is what stops a single licensed connector's stub count (this one alone
+  // is close to 200 rows) from being most of what "Boxing" shows.
+  Object.assign(where, excludeRankingOnlyStubs());
   // sports[] (verified disciplines), NOT the legacy `sport` label. A crossover
   // athlete appears in every directory they have evidence for.
   if (opts.sport) Object.assign(where, competesInDiscipline(opts.sport));
