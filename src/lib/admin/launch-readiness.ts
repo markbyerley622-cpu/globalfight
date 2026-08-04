@@ -5,6 +5,7 @@ import { missingLegalFields } from "@/lib/legal-config";
 import { isCanonicalHost, SITE } from "@/lib/config";
 import { ingestibleSources } from "@/lib/rankings/sources";
 import { isPushConfigured } from "@/lib/push/send";
+import { isEmailConfigured } from "@/lib/email/send";
 import { auditCronHealth } from "./cron-health";
 import { getProviderHealth } from "./provider-health";
 
@@ -104,18 +105,30 @@ export async function auditLaunchReadiness(): Promise<ReadinessReport> {
       "Fine on a single instance. Set REDIS_URL before scaling past one container.", "warn", 5, true));
 
   // ── Email — password reset is dead without it ───────────────────────────
-  const emailReady = set(env.EMAIL_PROVIDER) && set(env.RESEND_API_KEY) && set(env.EMAIL_FROM);
-  const sandboxSender = /@resend\.dev$/i.test(env.EMAIL_FROM ?? "");
+  // Delegates to the SAME predicate send.ts actually gates on (isEmailConfigured),
+  // not a re-derived copy — a second copy is exactly how this file could say
+  // "configured" while the real send path still throws. Was Resend-only until
+  // an SMTP branch (Gmail/Outlook/other) was added; this check must recognise
+  // either the moment send.ts does.
+  const emailReady = isEmailConfigured();
+  const sandboxSender = env.EMAIL_PROVIDER === "resend" && /@resend\.dev$/i.test(env.EMAIL_FROM ?? "");
+  const smtpFromMismatch =
+    env.EMAIL_PROVIDER === "smtp" && set(env.EMAIL_FROM) && set(env.SMTP_USER) &&
+    !(env.EMAIL_FROM ?? "").toLowerCase().includes((env.SMTP_USER ?? "").toLowerCase());
   checks.push(
     !emailReady
       ? bad("email", "Infrastructure", "Transactional email",
-        "EMAIL_PROVIDER / RESEND_API_KEY / EMAIL_FROM not all set",
+        "no provider fully configured (Resend: EMAIL_PROVIDER/RESEND_API_KEY/EMAIL_FROM, or SMTP: EMAIL_PROVIDER/SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/EMAIL_FROM)",
         "PASSWORD RESET IS DEAD. /api/auth/password/reset/request answers 503 by design rather than mint a token nobody receives.", "fail", 10, true)
       : sandboxSender
         ? bad("email", "Infrastructure", "Transactional email",
           `EMAIL_FROM is ${env.EMAIL_FROM} — Resend's SANDBOX sender`,
           "It can only deliver to the Resend account owner. Every other user is rejected, and the reset route returns the same message either way — so this looks EXACTLY like working password reset while locking out every real user.", "fail", 10, true)
-        : ok("email", "Infrastructure", "Transactional email", `${env.EMAIL_PROVIDER} via ${env.EMAIL_FROM}`, 10, true),
+        : smtpFromMismatch
+          ? bad("email", "Infrastructure", "Transactional email",
+            `EMAIL_FROM (${env.EMAIL_FROM}) does not match SMTP_USER (${env.SMTP_USER})`,
+            "Gmail and most SMTP providers reject or silently rewrite a From address that isn't the authenticated mailbox. Set EMAIL_FROM to the same address as SMTP_USER.", "fail", 10, true)
+          : ok("email", "Infrastructure", "Transactional email", `${env.EMAIL_PROVIDER} via ${env.EMAIL_FROM}`, 10, true),
   );
 
   // ── Object storage — uploads silently vanish without it ────────────────

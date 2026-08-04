@@ -178,39 +178,56 @@ envVarGroups:
       # "Password reset is temporarily unavailable" by design: it refuses to mint a
       # reset token nobody can receive, rather than saying "check your inbox" for
       # mail that was never sent. That honesty is correct, but it means PASSWORD
-      # RESET IS DEAD until these three are filled in.
+      # RESET IS DEAD until one full provider (below) is filled in. Full detail
+      # and trade-offs: src/lib/email/send.ts.
       #
-      # Set all three in the Render dashboard (Resend: resend.com → API Keys):
+      # OPTION A — Resend (better deliverability, needs a domain you own):
       #   EMAIL_PROVIDER=resend
       #   RESEND_API_KEY=re_…
       #   EMAIL_FROM=no-reply@<a domain you have verified with Resend>
-      #
       # EMAIL_FROM must be on a domain verified in Resend, or every send 4xxs and the
-      # reset silently fails for a different reason. Swapping providers means one new
-      # branch in src/lib/email/send.ts and nothing else.
+      # reset silently fails for a different reason.
       #
-      # ── NOT LAUNCH-READY IF EMAIL_FROM IS onboarding@resend.dev ──────────
-      # That is Resend's SANDBOX sender. It needs no domain and no DNS, and it is
-      # the right way to prove this wiring works end to end — but it can only
-      # deliver to the address the Resend account was registered with. Every other
-      # recipient is rejected by Resend, and the app cannot tell: the reset route
-      # returns the same "if that email is registered, we've sent a reset link" for
-      # every outcome (deliberately — it must not leak who has an account). So a
-      # sandbox sender in production looks EXACTLY like working password reset while
-      # locking out every real user.
+      # NOT LAUNCH-READY IF EMAIL_FROM IS onboarding@resend.dev — that is Resend's
+      # SANDBOX sender: no domain/DNS needed, but it can only deliver to the address
+      # the Resend account was registered with. Every other recipient is rejected,
+      # silently — the reset route always returns the same generic success message
+      # (deliberately, to not leak who has an account), so a sandbox sender in
+      # production looks EXACTLY like working password reset while locking out
+      # every real user.
       #
-      # A free-mail domain can never be used here either: outlook.com, gmail.com and
-      # the like cannot be DNS-verified by you, and their DMARC policy exists
-      # specifically to stop third parties sending as their users.
+      # A free-mail domain (outlook.com, gmail.com, …) can never be EMAIL_FROM here:
+      # you cannot DNS-verify someone else's domain, and their DMARC policy exists
+      # specifically to reject a third party sending mail claiming to be from it.
       #
-      # LAUNCH CHECKLIST: EMAIL_FROM must be on a domain you own and have verified in
-      # Resend. Confirm a reset email reaches an address that is NOT the Resend
-      # account owner's before calling this done.
+      # OPTION B — direct SMTP (Gmail/Outlook/other — unblocks today, no new
+      # signup, real mailbox sending its own mail so DMARC does not apply):
+      #   EMAIL_PROVIDER=smtp
+      #   SMTP_HOST=smtp.gmail.com          (or smtp.office365.com, …)
+      #   SMTP_PORT=465                     (587 for most non-Gmail providers)
+      #   SMTP_USER=you@gmail.com
+      #   SMTP_PASS=<16-char Gmail App Password, NOT your login password>
+      #   EMAIL_FROM=you@gmail.com          (must equal SMTP_USER)
+      # Gmail: generate the App Password at myaccount.google.com/apppasswords
+      # (requires 2-Step Verification). Capped ~500 sends/day, weaker
+      # deliverability than a dedicated sender — real, but a stopgap, not the
+      # long-term answer at real signup volume.
+      #
+      # LAUNCH CHECKLIST either way: confirm a reset email reaches an address
+      # that is NOT the sending account itself before calling this done.
       - key: EMAIL_PROVIDER
         sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
         sync: false
       # Fighters per hourly `refresh-enrich` run (photo + bio).
       #
