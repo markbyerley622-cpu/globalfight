@@ -44,10 +44,13 @@ async function unseenFirstArticles<T extends { id: string }>(
 ): Promise<T[]> {
   if (candidates.length === 0) return [];
   const ids = candidates.map((c) => c.id);
-  const seenRows = await prisma.articleView.findMany({
-    where: { key: userId, articleId: { in: ids } },
-    select: { articleId: true },
-  });
+  // Degrade to "no seen data" rather than fail the whole feed: this table is
+  // new, and a deploy landing ahead of its `prisma db push` must not turn
+  // into a 500 on /following — see repo.prisma.ts for the same fallback
+  // philosophy elsewhere in this codebase.
+  const seenRows = await prisma.articleView
+    .findMany({ where: { key: userId, articleId: { in: ids } }, select: { articleId: true } })
+    .catch(() => []);
   const seen = new Set(seenRows.map((r) => r.articleId));
   const ordered = [...candidates].sort((a, b) => Number(seen.has(a.id)) - Number(seen.has(b.id)));
   const chosen = ordered.slice(0, take);

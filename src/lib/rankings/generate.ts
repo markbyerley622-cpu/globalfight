@@ -149,6 +149,15 @@ export async function generateP4P(sportValue: string): Promise<GenerateResult> {
 
 export async function generateAllP4P(sportValues: string[]): Promise<GenerateResult[]> {
   const results: GenerateResult[] = [];
-  for (const s of sportValues) results.push(await generateP4P(s));
+  for (const s of sportValues) {
+    // One sport's failure (e.g. a schema not yet migrated for a just-added
+    // column) must not abort every sport after it in the loop.
+    try {
+      results.push(await generateP4P(s));
+    } catch (err) {
+      console.error(`[rankings] generateP4P(${s}) failed:`, err);
+      results.push({ sport: s, ranked: 0, unranked: 0, skipped: "error" });
+    }
+  }
   return results;
 }
