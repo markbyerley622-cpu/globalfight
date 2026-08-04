@@ -54,20 +54,33 @@ function excludeSinglePromotionOnly(sportValue: string): Prisma.FighterWhereInpu
   // and was passing the exclusion on that alone, despite his only
   // BOXING-ruleset bouts being 100% Misfits — verified live.
   //
-  // Deliberately NOT also requiring a non-null promotion: 92% of real boxing
-  // events (measured: 130/142) have promotion NULL by design — the boxing
-  // category scraper (lib/scraper/boxing/config.ts) leaves co-promoted cards
-  // unattributed rather than guessing a promoter. Requiring non-null here
-  // was tried and reverted: it dropped the eligible boxing pool from ~151
-  // real fighters to 2, because it excluded essentially the entire primary
-  // real-boxing source, not just the intended Misfits case. The trade a
-  // fighter whose ONLY Misfits-boxing evidence is a duplicated/mislabeled
-  // event (like Ferguson's Warren Spencer bout, imported twice, once
-  // correctly tagged and once with promotion NULL) can still slip through on
-  // that null-tagged duplicate. That's a real, known gap — the actual fix is
-  // deduplicating the underlying Event import, not this filter; see
-  // docs/AUDIT.md follow-ups.
-  const outsideBout = { ruleset: sportValue as never, event: { promotion: { not: promotion } } };
+  // `OR: [{ not: promotion }, { promotion: null }]`, NOT `{ not: promotion }`
+  // alone — THE ACTUAL BUG, found by tracing why Derek Chisora (21 real
+  // fights, ONE involving Misfits) was still being excluded after the
+  // ruleset fix above. Prisma's `{ not: X }` on a nullable column compiles to
+  // SQL `<> X`, and SQL three-valued logic means `NULL <> X` evaluates to
+  // UNKNOWN, not TRUE — so it does NOT match NULL rows. Verified directly:
+  // `event.count({ promotion: { not: "Misfits Boxing" } })` returned 5, not
+  // the 135 non-Misfits events that actually exist (130 of which are
+  // NULL-promotion). 92% of real boxing events have promotion NULL by design
+  // (the category scraper leaves co-promoted cards unattributed rather than
+  // guess a promoter — lib/scraper/boxing/config.ts), so `{ not: promotion }`
+  // alone was silently treating almost the entire real-boxing source as
+  // invisible "outside" evidence, collapsing the eligible pool from ~151 real
+  // fighters to 2. A PREVIOUS pass at this file removed an explicit
+  // `{ not: null }` check believing IT was the over-strict part — it was not;
+  // `{ not: promotion }` alone already excluded nulls on its own, so that
+  // revert never actually restored anyone. This is the real fix.
+  //
+  // Residual, accepted gap: a fighter whose ONLY non-Misfits evidence is a
+  // duplicated/mislabeled Misfits event (Ferguson's Warren Spencer bout was
+  // imported twice — once correctly tagged, once with promotion NULL) can
+  // still slip through on that null-tagged duplicate. Real, narrow, and the
+  // actual fix is deduplicating the Event import, not this filter.
+  const outsideBout = {
+    ruleset: sportValue as never,
+    event: { OR: [{ promotion: { not: promotion } }, { promotion: null }] },
+  };
   return {
     OR: [
       { fightsAsRed: { some: outsideBout } },
