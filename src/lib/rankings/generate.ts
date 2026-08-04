@@ -48,10 +48,30 @@ const SINGLE_PROMOTION_EXCLUSIONS: Record<string, string> = {
 function excludeSinglePromotionOnly(sportValue: string): Prisma.FighterWhereInput {
   const promotion = SINGLE_PROMOTION_EXCLUSIONS[sportValue];
   if (!promotion) return {};
+  // `ruleset: sportValue` — without this, ANY bout outside Misfits counts as
+  // "outside evidence", including a fight in a DIFFERENT sport. Tony
+  // Ferguson has one UFC MMA bout (promotion "UFC", obviously not Misfits)
+  // and was passing the exclusion on that alone, despite his only
+  // BOXING-ruleset bouts being 100% Misfits — verified live.
+  //
+  // Deliberately NOT also requiring a non-null promotion: 92% of real boxing
+  // events (measured: 130/142) have promotion NULL by design — the boxing
+  // category scraper (lib/scraper/boxing/config.ts) leaves co-promoted cards
+  // unattributed rather than guessing a promoter. Requiring non-null here
+  // was tried and reverted: it dropped the eligible boxing pool from ~151
+  // real fighters to 2, because it excluded essentially the entire primary
+  // real-boxing source, not just the intended Misfits case. The trade a
+  // fighter whose ONLY Misfits-boxing evidence is a duplicated/mislabeled
+  // event (like Ferguson's Warren Spencer bout, imported twice, once
+  // correctly tagged and once with promotion NULL) can still slip through on
+  // that null-tagged duplicate. That's a real, known gap — the actual fix is
+  // deduplicating the underlying Event import, not this filter; see
+  // docs/AUDIT.md follow-ups.
+  const outsideBout = { ruleset: sportValue as never, event: { promotion: { not: promotion } } };
   return {
     OR: [
-      { fightsAsRed: { some: { event: { promotion: { not: promotion } } } } },
-      { fightsAsBlue: { some: { event: { promotion: { not: promotion } } } } },
+      { fightsAsRed: { some: outsideBout } },
+      { fightsAsBlue: { some: outsideBout } },
     ],
   };
 }
@@ -89,9 +109,17 @@ async function ensureP4PWeightClass(sportValue: string): Promise<string> {
  * surname-only stubs with zero bouts between them.
  */
 export async function generateP4P(sportValue: string): Promise<GenerateResult> {
-  // Never clobber curated (scraped) rankings.
+  const weightClassId = await ensureP4PWeightClass(sportValue);
+
+  // Never clobber curated (scraped) rankings — scoped to THIS sport's P4P
+  // board (weightClassId), not to "any fighter eligible for this sport".
+  // The old fighter-scoped check false-positived the moment a crossover
+  // fighter (Mike Perry: sports includes BOXING, curated in bare-knuckle)
+  // held a curated ranking in a DIFFERENT sport — every subsequent boxing
+  // generation run silently skipped forever, believing boxing itself had a
+  // curated source when the curated row belonged to another board entirely.
   const curated = await prisma.ranking.count({
-    where: { isPoundForPound: true, source: { not: "generated" }, fighter: rankableInDiscipline(sportValue) },
+    where: { isPoundForPound: true, source: { not: "generated" }, weightClassId },
   });
   if (curated > 0) return { sport: sportValue, ranked: 0, unranked: 0, skipped: "curated rankings present" };
 
@@ -113,11 +141,17 @@ export async function generateP4P(sportValue: string): Promise<GenerateResult> {
     .slice(0, MAX_RANKED);
   const unranked = fighters.length - eligible.length;
 
-  const weightClassId = await ensureP4PWeightClass(sportValue);
-
-  // Atomically replace this sport's generated P4P.
+  // Atomically replace this sport's generated P4P — delete scoped to the
+  // BOARD (weightClassId), not to current fighter eligibility. Scoping the
+  // delete by `rankableInDiscipline` (as this used to) meant a fighter whose
+  // disciplineTier later degraded to LOW became invisible to the delete too,
+  // orphaning their old rank forever — verified live: Inoue's original
+  // ranking row outlived three regeneration passes this way, sitting at rank
+  // 1 alongside whoever a fresh run put there, forever, with no evidence
+  // field because it predated this code. A full board replacement has no
+  // such gap: every "generated" row for this weightClassId goes, unconditionally.
   await prisma.$transaction([
-    prisma.ranking.deleteMany({ where: { isPoundForPound: true, source: "generated", fighter: rankableInDiscipline(sportValue) } }),
+    prisma.ranking.deleteMany({ where: { weightClassId, isPoundForPound: true, source: "generated" } }),
     ...eligible.map((e, i) =>
       prisma.ranking.create({
         data: {
