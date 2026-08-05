@@ -7,6 +7,37 @@ import { useAuth } from "@/lib/auth-client";
 import { ProbabilityBar } from "@/components/probability-bar";
 
 type Corner = "RED" | "BLUE";
+
+/**
+ * The confirmation wears the colour of the corner you called.
+ *
+ * It used to be green for both, and flashed `shadow-glow-red` whichever side
+ * you took — so calling the blue corner lit up red, which is the one colour on
+ * this screen that means the OTHER fighter. Green was worse than neutral: it is
+ * the "correct answer" colour, and a pick is not correct yet.
+ *
+ * Corner colour is already the language of the whole card (Portrait, the
+ * probability bar, the corner pills all use blood/volt), so the confirmation
+ * reinforcing "you are on THIS side" costs nothing and reads instantly.
+ */
+const CORNER_THEME: Record<Corner, {
+  text: string; border: string; bg: string; glow: string; ring: string;
+}> = {
+  RED: {
+    text: "text-blood-300",
+    border: "border-blood-500/60",
+    bg: "bg-blood-500/10",
+    glow: "shadow-glow-red",
+    ring: "ring-blood-500/40",
+  },
+  BLUE: {
+    text: "text-volt-400",
+    border: "border-volt-500/60",
+    bg: "bg-volt-500/10",
+    glow: "shadow-glow-volt",
+    ring: "ring-volt-500/40",
+  },
+};
 type Method = "KO" | "SUB" | "UD";
 interface Crowd { red: number; blue: number; total: number }
 interface Pick { corner: Corner; confidence: number | null; method: Method | null }
@@ -193,8 +224,19 @@ export function BoutPick({
 
         {/* Second row: only after a call, and only when it can still change. */}
         {pick && !locked && (
-          <div className={cn("qp-reveal mt-2 flex flex-wrap items-center gap-1.5 transition-all", flash && "scale-[1.01]")}>
-            <CheckCircle2 className={cn("size-3.5 shrink-0 text-up", flash && "animate-pulse")} />
+          <div
+            className={cn(
+              "qp-reveal mt-2 flex flex-wrap items-center gap-1.5 transition-all duration-300 ease-out-back",
+              flash && "scale-[1.02]",
+            )}
+          >
+            <CheckCircle2
+              className={cn(
+                "size-4 shrink-0 transition-transform duration-300 ease-out-back",
+                CORNER_THEME[pick.corner].text,
+                flash && "scale-125",
+              )}
+            />
             {METHODS.map((m) => (
               <button
                 key={m.value}
@@ -374,12 +416,25 @@ export function BoutPick({
             finish). The flash marks the moment; the banner persists. */}
         {pick && (
           <div
+            aria-live="polite"
             className={cn(
-              "mt-4 flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 transition-all duration-300",
-              flash ? "scale-[1.015] border-up/60 bg-up/10 shadow-glow-red" : "border-ink-700 bg-ink-950/40",
+              // `ease-out-back` + the scale is the press payoff. 300ms is long
+              // enough to register as a moment and short enough not to block
+              // the next pick on a fourteen-bout card.
+              "mt-4 flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 transition-all duration-300 ease-out-back",
+              flash
+                ? cn("scale-[1.02] ring-1", CORNER_THEME[pick.corner].border, CORNER_THEME[pick.corner].bg,
+                     CORNER_THEME[pick.corner].glow, CORNER_THEME[pick.corner].ring)
+                : cn("border-ink-700 bg-ink-950/40"),
             )}
           >
-            <CheckCircle2 className={cn("size-5 shrink-0 text-up", flash && "animate-pulse")} />
+            <CheckCircle2
+              className={cn(
+                "size-6 shrink-0 transition-transform duration-300 ease-out-back",
+                CORNER_THEME[pick.corner].text,
+                flash && "scale-110",
+              )}
+            />
             <div className="min-w-0">
               <p className="font-display text-sm font-bold text-chalk">
                 Locked in — you&apos;re calling {pick.corner === "RED" ? redName : blueName}

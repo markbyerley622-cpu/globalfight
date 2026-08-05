@@ -109,6 +109,9 @@
   /* ── Shadows ── */
   --shadow-glow-red: 0 0 40px -8px rgba(225, 29, 42, 0.55);
   --shadow-glow-gold: 0 0 40px -8px rgba(224, 169, 27, 0.5);
+  /* The BLUE corner's counterpart to glow-red. Both corners get an equal
+     confirmation moment; without this, picking blue flashed red. */
+  --shadow-glow-volt: 0 0 40px -8px rgba(37, 99, 235, 0.55);
 
   /* ── Easing library (Penner curves as tokens; also emit `ease-*` utilities) ──
      Replaces the cubic-beziers that were copy-pasted inline across the file. */
