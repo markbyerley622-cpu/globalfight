@@ -118,7 +118,26 @@ export function ScrollRestoration() {
     const store = (positions.current ??= load());
     if (!el) return;
 
-    const pop = isPop.current;
+    // Back/Forward arrives one of TWO ways, and only one of them fires popstate.
+    //
+    //   SPA navigation      -> popstate fires, isPop is set. Handled.
+    //   FULL DOCUMENT LOAD  -> no popstate. The listener above was registered
+    //                          milliseconds ago on a brand-new document, so the
+    //                          event it was waiting for already happened — in the
+    //                          previous document.
+    //
+    // The second case is the one users were hitting: Back off a hard navigation
+    // (or a bfcache miss) reloads the document, `pop` was false, and line below
+    // deliberately targeted 0. So the restoration was correct and simply never
+    // ran — "Back reloads and dumps me at the top" is exactly that shape.
+    //
+    // The Navigation Timing API is the browser's own record of WHY this document
+    // exists. `back_forward` means the user pressed Back, whether or not React
+    // ever saw a popstate.
+    const navType = (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type;
+    const restoredDocument = navType === "back_forward";
+
+    const pop = isPop.current || restoredDocument;
     isPop.current = false;
 
     // A hash is an explicit request for a specific element. Leave it to the browser
