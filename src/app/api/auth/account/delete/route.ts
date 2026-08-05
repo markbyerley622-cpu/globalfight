@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, verifyPassword, SESSION_COOKIE, clearedCookieOptions } from "@/lib/auth";
 import { deleteAllEvidenceForUser } from "@/lib/evidence/lifecycle";
+import { anonymiseAuthoredContent } from "@/lib/account/tombstone";
 import { hit, clientIp, POLICY } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -45,7 +46,16 @@ export async function POST(req: Request) {
   // 1. Destroy identity evidence in object storage while the pointers still exist.
   const evidenceDeleted = await deleteAllEvidenceForUser(user.id);
 
-  // 2. Record the erasure BEFORE the user row goes (the audit log's actorId is
+  // 2. Anonymise authored DISCUSSION before the cascade can destroy it.
+  //    ForumThread.author and ForumPost.author are onDelete: Cascade, so
+  //    deleting the user took their threads with them — and a cascading thread
+  //    takes every reply inside it, including other members' posts. One person
+  //    erasing themselves was erasing other people's writing. Re-pointing at the
+  //    tombstone keeps the conversation and drops the identity, which is the
+  //    outcome both the reader and the departing user actually want.
+  const anonymised = await anonymiseAuthoredContent(user.id);
+
+  // 3. Record the erasure BEFORE the user row goes (the audit log's actorId is
   //    nullable, so the entry survives the delete).
   await prisma.auditLog.create({
     data: {
@@ -53,11 +63,18 @@ export async function POST(req: Request) {
       action: "account.delete",
       entity: "User",
       entityId: user.id,
-      meta: { evidenceObjectsDeleted: evidenceDeleted },
+      // Spread rather than nested: Prisma's Json input type does not accept an
+      // arbitrary interface, and the three counts are more useful flat anyway.
+      meta: {
+        evidenceObjectsDeleted: evidenceDeleted,
+        anonymisedThreads: anonymised.threads,
+        anonymisedPosts: anonymised.posts,
+        anonymisedQuotes: anonymised.quotes,
+      },
     },
   });
 
-  // 3. Delete the account. Claims, sessions, and tokens cascade.
+  // 4. Delete the account. Claims, sessions, and tokens cascade.
   await prisma.user.delete({ where: { id: user.id } });
 
   const res = NextResponse.json({ ok: true, evidenceObjectsDeleted: evidenceDeleted });

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Bell, Dumbbell, Pencil, Settings as SettingsIcon, UserPlus, ChevronRight } from "lucide-react";
 import { ProfileSettings } from "@/components/profile/profile-settings";
+import { DeleteAccount } from "@/components/account/delete-account";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -63,6 +64,12 @@ export default function ProfileSettingsPage() {
       <div className="mt-6">
         <ProfileSettings />
       </div>
+
+      {/* Erasure lives at the bottom of the only screen that administers the
+          account, behind its own disclosure. The API has existed for a while;
+          until now nothing linked to it, which made a GDPR Art. 17 route a
+          right the user had no way to exercise. */}
+      <DeleteAccount />
     </div>
   );
 }

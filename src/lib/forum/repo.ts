@@ -21,6 +21,7 @@ import { publish } from "@/lib/forum/realtime";
 import { extractMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notifications-store";
 import { publicDisplayName } from "@/lib/display-name";
+import { assertPublishable } from "@/lib/moderation/text";
 
 // ─── Visibility ─────────────────────────────────────────────────────────────
 // Battle rooms are ForumThreads with visibility="battle": same posts, reactions,
@@ -372,6 +373,11 @@ export async function createThread(input: {
   const author = await prisma.user.findUnique({ where: { id: input.authorId }, select: { registryRole: true } });
   const kind = threadKindFor(author?.registryRole ?? "fan", input.kind);
 
+  // Both halves: a slur in the TITLE is the most visible place it could land —
+  // it becomes the slug, the category listing and the share card.
+  await assertPublishable(input.title);
+  await assertPublishable(input.content);
+
   const base = slugifyThread(input.title);
   let slug = base;
   for (let i = 2; await prisma.forumThread.findUnique({ where: { slug }, select: { id: true } }); i++) {
@@ -430,6 +436,12 @@ export async function createPost(input: {
   if (!thread) throw new Error("Thread not found.");
   if (!canAccessThread(thread, input.authorId)) throw new Error("Thread not found.");
   if (thread.locked) throw new Error("This thread is locked.");
+
+  // MODERATION, before anything is written. Every comment surface in the product
+  // — the forum, an event's general room, a fight's community room, a battle
+  // room — reaches the database through this one function, so the check belongs
+  // here and not on an API route. See lib/moderation/text.
+  await assertPublishable(input.content);
 
   // Snapshot the quoted post so the quote survives later edits/deletes.
   let quote: { quotedId: string; quotedAuthor: string; quotedExcerpt: string } | undefined;
@@ -582,6 +594,9 @@ export async function editPost(input: {
   });
   if (!post) throw new Error("Post not found.");
   if (post.authorId !== input.userId && !input.isAdmin) throw new Error("You can only edit your own posts.");
+  // Edit is the obvious way round a create-time check: post something clean,
+  // then edit it into a slur. Gating create alone would have left the door open.
+  await assertPublishable(input.content);
   const updated = await prisma.forumPost.update({
     where: { id: input.postId }, data: { content: input.content.trim(), edited: true },
     include: { author: POST_AUTHOR, reactions: { select: { type: true, userId: true } } },
