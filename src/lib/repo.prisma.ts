@@ -29,6 +29,8 @@ export * from "@/lib/forum/repo";
 // predicate belongs to generateP4P, which computes an ordering rather than
 // transcribing one.
 import { competesInDiscipline, excludeRankingOnlyStubs } from "@/lib/fighters/discipline-query";
+import { filterRenderableEvents } from "@/lib/events/renderable";
+import { log } from "@/lib/scraper/logger";
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : undefined);
 const isoReq = (d: Date) => d.toISOString();
@@ -658,7 +660,32 @@ export async function getUpcomingEvents(): Promise<FightEvent[]> {
     orderBy: { date: "asc" },
     include: { fights: { include: FIGHT_INCLUDE, orderBy: { orderOnCard: "asc" } } },
   });
-  return rows.map(mapEvent);
+  return renderable(rows.map(mapEvent), "upcoming");
+}
+
+/**
+ * Drop events that are not worth showing, and SAY WHY.
+ *
+ * Applied here, in the repository, rather than in each page: a filter that
+ * lives in one component is a filter the next surface forgets. Every listing
+ * reads through these functions, so they all inherit the same rule.
+ *
+ * The log line is the point of the exercise. A silently thinner list is
+ * indistinguishable from missing ingestion, and "why does ONE look empty?" is
+ * a question that should be answerable from the logs rather than by rerunning
+ * the scraper.
+ */
+function renderable(events: FightEvent[], surface: string): FightEvent[] {
+  const { events: kept, skipped } = filterRenderableEvents(events);
+  if (skipped.length > 0) {
+    const byReason: Record<string, number> = {};
+    for (const s of skipped) byReason[s.reason] = (byReason[s.reason] ?? 0) + 1;
+    log.info(
+      { surface, skipped: skipped.length, of: events.length, byReason, sample: skipped.slice(0, 5) },
+      "events:filtered-unrenderable",
+    );
+  }
+  return kept;
 }
 
 /**
@@ -677,7 +704,17 @@ export async function getResults(
   page = 1,
   pageSize = RESULTS_PAGE_SIZE,
 ): Promise<{ events: FightEvent[]; total: number; page: number; pageSize: number }> {
-  const where = { ...PUBLIC_EVENT, OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" as const }] };
+  // `fights: { some: {} }` is the SQL form of the PAST_WITH_NO_BOUTS rule, and it
+  // has to be here rather than in the JS filter below: this query is PAGINATED,
+  // so dropping rows after the fact would give pages of uneven length and a
+  // `total` that disagrees with what the reader can actually scroll through.
+  // A finished card with no bouts is a dead end anyway — the reader arrives for
+  // results and finds nothing.
+  const where = {
+    ...PUBLIC_EVENT,
+    OR: [{ date: { lt: new Date() } }, { status: "COMPLETED" as const }],
+    fights: { some: {} },
+  };
   const safePage = Math.max(1, Math.floor(page));
   const [rows, total] = await Promise.all([
     prisma.event.findMany({
@@ -689,7 +726,10 @@ export async function getResults(
     }),
     prisma.event.count({ where }),
   ]);
-  return { events: rows.map(mapEvent), total, page: safePage, pageSize };
+  // The remaining rules (name shells) still run in JS. They are rare enough
+  // that the resulting `total` skew is not worth a second count query; if that
+  // ever stops being true, move the name test into SQL too.
+  return { events: renderable(rows.map(mapEvent), "results"), total, page: safePage, pageSize };
 }
 
 /**

@@ -234,6 +234,23 @@ export function EventCard({
 
             Only for a SCHEDULED headline bout. A finished or cancelled card gets
             nothing rather than a dead control. */}
+        {/* Announced, but the bout list is not published yet.
+            ONE publishes no per-card article, so its cards arrive from the year
+            page as name + venue + date with no bouts — 11 upcoming cards in the
+            live database right now. Those are NOT empty events (see
+            lib/events/renderable), they are events whose card is not out yet,
+            and the filter deliberately keeps them.
+
+            Which makes this line load-bearing: without it the reader sees a
+            card with a gap where the fight should be and concludes the data is
+            broken. Answered beats blank. */}
+        {!event.mainEvent && !isDone && !isOff && (
+          <p className="mt-3 flex items-center gap-1.5 border-t border-ink-800 pt-3 text-2xs text-fog">
+            <Swords className="size-3 shrink-0" />
+            Card to be announced — follow to get the bouts as they drop.
+          </p>
+        )}
+
         {event.mainEvent && event.mainEvent.scheduled && !isDone && !isOff && (
           <div className="mt-3 border-t border-ink-800 pt-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-3xs font-bold uppercase tracking-wider text-fog">
