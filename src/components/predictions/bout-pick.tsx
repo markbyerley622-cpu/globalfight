@@ -96,9 +96,6 @@ function haptic(pattern: number | number[]) {
 // lands — see reputation.ts::pickReputation).
 const UNDERDOG_THRESHOLD = 0.42;
 
-/** How long a "tap again to switch" arm stays live before it forgets. */
-const ARM_MS = 3200;
-
 export function BoutPick({
   fightSlug,
   redName,
@@ -165,40 +162,33 @@ export function BoutPick({
   // marks the decision, not each adjustment.
   const [flash, setFlash] = useState(false);
   /**
-   * CANNOT ACCIDENTALLY SUBMIT.
+   * THE CORNER IS CHOSEN, THE PICK IS NOT YET LOCKED.
    *
-   * A first pick commits on one tap: nothing is being destroyed, and putting a
-   * confirmation in front of the single action this product exists for would
-   * cost far more than a stray tap does.
+   * Tapping a corner no longer writes anything. It selects the fighter and asks
+   * the one question that makes a prediction worth reading — HOW does it end —
+   * and the method choice is what commits the call.
    *
-   * OVERWRITING a locked call is the destructive one — a mis-tap on a scrolling
-   * fourteen-bout card silently threw away the pick you had already made and
-   * moved the crowd bar. So the opposite corner ARMS first ("tap again to
-   * switch") and commits on the second tap, disarming itself after a few
-   * seconds. Two taps, no dialog, no modal to dismiss on a phone.
+   * That single step does three jobs at once:
+   *   • it collects the finish, which used to be an optional afterthought
+   *     offered only AFTER the pick was already saved, so almost nobody set it;
+   *   • it is the confirmation, so a stray tap on a scrolling fourteen-bout card
+   *     can no longer overwrite a call you had already made — the old guard was
+   *     a "tap again to switch" arm, which was a second tap that bought nothing
+   *     except not-being-wrong;
+   *   • it makes the moment of committing feel like a decision rather than a
+   *     checkbox, which is the whole point of the control.
+   *
+   * Deliberately NOT auto-dismissed. A chooser that closes itself mid-decision
+   * is worse than one that waits; nothing has been written, so an open chooser
+   * costs nothing. Tapping the same corner again backs out.
    */
-  const [armed, setArmed] = useState<Corner | null>(null);
+  const [pending, setPending] = useState<Corner | null>(null);
   // A tap that lands BEFORE auth resolves is remembered, not discarded.
   // Verified: without this, a tap at 6x CPU throttle on Slow 3G no longer
   // redirected (the P0 fix) but silently did nothing — the intent was dropped
   // and the user was left tapping a dead control. Queue it, replay it the
   // moment auth resolves. Event-driven; no delay, no polling, no retry loop.
   const queued = useRef<{ corner: Corner; method: Method | null } | null>(null);
-
-  /**
-   * The arm expires by itself.
-   *
-   * Derived from the `armed` state rather than held in a ref + setTimeout pair,
-   * so there is exactly one place the timer can exist: re-arming the other
-   * corner cancels the previous timer through the cleanup, and unmounting mid-arm
-   * cancels it too. The ref version needed both of those written by hand, and
-   * read `.current` inside a handler passed down during render.
-   */
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(null), ARM_MS);
-    return () => clearTimeout(t);
-  }, [armed]);
 
   const send = useCallback(async function send(corner: Corner, method: Method | null) {
     const decision = gate.requireSignIn();
@@ -255,18 +245,20 @@ export function BoutPick({
    */
   const tapCorner = useCallback((corner: Corner) => {
     if (locked || busy) return;
-    // Re-tapping the corner you already hold is a no-op, not an un-pick. An
-    // accidental second tap on your own call must never clear it.
-    if (pick?.corner === corner) { setArmed(null); return; }
-    if (pick && armed !== corner) {
-      // Switching away from a locked call — arm, don't commit.
-      haptic(8);
-      setArmed(corner);
-      return;
-    }
-    setArmed(null);
-    void send(corner, pick?.method ?? null);
-  }, [locked, busy, pick, armed, send]);
+    // Tapping the open chooser's own corner backs out of it.
+    if (pending === corner) { setPending(null); return; }
+    // Nothing is written here. Choosing the finish is what commits — including
+    // when re-opening your own locked call to change how you think it ends.
+    haptic(8);
+    setPending(corner);
+  }, [locked, busy, pending]);
+
+  /** The finish choice — this is the commit. */
+  const chooseMethod = useCallback((method: Method) => {
+    if (!pending) return;
+    setPending(null);
+    void send(pending, method);
+  }, [pending, send]);
 
   // Replay a tap that beat the auth provider, the instant auth resolves.
   useEffect(() => {
@@ -300,7 +292,7 @@ export function BoutPick({
     corner,
     fightSlug,
     picked: pick?.corner === corner,
-    armed: armed === corner,
+    pending: pending === corner,
     dimmed: pick != null && pick.corner !== corner,
     underdog: corner === "RED" ? redUnderdog : blueUnderdog,
     crowdPct: crowd.total > 0 ? (corner === "RED" ? redPct : 100 - redPct) : null,
@@ -322,7 +314,14 @@ export function BoutPick({
           <LockButton size="sm" {...cornerProps("BLUE")} onClick={() => tapCorner("BLUE")} />
         </div>
 
-        {armed && !locked && <ArmedHint corner={armed} name={armed === "RED" ? redName : blueName} />}
+        {pending && !locked && (
+          <FinishChooser
+            corner={pending}
+            name={pending === "RED" ? redName : blueName}
+            current={pick?.corner === pending ? pick.method : null}
+            onChoose={chooseMethod}
+          />
+        )}
 
         {/* The crowd — percentages either side of a two-tone bar, so the split
             reads in the SAME red/blue vocabulary as the buttons above it. */}
@@ -418,8 +417,8 @@ export function BoutPick({
           {locked
             ? (lockedNote ?? "Picks are closed — the card has started.")
             : pick
-              ? "Locked in. Call how it ends for more points — or switch corners while you still can."
-              : "Lock your call — earn points if it lands. Skill, not betting."}
+              ? "Locked in. Tap a corner to change your call or how it ends."
+              : "Pick a corner, then call the finish. Correct calls earn points — skill, not betting."}
         </p>
 
         {/* THE decision. Two buttons, thumb-sized, unmistakable. */}
@@ -428,7 +427,14 @@ export function BoutPick({
           <LockButton size="lg" {...cornerProps("BLUE")} onClick={() => tapCorner("BLUE")} />
         </div>
 
-        {armed && !locked && <ArmedHint corner={armed} name={armed === "RED" ? redName : blueName} />}
+        {pending && !locked && (
+          <FinishChooser
+            corner={pending}
+            name={pending === "RED" ? redName : blueName}
+            current={pick?.corner === pending ? pick.method : null}
+            onChoose={chooseMethod}
+          />
+        )}
 
         {/* Upset nudge — calling against the crowd scores higher. */}
         {pickedUnderdog && (
@@ -439,29 +445,13 @@ export function BoutPick({
 
         {friendPicks && <div className="mt-3">{friendPicks}</div>}
 
-        {/* Finish method — optional, and only here. It is a refinement made
-            AFTER the decision, on a page showing one bout; down a fight card it
-            was twelve more rows of secondary controls between the reader and
-            the next fight. */}
-        {pick && !locked && (
-          <div className="qp-reveal mt-4 flex flex-wrap items-center justify-center gap-2">
-            <span className="w-full text-center text-3xs uppercase tracking-wider text-fog">{t("How it ends (optional)")}</span>
-            {METHODS.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                aria-pressed={pick.method === m.value}
-                onClick={() => send(pick.corner, pick.method === m.value ? null : m.value)}
-                className={cn(
-                  "tap rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
-                  pick.method === m.value ? "border-blood-500 bg-blood-500/15 text-chalk" : "border-ink-700 text-mist hover:border-ink-600 hover:bg-ink-800",
-                )}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* NO post-lock method row here any more. The finish is chosen BEFORE
+            the pick commits (see FinishChooser), so a second, optional copy of
+            the same three buttons underneath would be asking the same question
+            twice — and the version that shipped as an afterthought was the
+            reason almost nobody set a finish at all. Changing your mind is a tap
+            on your own corner, which reopens the chooser with the current
+            choice pre-selected. */}
 
         {/* Locked-in confirmation — the reward. A pick used to save silently;
             committing a call now lands with a visible, satisfying "locked in"
@@ -513,25 +503,69 @@ export function BoutPick({
 }
 
 /**
- * "Tap again to switch" — the second half of the overwrite guard, said out loud.
+ * HOW DOES IT END — the step that commits the pick.
  *
- * An armed button that merely looked different would leave the reader tapping a
- * control that visibly did nothing, which is worse than the mis-tap it prevents.
- * `role="status"` so it is announced rather than only seen.
+ * Shown the instant a corner is tapped, before anything is written. Three
+ * choices, thumb-sized, in the corner's own colour so it is obvious which
+ * fighter the question is about.
+ *
+ * The three map to what `castPick` actually accepts (KO / SUB / UD); there is
+ * no point offering a distinction the API would discard. "Decision" covers
+ * unanimous, split and majority — a fan calling a decision is not calling the
+ * scorecards.
+ *
+ * `role="group"` with the fighter's name in the label so a screen-reader user
+ * hears which corner they are answering for, rather than three bare verbs.
  */
-function ArmedHint({ corner, name }: { corner: Corner; name: string }) {
+function FinishChooser({
+  corner, name, current, onChoose,
+}: {
+  corner: Corner;
+  name: string;
+  /** The finish already saved for this corner, when re-opening a locked call. */
+  current: Method | null;
+  onChoose: (m: Method) => void;
+}) {
+  const t = CORNER_THEME[corner];
   return (
-    <p
-      role="status"
-      className={cn(
-        "qp-reveal mt-2 flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-3xs font-bold uppercase tracking-wider",
-        CORNER_THEME[corner].border,
-        CORNER_THEME[corner].bg,
-        CORNER_THEME[corner].text,
-      )}
+    <div
+      role="group"
+      aria-label={`How does ${name} win?`}
+      className={cn("qp-reveal mt-2 rounded-lg border p-2", t.border, t.bg)}
     >
-      <Lock className="size-3" /> Tap again to switch to {name}
-    </p>
+      <p className="mb-1.5 flex items-center gap-1.5 px-0.5 text-3xs font-black uppercase tracking-wider">
+        <Swords className={cn("size-3 shrink-0", t.text)} aria-hidden />
+        <span className={t.text}>How does</span>
+        <span className="min-w-0 truncate text-chalk">{name}</span>
+        <span className={t.text}>win?</span>
+      </p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {METHODS.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            onClick={() => onChoose(m.value)}
+            data-testid="finish-choice"
+            data-method={m.value}
+            aria-label={`${name} by ${m.label}`}
+            aria-pressed={current === m.value}
+            className={cn(
+              // 44px — this is now a primary control on the path to every pick,
+              // not the secondary refinement the old method pills were.
+              "tap flex min-h-11 flex-col items-center justify-center rounded-lg border-2 px-1 py-1.5 text-center transition-all duration-150 active:scale-[0.96]",
+              current === m.value
+                ? corner === "RED"
+                  ? "border-blood-400 bg-blood-600 text-white"
+                  : "border-volt-400 bg-volt-600 text-white"
+                : "border-ink-700 bg-ink-950/60 text-chalk hover:border-ink-500 hover:bg-ink-800",
+            )}
+          >
+            <span className="font-display text-xs font-black uppercase leading-none tracking-wide">{m.short}</span>
+            <span className="mt-0.5 text-4xs uppercase tracking-wider opacity-70">{m.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -545,7 +579,8 @@ function ArmedHint({ corner, name }: { corner: Corner; name: string }) {
  *
  * Three states, each visually unambiguous:
  *   at rest   — tinted, "LOCK RED", crowd % underneath
- *   armed     — outlined in the corner colour, "TAP AGAIN", pulsing lock icon
+ *   pending   — outlined in the corner colour, "CHOOSING…", finish chooser open
+ *               beneath. Nothing is written in this state.
  *   picked    — solid corner colour, white on colour, "PICK LOCKED", lifted
  *
  * `scale` is a compositor-only transform, so the dominance change between
@@ -554,15 +589,15 @@ function ArmedHint({ corner, name }: { corner: Corner; name: string }) {
  * asked for that.
  */
 function LockButton({
-  name, corner, fightSlug, picked, armed, dimmed, underdog, crowdPct, disabled, busy, flash, size, onClick,
+  name, corner, fightSlug, picked, pending, dimmed, underdog, crowdPct, disabled, busy, flash, size, onClick,
 }: {
   name: string;
   corner: Corner;
   /** Stamped onto the control so a test can target one exact bout. */
   fightSlug: string;
   picked: boolean;
-  /** Arming state for the overwrite guard — one more tap commits. */
-  armed: boolean;
+  /** Corner selected, finish chooser open, nothing written yet. */
+  pending: boolean;
   /** A call was made and it was not this corner — recede, do not vanish. */
   dimmed: boolean;
   underdog: boolean;
@@ -586,9 +621,9 @@ function LockButton({
       disabled={disabled || busy}
       aria-pressed={picked}
       aria-label={
-        picked ? `Pick locked: ${name}`
-        : armed ? `Tap again to switch your pick to ${name}`
-        : `Lock ${red ? "red" : "blue"} corner — ${name}`
+        picked ? `Pick locked: ${name}. Choose again to change the finish.`
+        : pending ? `${name} selected — choose how the fight ends to lock it in`
+        : `Pick ${name} — ${red ? "red" : "blue"} corner`
       }
       // Testability is a product feature. Selecting this control by nth() or by
       // aria-pressed also matched the method pills, which produced a browser test
@@ -598,7 +633,7 @@ function LockButton({
       data-corner={corner}
       data-fight={fightSlug}
       data-picked={picked ? "true" : "false"}
-      data-armed={armed ? "true" : "false"}
+      data-pending={pending ? "true" : "false"}
       className={cn(
         // min-h-14 (56px) large / min-h-12 (48px) compact. Both clear the 44px
         // WCAG 2.5.5 floor with room to spare — this is the single most-tapped
@@ -615,8 +650,8 @@ function LockButton({
               "z-10 scale-[1.03] text-white",
               red ? "border-blood-400 bg-blood-600 shadow-glow-red" : "border-volt-400 bg-volt-600 shadow-glow-volt",
             )
-          : armed
-            // Armed: the corner's colour as an OUTLINE, not a fill. It must not
+          : pending
+            // Pending: the corner's colour as an OUTLINE, not a fill. It must not
             // look committed — nothing has been written yet.
             ? cn(
                 "scale-100 opacity-100 saturate-100 animate-pulse",
@@ -649,13 +684,16 @@ function LockButton({
           <>
             <Check className={big ? "size-4" : "size-3"} strokeWidth={3} /> {t("Pick locked")}
           </>
-        ) : armed ? (
+        ) : pending ? (
           <>
-            <Lock className={big ? "size-4" : "size-3"} /> {t("Tap again")}
+            <Swords className={big ? "size-4" : "size-3"} /> {t("Choose finish")}
           </>
         ) : (
           <>
-            <Lock className={big ? "size-4" : "size-3"} /> Lock {CORNER_THEME[corner].word}
+            {/* "PICK RED", not "LOCK RED": the tap no longer locks anything —
+                the finish choice does. A verb that promises the wrong outcome
+                is the fastest way to make a two-step flow feel broken. */}
+            <Lock className={big ? "size-4" : "size-3"} /> Pick {CORNER_THEME[corner].word}
           </>
         )}
       </span>
