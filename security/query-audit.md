@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1022 across 832 files
-- **By class:** 691 public · 238 user-owned · 93 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 81 medium · 🟡 178 low · ⚪ 763 info
+- **Queries analysed:** 1024 across 836 files
+- **By class:** 692 public · 239 user-owned · 93 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 82 medium · 🟡 178 low · ⚪ 764 info
 
 ## 🔴 High risk
 
@@ -34,6 +34,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/app/api/gyms/[slug]/members/route.ts:96` | PATCH | GymMember (SHARED) | delete · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/gyms/[slug]/members/route.ts:104` | updated | GymMember (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/me/claims/route.ts:11` | GET | GymClaim (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/app/gyms/[slug]/followers/page.tsx:50` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/app/gyms/[slug]/manage/page.tsx:45` | ManageGymPage | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/activity.ts:23` | getGlobalActivity | Activity (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/admin/merge-fighters.ts:77` | mergeFighter | CardAward (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |

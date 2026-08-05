@@ -144,7 +144,7 @@ export function ProfileView({
         {user.image ? (
           <Image src={user.image} alt="" width={84} height={84} className="size-[84px] rounded-squircle border-[3px] border-blood-500 bg-ink-950 object-cover shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]" unoptimized />
         ) : (
-          <span className="grid size-[84px] place-items-center rounded-squircle border-[3px] border-blood-500 bg-ink-950 font-display text-3xl font-bold text-blood-500 shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]">
+          <span className="grid size-[84px] place-items-center rounded-squircle border-[3px] border-blood-500 bg-ink-950 font-display text-3xl font-bold text-blood-400 shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]">
             {initials(user)}
           </span>
         )}

@@ -58,7 +58,7 @@ export function NavSheet({ open, onClose }: { open: boolean; onClose: () => void
           onClick={onClose}
           className="flex items-center gap-3 rounded-card border border-ink-700 bg-ink-850 p-3"
         >
-          <span className="flex size-11 items-center justify-center rounded-full border-2 border-blood-500 bg-ink-950 font-display text-base font-bold text-blood-500 shadow-[0_0_12px_-3px_rgba(225,29,42,0.55)]">
+          <span className="flex size-11 items-center justify-center rounded-full border-2 border-blood-500 bg-ink-950 font-display text-base font-bold text-blood-400 shadow-[0_0_12px_-3px_rgba(225,29,42,0.55)]">
             {user ? (user.name ?? user.username ?? "?").slice(0, 1).toUpperCase() : <User className="size-5" />}
           </span>
           <span className="min-w-0">

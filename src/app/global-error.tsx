@@ -5,6 +5,7 @@
 // app's CSS being present. Styles are inlined and kept minimal on the dark base.
 
 import { useEffect } from "react";
+import { reportError } from "@/lib/observability/report";
 
 export default function GlobalError({
   error,
@@ -14,7 +15,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("global error:", error.digest ?? error.message);
+    // FATAL: the root layout itself threw, so the whole document was replaced.
+    // This is the most severe client-side state the app has and is escalated
+    // accordingly — it is never a one-page problem.
+    reportError(error, "fatal", { source: "app/global-error", digest: error.digest ?? null });
   }, [error]);
 
   return (

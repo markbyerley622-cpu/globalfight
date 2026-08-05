@@ -7,39 +7,54 @@ import { STORAGE_STATE } from "./global-setup";
  */
 test.use({ storageState: STORAGE_STATE });
 
-// A known scheduled (pickable) bout from the seeded world.
-const PICKABLE_FIGHT = "/fights/paddy-pimblett-vs-conor-mcgregor";
+// The canonical seeded bout — a deterministic id from prisma/seed/e2e, not a
+// hardcoded slug from whatever data the database happened to hold. The previous
+// value ("paddy-pimblett-vs-conor-mcgregor") had no row behind it, so this test
+// was asserting against a 404 long before the UX changed.
+const PICKABLE_FIGHT = "/fights/e2e-fight-upcoming";
 
-test("signed-in user can submit a prediction on a scheduled bout", async ({ page }) => {
+/**
+ * The prediction flow, as it actually works: PICK A CORNER, then CHOOSE THE
+ * FINISH — and the finish is what commits.
+ *
+ * This test previously encoded the old one-tap UX (a "red corner" button that
+ * POSTed immediately, then five confidence stars). All three of those are gone:
+ * confidence was removed, the corner no longer writes, and the labels changed.
+ * Rewritten rather than re-snapshotted, because the failure was real — the test
+ * was describing a product that no longer exists.
+ */
+test("a signed-in member picks a corner, chooses the finish, and it persists", async ({ page }) => {
   await page.goto(PICKABLE_FIGHT);
-  const makePick = page.getByText(/make your pick/i).first();
-  await expect(makePick, "bout page should show the pick control").toBeVisible({ timeout: 15_000 });
 
-  const redCorner = page.getByRole("button").filter({ hasText: /red corner/i }).first();
-  await expect(redCorner).toBeVisible();
+  const red = page.locator('[data-testid="corner-pick"][data-corner="RED"]').first();
+  await expect(red, "bout page should show the pick control").toBeVisible({ timeout: 15_000 });
+  await expect(red).toHaveAttribute("data-picked", "false");
 
+  // STEP 1 — tapping the corner must NOT write. It opens the finish chooser.
+  let wrote = false;
+  const watch = (r: import("@playwright/test").Request) => {
+    if (r.method() === "POST" && /\/api\/fights\/.+\/pick/.test(r.url())) wrote = true;
+  };
+  page.on("request", watch);
+  await red.click();
+  await expect(red).toHaveAttribute("data-pending", "true");
+  await expect(page.locator('[data-testid="finish-choice"]')).toHaveCount(3);
+  expect(wrote, "tapping a corner must not commit a pick").toBe(false);
+  page.off("request", watch);
+
+  // STEP 2 — the finish commits it.
   const [pickRes] = await Promise.all([
     page.waitForResponse((r) => /\/api\/fights\/.+\/pick/.test(r.url()) && r.request().method() === "POST"),
-    redCorner.click(),
+    page.locator('[data-testid="finish-choice"][data-method="KO"]').click(),
   ]);
   expect(pickRes.status(), "pick POST status").toBe(200);
+  await expect(red).toHaveAttribute("data-picked", "true");
 
-  // The corner is now selected and confidence stars appear.
-  await expect(redCorner).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel(/confidence 1 of 5/i)).toBeVisible();
-
-  // Set confidence 4/5 and verify it round-trips.
-  const [confRes] = await Promise.all([
-    page.waitForResponse((r) => /\/api\/fights\/.+\/pick/.test(r.url())),
-    page.getByLabel(/confidence 4 of 5/i).click(),
-  ]);
-  expect(confRes.status()).toBe(200);
-
-  // Persist across reload — the server remembers the pick.
+  // The server remembers it across a reload.
   await page.reload();
   await expect(
-    page.getByRole("button").filter({ hasText: /red corner/i }).first(),
-  ).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
+    page.locator('[data-testid="corner-pick"][data-corner="RED"]').first(),
+  ).toHaveAttribute("data-picked", "true", { timeout: 15_000 });
 });
 
 test("predictions listing renders", async ({ page, health }) => {

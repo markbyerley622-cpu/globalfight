@@ -37,7 +37,7 @@ export function FighterAvatar({
     <div className={cn("relative shrink-0", className)}>
       <div
         className={cn(
-          "relative flex items-center justify-center overflow-hidden rounded-full border-blood-500 bg-ink-950 font-display font-bold text-blood-500 shadow-[0_0_14px_-3px_rgba(225,29,42,0.55)]",
+          "relative flex items-center justify-center overflow-hidden rounded-full border-blood-500 bg-ink-950 font-display font-bold text-blood-400 shadow-[0_0_14px_-3px_rgba(225,29,42,0.55)]",
           sizeMap[size],
         )}
       >

@@ -38,3 +38,37 @@ export async function register() {
     }
   }
 }
+
+/**
+ * EVERY server-side error Next catches, in one place.
+ *
+ * `onRequestError` is the framework's official hook and it fires for things a
+ * try/catch in application code cannot reach: React Server Component render
+ * faults, route-handler throws, streaming failures, Server Action errors. Before
+ * this, those surfaced as a digest in the platform log and nothing else — the
+ * digest is the only thing the user-facing error page can show, and there was
+ * nothing on the other side to correlate it against.
+ *
+ * Deliberately defensive: an error inside the error reporter must never replace
+ * the original error, so the whole body is wrapped.
+ */
+export async function onRequestError(
+  err: unknown,
+  request: { path?: string; method?: string; headers?: Record<string, string> },
+  context: { routerKind?: string; routePath?: string; routeType?: string },
+) {
+  try {
+    const { reportError } = await import("@/lib/observability/report");
+    reportError(err, "error", {
+      source: `${context?.routerKind ?? "route"}:${context?.routeType ?? "render"}`,
+      path: request?.path ?? context?.routePath,
+      method: request?.method,
+      headers: request?.headers,
+      // The digest Next shows the user is on the error object; carrying it here
+      // is what makes a screenshot traceable to this stack.
+      digest: (err as { digest?: string })?.digest ?? null,
+    });
+  } catch {
+    /* reporting must never mask the original failure */
+  }
+}

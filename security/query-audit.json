@@ -1,13 +1,13 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1022,
+    "queries": 1024,
     "high": 0,
-    "medium": 81,
+    "medium": 82,
     "low": 178,
-    "info": 763,
-    "public": 691,
-    "userOwned": 238,
+    "info": 764,
+    "public": 692,
+    "userOwned": 239,
     "shared": 93,
     "admin": 0
   },
@@ -830,6 +830,19 @@
       "severity": "MEDIUM",
       "confidence": "high",
       "why": "Shared model with no relationship filter — confirm both parties' access is validated."
+    },
+    {
+      "file": "src/app/gyms/[slug]/followers/page.tsx",
+      "line": 50,
+      "fn": "rows",
+      "model": "Follow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "why": "Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here)."
     },
     {
       "file": "src/app/gyms/[slug]/manage/page.tsx",
@@ -5034,6 +5047,19 @@
       "file": "src/app/gyms/[slug]/claim/page.tsx",
       "line": 12,
       "fn": "gym",
+      "model": "Gym",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/gyms/[slug]/followers/page.tsx",
+      "line": 26,
+      "fn": "loadGym",
       "model": "Gym",
       "method": "findUnique",
       "klass": "PUBLIC",

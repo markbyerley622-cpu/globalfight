@@ -46,7 +46,7 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
         aria-label="Account menu"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex size-9 items-center justify-center rounded-lg border-2 border-blood-500 bg-ink-950 font-display text-xs font-bold text-blood-500 shadow-[0_0_12px_-3px_rgba(225,29,42,0.55)] transition-transform active:scale-95"
+        className="flex size-9 items-center justify-center rounded-lg border-2 border-blood-500 bg-ink-950 font-display text-xs font-bold text-blood-400 shadow-[0_0_12px_-3px_rgba(225,29,42,0.55)] transition-transform active:scale-95"
       >
         {initial ?? <User className="size-4" />}
       </button>
@@ -58,7 +58,7 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
         >
           {/* Identity */}
           <div className="flex items-center gap-3 border-b border-ink-800 bg-ink-850 p-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-blood-500 bg-ink-950 font-display text-sm font-bold text-blood-500">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-blood-500 bg-ink-950 font-display text-sm font-bold text-blood-400">
               {initial ?? <User className="size-4" />}
             </span>
             <div className="min-w-0">
