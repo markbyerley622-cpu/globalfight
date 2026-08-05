@@ -14,7 +14,7 @@ export function KindBadge({ kind, className }: { kind: string; className?: strin
   if (!meta) return null;
   const Icon = meta.icon;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider", meta.tone, className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wider", meta.tone, className)}>
       <Icon className="size-3" /> {meta.label}
     </span>
   );

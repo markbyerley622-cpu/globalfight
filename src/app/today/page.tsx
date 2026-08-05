@@ -82,9 +82,9 @@ export default async function TodayPage() {
 
         {/* ── Standing: the streak is the headline, because it is the only
             number on this page that moved because you showed up. ── */}
-        <section className="overflow-hidden rounded-2xl border border-ink-800 bg-[radial-gradient(520px_200px_at_12%_0%,rgba(225,29,42,0.22),transparent_65%),linear-gradient(150deg,#141923,#0a0d12)]">
+        <section className="overflow-hidden rounded-card border border-ink-800 bg-[radial-gradient(520px_200px_at_12%_0%,rgba(225,29,42,0.22),transparent_65%),linear-gradient(150deg,var(--color-ink-800),var(--color-ink-900))]">
           <div className="flex items-center gap-4 p-5">
-            <span className="grid size-16 shrink-0 place-items-center rounded-2xl border border-blood-500/40 bg-blood-500/12">
+            <span className="grid size-16 shrink-0 place-items-center rounded-squircle border border-blood-500/40 bg-blood-500/12">
               <Flame className={cn("size-8", streak.streak > 0 ? "text-blood-400" : "text-ink-600")} />
             </span>
             <div className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ export default async function TodayPage() {
                   day{streak.streak === 1 ? "" : "s"} running
                 </span>
               </p>
-              <p className="mt-1.5 text-[0.72rem] text-fog">
+              <p className="mt-1.5 text-2xs text-fog">
                 Best {streak.best} · {streak.activeDays} day{streak.activeDays === 1 ? "" : "s"} here all time
               </p>
             </div>
@@ -103,13 +103,13 @@ export default async function TodayPage() {
           {/* Honest about both directions: a streak you quietly lost is worse
               than one you were told you lost. */}
           {streak.advancedToday && !streak.reset && !brief.firstVisit && (
-            <p className="border-t border-ink-800 bg-volt-500/[0.07] px-5 py-2.5 text-[0.72rem] font-semibold text-volt-400">
+            <p className="border-t border-ink-800 bg-volt-500/[0.07] px-5 py-2.5 text-2xs font-semibold text-volt-400">
               <Sparkles className="mr-1.5 inline size-3.5" />
               Day {streak.streak} logged. Come back tomorrow to keep it.
             </p>
           )}
           {streak.reset && (
-            <p className="border-t border-ink-800 bg-ink-900/70 px-5 py-2.5 text-[0.72rem] text-mist">
+            <p className="border-t border-ink-800 bg-ink-900/70 px-5 py-2.5 text-2xs text-mist">
               Your {streak.lostStreak}-day run ended. This is day one of the next one.
             </p>
           )}
@@ -176,7 +176,7 @@ export default async function TodayPage() {
           aside={`${brief.milestonesEarned}/${brief.milestonesTotal} earned`}
         >
           {brief.milestones.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-ink-800 bg-ink-900/40 p-6 text-center text-sm text-fog">
+            <p className="rounded-card border border-dashed border-ink-800 bg-ink-900/40 p-6 text-center text-sm text-fog">
               Every collection complete. That is not a sentence many people will read.
             </p>
           ) : (
@@ -195,7 +195,7 @@ export default async function TodayPage() {
               if (rows.length === 0) return null;
               return (
                 <div key={group}>
-                  <p className="mb-2 flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-fog">
+                  <p className="mb-2 flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.18em] text-fog">
                     {GROUP_ICON[group]} {group}
                   </p>
                   <div className="space-y-2">
@@ -207,10 +207,10 @@ export default async function TodayPage() {
           </div>
         </Section>
 
-        <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-6 text-center sm:flex-row sm:justify-between sm:text-left">
+        <div className="mt-8 flex flex-col items-center gap-3 card-surface p-6 text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <p className="font-display text-sm font-bold text-chalk">Your record lives on your profile</p>
-            <p className="mt-0.5 text-[0.72rem] text-fog">Everything on this page compounds into one public page.</p>
+            <p className="mt-0.5 text-2xs text-fog">Everything on this page compounds into one public page.</p>
           </div>
           <ButtonLink href={user.username ? `/u/${user.username}` : "/profile"} size="sm">View profile</ButtonLink>
         </div>
@@ -222,7 +222,7 @@ export default async function TodayPage() {
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="px-4 py-3 text-center">
-      <p className="flex items-center justify-center gap-1.5 text-[0.62rem] uppercase tracking-wider text-fog">{icon}{label}</p>
+      <p className="flex items-center justify-center gap-1.5 text-3xs uppercase tracking-wider text-fog">{icon}{label}</p>
       <p className="mt-0.5 font-display text-lg font-black tabular-nums text-chalk">{value}</p>
     </div>
   );
@@ -233,7 +233,7 @@ function Section({ title, aside, children }: { title: string; aside?: string; ch
     <section className="mt-8">
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <h2 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-fog">{title}</h2>
-        {aside && <span className="text-[0.68rem] tabular-nums text-fog">{aside}</span>}
+        {aside && <span className="text-2xs tabular-nums text-fog">{aside}</span>}
       </div>
       {children}
     </section>
@@ -242,7 +242,7 @@ function Section({ title, aside, children }: { title: string; aside?: string; ch
 
 function ItemList({ items }: { items: TodayItem[] }) {
   return (
-    <ul className="divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800">
+    <ul className="divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800">
       {items.map((i) => {
         const body = (
           <div className="flex items-start gap-3 bg-ink-900 px-4 py-3">
@@ -250,9 +250,9 @@ function ItemList({ items }: { items: TodayItem[] }) {
             <span className="mt-0.5 shrink-0 text-fog">{KIND_ICON[i.kind]}</span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium leading-snug text-chalk">{i.title}</span>
-              {i.detail && <span className="mt-0.5 block truncate text-[0.72rem] text-fog">{i.detail}</span>}
+              {i.detail && <span className="mt-0.5 block truncate text-2xs text-fog">{i.detail}</span>}
             </span>
-            {i.kind !== "act" && <span className="shrink-0 text-[0.68rem] text-fog">{timeAgo(i.when)}</span>}
+            {i.kind !== "act" && <span className="shrink-0 text-2xs text-fog">{timeAgo(i.when)}</span>}
             {i.kind === "act" && <ArrowRight className="mt-0.5 size-4 shrink-0 text-fog" />}
           </div>
         );
@@ -271,10 +271,10 @@ function ItemList({ items }: { items: TodayItem[] }) {
 function LadderRow({ ladder: l, featured }: { ladder: LadderProgress; featured?: boolean }) {
   const done = l.complete;
   return (
-    <div className={cn("rounded-2xl border bg-ink-900 p-4", done ? "border-gold-500/30" : "border-ink-800")}>
+    <div className={cn("rounded-card border bg-ink-900 p-4", done ? "border-gold-500/30" : "border-ink-800")}>
       <div className="flex items-baseline justify-between gap-3">
         <p className="truncate font-display text-sm font-bold text-chalk">{l.title}</p>
-        <p className="shrink-0 text-[0.72rem] tabular-nums text-fog">
+        <p className="shrink-0 text-2xs tabular-nums text-fog">
           {done ? `${l.value} — complete` : `${l.value} / ${l.next}`}
         </p>
       </div>
@@ -286,7 +286,7 @@ function LadderRow({ ladder: l, featured }: { ladder: LadderProgress; featured?:
         />
       </div>
 
-      <p className="mt-2 text-[0.72rem] text-fog">
+      <p className="mt-2 text-2xs text-fog">
         {done
           ? `${l.value} ${unitFor(l, l.value)} — every rung cleared.`
           : l.remaining === 1
@@ -295,7 +295,7 @@ function LadderRow({ ladder: l, featured }: { ladder: LadderProgress; featured?:
       </p>
 
       {featured && !done && (
-        <Link href={l.href} className="mt-2.5 inline-flex items-center gap-1 text-[0.72rem] font-semibold text-blood-300 hover:text-blood-200">
+        <Link href={l.href} className="mt-2.5 inline-flex items-center gap-1 text-2xs font-semibold text-blood-300 hover:text-blood-200">
           {l.cta} <ArrowRight className="size-3" />
         </Link>
       )}

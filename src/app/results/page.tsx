@@ -71,7 +71,7 @@ export default async function ResultsPage({
                   <Badge tone={cov.state === "CONFIRMED" ? "neutral" : "volt"}>
                     {cov.state === "CONFIRMED" ? "Final" : cov.label}
                   </Badge>
-                  {cov.detail ? <p className="mt-1 text-[0.68rem] text-fog">{cov.detail}</p> : null}
+                  {cov.detail ? <p className="mt-1 text-2xs text-fog">{cov.detail}</p> : null}
                 </div>
               </div>
               <div className="divide-y divide-ink-800">

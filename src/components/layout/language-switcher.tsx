@@ -37,7 +37,7 @@ export function LanguageSwitcher() {
         <span className="hidden font-semibold uppercase sm:inline">{current.code}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-ink-700 bg-ink-850 p-1.5 shadow-2xl">
+        <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-card border border-ink-700 bg-ink-850 p-1.5 shadow-2xl">
           {/* RELEASED_LOCALES, not LOCALES: the switcher must only offer languages
               the dictionary can actually deliver. `current` still resolves against
               the full list so a user who already chose French sees "FR" rather than

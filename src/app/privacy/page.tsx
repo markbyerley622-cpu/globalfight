@@ -88,7 +88,7 @@ export default function PrivacyPage() {
               <tr key={p.name} className="border-b border-ink-800 align-top">
                 <td className="py-3 pr-4 font-semibold text-chalk">
                   {p.name}
-                  {!p.active && <span className="ml-2 text-[0.65rem] font-normal text-fog">(not currently used)</span>}
+                  {!p.active && <span className="ml-2 text-3xs font-normal text-fog">(not currently used)</span>}
                 </td>
                 <td className="py-3 pr-4">{p.role}</td>
                 <td className="py-3 pr-4">{p.location}</td>

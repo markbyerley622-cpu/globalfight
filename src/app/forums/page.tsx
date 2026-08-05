@@ -44,7 +44,7 @@ export default async function ForumsPage() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-chalk">r/{c.slug}</span>
                     </span>
-                    <span className="text-[0.65rem] tabular-nums text-fog">{c.threadCount ?? 0}</span>
+                    <span className="text-3xs tabular-nums text-fog">{c.threadCount ?? 0}</span>
                   </Link>
                 ))}
               </nav>
@@ -80,11 +80,11 @@ export default async function ForumsPage() {
               <div className="mt-3 grid grid-cols-2 gap-3 border-t border-ink-800 pt-3">
                 <div>
                   <p className="font-display text-lg font-bold tabular-nums text-chalk">{categories.length}</p>
-                  <p className="text-[0.7rem] uppercase tracking-wide text-fog">Communities</p>
+                  <p className="text-2xs uppercase tracking-wide text-fog">Communities</p>
                 </div>
                 <div>
                   <p className="font-display text-lg font-bold tabular-nums text-chalk">{totalThreads}</p>
-                  <p className="text-[0.7rem] uppercase tracking-wide text-fog">Threads</p>
+                  <p className="text-2xs uppercase tracking-wide text-fog">Threads</p>
                 </div>
               </div>
               <Link
@@ -106,7 +106,7 @@ export default async function ForumsPage() {
                       <Link href={`/forums/${c.slug}`} className="flex items-center gap-2 text-sm hover:text-blood-300">
                         <span className="w-4 font-bold tabular-nums text-fog">{i + 1}</span>
                         <span className="truncate font-semibold text-chalk">r/{c.slug}</span>
-                        <span className="ml-auto text-[0.7rem] text-fog">{c.threadCount ?? 0}</span>
+                        <span className="ml-auto text-2xs text-fog">{c.threadCount ?? 0}</span>
                       </Link>
                     </li>
                   ))}

@@ -121,7 +121,7 @@ export function CloseTimer({ closesAt, className }: { closesAt: string | null; c
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-3xs font-bold uppercase tracking-wide",
         t.urgent ? "bg-blood-500/15 text-blood-300" : "bg-ink-800/80 text-mist",
         className,
       )}
@@ -132,35 +132,12 @@ export function CloseTimer({ closesAt, className }: { closesAt: string | null; c
   );
 }
 
-// ── Chips / badges ─────────────────────────────────────────────────────────
-export function Chip({
-  children,
-  tone = "neutral",
-  className,
-}: {
-  children: React.ReactNode;
-  tone?: "neutral" | "gold" | "hot" | "outline" | "live";
-  className?: string;
-}) {
-  const tones: Record<string, string> = {
-    neutral: "bg-ink-800 text-mist",
-    gold: "bg-gold-500/15 text-gold-300",
-    hot: "bg-blood-500/15 text-blood-300 hot-sheen",
-    outline: "border border-ink-600 text-fog",
-    live: "bg-volt-500/15 text-volt-400",
-  };
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide",
-        tones[tone],
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
+//  The status label that used to live here as `Chip` is now `Badge`
+//  (`@/components/ui/badge`, `size="sm"`). It was never a chip: `ui/chip` is an
+//  interactive filter pill that renders <a>/<button>, this was a non-interactive
+//  <span>. Its `hot` and `outline` tones moved onto Badge. Its `live` tone was
+//  volt-coloured while Badge's `live` is blood — that call site now says
+//  `tone="volt"`, which is what it always rendered.
 
 // ── Gradient fighter portrait (no photo needed) ────────────────────────────
 export function Portrait({
@@ -222,13 +199,13 @@ export function ConsensusBar({
           <div className={cn("font-display font-bold leading-none text-up", big ? "text-2xl" : "text-lg")}>
             {leftPct}%
           </div>
-          <div className="mt-0.5 truncate text-[0.72rem] font-semibold text-chalk">{leftLabel}</div>
+          <div className="mt-0.5 truncate text-2xs font-semibold text-chalk">{leftLabel}</div>
         </div>
         <div className="min-w-0 text-right">
           <div className={cn("font-display font-bold leading-none text-mist", big ? "text-2xl" : "text-lg")}>
             {rightPct}%
           </div>
-          <div className="mt-0.5 truncate text-[0.72rem] font-semibold text-mist">{rightLabel}</div>
+          <div className="mt-0.5 truncate text-2xs font-semibold text-mist">{rightLabel}</div>
         </div>
       </div>
       <div className={cn("flex overflow-hidden rounded-full bg-ink-700", big ? "h-3" : size === "sm" ? "h-1.5" : "h-2.5")}>

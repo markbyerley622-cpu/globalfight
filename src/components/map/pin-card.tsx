@@ -48,7 +48,7 @@ function Mark({ pin, size }: { pin: MapPin; size: number }) {
     <span
       className={cn(
         "relative grid shrink-0 place-items-center overflow-hidden border",
-        round ? "rounded-full" : "rounded-xl",
+        round ? "rounded-full" : "rounded-lg",
       )}
       style={{ width: size, height: size, borderColor: `${accent}44`, background: `${accent}14` }}
     >
@@ -78,7 +78,7 @@ export function PinRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "tap flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+        "tap flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
         active
           ? "border-blood-500/50 bg-blood-500/10"
           : "border-ink-700 bg-ink-900/70 hover:border-ink-600 hover:bg-ink-850",
@@ -88,11 +88,11 @@ export function PinRow({
 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate font-display text-[0.86rem] font-bold text-chalk">{pin.name}</span>
+          <span className="truncate font-display text-sm font-bold text-chalk">{pin.name}</span>
           {pin.gym?.verified && <BadgeCheck className="size-3.5 shrink-0 text-volt-400" />}
           {pin.status === "LIVE" && <span className="live-dot shrink-0" />}
         </span>
-        <span className="mt-0.5 flex items-center gap-1.5 truncate text-[0.72rem] text-fog">
+        <span className="mt-0.5 flex items-center gap-1.5 truncate text-2xs text-fog">
           {(pin.presentNow ?? 0) > 0 && (
             <span className="inline-flex shrink-0 items-center gap-0.5 font-semibold text-blood-300">
               <Flame className="size-3" />{pin.presentNow}
@@ -104,12 +104,12 @@ export function PinRow({
 
       <span className="shrink-0 text-right">
         {when && (
-          <span className={cn("block font-display text-[0.72rem] font-bold uppercase tracking-wide", when.soon ? "text-blood-300" : "text-mist")}>
+          <span className={cn("block font-display text-2xs font-bold uppercase tracking-wide", when.soon ? "text-blood-300" : "text-mist")}>
             {when.text}
           </span>
         )}
         {typeof distanceKm === "number" && (
-          <span className="block text-[0.68rem] tabular-nums text-fog">{formatDistance(distanceKm)}</span>
+          <span className="block text-2xs tabular-nums text-fog">{formatDistance(distanceKm)}</span>
         )}
       </span>
     </button>
@@ -146,30 +146,30 @@ export function PinDetail({
           <div className="flex flex-wrap items-center gap-1.5">
             {pin.badge && (
               <span
-                className="rounded-md px-1.5 py-0.5 font-display text-[0.6rem] font-bold uppercase tracking-wider"
+                className="rounded-md px-1.5 py-0.5 font-display text-3xs font-bold uppercase tracking-wider"
                 style={{ background: `${accent}22`, color: accent }}
               >
                 {pin.badge}
               </span>
             )}
             {pin.gym?.verified && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-volt-500/15 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-volt-400">
+              <span className="inline-flex items-center gap-1 rounded-md bg-volt-500/15 px-1.5 py-0.5 text-3xs font-bold uppercase tracking-wider text-volt-400">
                 <BadgeCheck className="size-3" /> Verified
               </span>
             )}
             {pin.precision === "country" && (
-              <span className="rounded-md bg-ink-800 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-fog">
+              <span className="rounded-md bg-ink-800 px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wider text-fog">
                 Approx.
               </span>
             )}
           </div>
-          <h3 className="mt-1 font-display text-[1.05rem] font-black leading-tight text-chalk">{pin.name}</h3>
-          {pin.subtitle && <p className="mt-0.5 truncate text-[0.76rem] text-mist">{pin.subtitle}</p>}
+          <h3 className="mt-1 font-display text-base font-black leading-tight text-chalk">{pin.name}</h3>
+          {pin.subtitle && <p className="mt-0.5 truncate text-xs text-mist">{pin.subtitle}</p>}
         </div>
       </div>
 
       {/* Facts */}
-      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-1.5 text-[0.76rem]">
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-1.5 text-xs">
         {when && (
           <>
             <dt className="pt-px text-fog"><CalendarDays className="size-3.5" /></dt>
@@ -269,7 +269,7 @@ export function PinDetail({
           <Link
             href={pin.href}
             className={cn(
-              "tap inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors",
+              "tap inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide transition-colors",
               pin.layer === "people" || isPlace
                 ? "border border-ink-600 bg-ink-800 text-chalk hover:border-ink-500"
                 : "bg-blood-500 text-white hover:bg-blood-400",
@@ -284,7 +284,7 @@ export function PinDetail({
             href={directionsUrl(pin)}
             target="_blank"
             rel="noopener noreferrer"
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-600 bg-ink-800 px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide text-chalk transition-colors hover:border-ink-500"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-600 bg-ink-800 px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide text-chalk transition-colors hover:border-ink-500"
           >
             <Navigation className="size-3.5" /> Directions
           </a>
@@ -294,7 +294,7 @@ export function PinDetail({
             href={pin.website}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-700 px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide text-mist transition-colors hover:text-chalk"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-700 px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide text-mist transition-colors hover:text-chalk"
           >
             <ExternalLink className="size-3.5" /> Website
           </a>
@@ -302,13 +302,13 @@ export function PinDetail({
       </div>
 
       {pin.layer === "people" && (
-        <p className="mt-2.5 text-[0.68rem] leading-relaxed text-fog">
+        <p className="mt-2.5 text-2xs leading-relaxed text-fog">
           Shown in {pin.address?.split(" · ").pop() ?? "their city"} — people are placed at their city, never a
           precise location.
         </p>
       )}
       {pin.layer !== "people" && pin.precision === "country" && (
-        <p className="mt-2.5 text-[0.68rem] leading-relaxed text-fog">
+        <p className="mt-2.5 text-2xs leading-relaxed text-fog">
           Pinned to the country — we don&apos;t have this venue&apos;s exact position yet. Directions search for the
           venue by name.
         </p>

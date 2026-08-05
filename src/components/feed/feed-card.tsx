@@ -73,7 +73,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
   return (
     <Link
       href={item.url}
-      className="group block overflow-hidden rounded-2xl border border-ink-700 bg-ink-900/60 transition-colors hover:border-blood-500/40"
+      className="group block overflow-hidden rounded-card border border-ink-700 bg-ink-900/60 transition-colors hover:border-blood-500/40"
       style={media?.accent ? ({ ["--accent" as string]: media.accent }) : undefined}
     >
       <div className="relative aspect-video overflow-hidden bg-ink-850">
@@ -92,7 +92,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
 
         {media?.promotionName && (
           <span
-            className="absolute left-3 top-3 rounded-md bg-ink-950/80 px-2 py-1 font-display text-[0.6rem] font-bold uppercase tracking-wide text-chalk backdrop-blur"
+            className="absolute left-3 top-3 rounded-md bg-ink-950/80 px-2 py-1 font-display text-3xs font-bold uppercase tracking-wide text-chalk backdrop-blur"
             style={media.accent ? { boxShadow: `inset 0 0 0 1px ${media.accent}66` } : undefined}
           >
             {media.promotionName}
@@ -102,13 +102,13 @@ export function FeedCard({ item }: { item: FeedItem }) {
         {/* Watermark only on borrowed imagery — our own artwork already carries
             the wordmark, and stacking two looks like a mistake. */}
         {media && !media.generated && (
-          <span className="pointer-events-none absolute bottom-2 right-3 font-display text-[0.55rem] font-bold uppercase tracking-[0.15em] text-white/45">
+          <span className="pointer-events-none absolute bottom-2 right-3 font-display text-4xs font-bold uppercase tracking-[0.15em] text-white/45">
             Combat Reviews
           </span>
         )}
 
         {item.meta && (
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-ink-950/75 px-2 py-1 text-[0.66rem] font-semibold text-chalk backdrop-blur">
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-ink-950/75 px-2 py-1 text-2xs font-semibold text-chalk backdrop-blur">
             <Icon className="size-3 text-blood-400" />
             {item.meta}
           </span>
@@ -117,15 +117,15 @@ export function FeedCard({ item }: { item: FeedItem }) {
 
       <div className="p-4">
         {item.reason && (
-          <p className="mb-1 font-display text-[0.62rem] font-bold uppercase tracking-widest text-blood-400">
+          <p className="mb-1 font-display text-3xs font-bold uppercase tracking-widest text-blood-400">
             {item.reason}
           </p>
         )}
         <h3 className="line-clamp-2 font-display text-base font-bold leading-snug text-chalk group-hover:text-blood-200">
           {item.title}
         </h3>
-        {item.body && <p className="mt-1 line-clamp-2 text-[0.8rem] leading-relaxed text-mist">{item.body}</p>}
-        <p className="mt-2 flex flex-wrap items-center gap-x-2 text-[0.7rem] text-fog">
+        {item.body && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-mist">{item.body}</p>}
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 text-2xs text-fog">
           {media?.source && <span className="truncate">{media.source}</span>}
           {media?.source && <span aria-hidden>·</span>}
           <span>{timeAgo(new Date(item.at))}</span>
@@ -140,7 +140,7 @@ function CompactCard({ item }: { item: FeedItem }) {
     <Link
       href={item.url}
       className={cn(
-        "group flex items-start gap-3 rounded-2xl border border-ink-700 bg-ink-900/60 p-4",
+        "group flex items-start gap-3 rounded-card border border-ink-700 bg-ink-900/60 p-4",
         "transition-colors hover:border-blood-500/40",
       )}
     >
@@ -157,7 +157,7 @@ function CompactCard({ item }: { item: FeedItem }) {
       <span className="min-w-0 flex-1">
         <span className="block font-display text-sm font-bold leading-snug text-chalk">{item.title}</span>
         {item.body && <span className="mt-0.5 block line-clamp-2 text-xs text-mist">{item.body}</span>}
-        <span className="mt-1 block text-[0.68rem] text-fog">{timeAgo(new Date(item.at))}</span>
+        <span className="mt-1 block text-2xs text-fog">{timeAgo(new Date(item.at))}</span>
       </span>
     </Link>
   );

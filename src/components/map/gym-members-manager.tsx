@@ -112,12 +112,12 @@ export function GymMembersManager({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search the roster…"
-          className="w-full rounded-xl border border-ink-700 bg-ink-850 py-2.5 pl-9 pr-3 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none"
+          className="w-full rounded-lg border border-ink-700 bg-ink-850 py-2.5 pl-9 pr-3 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none"
         />
       </label>
 
       {error && (
-        <p role="alert" className="rounded-xl border border-down/40 bg-down/10 px-3.5 py-2.5 text-[0.76rem] text-down">
+        <p role="alert" className="rounded-lg border border-down/40 bg-down/10 px-3.5 py-2.5 text-xs text-down">
           {error}
         </p>
       )}
@@ -142,7 +142,7 @@ export function GymMembersManager({
             return (
               <li
                 key={m.id}
-                className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 px-3 py-2.5"
+                className="flex items-center gap-3 rounded-card border border-ink-700 bg-ink-900/60 px-3 py-2.5"
               >
                 {m.user.image ? (
                   <Image src={m.user.image} alt="" width={36} height={36} unoptimized className="size-9 shrink-0 rounded-full object-cover" />
@@ -163,7 +163,7 @@ export function GymMembersManager({
                     )}
                     {isOwner && <Crown className="size-3.5 shrink-0 text-gold-400" aria-label="Owner" />}
                   </span>
-                  <span className="mt-0.5 flex items-center gap-2 text-[0.68rem] text-fog">
+                  <span className="mt-0.5 flex items-center gap-2 text-2xs text-fog">
                     <span className={cn("font-semibold uppercase tracking-wide", isOwner ? "text-gold-300" : isCoach ? "text-volt-400" : "text-fog")}>
                       {isOwner ? "Owner" : isCoach ? "Coach" : "Member"}
                     </span>
@@ -205,7 +205,7 @@ export function GymMembersManager({
         </ul>
       )}
 
-      <p className="text-[0.66rem] leading-relaxed text-fog">
+      <p className="text-2xs leading-relaxed text-fog">
         Promoting someone to coach shows them in the Coaches section of your public page. Ownership can only change
         through a reviewed claim.
       </p>

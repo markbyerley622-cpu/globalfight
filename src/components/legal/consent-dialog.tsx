@@ -130,7 +130,7 @@ export function ConsentDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-lg p-2 text-fog transition-colors hover:bg-ink-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+            className="cr-touch-target rounded-lg p-2 text-fog transition-colors hover:bg-ink-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
           >
             <X className="size-5" />
           </button>

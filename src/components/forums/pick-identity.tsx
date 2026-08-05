@@ -36,13 +36,13 @@ export function RecordLine({ identity, className }: { identity: RoomIdentity; cl
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
       {met && (
-        <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[0.65rem] font-bold tabular-nums text-chalk" title="Your head-to-head record">
+        <span className="rounded bg-ink-800 px-1.5 py-0.5 text-3xs font-bold tabular-nums text-chalk" title="Your head-to-head record">
           {h.you}–{h.them}
           {h.draws ? `–${h.draws}` : ""}
         </span>
       )}
       {identity.battleStreak > 0 && (
-        <span className="inline-flex items-center gap-0.5 text-[0.65rem] font-bold text-blood-300" title="Battle win streak">
+        <span className="inline-flex items-center gap-0.5 text-3xs font-bold text-blood-300" title="Battle win streak">
           <Flame className="size-3" />
           {identity.battleStreak}
         </span>

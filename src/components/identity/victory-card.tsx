@@ -60,12 +60,12 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
     >
       {/* Header — rarity tier + promotion */}
       <div className="flex items-center justify-between px-6 pt-6">
-        <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[0.6rem] font-black uppercase tracking-[0.2em]", rarity.ring, rarity.text)}>
+        <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-3xs font-black uppercase tracking-[0.2em]", rarity.ring, rarity.text)}>
           {(card.rarity === "CHAMPION" || card.rarity === "LEGEND") && <Crown className="size-3" />}
           {rarity.label}
         </span>
         {card.fight.promotion && (
-          <span className="truncate pl-3 text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-fog">{card.fight.promotion}</span>
+          <span className="truncate pl-3 text-3xs font-semibold uppercase tracking-[0.2em] text-fog">{card.fight.promotion}</span>
         )}
       </div>
 
@@ -81,8 +81,8 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
       </div>
 
       {/* Verdict — who they called + result */}
-      <div className="mx-6 mt-5 flex items-center gap-4 rounded-2xl border border-ink-800 bg-ink-900/70 p-4">
-        <div className={cn("relative size-16 shrink-0 overflow-hidden rounded-2xl ring-2", win ? "ring-volt-400/60" : "ring-ink-700")}>
+      <div className="mx-6 mt-5 flex items-center gap-4 rounded-card border border-ink-800 bg-ink-900/70 p-4">
+        <div className={cn("relative size-16 shrink-0 overflow-hidden rounded-squircle ring-2", win ? "ring-volt-400/60" : "ring-ink-700")}>
           {card.pick.calledImage ? (
             <Image src={card.pick.calledImage} alt={card.pick.calledName} fill className="object-cover" unoptimized />
           ) : (
@@ -95,7 +95,7 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
           </span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-fog">Your call</p>
+          <p className="text-3xs font-bold uppercase tracking-[0.2em] text-fog">Your call</p>
           <p className="truncate font-display text-xl font-black text-chalk">{card.pick.calledName}</p>
           <p className={cn("text-xs font-semibold", win ? "text-volt-400" : "text-fog")}>
             {win ? "Won" : "Lost"}{finish ? ` · ${finish}` : ""}
@@ -108,7 +108,7 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
       {card.badges.length > 0 && (
         <div className="mx-6 mt-4 flex flex-wrap gap-2">
           {card.badges.map((b) => (
-            <span key={b.kind + b.label} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-[0.72rem] font-bold", BADGE_TIER_CLASS[b.tier])}>
+            <span key={b.kind + b.label} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-2xs font-bold", BADGE_TIER_CLASS[b.tier])}>
               {b.label}
             </span>
           ))}
@@ -119,7 +119,7 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
           streak alongside. Standing/accuracy live in the footer; the crowd-beat
           and elite-tier facts live in the badges — each stated once. */}
       {win && card.repGained > 0 && (
-        <div className="mx-6 mt-4 flex items-center gap-3 rounded-2xl border border-gold-500/25 bg-gold-500/[0.06] px-4 py-3">
+        <div className="mx-6 mt-4 flex items-center gap-3 rounded-card border border-gold-500/25 bg-gold-500/[0.06] px-4 py-3">
           <TrendingUp className="size-5 shrink-0 text-gold-400" />
           <p className="flex-1 font-display text-lg font-black leading-none text-chalk">
             +{card.repGained} <span className="text-sm font-bold text-gold-300">reputation</span>
@@ -138,14 +138,14 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
           {card.user.image ? (
             <Image src={card.user.image} alt="" width={32} height={32} className="size-full object-cover" unoptimized />
           ) : (
-            <span className="flex size-full items-center justify-center bg-gradient-to-br from-blood-500 to-blood-800 text-[0.7rem] font-black text-white">{initials(card.user.name)}</span>
+            <span className="flex size-full items-center justify-center bg-gradient-to-br from-blood-500 to-blood-800 text-2xs font-black text-white">{initials(card.user.name)}</span>
           )}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold text-chalk">{card.user.name}</span>
-          <span className="block truncate text-[0.7rem] text-fog">{footer}</span>
+          <span className="block truncate text-2xs text-fog">{footer}</span>
         </span>
-        <span className="shrink-0 font-display text-[0.6rem] font-black uppercase tracking-[0.22em] text-fog">Combat Reviews</span>
+        <span className="shrink-0 font-display text-3xs font-black uppercase tracking-[0.22em] text-fog">Combat Reviews</span>
       </Link>
     </article>
   );

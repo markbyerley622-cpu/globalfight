@@ -160,7 +160,7 @@ export function BoutPick({
   if (variant === "compact") {
     const pickedName = pick?.corner === "RED" ? redName : blueName;
     return (
-      <div className="rounded-xl border border-ink-800 bg-ink-950/40 p-2.5">
+      <div className="rounded-lg border border-ink-800 bg-ink-950/40 p-2.5">
         <div className="grid grid-cols-2 gap-2">
           <CompactCorner
             name={redName} picked={pick?.corner === "RED"} tone="red"
@@ -182,12 +182,12 @@ export function BoutPick({
             claim a consensus that does not exist. */}
         {crowd.total > 0 && (
           <div className="mt-2 flex items-center gap-2">
-            <span className="w-8 shrink-0 text-[0.65rem] font-bold tabular-nums text-blood-400">{redPct}%</span>
+            <span className="w-8 shrink-0 text-3xs font-bold tabular-nums text-blood-400">{redPct}%</span>
             <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-ink-800">
               <div className="h-full bg-blood-500 transition-all duration-500" style={{ width: `${redPct}%` }} />
               <div className="h-full flex-1 bg-volt-500 transition-all duration-500" />
             </div>
-            <span className="w-8 shrink-0 text-right text-[0.65rem] font-bold tabular-nums text-volt-400">{100 - redPct}%</span>
+            <span className="w-8 shrink-0 text-right text-3xs font-bold tabular-nums text-volt-400">{100 - redPct}%</span>
           </div>
         )}
 
@@ -208,7 +208,7 @@ export function BoutPick({
                 // and giving them 44px too would undo the compression this
                 // variant exists for. 24px is the floor, not a rounding.
                 className={cn(
-                  "tap inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold transition-colors",
+                  "tap inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-3xs font-semibold transition-colors",
                   pick.method === m.value
                     ? "border-blood-500 bg-blood-500/20 text-chalk"
                     : "border-ink-700 text-fog hover:border-ink-600 hover:text-mist",
@@ -236,7 +236,7 @@ export function BoutPick({
 
         {/* Locked: the call stays legible, every affordance goes. */}
         {pick && locked && (
-          <p className="mt-2 flex items-center gap-1.5 text-[0.65rem] text-fog">
+          <p className="mt-2 flex items-center gap-1.5 text-3xs text-fog">
             <CheckCircle2 className="size-3.5 shrink-0 text-up" />
             <span className="text-mist">{pickedName}</span>
             {pick.method && <span>· {METHODS.find((m) => m.value === pick.method)?.short}</span>}
@@ -246,7 +246,7 @@ export function BoutPick({
         )}
 
         {pickedUnderdog && !locked && (
-          <p className="mt-1.5 flex items-center gap-1 text-[0.65rem] font-semibold text-gold-400">
+          <p className="mt-1.5 flex items-center gap-1 text-3xs font-semibold text-gold-400">
             <Flame className="size-3" /> Upset call — worth more.
           </p>
         )}
@@ -263,14 +263,14 @@ export function BoutPick({
           <span className="inline-flex items-center gap-1.5 font-display text-sm font-bold uppercase tracking-wide text-chalk">
             <Users className="size-4 text-volt-400" /> Community Prediction
           </span>
-          <span className="text-[0.65rem] uppercase tracking-wider text-fog tabular-nums">
+          <span className="text-3xs uppercase tracking-wider text-fog tabular-nums">
             {crowd.total.toLocaleString()} prediction{crowd.total === 1 ? "" : "s"}
           </span>
         </div>
         {crowd.total > 0 ? (
           <>
             <ProbabilityBar redLabel={redName} blueLabel={blueName} redProbability={redP} />
-            <p className="mt-2 text-[0.7rem] leading-relaxed text-fog">
+            <p className="mt-2 text-2xs leading-relaxed text-fog">
               {crowd.total.toLocaleString()} members predict{" "}
               <span className="font-semibold text-mist">{redPct >= 50 ? `${redName} (${redPct}%)` : `${blueName} (${100 - redPct}%)`}</span> wins.
             </p>
@@ -291,7 +291,7 @@ export function BoutPick({
           </span>
           {busy && <Loader2 className="size-4 animate-spin text-fog" />}
         </div>
-        <p className="mb-3 text-[0.7rem] leading-relaxed text-fog">
+        <p className="mb-3 text-2xs leading-relaxed text-fog">
           {locked
             ? (lockedNote ?? "Picks are closed — the card has started.")
             : pick
@@ -321,7 +321,7 @@ export function BoutPick({
 
         {/* Upset nudge — calling against the crowd scores higher. */}
         {pickedUnderdog && (
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-[0.7rem] font-semibold text-gold-400">
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-2xs font-semibold text-gold-400">
             <Flame className="size-3.5" /> You&apos;re calling the upset — worth more if you nail it.
           </p>
         )}
@@ -329,7 +329,7 @@ export function BoutPick({
         {/* Confidence — appears once a fighter is chosen */}
         {pick && !locked && (
           <div className="mt-4 flex items-center justify-center gap-2">
-            <span className="text-[0.65rem] uppercase tracking-wider text-fog">Confidence</span>
+            <span className="text-3xs uppercase tracking-wider text-fog">Confidence</span>
             <div className="-my-1 flex items-center">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -350,7 +350,7 @@ export function BoutPick({
         {/* Finish method — optional, appears with a fighter. */}
         {pick && !locked && (
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <span className="w-full text-center text-[0.65rem] uppercase tracking-wider text-fog">How it ends</span>
+            <span className="w-full text-center text-3xs uppercase tracking-wider text-fog">How it ends</span>
             {METHODS.map((m) => (
               <button
                 key={m.value}
@@ -375,7 +375,7 @@ export function BoutPick({
         {pick && (
           <div
             className={cn(
-              "mt-4 flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300",
+              "mt-4 flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 transition-all duration-300",
               flash ? "scale-[1.015] border-up/60 bg-up/10 shadow-glow-red" : "border-ink-700 bg-ink-950/40",
             )}
           >
@@ -384,7 +384,7 @@ export function BoutPick({
               <p className="font-display text-sm font-bold text-chalk">
                 Locked in — you&apos;re calling {pick.corner === "RED" ? redName : blueName}
               </p>
-              <p className="text-[0.7rem] leading-snug text-fog">
+              <p className="text-2xs leading-snug text-fog">
                 {pick.confidence ? `${pick.confidence}/5 confidence` : locked ? "No confidence set" : "Tap the stars to set your confidence"}
                 {pick.method ? ` · by ${METHODS.find((m) => m.value === pick.method)?.label}` : ""}
                 {" · "}
@@ -503,7 +503,7 @@ function CornerButton({
       disabled={disabled}
       aria-pressed={picked}
       className={cn(
-        "relative flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-center transition-all",
+        "relative flex flex-col items-center gap-1 rounded-lg border px-3 py-3 text-center transition-all",
         // A locked corner keeps the CALL legible (that is the whole point of showing
         // it) but drops every affordance that promises it can still be changed.
         disabled ? "cursor-default" : "active:scale-95",
@@ -517,15 +517,15 @@ function CornerButton({
       )}
     >
       {underdog && (
-        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-gold-400/30 bg-ink-900 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-gold-400 shadow-sm">
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-gold-400/30 bg-ink-900 px-2 py-0.5 text-4xs font-bold uppercase tracking-wide text-gold-400 shadow-sm">
           Underdog
         </span>
       )}
-      <span className={cn("text-[0.6rem] font-bold uppercase tracking-wider", tone === "red" ? "text-blood-400" : "text-volt-400")}>
+      <span className={cn("text-3xs font-bold uppercase tracking-wider", tone === "red" ? "text-blood-400" : "text-volt-400")}>
         {tone === "red" ? "Red corner" : "Blue corner"}
       </span>
       <span className="font-display text-sm font-bold leading-tight">{name}</span>
-      <span className="text-[0.65rem] text-fog">
+      <span className="text-3xs text-fog">
         {picked ? "Your call ✓" : disabled ? "—" : "Tap to choose"}
       </span>
     </button>

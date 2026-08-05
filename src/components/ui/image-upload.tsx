@@ -158,8 +158,8 @@ export function ImageUpload({
   return (
     <div className={className}>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="font-display text-[0.68rem] font-bold uppercase tracking-wide text-mist">{label}</span>
-        {hint && <span className="text-[0.62rem] text-fog">{hint}</span>}
+        <span className="font-display text-2xs font-bold uppercase tracking-wide text-mist">{label}</span>
+        {hint && <span className="text-3xs text-fog">{hint}</span>}
       </div>
 
       <div
@@ -173,7 +173,7 @@ export function ImageUpload({
           if (file) upload(file);
         }}
         className={cn(
-          "relative overflow-hidden rounded-xl border-2 border-dashed transition-colors",
+          "relative overflow-hidden rounded-lg border-2 border-dashed transition-colors",
           dragging ? "border-blood-500 bg-blood-500/10" : "border-ink-700 bg-ink-850",
           aspect === "square" ? "aspect-square max-w-[9rem]" : "aspect-[16/7]",
         )}
@@ -188,13 +188,13 @@ export function ImageUpload({
         >
           {!shown && (
             <>
-              <span className="grid size-9 place-items-center rounded-xl border border-ink-700 bg-ink-900 text-fog">
+              <span className="grid size-9 place-items-center rounded-lg border border-ink-700 bg-ink-900 text-fog">
                 {aspect === "square" ? <ImagePlus className="size-4" /> : <Upload className="size-4" />}
               </span>
-              <span className="px-3 text-[0.68rem] font-semibold text-mist">
+              <span className="px-3 text-2xs font-semibold text-mist">
                 Drop an image or <span className="text-blood-300 underline underline-offset-2">browse</span>
               </span>
-              <span className="text-[0.6rem] text-fog">JPG · PNG · WebP · max {MAX_UPLOAD_MB} MB</span>
+              <span className="text-3xs text-fog">JPG · PNG · WebP · max {MAX_UPLOAD_MB} MB</span>
             </>
           )}
         </button>
@@ -225,7 +225,7 @@ export function ImageUpload({
               >
                 <div className="h-full rounded-full bg-blood-500 transition-[width] duration-200" style={{ width: `${progress}%` }} />
               </div>
-              <span className="shrink-0 text-[0.6rem] tabular-nums text-mist">{progress}%</span>
+              <span className="shrink-0 text-3xs tabular-nums text-mist">{progress}%</span>
               <button
                 type="button"
                 onClick={cancel}
@@ -279,7 +279,7 @@ export function ImageUpload({
       </div>
 
       {status === "error" && error && (
-        <div role="alert" className="mt-1.5 flex items-start gap-1.5 text-[0.68rem] text-down">
+        <div role="alert" className="mt-1.5 flex items-start gap-1.5 text-2xs text-down">
           <AlertCircle className="mt-px size-3.5 shrink-0" />
           <span className="flex-1">{error}</span>
           {lastFile.current && (

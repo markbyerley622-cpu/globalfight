@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -74,9 +75,9 @@ export function LibraryView() {
                 <div key={c.id} className="group relative">
                   <button
                     onClick={() => open(c)}
-                    className="flex w-full items-center gap-4 rounded-card border border-ink-700 bg-ink-900 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-blood-500/50 hover:shadow-glow-red"
+                    className="flex w-full items-center gap-4 card-surface p-5 text-left transition-all hover:-translate-y-0.5 hover:border-blood-500/50 hover:shadow-glow-red"
                   >
-                    <span className="flex size-12 items-center justify-center rounded-xl bg-blood-500/15 text-blood-300">{icon(c.system)}</span>
+                    <span className="flex size-12 items-center justify-center rounded-lg bg-blood-500/15 text-blood-300">{icon(c.system)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-display text-lg font-bold uppercase tracking-tight text-chalk">{c.name}</span>
                       <span className="text-sm text-mist">{c.count} {c.count === 1 ? "fight" : "fights"}</span>
@@ -94,7 +95,7 @@ export function LibraryView() {
                 <div className="flex items-center gap-2 rounded-card border border-dashed border-ink-600 p-4">
                   <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && make()}
                     placeholder="Collection name" className="flex-1 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2.5 text-sm text-chalk outline-none focus:border-blood-500/60" />
-                  <button onClick={make} className="rounded-lg bg-blood-500 px-4 py-2.5 font-display text-sm font-semibold uppercase text-white">Add</button>
+                  <Button onClick={make} size="md" className="px-4">Add</Button>
                   <button onClick={() => setCreating(false)} aria-label="Cancel" className="text-mist"><X className="size-5" /></button>
                 </div>
               ) : (
@@ -119,14 +120,14 @@ export function LibraryView() {
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {items.map((it) => (
-                <article key={it.videoId} className="group overflow-hidden rounded-card border border-ink-700 bg-ink-900 transition-all hover:-translate-y-1 hover:border-blood-500/50">
+                <article key={it.videoId} className="group overflow-hidden card-surface transition-all hover:-translate-y-1 hover:border-blood-500/50">
                   <button onClick={() => setPlaying(it)} className="relative block aspect-video w-full overflow-hidden bg-ink-800">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`https://i.ytimg.com/vi/${it.videoId}/hqdefault.jpg`} alt="" loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
                       <span className="flex size-14 items-center justify-center rounded-full border border-white/25 bg-white/15 backdrop-blur-md"><Play className="ml-0.5 size-5 fill-white text-white" /></span>
                     </span>
-                    {it.topic && <span className="absolute right-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-chalk backdrop-blur-sm">{TOPIC_LABEL[it.topic] ?? it.topic}</span>}
+                    {it.topic && <span className="absolute right-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-3xs font-bold uppercase tracking-wider text-chalk backdrop-blur-sm">{TOPIC_LABEL[it.topic] ?? it.topic}</span>}
                   </button>
                   <div className="p-3.5">
                     <p className="line-clamp-2 text-sm font-semibold leading-snug text-chalk">{cleanTitle(it.title)}</p>

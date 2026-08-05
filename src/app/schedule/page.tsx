@@ -60,7 +60,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                   </div>
                 </div>
                 <div className="rounded-lg border border-ink-700 bg-ink-950/40 px-4 py-3 text-center">
-                  <p className="mb-1 text-[0.6rem] uppercase tracking-widest text-fog">{t("First bell")}</p>
+                  <p className="mb-1 text-3xs uppercase tracking-widest text-fog">{t("First bell")}</p>
                   <Countdown date={e.date} compact />
                 </div>
               </div>

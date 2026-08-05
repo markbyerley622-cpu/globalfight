@@ -41,7 +41,7 @@ export function FightCard({ fight, showPrediction = true }: { fight: Fight; show
         <div className="flex flex-col items-center gap-1 px-1">
           <span className="font-display text-lg font-black text-fog">VS</span>
           {result !== "SCHEDULED" && fight.method && (
-            <span className="rounded bg-ink-700 px-1.5 py-0.5 text-[0.6rem] font-bold text-mist">
+            <span className="rounded bg-ink-700 px-1.5 py-0.5 text-3xs font-bold text-mist">
               {fight.method}{fight.roundEnded ? ` R${fight.roundEnded}` : ""}
             </span>
           )}
@@ -60,7 +60,7 @@ export function FightCard({ fight, showPrediction = true }: { fight: Fight; show
 
       {showPrediction && prediction && (
         <div className="border-t border-ink-700 px-4 py-3">
-          <div className="mb-1 flex items-center justify-between text-[0.65rem] uppercase tracking-wider text-fog">
+          <div className="mb-1 flex items-center justify-between text-3xs uppercase tracking-wider text-fog">
             <span>Win Probability</span>
             <span>{Math.round((prediction.confidence ?? 0.6) * 100)}% confidence</span>
           </div>

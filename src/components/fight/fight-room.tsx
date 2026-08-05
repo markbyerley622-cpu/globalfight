@@ -1,7 +1,7 @@
 "use client";
+import { ButtonLink } from "@/components/ui/button";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { AlertCircle, Loader2, MessagesSquare, Swords } from "lucide-react";
 import { ThreadDiscussion } from "@/components/forums/thread-discussion";
 import { BattleBanner } from "@/components/fight/battle-banner";
@@ -69,7 +69,7 @@ export function FightRoom({ fightSlug }: { fightSlug: string }) {
   }
   if (status === "error" || !room) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-ink-700 bg-ink-900 p-5 text-center">
+      <div className="flex flex-col items-center gap-2 card-surface p-5 text-center">
         <MessagesSquare className="size-6 text-fog" />
         <p className="text-sm text-mist">This room is unavailable right now — try again shortly.</p>
       </div>
@@ -82,7 +82,7 @@ export function FightRoom({ fightSlug }: { fightSlug: string }) {
   return (
     <div className="mt-3">
       {/* Two layers, one control. There is never a question of where to talk. */}
-      <div className="mb-3 flex items-center gap-1 rounded-xl border border-ink-700 bg-ink-900/60 p-1">
+      <div className="mb-3 flex items-center gap-1 rounded-lg border border-ink-700 bg-ink-900/60 p-1">
         <LayerTab
           active={active === "battle"}
           onClick={() => setLayer("battle")}
@@ -133,12 +133,13 @@ function LayerTab({ active, onClick, icon, label, hint }: {
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "tap flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
+        // 4px — concentric with the p-1 track that holds these tabs.
+        "tap flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-2 text-xs font-semibold transition-colors",
         active ? "bg-blood-500/15 text-chalk ring-1 ring-blood-500/40" : "text-fog hover:text-mist",
       )}
     >
       {icon} {label}
-      {hint && <span className="truncate text-[0.65rem] font-normal text-fog">· {hint}</span>}
+      {hint && <span className="truncate text-3xs font-normal text-fog">· {hint}</span>}
     </button>
   );
 }
@@ -153,7 +154,7 @@ function BattleLayer({ room, viewerId, onGoToCommunity }: {
     return (
       <Empty>
         <p className="text-sm text-mist">Battles are one-on-one. Sign in, call the fight, and you get a rival.</p>
-        <Link href="/account" className="rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">Sign in</Link>
+        <ButtonLink href="/account" size="sm" className="px-4">Sign in</ButtonLink>
       </Empty>
     );
   }
@@ -208,5 +209,5 @@ function BattleLayer({ room, viewerId, onGoToCommunity }: {
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col items-center gap-2.5 rounded-xl border border-ink-700 bg-ink-900/60 p-6 text-center">{children}</div>;
+  return <div className="flex flex-col items-center gap-2.5 rounded-card border border-ink-700 bg-ink-900/60 p-6 text-center">{children}</div>;
 }

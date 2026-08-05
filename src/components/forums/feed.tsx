@@ -136,7 +136,7 @@ export function CommunityFeed({ categories }: { categories: ForumCategoryDTO[] }
               key={w.key}
               onClick={() => setWin(w.key)}
               className={cn(
-                "rounded-full px-3 py-1 text-[0.7rem] font-semibold transition-colors",
+                "rounded-full px-3 py-1 text-2xs font-semibold transition-colors",
                 win === w.key ? "bg-ink-700 text-chalk" : "text-fog hover:text-mist",
               )}
             >

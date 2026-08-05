@@ -42,7 +42,7 @@ export async function Spotlight() {
               {stats.map((s) => (
                 <div key={s.label} className="rounded-lg border border-ink-700 bg-ink-950/40 p-3">
                   <s.icon className="mb-1.5 size-4 text-blood-400" />
-                  <p className="text-[0.65rem] uppercase tracking-wider text-fog">{s.label}</p>
+                  <p className="text-3xs uppercase tracking-wider text-fog">{s.label}</p>
                   <p className="font-display text-base font-bold text-chalk">{s.value}</p>
                 </div>
               ))}

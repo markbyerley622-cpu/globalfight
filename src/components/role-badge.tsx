@@ -45,7 +45,7 @@ export function RoleBadge({ role, sport, className }: { role: string; sport?: st
   const label = ROLE_LABEL[role] ?? "Fan";
   const tone = ROLE_TONE[role] ?? "bg-ink-700/60 text-mist";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider", tone, className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wider", tone, className)}>
       {CROWNED.has(role) && <Crown className="size-2.5 fill-current" />}
       {t(label)}{sport ? ` • ${sport}` : ""}
     </span>
@@ -57,7 +57,7 @@ export function AdminBadge({ role = "ADMIN", className }: { role?: string; class
   const t = useT();
   const label = role === "MODERATOR" ? "Mod" : "Admin";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider bg-gold-500/25 text-gold-100 ring-1 ring-gold-400/50", className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wider bg-gold-500/25 text-gold-100 ring-1 ring-gold-400/50", className)}>
       <Crown className="size-2.5 fill-current" />
       {t(label)}
     </span>

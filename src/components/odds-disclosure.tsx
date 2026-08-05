@@ -24,7 +24,7 @@ import Link from "next/link";
 
 export function OddsDisclosure({ className }: { className?: string }) {
   return (
-    <p className={className ?? "mt-1.5 text-[0.6rem] leading-snug text-fog"}>
+    <p className={className ?? "mt-1.5 text-3xs leading-snug text-fog"}>
       <span className="font-semibold text-mist">18+</span>
       {" · Odds data by The Odds API. Shown for information only — GlobalFight does not "}
       {"accept bets or facilitate gambling. "}

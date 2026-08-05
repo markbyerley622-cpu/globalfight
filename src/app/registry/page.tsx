@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { listFighters, getUpcomingEvents, getResults } from "@/lib/repo";
 import { REGISTRY_SEED, ORG_TYPE_LABEL, type OrgType, type RegistryOrg } from "@/lib/data/registry";
 import { NATIONAL_FEDERATIONS } from "@/lib/data/federations.generated";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Registry",
@@ -131,7 +132,7 @@ export default async function RegistryPage({
                 }`}
               >
                 <t.icon className="size-4" /> {t.label}
-                <span className="rounded bg-ink-800 px-1.5 text-[0.65rem] text-fog">{counts[t.key]}</span>
+                <span className="rounded bg-ink-800 px-1.5 text-3xs text-fog">{counts[t.key]}</span>
               </Link>
             );
           })}
@@ -160,13 +161,13 @@ export default async function RegistryPage({
                   {o.sports.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {o.sports.map((s) => (
-                        <span key={s} className="rounded bg-ink-800 px-2 py-0.5 text-[0.65rem] text-mist">{s}</span>
+                        <span key={s} className="rounded bg-ink-800 px-2 py-0.5 text-3xs text-mist">{s}</span>
                       ))}
                     </div>
                   )}
                   {o.note && <p className="text-xs leading-relaxed text-mist">{o.note}</p>}
                   <div className="mt-auto flex items-center justify-between border-t border-ink-800 pt-3">
-                    <span className="text-[0.65rem] uppercase tracking-wider text-fog">Confidence {o.confidence}</span>
+                    <span className="text-3xs uppercase tracking-wider text-fog">Confidence {o.confidence}</span>
                   </div>
                 </div>
               );
@@ -184,12 +185,12 @@ export default async function RegistryPage({
             a correction.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/account" className="rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white transition-colors hover:bg-blood-400">
+            <ButtonLink href="/account" size="sm" className="px-4">
               Claim a profile
-            </Link>
-            <Link href="/account" className="rounded-lg border border-ink-700 px-4 py-2 font-display text-xs font-semibold uppercase text-mist transition-colors hover:border-ink-600 hover:text-chalk">
+            </ButtonLink>
+            <ButtonLink href="/account" variant="outline" size="sm" className="px-4">
               Submit an entry
-            </Link>
+            </ButtonLink>
           </div>
         </div>
       </div>

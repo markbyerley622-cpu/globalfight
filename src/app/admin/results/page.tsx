@@ -156,7 +156,7 @@ export default function AdminResultsPage() {
         ) : (
           <div className="space-y-4">
             {items.map((i) => (
-              <div key={i.id} className="rounded-2xl border border-ink-700 bg-ink-900 p-4">
+              <div key={i.id} className="card-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-display text-base font-bold text-chalk">
@@ -183,8 +183,8 @@ export default function AdminResultsPage() {
                 </div>
 
                 {/* The suggested reading, stated plainly. */}
-                <div className="mt-3 rounded-xl border border-ink-800 bg-ink-950/50 p-3">
-                  <p className="text-[0.65rem] uppercase tracking-wider text-fog">Suggested result</p>
+                <div className="mt-3 rounded-lg border border-ink-800 bg-ink-950/50 p-3">
+                  <p className="text-3xs uppercase tracking-wider text-fog">Suggested result</p>
                   <p className="mt-0.5 font-display text-lg font-bold text-chalk">{reading(i)}</p>
                   <p className="mt-1 text-xs text-fog">
                     {i.agreeing} agreeing · {i.disagreeing} disagreeing
@@ -205,10 +205,10 @@ export default function AdminResultsPage() {
 
                 {/* Sources, with the original a click away. */}
                 {i.evidence.length > 0 && (
-                  <div className="mt-3 divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-800">
+                  <div className="mt-3 divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800">
                     {i.evidence.map((e, n) => (
                       <div key={n} className="flex items-start gap-2 px-3 py-2 text-xs">
-                        <span className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[0.6rem] uppercase text-fog">
+                        <span className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-3xs uppercase text-fog">
                           {e.sourceKind}
                         </span>
                         <span className="min-w-0 flex-1">

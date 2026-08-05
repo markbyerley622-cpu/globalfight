@@ -140,7 +140,7 @@ export function AppShell({
               <Link
                 href="/fighters"
                 aria-label="Search fighters"
-                className="flex size-9 items-center justify-center rounded-xl border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
+                className="flex size-9 items-center justify-center rounded-lg border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
               >
                 <Search className="size-[1.05rem]" />
               </Link>

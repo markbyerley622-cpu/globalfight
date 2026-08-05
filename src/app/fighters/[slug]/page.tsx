@@ -210,8 +210,8 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
               </div>
             </div>
             {upcoming && (
-              <div className="shrink-0 rounded-xl border border-blood-500/30 bg-blood-500/10 p-4 text-center">
-                <p className="text-[0.65rem] uppercase tracking-widest text-blood-300">Next Fight</p>
+              <div className="shrink-0 rounded-card border border-blood-500/30 bg-blood-500/10 p-4 text-center">
+                <p className="text-3xs uppercase tracking-widest text-blood-300">Next Fight</p>
                 <p className="mt-1 font-display text-sm font-bold text-chalk">vs {upcoming.red.slug === slug ? upcoming.blue.name : upcoming.red.name}</p>
                 <p className="text-xs text-fog">{formatDate(upcoming.date)}</p>
                 <ButtonLink href={`/predictions/${upcoming.slug}`} size="sm" className="mt-2">Prediction</ButtonLink>
@@ -252,7 +252,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 {[["Wins", record.wins, "text-up"], ["Losses", record.losses, "text-down"], ["Draws", record.draws, "text-fog"]].map(([l, v, c]) => (
                   <div key={l as string} className="rounded-lg bg-ink-950/40 p-2">
                     <p className={`font-display text-xl font-bold ${c}`}>{v as number}</p>
-                    <p className="text-[0.6rem] uppercase tracking-wider text-fog">{l as string}</p>
+                    <p className="text-3xs uppercase tracking-wider text-fog">{l as string}</p>
                   </div>
                 ))}
               </div>
@@ -260,7 +260,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 // A count of the bouts we hold is a FLOOR, not an official
                 // record — we do not have every fighter's regional or amateur
                 // career. Saying so is what makes showing it honest.
-                <p className="text-center text-[0.65rem] leading-snug text-fog">
+                <p className="text-center text-3xs leading-snug text-fog">
                   Counted from {record.countedBouts} recorded {record.countedBouts === 1 ? "bout" : "bouts"} on Combat Reviews. No official record imported yet.
                 </p>
               )}
@@ -286,7 +286,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 <h3 className="font-display text-sm font-bold uppercase tracking-wide text-fog">Disciplines</h3>
                 {profile.disciplineTier && (
                   <span
-                    className={`rounded px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider ${
+                    className={`rounded px-1.5 py-0.5 text-3xs font-bold uppercase tracking-wider ${
                       profile.disciplineTier === "HIGH"
                         ? "bg-up/15 text-up"
                         : profile.disciplineTier === "MEDIUM"
@@ -342,7 +342,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
 
               {byDiscipline.unknown > 0 && (
                 // Never folded into a discipline they might not belong to.
-                <p className="text-[0.65rem] leading-snug text-fog">
+                <p className="text-3xs leading-snug text-fog">
                   {byDiscipline.unknown} further {byDiscipline.unknown === 1 ? "bout" : "bouts"} on record whose
                   ruleset no source stated — not counted above.
                 </p>
@@ -365,7 +365,7 @@ export default async function FighterProfile({ params }: { params: Promise<{ slu
                 {stats.map((s) => (
                   <div key={s.label} className="rounded-lg bg-ink-950/40 p-3">
                     <s.icon className="mb-1 size-4 text-blood-400" />
-                    <dt className="text-[0.6rem] uppercase tracking-wider text-fog">{s.label}</dt>
+                    <dt className="text-3xs uppercase tracking-wider text-fog">{s.label}</dt>
                     <dd className="truncate font-display text-sm font-bold text-chalk">{s.value}</dd>
                   </div>
                 ))}

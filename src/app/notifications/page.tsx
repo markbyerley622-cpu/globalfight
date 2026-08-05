@@ -30,7 +30,7 @@ export default async function NotificationsPage() {
     <div className="container-cr max-w-2xl py-8 md:py-12">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-fog">
+          <p className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-[0.2em] text-fog">
             <Bell aria-hidden className="size-3.5" /> Your feed
           </p>
           <h1 className="mt-2 font-display text-3xl font-bold uppercase text-chalk md:text-4xl">

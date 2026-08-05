@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const DISCIPLINES = [
   "MMA", "Muay Thai", "Boxing", "BJJ", "Kickboxing", "Wrestling",
@@ -12,7 +13,7 @@ const DISCIPLINES = [
 ];
 
 const field =
-  "w-full rounded-xl border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none";
+  "w-full rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none";
 
 export function GymCreateForm() {
   const router = useRouter();
@@ -82,7 +83,7 @@ export function GymCreateForm() {
       </Label>
 
       <fieldset>
-        <legend className="mb-1.5 block font-display text-[0.72rem] font-bold uppercase tracking-wide text-mist">
+        <legend className="mb-1.5 block font-display text-2xs font-bold uppercase tracking-wide text-mist">
           Disciplines
         </legend>
         <div className="flex flex-wrap gap-1.5">
@@ -95,7 +96,7 @@ export function GymCreateForm() {
                 aria-pressed={on}
                 onClick={() => setDisciplines((cur) => (on ? cur.filter((x) => x !== d) : [...cur, d]))}
                 className={cn(
-                  "tap rounded-full border px-3 py-1.5 text-[0.72rem] font-semibold transition-colors",
+                  "tap rounded-full border px-3 py-1.5 text-2xs font-semibold transition-colors",
                   on
                     ? "border-volt-500 bg-volt-500/15 text-volt-400"
                     : "border-ink-700 bg-ink-850 text-mist hover:border-ink-600 hover:text-chalk",
@@ -125,13 +126,13 @@ export function GymCreateForm() {
         <input name="hoursNote" maxLength={160} placeholder="Mon–Fri 6am–9pm · Open mat Sat 11am" className={field} />
       </Label>
 
-      <label className="flex items-center gap-2.5 rounded-xl border border-ink-700 bg-ink-900 px-3.5 py-3">
+      <label className="flex items-center gap-2.5 rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-3">
         <input name="makeHome" type="checkbox" defaultChecked className="size-4 accent-[var(--color-blood-500)]" />
         <span className="text-sm text-mist">This is my home gym</span>
       </label>
 
       {error && (
-        <div className="rounded-xl border border-down/40 bg-down/10 px-3.5 py-3 text-sm text-down">
+        <div className="rounded-lg border border-down/40 bg-down/10 px-3.5 py-3 text-sm text-down">
           {error}
           {existing && (
             <>
@@ -144,14 +145,10 @@ export function GymCreateForm() {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="tap mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-blood-500 px-5 py-3 font-display text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={busy} size="md" className="mt-1">
         {busy && <Loader2 className="size-4 animate-spin" />}
         Add gym
-      </button>
+      </Button>
     </form>
   );
 }
@@ -161,7 +158,7 @@ function Label({
 }: { text: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block font-display text-[0.72rem] font-bold uppercase tracking-wide text-mist">
+      <span className="mb-1.5 block font-display text-2xs font-bold uppercase tracking-wide text-mist">
         {text}
         {!required && hint && <span className="ml-1.5 font-sans font-normal normal-case tracking-normal text-fog">{hint}</span>}
       </span>

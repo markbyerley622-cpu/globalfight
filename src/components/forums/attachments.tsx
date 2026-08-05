@@ -88,7 +88,7 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-950/90 p-4" onClick={onClose}>
-      <button className="absolute right-4 top-4 rounded-full bg-ink-800/80 p-2 text-chalk" aria-label="Close"><X className="size-5" /></button>
+      <button className="cr-touch-target absolute right-4 top-4 rounded-full bg-ink-800/80 p-2 text-chalk" aria-label="Close"><X className="size-5" /></button>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} className="max-h-[90vh] max-w-full rounded-lg object-contain" />
     </div>

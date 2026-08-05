@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import { useEffect, useState } from "react";
 import { Bookmark, Clock, Heart, Plus, X, FolderPlus } from "lucide-react";
@@ -39,7 +40,7 @@ export function SaveSheet({ video, onClose, onSaved }: { video: FeedVideo; onClo
       <div className="w-full max-w-md rounded-t-2xl border border-ink-700 bg-ink-900 p-5 pb-[calc(1.75rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h4 className="font-display text-base font-semibold uppercase tracking-wide">Save to</h4>
-          <button onClick={onClose} aria-label="Close" className="flex size-8 items-center justify-center rounded-full border border-ink-700 text-mist"><X className="size-4" /></button>
+          <button onClick={onClose} aria-label="Close" className="cr-touch-target flex size-8 items-center justify-center rounded-full border border-ink-700 text-mist"><X className="size-4" /></button>
         </div>
 
         <div className="max-h-[46vh] space-y-1 overflow-y-auto">
@@ -48,7 +49,7 @@ export function SaveSheet({ video, onClose, onSaved }: { video: FeedVideo; onClo
               key={c.id}
               onClick={() => addTo(c)}
               disabled={busy !== null}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-chalk transition-colors hover:bg-ink-800 disabled:opacity-50"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-chalk transition-colors hover:bg-ink-800 disabled:opacity-50"
             >
               <span className="text-mist">{sysIcon(c.system)}</span>
               <span className="flex-1 font-semibold">{c.name}</span>
@@ -65,10 +66,10 @@ export function SaveSheet({ video, onClose, onSaved }: { video: FeedVideo; onClo
               placeholder="Collection name"
               className="flex-1 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2.5 text-sm text-chalk outline-none focus:border-blood-500/60"
             />
-            <button onClick={makeAndAdd} disabled={busy !== null} className="rounded-lg bg-blood-500 px-4 font-display text-sm font-semibold uppercase text-white disabled:opacity-50">Add</button>
+            <Button onClick={makeAndAdd} disabled={busy !== null} size="md" className="px-4">Add</Button>
           </div>
         ) : (
-          <button onClick={() => setCreating(true)} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-ink-600 px-3 py-3 text-mist transition-colors hover:border-blood-500/50 hover:text-chalk">
+          <button onClick={() => setCreating(true)} className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-ink-600 px-3 py-3 text-mist transition-colors hover:border-blood-500/50 hover:text-chalk">
             <FolderPlus className="size-5" /> <span className="font-semibold">New collection</span> <Plus className="ml-auto size-4" />
           </button>
         )}

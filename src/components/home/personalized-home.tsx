@@ -74,10 +74,10 @@ function Progress({ data }: { data: NonNullable<HomeData["progress"]> }) {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.map((t) => (
-          <Link key={t.label} href={t.href} className="rounded-2xl border border-ink-800 bg-ink-900 p-3.5 text-center transition-all hover:-translate-y-0.5 hover:border-blood-500/40">
+          <Link key={t.label} href={t.href} className="card-surface p-3.5 text-center transition-all hover:-translate-y-0.5 hover:border-blood-500/40">
             <t.icon className="mx-auto mb-1 size-4 text-blood-400" />
             <p className="font-display text-2xl font-bold tabular-nums text-chalk">{t.value}</p>
-            <p className="text-[0.6rem] uppercase tracking-wider text-fog">{t.label}</p>
+            <p className="text-3xs uppercase tracking-wider text-fog">{t.label}</p>
           </Link>
         ))}
       </div>

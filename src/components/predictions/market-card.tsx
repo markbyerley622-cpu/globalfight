@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { OddsDisclosure } from "@/components/odds-disclosure";
 import type { PredictionMarket } from "@/features/predictions/types";
 import type { CommunityOption, MarketVote } from "@/features/predictions/community/types";
-import { Chip, CloseTimer, ConsensusBar, Portrait, fmtNum, initials, pct, marketDivergence, sharePrediction } from "@/components/predictions/shared";
+import { Badge } from "@/components/ui/badge";
+import { CloseTimer, ConsensusBar, Portrait, fmtNum, initials, pct, marketDivergence, sharePrediction } from "@/components/predictions/shared";
 
 const isYesNo = (labels: string[]) =>
   labels.length === 2 && labels.every((l) => /^(yes|no)$/i.test(l.trim()));
@@ -44,20 +45,20 @@ export function MarketCard({
   return (
     <article
       className={cn(
-        "glass pred-card flex h-full flex-col overflow-hidden rounded-2xl",
+        "glass pred-card flex h-full flex-col overflow-hidden rounded-card",
         market.featured && "ring-featured",
         closed && "opacity-70",
       )}
     >
       {/* Badge strip */}
       <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3.5">
-        <Chip tone="neutral">{market.sport}</Chip>
-        {market.league && <Chip tone="outline">{market.league}</Chip>}
-        {market.featured && <Chip tone="gold">★ Featured</Chip>}
-        {market.hot && <Chip tone="hot">🔥 Hot</Chip>}
+        <Badge tone="neutral" size="sm">{market.sport}</Badge>
+        {market.league && <Badge tone="outline" size="sm">{market.league}</Badge>}
+        {market.featured && <Badge tone="gold" size="sm">★ Featured</Badge>}
+        {market.hot && <Badge tone="hot" size="sm">🔥 Hot</Badge>}
         <div className="ml-auto flex items-center gap-1.5">
           {!closed && <CloseTimer closesAt={market.closesAt} />}
-          {closed && <Chip tone="outline">Closed</Chip>}
+          {closed && <Badge tone="outline" size="sm">Closed</Badge>}
           <ShareButton market={market} community={community} favLabel={fav?.label ?? ""} favPct={favPct} />
         </div>
       </div>
@@ -70,7 +71,7 @@ export function MarketCard({
             <div className="mt-1.5 line-clamp-2 font-display text-sm font-bold leading-tight text-chalk transition-colors group-hover:text-blood-300">
               {fav.label}
             </div>
-            <div className="mt-0.5 text-[0.58rem] font-semibold uppercase tracking-wide text-up">Favourite</div>
+            <div className="mt-0.5 text-4xs font-semibold uppercase tracking-wide text-up">Favourite</div>
           </Link>
           <div className="flex items-center px-1">
             <span className="font-display text-sm font-bold italic text-fog">VS</span>
@@ -80,7 +81,7 @@ export function MarketCard({
             <div className="mt-1.5 line-clamp-2 font-display text-sm font-bold leading-tight text-chalk transition-colors group-hover:text-volt-400">
               {under.label}
             </div>
-            <div className="mt-0.5 text-[0.58rem] font-semibold uppercase tracking-wide text-fog">Underdog</div>
+            <div className="mt-0.5 text-4xs font-semibold uppercase tracking-wide text-fog">Underdog</div>
           </Link>
         </div>
       ) : (
@@ -93,7 +94,7 @@ export function MarketCard({
             </div>
           )}
           <div className="min-w-0 pt-0.5">
-            <h3 className="font-display text-[0.98rem] font-bold leading-tight text-chalk">{market.title}</h3>
+            <h3 className="font-display text-base font-bold leading-tight text-chalk">{market.title}</h3>
           </div>
         </div>
       )}
@@ -102,8 +103,8 @@ export function MarketCard({
           this is the bookmaker-implied line, the section below is user picks. */}
       <div className="px-4 pb-3.5 pt-4">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-fog">Market odds</span>
-          <span className="text-[0.58rem] text-fog/80">Bookmaker implied probability</span>
+          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-fog">Market odds</span>
+          <span className="text-4xs text-fog/80">Bookmaker implied probability</span>
         </div>
         <ConsensusBar leftLabel={fav?.label ?? "—"} leftPct={favPct} rightLabel={under.label} rightPct={underPct} size="lg" />
         {/* The licence for bookmaker data requires attribution and 18+/RG messaging
@@ -169,7 +170,7 @@ function CommunityVote({
           onClick={() => cast(o.id)}
           className={cn(
             "tap min-h-9 truncate rounded-lg border px-1.5 py-2 font-semibold",
-            headToHead ? "text-[0.72rem]" : "text-[0.68rem] uppercase tracking-wide",
+            headToHead ? "text-2xs" : "text-2xs uppercase tracking-wide",
             !canVote ? "border-ink-800 bg-ink-850 text-fog" : "border-ink-700 bg-ink-800 text-mist hover:border-up/50 hover:text-chalk",
           )}
         >
@@ -182,20 +183,20 @@ function CommunityVote({
   return (
     <div className="border-t border-ink-800/70 px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-blood-400">
-          <span className="grid size-3.5 place-items-center rounded-[3px] bg-blood-500 text-[0.5rem] text-white">C</span>
+        <span className="inline-flex items-center gap-1.5 text-3xs font-bold uppercase tracking-[0.14em] text-blood-400">
+          <span className="grid size-3.5 place-items-center rounded-[3px] bg-blood-500 text-4xs text-white">C</span>
           Fight Pulse
         </span>
         <div className="flex items-center gap-1.5">
           {controversial && (
-            <span className="rounded bg-gold-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-gold-300">⚡ Controversial</span>
+            <span className="rounded bg-gold-500/15 px-1.5 py-0.5 text-4xs font-bold uppercase tracking-wide text-gold-300">⚡ Controversial</span>
           )}
           {voteCount > 0 && (
-            <span className="text-[0.62rem] font-medium text-fog">{fmtNum(voteCount)} vote{voteCount === 1 ? "" : "s"}</span>
+            <span className="text-3xs font-medium text-fog">{fmtNum(voteCount)} vote{voteCount === 1 ? "" : "s"}</span>
           )}
         </div>
       </div>
-      <p className="mb-2 text-[0.58rem] leading-snug text-fog">Community prediction — how fans are calling it, not the odds.</p>
+      <p className="mb-2 text-4xs leading-snug text-fog">Community prediction — how fans are calling it, not the odds.</p>
 
       {voteCount > 0 ? (
         <>
@@ -207,7 +208,7 @@ function CommunityVote({
                 const mine = myVote === o.id;
                 return (
                   <div key={o.id}>
-                    <div className="mb-0.5 flex items-center justify-between text-[0.66rem] font-semibold">
+                    <div className="mb-0.5 flex items-center justify-between text-2xs font-semibold">
                       <span className={mine ? "text-up" : "text-mist"}>{o.label}{mine ? " · your pick" : ""}</span>
                       <span className="text-fog">{share(o.id)}%</span>
                     </div>
@@ -223,11 +224,11 @@ function CommunityVote({
           {/* Fight Pulse vs The Market — the divergence nobody else can show. */}
           {div && (
             <div className="mt-2.5 rounded-lg border border-ink-700/70 bg-ink-950/40 px-2.5 py-2">
-              <div className="flex items-center justify-between text-[0.66rem]">
+              <div className="flex items-center justify-between text-2xs">
                 <span className="text-mist">Fans <b className="text-chalk">{div.commPct}%</b> {div.label}</span>
                 <span className="text-mist">Market <b className="text-chalk">{div.marketPct}%</b></span>
               </div>
-              <div className={cn("mt-1 text-center text-[0.64rem] font-bold", div.delta >= 0 ? "text-up" : "text-blood-300")}>
+              <div className={cn("mt-1 text-center text-3xs font-bold", div.delta >= 0 ? "text-up" : "text-blood-300")}>
                 {div.delta >= 0 ? "▲ +" : "▼ −"}{Math.abs(div.delta)}% {div.delta >= 0 ? "more" : "less"} confident than the market
               </div>
             </div>
@@ -235,20 +236,20 @@ function CommunityVote({
 
           <div className="mt-2.5">
             {myVote ? (
-              <p className="text-center text-[0.66rem] font-semibold text-up">Your pick: {options.find((o) => o.id === myVote)?.label}</p>
+              <p className="text-center text-2xs font-semibold text-up">Your pick: {options.find((o) => o.id === myVote)?.label}</p>
             ) : canVote ? (
               voteButtons
             ) : (
-              <Link href="/account" className="block text-center text-[0.64rem] font-semibold text-blood-300">Sign in to vote</Link>
+              <Link href="/account" className="block text-center text-3xs font-semibold text-blood-300">Sign in to vote</Link>
             )}
           </div>
         </>
       ) : (
         <>
-          <div className="mb-1.5 text-[0.66rem] font-medium text-mist">{headToHead ? "Who you got?" : "Will it happen?"}</div>
+          <div className="mb-1.5 text-2xs font-medium text-mist">{headToHead ? "Who you got?" : "Will it happen?"}</div>
           {voteButtons}
           {!canVote && (
-            <Link href="/account" className="mt-1.5 block text-center text-[0.64rem] font-semibold text-blood-300">Sign in to vote</Link>
+            <Link href="/account" className="mt-1.5 block text-center text-3xs font-semibold text-blood-300">Sign in to vote</Link>
           )}
         </>
       )}
@@ -268,7 +269,7 @@ function ShareButton({ market, community, favLabel, favPct }: { market: Predicti
     if (r === "copied") { setCopied(true); setTimeout(() => setCopied(false), 1600); }
   }
   return (
-    <button onClick={onShare} aria-label="Share this prediction" className="tap grid size-6 place-items-center rounded-md border border-ink-700 text-fog transition-colors hover:border-ink-600 hover:text-chalk">
+    <button onClick={onShare} aria-label="Share this prediction" className="tap cr-touch-target grid size-6 place-items-center rounded-md border border-ink-700 text-fog transition-colors hover:border-ink-600 hover:text-chalk">
       {copied ? <Check className="size-3 text-up" /> : <Send className="size-3" />}
     </button>
   );

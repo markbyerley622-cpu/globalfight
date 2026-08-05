@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getPresenceCounts } from "@/lib/geo/presence";
 import { Chip, ChipRow } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ButtonLink } from "@/components/ui/button";
 import { DISCIPLINES } from "@/lib/roles";
 
 export const metadata: Metadata = {
@@ -67,12 +68,9 @@ export default async function GymsPage({
           <h1 className="mt-1.5 font-display text-2xl font-black uppercase tracking-tight text-chalk">Gyms</h1>
           <p className="mt-1 text-sm text-fog">Find a gym, see who trains there, and check in.</p>
         </div>
-        <Link
-          href="/gyms/new"
-          className="tap mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blood-500 px-3.5 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-white hover:bg-blood-400"
-        >
+        <ButtonLink href="/gyms/new" size="sm" className="mt-1 shrink-0 px-3.5">
           <Plus className="size-3.5" /> Add gym
-        </Link>
+        </ButtonLink>
       </header>
 
       <form className="mb-4" action="/gyms">
@@ -81,7 +79,7 @@ export default async function GymsPage({
           name="q"
           defaultValue={query}
           placeholder="Search gyms, cities or disciplines…"
-          className="w-full rounded-xl border border-ink-700 bg-ink-900 px-4 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none"
+          className="w-full rounded-lg border border-ink-700 bg-ink-900 px-4 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none"
         />
       </form>
 
@@ -113,9 +111,9 @@ export default async function GymsPage({
               <li key={g.id}>
                 <Link
                   href={`/gyms/${g.slug}`}
-                  className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 p-3 transition-colors hover:border-volt-500/40 hover:bg-ink-900"
+                  className="flex items-center gap-3 rounded-card border border-ink-700 bg-ink-900/60 p-3 transition-colors hover:border-volt-500/40 hover:bg-ink-900"
                 >
-                  <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-volt-500/25 bg-volt-500/10">
+                  <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-volt-500/25 bg-volt-500/10">
                     {g.logoUrl ? (
                       <Image src={g.logoUrl} alt="" width={44} height={44} unoptimized className="size-full object-cover" />
                     ) : (
@@ -129,7 +127,7 @@ export default async function GymsPage({
                       <span className="truncate font-display text-sm font-bold text-chalk">{g.name}</span>
                       {g.verified && <BadgeCheck className="size-3.5 shrink-0 text-volt-400" />}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-2 text-[0.72rem] text-fog">
+                    <span className="mt-0.5 flex items-center gap-2 text-2xs text-fog">
                       <span className="inline-flex items-center gap-1">
                         <MapPin className="size-3" />
                         {[g.city, g.country].filter(Boolean).join(", ") || "Location unknown"}
@@ -146,7 +144,7 @@ export default async function GymsPage({
                     </span>
                   </span>
                   {here > 0 && (
-                    <span className="shrink-0 rounded-lg bg-blood-500/15 px-2 py-1 font-display text-[0.66rem] font-bold uppercase tracking-wide text-blood-300">
+                    <span className="shrink-0 rounded-lg bg-blood-500/15 px-2 py-1 font-display text-2xs font-bold uppercase tracking-wide text-blood-300">
                       {here} here
                     </span>
                   )}

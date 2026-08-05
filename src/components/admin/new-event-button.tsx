@@ -72,7 +72,7 @@ export function NewEventButton() {
         {busy ? <Loader2 className="size-3 animate-spin" /> : null} Create draft
       </button>
       <button onClick={() => setOpen(false)} className="px-1.5 text-xs text-fog hover:text-chalk">Cancel</button>
-      {error && <span className="text-[0.7rem] text-blood-300">{error}</span>}
+      {error && <span className="text-2xs text-blood-300">{error}</span>}
     </div>
   );
 }

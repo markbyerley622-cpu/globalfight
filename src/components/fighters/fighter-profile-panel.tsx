@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Loader2, ExternalLink, Pencil } from "lucide-react";
 import { FighterOnboardingForm } from "@/components/fighters/fighter-onboarding-form";
 import { SPORT_LABEL } from "@/lib/sports";
+import { ButtonLink } from "@/components/ui/button";
 
 interface Profile { slug: string; name: string; sport: string }
 
@@ -45,9 +45,9 @@ export function FighterProfilePanel({ defaultName }: { defaultName?: string }) {
             <p className="font-display font-semibold text-chalk">{profile.name}</p>
             <p className="text-sm text-mist">{SPORT_LABEL[profile.sport] ?? profile.sport} · Live in the directory</p>
           </div>
-          <Link href={`/fighters/${profile.slug}`} className="flex items-center justify-center gap-2 rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">
+          <ButtonLink href={`/fighters/${profile.slug}`} size="sm" className="flex px-4">
             View my public profile <ExternalLink className="size-4" />
-          </Link>
+          </ButtonLink>
         </div>
       ) : (
         <>

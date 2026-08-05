@@ -83,7 +83,7 @@ export function ChangePasswordForm() {
           ? <span className="flex items-center justify-center gap-2"><Loader2 className="size-4 animate-spin" /> {t("Updating…")}</span>
           : t("Change password")}
       </Button>
-      <p className="text-center text-[0.65rem] text-fog">
+      <p className="text-center text-3xs text-fog">
         {t("Changing your password signs you out everywhere else.")}
       </p>
     </form>

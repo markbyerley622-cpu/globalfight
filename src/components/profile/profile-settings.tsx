@@ -43,7 +43,7 @@ export function ProfileSettings() {
 
       <button
         onClick={() => logout()}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blood-500/40 bg-blood-500/10 py-3 font-display text-sm font-bold uppercase tracking-wide text-blood-300 transition-colors hover:bg-blood-500/20"
+        className="flex w-full items-center justify-center gap-2 rounded-card border border-blood-500/40 bg-blood-500/10 py-3 font-display text-sm font-bold uppercase tracking-wide text-blood-300 transition-colors hover:bg-blood-500/20"
       >
         <LogOut className="size-4" /> Sign out
       </button>
@@ -77,14 +77,14 @@ function SettingCard({
   };
 
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+    <div className="card-surface p-4">
       <div className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</div>
-      {note && <p className="mt-1 text-[0.72rem] text-fog">{note}</p>}
+      {note && <p className="mt-1 text-2xs text-fog">{note}</p>}
       <div className="mt-3 space-y-2">
         {fields.map((f) => (
           <label key={f.key} className="block">
             <span className="sr-only">{f.label}</span>
-            <div className="flex items-center rounded-xl border border-ink-700 bg-ink-850 focus-within:border-blood-500/60">
+            <div className="flex items-center rounded-lg border border-ink-700 bg-ink-850 focus-within:border-blood-500/60">
               {f.prefix && <span className="pl-3 text-sm text-fog">{f.prefix}</span>}
               <input
                 type={f.type ?? "text"}
@@ -103,7 +103,7 @@ function SettingCard({
           onClick={save}
           disabled={busy || !dirty}
           className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 font-display text-xs font-semibold uppercase tracking-wide transition-colors",
+            "inline-flex items-center gap-2 rounded-lg px-4 py-2 font-display text-xs font-semibold uppercase tracking-wide transition-colors",
             busy || !dirty ? "bg-ink-800 text-fog" : "bg-blood-500 text-white hover:bg-blood-400",
           )}
         >

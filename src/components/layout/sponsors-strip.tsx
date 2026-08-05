@@ -51,7 +51,7 @@ export const SponsorsStrip = memo(function SponsorsStrip() {
     // transform-only marquee itself (already GPU-promoted below).
     <div ref={rootRef} className="sponsors-strip shrink-0 border-t border-ink-800 bg-ink-950">
       <div className="flex items-center gap-3 px-4 py-3 lg:gap-6 lg:px-8 lg:py-5">
-        <span className="shrink-0 font-display text-[0.55rem] font-bold uppercase tracking-[0.2em] text-fog lg:text-[0.72rem] lg:tracking-[0.25em]">
+        <span className="shrink-0 font-display text-4xs font-bold uppercase tracking-[0.2em] text-fog lg:text-2xs lg:tracking-[0.25em]">
           <span className="lg:hidden">Partners</span>
           <span className="hidden lg:inline">Official Partners</span>
         </span>

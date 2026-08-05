@@ -36,7 +36,7 @@ export async function RankingsPreview() {
                 {accent && <Trophy className="size-4 text-gold-400" />}
                 {data.weightClass}
               </span>
-              <span className="text-[0.65rem] uppercase tracking-wider text-fog">Top {Math.min(5, data.rankings.length)}</span>
+              <span className="text-3xs uppercase tracking-wider text-fog">Top {Math.min(5, data.rankings.length)}</span>
             </Link>
             <RankingList ranking={data} limit={5} dense showSport={accent} />
           </div>

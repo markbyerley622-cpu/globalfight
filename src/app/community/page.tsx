@@ -31,7 +31,7 @@ export default async function CommunityDirectoryPage() {
           {communities.map((c) => (
             <div key={c.slug} className="card-surface flex flex-col gap-3 p-4">
               <div className="flex items-start gap-3">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-ink-800 text-blood-400">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-ink-800 text-blood-400">
                   <CategoryIcon name={c.slug} className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -42,7 +42,7 @@ export default async function CommunityDirectoryPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between gap-3 border-t border-ink-800 pt-3">
-                <div className="flex items-center gap-3 text-[0.7rem] text-fog">
+                <div className="flex items-center gap-3 text-2xs text-fog">
                   <span className="flex items-center gap-1"><Users className="size-3.5" />{c.memberCount.toLocaleString()}</span>
                   <span className="flex items-center gap-1"><MessageSquare className="size-3.5" />{c.threadCount}</span>
                 </div>

@@ -2,25 +2,43 @@ import { cn } from "@/lib/utils";
 import type { RankMovement } from "@/lib/types";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 
+export type BadgeTone = "neutral" | "red" | "gold" | "live" | "volt" | "hot" | "outline";
+export type BadgeSize = "sm" | "md";
+
+const TONES: Record<BadgeTone, string> = {
+  neutral: "bg-ink-700/60 text-mist border-ink-600",
+  red: "bg-blood-500/15 text-blood-300 border-blood-500/30",
+  gold: "bg-gold-500/15 text-gold-300 border-gold-500/30",
+  live: "bg-blood-500/20 text-blood-300 border-blood-500/40",
+  volt: "bg-volt-500/15 text-volt-400 border-volt-500/30",
+  //  `hot` layers the sheen keyframe over the red tone. `.hot-sheen` sets
+  //  overflow:hidden and an inset ::after, so it composes with the border.
+  hot: "bg-blood-500/15 text-blood-300 border-blood-500/30 hot-sheen",
+  //  The only tone that is border-first: no fill, so it recedes behind the
+  //  filled tones sitting next to it in a card header row.
+  outline: "bg-transparent text-fog border-ink-600",
+};
+
+//  Size varies type and rhythm, not the box: both steps keep px-2 py-0.5 so a
+//  mixed row of sm and md badges still shares one baseline.
+const SIZES: Record<BadgeSize, string> = {
+  sm: "gap-1 text-4xs font-bold tracking-wide",
+  md: "gap-1.5 text-2xs font-semibold tracking-wider",
+};
+
 export function Badge({
-  children, className, tone = "neutral",
+  children, className, tone = "neutral", size = "md",
 }: {
   children: React.ReactNode;
   className?: string;
-  tone?: "neutral" | "red" | "gold" | "live" | "volt";
+  tone?: BadgeTone;
+  size?: BadgeSize;
 }) {
-  const tones = {
-    neutral: "bg-ink-700/60 text-mist border-ink-600",
-    red: "bg-blood-500/15 text-blood-300 border-blood-500/30",
-    gold: "bg-gold-500/15 text-gold-300 border-gold-500/30",
-    live: "bg-blood-500/20 text-blood-300 border-blood-500/40",
-    volt: "bg-volt-500/15 text-volt-400 border-volt-500/30",
-  } as const;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wider",
-        tones[tone], className,
+        "inline-flex items-center rounded-md border px-2 py-0.5 uppercase",
+        SIZES[size], TONES[tone], className,
       )}
     >
       {children}

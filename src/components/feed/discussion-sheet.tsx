@@ -9,6 +9,7 @@ import { ThreadDiscussion } from "@/components/forums/thread-discussion";
 import { suggestedCommunitySlug } from "@/lib/community/topics";
 import type { FeedVideo } from "./client";
 import { embedUrl } from "@/lib/feed/channels";
+import { ButtonLink } from "@/components/ui/button";
 
 interface Discussion {
   slug: string;
@@ -97,7 +98,7 @@ export function DiscussionSheet({ video, onClose }: { video: FeedVideo; onClose:
         <MessageCircle className="size-5 text-blood-400" />
         <span className="font-display text-sm font-semibold uppercase tracking-wide text-chalk">Discussion</span>
         <div className="flex-1" />
-        <button onClick={onClose} aria-label="Close discussion" className="flex size-9 items-center justify-center rounded-full border border-ink-700 bg-ink-850 text-chalk">
+        <button onClick={onClose} aria-label="Close discussion" className="cr-touch-target flex size-9 items-center justify-center rounded-full border border-ink-700 bg-ink-850 text-chalk">
           <X className="size-5" />
         </button>
       </div>
@@ -142,9 +143,9 @@ export function DiscussionSheet({ video, onClose }: { video: FeedVideo; onClose:
           ) : !user ? (
             <div className="card-surface flex flex-col items-center gap-3 p-6 text-center">
               <p className="text-sm text-mist">Be the first to discuss this clip.</p>
-              <Link href="/account" className="rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">
+              <ButtonLink href="/account" size="sm" className="px-4">
                 Sign in to start
-              </Link>
+              </ButtonLink>
             </div>
           ) : (
             <div className="card-surface p-5">

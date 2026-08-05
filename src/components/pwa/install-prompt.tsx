@@ -49,7 +49,7 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="fixed inset-x-3 bottom-20 z-[140] mx-auto flex max-w-sm items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/95 px-4 py-3 shadow-lg backdrop-blur sm:bottom-4">
+    <div className="fixed inset-x-3 bottom-20 z-[140] mx-auto flex max-w-sm items-center gap-3 rounded-card border border-ink-700 bg-ink-900/95 px-4 py-3 shadow-lg backdrop-blur sm:bottom-4">
       <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-blood-500/15 text-blood-300">
         <Download className="size-5" />
       </div>

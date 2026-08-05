@@ -29,7 +29,7 @@ export function FighterPicker({ onPick, onCancel }: {
         </button>
         <button onClick={onCancel} className="px-1.5 text-xs text-fog hover:text-chalk">Cancel</button>
         {red && blue && red.id === blue.id && (
-          <span className="text-[0.7rem] text-blood-300">A fighter cannot face themselves.</span>
+          <span className="text-2xs text-blood-300">A fighter cannot face themselves.</span>
         )}
       </div>
     </div>
@@ -59,7 +59,7 @@ function Search({ label, picked, onPick }: { label: string; picked: Hit | null; 
     return (
       <div className="flex items-center gap-2 rounded border border-ink-700 bg-ink-950/60 px-2 py-1.5">
         <span className="min-w-0 flex-1 truncate text-sm text-chalk">{picked.name}</span>
-        <span className="text-[0.65rem] tabular-nums text-fog">{picked.record}</span>
+        <span className="text-3xs tabular-nums text-fog">{picked.record}</span>
         <button onClick={() => onPick(null)} className="text-xs text-fog hover:text-chalk">×</button>
       </div>
     );
@@ -83,7 +83,7 @@ function Search({ label, picked, onPick }: { label: string; picked: Hit | null; 
                 className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm text-mist hover:bg-ink-800 hover:text-chalk"
               >
                 <span className="min-w-0 flex-1 truncate">{h.name}</span>
-                <span className="text-[0.65rem] tabular-nums text-fog">{h.record}</span>
+                <span className="text-3xs tabular-nums text-fog">{h.record}</span>
               </button>
             </li>
           ))}

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { ButtonLink } from "@/components/ui/button";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  EmptyState — one shape for "there is nothing here".
@@ -39,14 +39,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 text-center",
+        "rounded-card border border-dashed border-ink-700 bg-ink-900/40 text-center",
         compact ? "px-4 py-8" : "px-6 py-12",
         className,
       )}
     >
       <span
         aria-hidden
-        className="mx-auto grid size-12 place-items-center rounded-2xl border border-ink-700 bg-ink-850"
+        className="mx-auto grid size-12 place-items-center rounded-lg border border-ink-700 bg-ink-850"
         style={accent ? { borderColor: `${accent}44`, background: `${accent}14`, color: accent } : undefined}
       >
         {icon}
@@ -56,12 +56,9 @@ export function EmptyState({
       {body && <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-fog">{body}</p>}
 
       {action && (
-        <Link
-          href={action.href}
-          className="tap mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400"
-        >
+        <ButtonLink href={action.href} size="sm" className="mt-4 px-4">
           {action.label}
-        </Link>
+        </ButtonLink>
       )}
 
       {secondary && <div className="mt-3 flex flex-wrap items-center justify-center gap-2">{secondary}</div>}

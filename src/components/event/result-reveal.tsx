@@ -24,7 +24,7 @@ export function ResultReveal({
       style={{ backgroundImage: "radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent, #e11d2a) 18%, transparent), transparent 70%)" }}
     >
       <TrackView name="result_reveal_view" props={{ correct: summary.correct, graded: summary.graded }} />
-      <p className="text-[0.65rem] font-bold uppercase tracking-[0.3em] text-fog">You went</p>
+      <p className="text-3xs font-bold uppercase tracking-[0.3em] text-fog">You went</p>
       <p className="mt-1 font-display text-5xl font-black tabular-nums text-chalk">
         {summary.correct}<span className="text-fog">/{summary.graded}</span>
       </p>

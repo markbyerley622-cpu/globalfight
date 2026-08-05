@@ -16,6 +16,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatRecord } from "@/lib/utils";
 import { flags } from "@/lib/feature-flags";
 import { FeatureUnavailable } from "@/components/feature-unavailable";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Rankings — All Combat Sports",
@@ -84,7 +85,7 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
                   <div key={w.slug} className="card-surface overflow-hidden">
                     <Link href={`/rankings/${w.slug}`} className="flex items-center justify-between border-b border-ink-700 px-4 py-3 hover:bg-ink-800/50">
                       <span className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{w.name}</span>
-                      <span className="text-[0.65rem] uppercase tracking-wider text-fog">{w.limitLbs ? `${w.limitLbs} lbs` : "No limit"}</span>
+                      <span className="text-3xs uppercase tracking-wider text-fog">{w.limitLbs ? `${w.limitLbs} lbs` : "No limit"}</span>
                     </Link>
                     {w.rankings.length > 0 ? (
                       <RankingList ranking={{ weightClass: w.name, slug: w.slug, isPoundForPound: false, rankings: w.rankings, updatedAt: new Date().toISOString() }} limit={PER_DIVISION} dense />
@@ -131,7 +132,7 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
             <div className="card-surface p-10 text-center">
               <p className="font-display text-lg font-bold text-chalk">No live {sportLabel} rankings available yet</p>
               <p className="mx-auto mt-2 max-w-md text-sm text-fog">As {sportLabel} fighters are added and results recorded, rankings generate automatically.</p>
-              <Link href={`/fighters${sportSlug ? `?sport=${sportSlug}` : ""}`} className="mt-4 inline-block rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">Fighter directory</Link>
+              <ButtonLink href={`/fighters${sportSlug ? `?sport=${sportSlug}` : ""}`} size="sm" className="mt-4 px-4">Fighter directory</ButtonLink>
             </div>
           )}
         </section>

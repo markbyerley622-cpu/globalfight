@@ -30,7 +30,7 @@ export function Countdown({ date, compact = false }: { date: string; compact?: b
       <span className="font-display text-xl font-bold tabular-nums text-chalk sm:text-2xl">
         {String(v).padStart(2, "0")}
       </span>
-      <span className="text-[0.6rem] uppercase tracking-wider text-fog">{l}</span>
+      <span className="text-3xs uppercase tracking-wider text-fog">{l}</span>
     </div>
   );
 

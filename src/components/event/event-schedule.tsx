@@ -113,7 +113,7 @@ export function EventSchedule({
       >
         {String(v).padStart(2, "0")}
       </span>
-      <span className="mt-1 text-[0.6rem] uppercase tracking-widest text-fog">{l}</span>
+      <span className="mt-1 text-3xs uppercase tracking-widest text-fog">{l}</span>
     </div>
   );
 
@@ -127,7 +127,7 @@ export function EventSchedule({
           : undefined
       }
     >
-      <div className="mb-3 flex items-center justify-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-fog">
+      <div className="mb-3 flex items-center justify-center gap-1.5 text-3xs font-semibold uppercase tracking-[0.2em] text-fog">
         <CalendarClock className="size-3.5" />
         {isLive
           ? "Happening now"
@@ -153,7 +153,7 @@ export function EventSchedule({
         <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-mist">
           {cov.state === "CONFIRMED" ? "Final" : `${cov.decided} of ${cov.total} confirmed`}
           {cov.detail && (
-            <span className="mt-1 block font-sans text-[0.68rem] font-normal normal-case tracking-normal text-fog">
+            <span className="mt-1 block font-sans text-2xs font-normal normal-case tracking-normal text-fog">
               {cov.detail}
             </span>
           )}
@@ -163,7 +163,7 @@ export function EventSchedule({
       ) : awaitingResults ? (
         <p className="text-center font-display text-2xl font-black uppercase tracking-wide text-mist">
           Results pending
-          <span className="mt-1 block font-sans text-[0.68rem] font-normal normal-case tracking-normal text-fog">
+          <span className="mt-1 block font-sans text-2xs font-normal normal-case tracking-normal text-fog">
             Sources are checked hourly.
           </span>
         </p>
@@ -204,7 +204,7 @@ export function EventSchedule({
           whenever we derived the split rather than being told it. */}
       {blocks && blocks.length > 1 && (
         <div className="mx-auto mt-5 max-w-md">
-          <ol className="divide-y divide-ink-800 overflow-hidden rounded-xl border border-ink-700 bg-ink-950/40">
+          <ol className="divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-700 bg-ink-950/40">
             {blocks.map((b) => (
               <li key={b.key} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <span className="font-display font-semibold text-chalk">{b.label}</span>
@@ -216,7 +216,7 @@ export function EventSchedule({
             ))}
           </ol>
           {estimated && (
-            <p className="mt-1.5 text-center text-[0.65rem] text-fog">
+            <p className="mt-1.5 text-center text-3xs text-fog">
               Block times estimated from the card — not an official broadcast schedule.
             </p>
           )}

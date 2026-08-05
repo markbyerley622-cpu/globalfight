@@ -14,6 +14,7 @@ import { Flag } from "@/components/flag";
 import { formatRecord } from "@/lib/utils";
 import { flags } from "@/lib/feature-flags";
 import { FeatureUnavailable } from "@/components/feature-unavailable";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Pound-for-Pound — All Combat Sports",
@@ -90,8 +91,8 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
               );
             })()}
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Link href="/p4p" className="inline-block rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">All combat sports</Link>
-              <Link href="/fighters" className="inline-block rounded-lg border border-ink-700 px-4 py-2 font-display text-xs font-semibold uppercase text-mist hover:text-chalk">Fighter directory</Link>
+              <ButtonLink href="/p4p" size="sm" className="px-4">All combat sports</ButtonLink>
+              <ButtonLink href="/fighters" variant="outline" size="sm" className="px-4">Fighter directory</ButtonLink>
             </div>
           </div>
         ) : (
@@ -108,8 +109,8 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
                   const medal = r.rank === 1
                     ? { ring: "border-gold-500/50 bg-gradient-to-b from-gold-500/15 to-ink-900 shadow-glow-gold", accent: "text-gold-400" }
                     : r.rank === 2
-                    ? { ring: "border-[#cfd4dc]/45 bg-gradient-to-b from-[#cfd4dc]/12 to-ink-900", accent: "text-[#cfd4dc]" }
-                    : { ring: "border-[#cd7f32]/55 bg-gradient-to-b from-[#cd7f32]/15 to-ink-900", accent: "text-[#cd7f32]" };
+                    ? { ring: "border-silver/45 bg-gradient-to-b from-silver/12 to-ink-900", accent: "text-silver" }
+                    : { ring: "border-bronze/55 bg-gradient-to-b from-bronze/15 to-ink-900", accent: "text-bronze" };
                   return (
                     <Link
                       key={r.fighter.slug}
@@ -122,7 +123,7 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
                       <span className={`font-display text-5xl font-black ${medal.accent}`}>{r.rank}</span>
                       <FighterAvatar fighter={r.fighter} size={isFirst ? "xl" : "lg"} showFlag className="my-3" />
                       <p className="font-display text-lg font-bold text-chalk group-hover:text-blood-300">{r.fighter.name}</p>
-                      {!sportValue && <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-blood-400">{SPORT_LABEL[r.fighter.sport] ?? r.fighter.sport}</p>}
+                      {!sportValue && <p className="text-3xs font-semibold uppercase tracking-wide text-blood-400">{SPORT_LABEL[r.fighter.sport] ?? r.fighter.sport}</p>}
                       <p className="text-xs text-fog">{formatRecord(r.fighter.wins, r.fighter.losses, r.fighter.draws)}</p>
                       {r.rating != null && <p className={`mt-2 font-display text-2xl font-bold ${medal.accent}`}>{r.rating.toFixed(1)}</p>}
                     </Link>

@@ -43,7 +43,7 @@ export function BottomTabBar({ className }: { className?: string }) {
             <Icon className={cn("size-6", active && "text-blood-500")} strokeWidth={2} />
             <span
               className={cn(
-                "text-[0.58rem] font-bold uppercase leading-none tracking-wide",
+                "text-4xs font-bold uppercase leading-none tracking-wide",
                 active && "text-blood-400",
               )}
             >

@@ -8,6 +8,7 @@ import { brandedHero } from "@/lib/placeholder";
 import { FollowButton } from "@/components/follow-button";
 import { AlertsToggle } from "./alerts-toggle";
 import type { FeedItem } from "@/lib/following";
+import { ButtonLink } from "@/components/ui/button";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The fighter card.
@@ -45,7 +46,7 @@ export function FighterCard({ item }: { item: FeedItem }) {
   const record = f.record && !/^0-0/.test(f.record) ? f.record : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-900/60 transition-colors hover:border-blood-500/40">
+    <div className="overflow-hidden rounded-card border border-ink-700 bg-ink-900/60 transition-colors hover:border-blood-500/40">
       <Link href={item.url} className="group block">
         {/* Ratio reserved before load, so a late portrait cannot shift the page. */}
         <div className="relative aspect-[4/3] overflow-hidden bg-ink-850">
@@ -60,14 +61,14 @@ export function FighterCard({ item }: { item: FeedItem }) {
           <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/25 to-transparent" />
 
           {f.badge && (
-            <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-blood-500 px-2 py-1 font-display text-[0.58rem] font-bold uppercase tracking-wide text-white shadow-lg">
+            <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-blood-500 px-2 py-1 font-display text-4xs font-bold uppercase tracking-wide text-white shadow-lg">
               <Sparkles className="size-2.5" />
               {f.badge}
             </span>
           )}
 
           {f.rank && (
-            <span className="absolute left-3 top-3 rounded-md bg-blood-500/90 px-2 py-1 font-display text-[0.62rem] font-bold uppercase tracking-wide text-white">
+            <span className="absolute left-3 top-3 rounded-md bg-blood-500/90 px-2 py-1 font-display text-3xs font-bold uppercase tracking-wide text-white">
               #{f.rank.rank} {f.rank.weightClass}
             </span>
           )}
@@ -80,7 +81,7 @@ export function FighterCard({ item }: { item: FeedItem }) {
               </h3>
             </div>
             {record && (
-              <p className="mt-1 font-display text-[0.72rem] font-bold tracking-wide text-mist">
+              <p className="mt-1 font-display text-2xs font-bold tracking-wide text-mist">
                 {record}
                 {f.koWins > 0 && <span className="text-fog"> · {f.koWins} KO</span>}
               </p>
@@ -94,7 +95,7 @@ export function FighterCard({ item }: { item: FeedItem }) {
           <FightStory next={f.next} />
         ) : (
           // Answered, not blank. An empty region reads as a broken card.
-          <p className="text-[0.78rem] text-fog">No fight announced</p>
+          <p className="text-xs text-fog">No fight announced</p>
         )}
 
         {/* Real controls, not status pills. The card is where you manage this
@@ -129,7 +130,7 @@ function FightStory({ next }: { next: NextFight }) {
   return (
     <div>
       <Link href={next.url} className="group/next block">
-        <p className="flex items-center justify-between gap-2 font-display text-[0.6rem] font-bold uppercase tracking-widest text-blood-400">
+        <p className="flex items-center justify-between gap-2 font-display text-3xs font-bold uppercase tracking-widest text-blood-400">
           <span>Next fight{next.titleFight ? " · Title" : ""}</span>
           <span className={next.urgent ? "text-gold-300" : "text-fog"}>{next.countdown}</span>
         </p>
@@ -137,7 +138,7 @@ function FightStory({ next }: { next: NextFight }) {
           <Swords className="size-3.5 shrink-0 text-fog" />
           <span className="truncate">vs {next.opponent}</span>
         </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.72rem] text-fog">
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-2xs text-fog">
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="size-3" />
             {new Date(next.date).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
@@ -149,7 +150,7 @@ function FightStory({ next }: { next: NextFight }) {
       {/* Community split — the crowd, kept visually separate from the market. */}
       {next.crowd && (
         <div className="mt-2.5">
-          <div className="mb-1 flex items-center justify-between gap-2 text-[0.62rem] font-bold">
+          <div className="mb-1 flex items-center justify-between gap-2 text-3xs font-bold">
             <span className="truncate text-up">{next.crowd.redPct}% {surname(next.crowd.redName)}</span>
             <span className="truncate text-volt-400">{surname(next.crowd.blueName)} {next.crowd.bluePct}%</span>
           </div>
@@ -157,7 +158,7 @@ function FightStory({ next }: { next: NextFight }) {
             <div className="bg-up" style={{ width: `${next.crowd.redPct}%` }} />
             <div className="bg-volt-500" style={{ width: `${next.crowd.bluePct}%` }} />
           </div>
-          <p className="mt-0.5 text-[0.56rem] uppercase tracking-wide text-fog">
+          <p className="mt-0.5 text-4xs uppercase tracking-wide text-fog">
             {next.crowd.total} fan pick{next.crowd.total === 1 ? "" : "s"} · community prediction
           </p>
         </div>
@@ -167,12 +168,12 @@ function FightStory({ next }: { next: NextFight }) {
       {(next.odds || next.discussion) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {next.odds && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-[0.62rem] text-mist">
+            <span className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-3xs text-mist">
               <TrendingUp className="size-3 text-gold-400" /> Market: {surname(next.odds.favName)} {next.odds.favPct}%
             </span>
           )}
           {next.discussion && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-[0.62rem] text-mist">
+            <span className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-3xs text-mist">
               <MessageSquare className="size-3 text-blood-400" /> {next.discussion} in the room
             </span>
           )}
@@ -180,16 +181,13 @@ function FightStory({ next }: { next: NextFight }) {
       )}
 
       {/* One action. Predict it, or open the room if you already called it. */}
-      <Link
-        href={next.url}
-        className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-blood-500 px-3 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400"
-      >
+      <ButtonLink href={next.url} size="sm" className="mt-3 flex w-full">
         {next.predicted ? (
           <><Check className="size-3.5" /> You picked {surname(next.predicted.name)} · Open the room</>
         ) : (
           <>Predict this fight <ArrowRight className="size-3.5" /></>
         )}
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

@@ -125,7 +125,7 @@ export function CopyrightNoticeForm() {
           ? <span className="flex items-center justify-center gap-2"><Loader2 className="size-4 animate-spin" /> Submitting…</span>
           : "Submit copyright notice"}
       </Button>
-      <p className="text-center text-[0.65rem] text-fog">
+      <p className="text-center text-3xs text-fog">
         Knowingly submitting a false notice may make you liable for damages.
       </p>
     </form>

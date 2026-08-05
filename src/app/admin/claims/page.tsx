@@ -65,14 +65,14 @@ function EvidencePreview({ claimId, contentIsPdf }: { claimId: string; contentIs
  */
 function ScanBadge({ status }: { status: string | null }) {
   if (status === "CLEAN") {
-    return <p className="mt-2 text-[0.7rem] font-semibold text-up">✓ Scanned — no malware detected</p>;
+    return <p className="mt-2 text-2xs font-semibold text-up">✓ Scanned — no malware detected</p>;
   }
   if (status === "PENDING") {
-    return <p className="mt-2 text-[0.7rem] font-semibold text-gold">⏳ Scan in progress — do not open yet</p>;
+    return <p className="mt-2 text-2xs font-semibold text-gold">⏳ Scan in progress — do not open yet</p>;
   }
   // SKIPPED (no scanner configured) or null (legacy/migrated) — be explicit.
   return (
-    <p className="mt-2 text-[0.7rem] font-semibold text-gold">
+    <p className="mt-2 text-2xs font-semibold text-gold">
       ⚠ NOT scanned for malware (no scanner configured) — open with care
     </p>
   );

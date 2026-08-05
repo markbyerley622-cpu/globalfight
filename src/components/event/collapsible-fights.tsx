@@ -32,7 +32,7 @@ export function CollapsibleFights({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="tap mx-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-700 bg-ink-900/60 px-5 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-mist transition-colors hover:border-blood-500/40 hover:text-blood-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+          className="tap mx-auto inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-700 bg-ink-900/60 px-5 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-mist transition-colors hover:border-blood-500/40 hover:text-blood-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
         >
           {expanded ? "Show fewer" : `View ${hiddenCount} more prediction${hiddenCount === 1 ? "" : "s"}`}
           <ChevronDown className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`} />

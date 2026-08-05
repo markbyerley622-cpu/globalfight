@@ -140,7 +140,7 @@ export function PopoverMenu({
       // and reveals it in the same frame.
       style={{ position: "fixed", top: 0, left: 0, width, visibility: "hidden" }}
       className={cn(
-        "z-[100] overflow-hidden rounded-xl border border-ink-700 bg-ink-900 p-1.5 shadow-2xl shadow-black/50",
+        "z-[100] overflow-hidden rounded-card border border-ink-700 bg-ink-900 p-1.5 shadow-2xl shadow-black/50",
         className,
       )}
     >

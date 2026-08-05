@@ -58,7 +58,7 @@ export function ReportButton({
 
       {open && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-950/80 p-4" onClick={() => !busy && setOpen(false)}>
-          <div className="w-full max-w-sm rounded-card border border-ink-700 bg-ink-900 p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm card-surface p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Report {targetType}</h3>
               <button onClick={() => !busy && setOpen(false)} className="text-fog hover:text-chalk"><X className="size-4" /></button>

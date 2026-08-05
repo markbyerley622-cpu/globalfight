@@ -27,21 +27,21 @@ export default function PodcastsPage() {
       <h2 className="mb-3 mt-6 font-display text-base font-bold uppercase tracking-tight text-chalk">Shows</h2>
       <div className="space-y-3">
         {SHOWS.map((s) => (
-          <div key={s.title} className="flex items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-3.5">
-            <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-ink-700 to-ink-900 text-mist"><Mic className="size-6" /></span>
+          <div key={s.title} className="flex items-center gap-3 card-surface p-3.5">
+            <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-ink-700 to-ink-900 text-mist"><Mic className="size-6" /></span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="truncate font-display text-sm font-bold text-chalk">{s.title}</span>
-                <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-fog">{s.sport}</span>
+                <span className="rounded bg-ink-800 px-1.5 py-0.5 text-4xs font-bold uppercase tracking-wide text-fog">{s.sport}</span>
               </div>
-              <div className="mt-0.5 truncate text-[0.78rem] text-mist">{s.ep}</div>
-              <div className="mt-0.5 text-[0.66rem] text-fog">{s.host}</div>
+              <div className="mt-0.5 truncate text-xs text-mist">{s.ep}</div>
+              <div className="mt-0.5 text-2xs text-fog">{s.host}</div>
             </div>
             <span className="grid size-9 shrink-0 place-items-center rounded-full border border-ink-700 bg-ink-800 text-fog"><Play className="ml-0.5 size-4" /></span>
           </div>
         ))}
       </div>
-      <p className="mt-6 text-center text-[0.68rem] text-fog">Episodes coming soon — subscribe from the app once shows go live.</p>
+      <p className="mt-6 text-center text-2xs text-fog">Episodes coming soon — subscribe from the app once shows go live.</p>
       </div>
     </>
   );

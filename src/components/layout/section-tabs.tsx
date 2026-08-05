@@ -64,7 +64,7 @@ function SportPills() {
             href={href}
             scroll={false}
             className={cn(
-              "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[0.8rem] font-semibold transition-colors",
+              "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold transition-colors",
               active
                 ? "border-chalk bg-chalk text-ink-950"
                 : "border-ink-700 bg-ink-800 text-mist hover:border-ink-600 hover:text-chalk",
@@ -94,7 +94,7 @@ function SectionLinks() {
             key={item.href}
             href={item.href}
             className={cn(
-              "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[0.8rem] font-semibold transition-colors",
+              "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold transition-colors",
               active
                 ? "border-chalk bg-chalk text-ink-950"
                 : "border-ink-700 bg-ink-800 text-mist hover:border-ink-600 hover:text-chalk",

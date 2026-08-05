@@ -57,7 +57,7 @@ export function MessageButton({ username, name }: { username: string; name: stri
         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <MessageSquare className="size-3.5" />}
         Message
       </button>
-      {error && <span role="alert" className="text-[0.65rem] text-blood-300">{error}</span>}
+      {error && <span role="alert" className="text-3xs text-blood-300">{error}</span>}
     </span>
   );
 }

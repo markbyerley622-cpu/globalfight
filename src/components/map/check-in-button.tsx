@@ -66,7 +66,7 @@ export function CheckInButton({
         disabled={busy}
         aria-pressed={checked}
         className={cn(
-          "tap inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
+          "tap inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
           checked
             ? "border border-up/40 bg-up/15 text-up"
             : "bg-blood-500 text-white hover:bg-blood-400",
@@ -82,7 +82,7 @@ export function CheckInButton({
         {checked ? "You're here" : "Check in"}
         {here > 0 && <span className="tabular-nums opacity-70">· {here}</span>}
       </button>
-      {error && <p className="text-[0.66rem] text-down">{error}</p>}
+      {error && <p className="text-2xs text-down">{error}</p>}
     </div>
   );
 }

@@ -128,8 +128,8 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
             </div>
 
             {slide.date && (
-              <div className="mt-6 rounded-xl border border-ink-700 bg-ink-900/60 p-4 backdrop-blur">
-                <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-widest text-fog">Countdown to first bell</p>
+              <div className="mt-6 rounded-card border border-ink-700 bg-ink-900/60 p-4 backdrop-blur">
+                <p className="mb-2 text-3xs font-semibold uppercase tracking-widest text-fog">Countdown to first bell</p>
                 <Countdown date={slide.date} />
               </div>
             )}
@@ -166,7 +166,7 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
                 </div>
                 {typeof slide.redProbability === "number" && (
                   <div className="mt-6">
-                    <p className="mb-2 text-center text-[0.65rem] font-semibold uppercase tracking-widest text-fog">Win Probability</p>
+                    <p className="mb-2 text-center text-3xs font-semibold uppercase tracking-widest text-fog">Win Probability</p>
                     <ProbabilityBar redLabel={slide.red.name} blueLabel={slide.blue.name} redProbability={slide.redProbability} />
                   </div>
                 )}

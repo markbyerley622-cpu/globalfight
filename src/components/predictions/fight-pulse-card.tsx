@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { CommunityMarketView } from "@/features/predictions/community/types";
-import { Chip, ConsensusBar, Portrait, fmtNum, postVote, voteShares } from "@/components/predictions/shared";
+import { Badge } from "@/components/ui/badge";
+import { ConsensusBar, Portrait, fmtNum, postVote, voteShares } from "@/components/predictions/shared";
 
 /**
  * Community "Fight Pulse" card — native Combat Register consensus (who-wins &
@@ -52,11 +53,11 @@ export function FightPulseCard({
       : "No votes yet — be the first to call it.";
 
   return (
-    <article className="glass pred-card overflow-hidden rounded-2xl p-3.5">
+    <article className="glass pred-card overflow-hidden rounded-card p-3.5">
       <div className="flex items-center gap-1.5">
-        <Chip tone="live">◆ Fight Pulse</Chip>
-        {market.subtitle && <span className="truncate text-[0.62rem] font-semibold uppercase tracking-wide text-fog">{market.subtitle}</span>}
-        {market.statusLabel && <Chip tone="gold" className="ml-auto">{market.statusLabel}</Chip>}
+        <Badge tone="volt" size="sm">◆ Fight Pulse</Badge>
+        {market.subtitle && <span className="truncate text-3xs font-semibold uppercase tracking-wide text-fog">{market.subtitle}</span>}
+        {market.statusLabel && <Badge tone="gold" size="sm" className="ml-auto">{market.statusLabel}</Badge>}
       </div>
 
       {/* Subject */}
@@ -73,10 +74,10 @@ export function FightPulseCard({
           </div>
         </div>
       ) : (
-        <h3 className="mt-2.5 font-display text-[0.95rem] font-bold leading-tight text-chalk">{market.title}</h3>
+        <h3 className="mt-2.5 font-display text-base font-bold leading-tight text-chalk">{market.title}</h3>
       )}
 
-      {market.description && <p className="mt-2 line-clamp-2 text-[0.8rem] leading-relaxed text-mist">{market.description}</p>}
+      {market.description && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-mist">{market.description}</p>}
 
       {/* Consensus hero — Yes/No props use a fixed Yes→No bar; head-to-head and
           multi-way use the ranked consensus. */}
@@ -99,7 +100,7 @@ export function FightPulseCard({
           />
         )}
         {!isYesNo && third && (
-          <div className="mt-1.5 flex items-center justify-between text-[0.66rem] font-semibold text-fog">
+          <div className="mt-1.5 flex items-center justify-between text-2xs font-semibold text-fog">
             <span>{third.label}</span>
             <span>{shares[third.id]}%</span>
           </div>
@@ -107,7 +108,7 @@ export function FightPulseCard({
       </div>
 
       {/* Consensus statement */}
-      <p className="mt-2.5 text-[0.72rem] font-medium text-mist">
+      <p className="mt-2.5 text-2xs font-medium text-mist">
         <span className="text-chalk">{consensus.split("—")[0]}</span>
         {consensus.includes("—") ? ` —${consensus.split("—")[1]}` : ""}
       </p>
@@ -124,7 +125,7 @@ export function FightPulseCard({
               onClick={() => vote(o.id)}
               aria-pressed={picked}
               className={cn(
-                "tap min-h-11 rounded-xl border px-2 py-2.5 text-[0.72rem] font-bold uppercase tracking-wide",
+                "tap min-h-11 rounded-lg border px-2 py-2.5 text-2xs font-bold uppercase tracking-wide",
                 picked
                   ? "border-up bg-up/15 text-up"
                   : disabled
@@ -140,18 +141,18 @@ export function FightPulseCard({
 
       {/* Footer: activity + discuss */}
       <div className="mt-3 flex items-center justify-between border-t border-ink-800/70 pt-2.5">
-        <span className="text-[0.66rem] font-medium text-fog">
+        <span className="text-2xs font-medium text-fog">
           {fmtNum(market.voteCount)} fan{market.voteCount === 1 ? "" : "s"} voted
           {market.myVote && <span className="text-up"> · you&rsquo;re in</span>}
         </span>
-        <Link href="/community" className="tap text-[0.68rem] font-semibold text-mist hover:text-chalk">
+        <Link href="/community" className="tap text-2xs font-semibold text-mist hover:text-chalk">
           Discuss →
         </Link>
       </div>
 
-      {error && <p className="mt-2 text-center text-[0.68rem] font-semibold text-blood-300">{error}</p>}
+      {error && <p className="mt-2 text-center text-2xs font-semibold text-blood-300">{error}</p>}
       {!canVote && (
-        <Link href="/account" className="mt-2 block text-center text-[0.68rem] font-semibold text-blood-300">
+        <Link href="/account" className="mt-2 block text-center text-2xs font-semibold text-blood-300">
           Sign in to add your voice
         </Link>
       )}

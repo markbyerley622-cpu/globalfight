@@ -153,7 +153,7 @@ function Overview({
                 <button
                   type="button"
                   onClick={() => onGo(t.tab)}
-                  className="tap flex w-full items-center gap-2 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-left text-[0.78rem] text-mist transition-colors hover:border-ink-600 hover:text-chalk"
+                  className="tap flex w-full items-center gap-2 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-left text-xs text-mist transition-colors hover:border-ink-600 hover:text-chalk"
                 >
                   <span className="flex-1">{t.label}</span>
                   <ArrowRight className="size-3.5 shrink-0 text-fog" />
@@ -166,7 +166,7 @@ function Overview({
 
       {pendingClaims > 0 && (
         <Panel title="Pending claims">
-          <p className="flex items-start gap-2 text-[0.78rem] leading-relaxed text-gold-300">
+          <p className="flex items-start gap-2 text-xs leading-relaxed text-gold-300">
             <TriangleAlert className="mt-px size-4 shrink-0" />
             {pendingClaims} other {pendingClaims === 1 ? "person has" : "people have"} filed a claim on this gym.
             An admin reviews these; your ownership is unaffected unless one is approved.
@@ -182,7 +182,7 @@ function Overview({
           <Action onClick={() => onGo("photos")} icon={<ImageIcon className="size-3.5" />} label="Add photos" />
           <Link
             href={`/gyms/${gym.slug}`}
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850 px-3.5 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-mist transition-colors hover:text-chalk"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850 px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide text-mist transition-colors hover:text-chalk"
           >
             <ExternalLink className="size-3.5" /> View public page
           </Link>
@@ -194,12 +194,12 @@ function Overview({
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: "live" }) {
   return (
-    <div className="rounded-xl border border-ink-800 bg-ink-900 px-3 py-2.5">
+    <div className="card-surface px-3 py-2.5">
       <p className={cn("font-display text-xl font-black tabular-nums", tone === "live" ? "text-blood-300" : "text-chalk")}>
         {tone === "live" && value > 0 && <Flame className="mr-1 inline size-4" />}
         {value}
       </p>
-      <p className="mt-0.5 text-[0.64rem] uppercase tracking-wider text-fog">{label}</p>
+      <p className="mt-0.5 text-3xs uppercase tracking-wider text-fog">{label}</p>
     </div>
   );
 }
@@ -255,10 +255,10 @@ function SettingsPanel({ gym }: { gym: ManagedGym }) {
     <div className="flex flex-col gap-4">
       <Panel title="Verification">
         <div className="flex items-start gap-3">
-          <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", gym.verified ? "bg-volt-500/15 text-volt-400" : "bg-ink-800 text-fog")}>
+          <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", gym.verified ? "bg-volt-500/15 text-volt-400" : "bg-ink-800 text-fog")}>
             <BadgeCheck className="size-4" />
           </span>
-          <p className="text-[0.78rem] leading-relaxed text-mist">
+          <p className="text-xs leading-relaxed text-mist">
             {gym.verified
               ? "This gym is verified. The badge shows on your page, in search and on the map."
               : "Not verified yet. Verification is granted when an admin approves an ownership claim."}
@@ -267,7 +267,7 @@ function SettingsPanel({ gym }: { gym: ManagedGym }) {
       </Panel>
 
       <Panel title="Visibility" subtitle="Where this gym appears.">
-        <ul className="flex flex-col gap-1.5 text-[0.78rem] text-mist">
+        <ul className="flex flex-col gap-1.5 text-xs text-mist">
           <li className="rounded-lg border border-ink-700 bg-ink-850 px-3 py-2">
             On the map — <span className="text-fog">{gym.city ? `pinned at ${gym.city}` : "add a city in Profile to appear"}</span>
           </li>
@@ -278,14 +278,14 @@ function SettingsPanel({ gym }: { gym: ManagedGym }) {
             In the gym directory — <span className="text-fog">/gyms</span>
           </li>
         </ul>
-        <p className="text-[0.68rem] leading-relaxed text-fog">
+        <p className="text-2xs leading-relaxed text-fog">
           A gym page is public by design — people are looking for somewhere to train. To take it down, contact us
           from the public page.
         </p>
       </Panel>
 
       <Panel title="Danger zone">
-        <p className="text-[0.78rem] leading-relaxed text-mist">
+        <p className="text-xs leading-relaxed text-mist">
           Deleting a gym removes its roster, photos and check-in history for everyone who trains there. That is not
           a self-service action, and it is not hidden behind a button that does nothing: contact us and an admin
           will handle it with you.
@@ -299,9 +299,9 @@ function SettingsPanel({ gym }: { gym: ManagedGym }) {
 
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+    <section className="card-surface p-4">
       <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</h3>
-      {subtitle && <p className="mt-1 text-[0.72rem] leading-relaxed text-fog">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-2xs leading-relaxed text-fog">{subtitle}</p>}
       <div className="mt-3 flex flex-col gap-3">{children}</div>
     </section>
   );
@@ -312,7 +312,7 @@ function Action({ onClick, icon, label }: { onClick: () => void; icon: React.Rea
     <button
       type="button"
       onClick={onClick}
-      className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850 px-3.5 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-mist transition-colors hover:text-chalk"
+      className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850 px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide text-mist transition-colors hover:text-chalk"
     >
       {icon} {label}
     </button>

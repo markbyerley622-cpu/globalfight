@@ -63,7 +63,7 @@ export default function AdminDataPage() {
         ) : (
           <>
             {!data.migrated && (
-              <div className="flex items-start gap-3 rounded-xl border border-gold-500/40 bg-gold-500/10 p-4 text-sm text-gold-200">
+              <div className="flex items-start gap-3 rounded-lg border border-gold-500/40 bg-gold-500/10 p-4 text-sm text-gold-200">
                 <AlertTriangle className="mt-0.5 size-5 shrink-0" />
                 <div>
                   <p className="font-semibold">Telemetry tables not created yet.</p>
@@ -88,9 +88,9 @@ export default function AdminDataPage() {
                           ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-volt"><CheckCircle2 className="size-4" /> Configured</span>
                           : <span className="inline-flex items-center gap-1 text-xs font-semibold text-fog"><XCircle className="size-4" /> No key</span>}
                       </div>
-                      <p className="mt-1 font-mono text-[0.7rem] text-fog">{p.key}</p>
+                      <p className="mt-1 font-mono text-2xs text-fog">{p.key}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {p.sports.map((s) => <span key={s} className="rounded bg-ink-800 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase text-mist">{s}</span>)}
+                        {p.sports.map((s) => <span key={s} className="rounded bg-ink-800 px-1.5 py-0.5 text-3xs font-semibold uppercase text-mist">{s}</span>)}
                       </div>
                       {h && (
                         <p className="mt-3 flex items-center gap-1.5 text-xs text-fog">
@@ -107,7 +107,7 @@ export default function AdminDataPage() {
             {/* Coverage by sport */}
             <section>
               <h2 className="mb-4 font-display text-lg font-bold uppercase tracking-tight text-chalk">Coverage by Sport</h2>
-              <div className="overflow-hidden rounded-xl border border-ink-800">
+              <div className="overflow-hidden rounded-card border border-ink-800">
                 <table className="w-full text-sm">
                   <thead className="bg-ink-900 text-left text-xs uppercase text-fog">
                     <tr><th className="px-4 py-2.5">Sport</th><th className="px-4 py-2.5">Source priority (highest first)</th></tr>
@@ -119,7 +119,7 @@ export default function AdminDataPage() {
                         <td className="px-4 py-2.5">
                           <div className="flex flex-wrap gap-1">
                             {c.sources.map((s, i) => (
-                              <span key={s} className="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-[0.65rem] text-mist">
+                              <span key={s} className="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-3xs text-mist">
                                 <span className="text-fog">{i + 1}.</span> {s}
                               </span>
                             ))}

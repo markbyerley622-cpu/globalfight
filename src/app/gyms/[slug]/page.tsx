@@ -106,7 +106,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         {gym.heroUrl ? (
           <Image src={gym.heroUrl} alt="" fill className="object-cover" unoptimized priority />
         ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(500px_240px_at_20%_0%,rgba(56,189,248,0.28),transparent_62%),linear-gradient(140deg,#141923,#0a0d12)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(500px_240px_at_20%_0%,rgba(56,189,248,0.28),transparent_62%),linear-gradient(140deg,var(--color-ink-800),var(--color-ink-900))]" />
         )}
         <div className="absolute inset-0 vignette" />
         {/* Return to the map.
@@ -127,7 +127,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
             DOM order. So the row must become a positioned element itself before any
             z-index applies to it. `relative z-10` is the whole fix. */}
         <div className="relative z-10 -mt-9 flex items-end gap-3">
-          <span className="grid size-[74px] shrink-0 place-items-center overflow-hidden rounded-2xl border-[3px] border-volt-500/60 bg-ink-950 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.9)]">
+          <span className="grid size-[74px] shrink-0 place-items-center overflow-hidden rounded-squircle border-[3px] border-volt-500/60 bg-ink-950 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.9)]">
             {gym.logoUrl ? (
               <Image src={gym.logoUrl} alt="" width={74} height={74} className="size-full object-cover" unoptimized />
             ) : (
@@ -137,7 +137,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
             )}
           </span>
           {presence.count > 0 && (
-            <span className="mb-1 inline-flex items-center gap-1.5 rounded-lg bg-blood-500/15 px-2.5 py-1.5 font-display text-[0.7rem] font-bold uppercase tracking-wide text-blood-300">
+            <span className="mb-1 inline-flex items-center gap-1.5 rounded-lg bg-blood-500/15 px-2.5 py-1.5 font-display text-2xs font-bold uppercase tracking-wide text-blood-300">
               <Flame className="size-3.5" /> {presence.count} here now
               {presence.coaches > 0 && <span className="text-blood-300/70">· {presence.coaches} coaching</span>}
             </span>
@@ -172,7 +172,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         {gym.disciplines.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {gym.disciplines.map((d) => (
-              <span key={d} className="rounded-md border border-volt-500/25 bg-volt-500/10 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-volt-400">
+              <span key={d} className="rounded-md border border-volt-500/25 bg-volt-500/10 px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-volt-400">
                 {d}
               </span>
             ))}
@@ -199,7 +199,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         </div>
 
         {/* Facts */}
-        <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 rounded-2xl border border-ink-800 bg-ink-900 p-4 text-sm">
+        <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 card-surface p-4 text-sm">
           {place && (
             <>
               <dt className="pt-0.5 text-fog"><MapPin className="size-4" /></dt>
@@ -274,13 +274,13 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
                 <li key={n.slug}>
                   <Link
                     href={`/gyms/${n.slug}`}
-                    className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 p-3 transition-colors hover:border-volt-500/40"
+                    className="flex items-center gap-3 rounded-card border border-ink-700 bg-ink-900/60 p-3 transition-colors hover:border-volt-500/40"
                   >
-                    <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-volt-500/25 bg-volt-500/10">
+                    <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-volt-500/25 bg-volt-500/10">
                       {n.logoUrl ? (
                         <Image src={n.logoUrl} alt="" width={36} height={36} unoptimized className="size-full object-cover" />
                       ) : (
-                        <span className="font-display text-[0.7rem] font-black text-volt-400">
+                        <span className="font-display text-2xs font-black text-volt-400">
                           {n.name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
@@ -290,11 +290,11 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
                         <span className="truncate font-display text-sm font-bold text-chalk">{n.name}</span>
                         {n.verified && <BadgeCheck className="size-3.5 shrink-0 text-volt-400" />}
                       </span>
-                      <span className="block truncate text-[0.7rem] text-fog">
+                      <span className="block truncate text-2xs text-fog">
                         {[n.city, n.disciplines.slice(0, 2).join(", ")].filter(Boolean).join(" · ")}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[0.68rem] tabular-nums text-fog">{n.memberCount}</span>
+                    <span className="shrink-0 text-2xs tabular-nums text-fog">{n.memberCount}</span>
                   </Link>
                 </li>
               ))}
@@ -306,14 +306,14 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         {gym.ownerId && user && gym.ownerId === user.id && (
           <Link
             href={`/gyms/${gym.slug}/manage`}
-            className="mt-6 flex items-center gap-3 rounded-2xl border border-up/30 bg-up/8 px-4 py-3.5 transition-colors hover:border-up/50"
+            className="mt-6 flex items-center gap-3 rounded-card border border-up/30 bg-up/8 px-4 py-3.5 transition-colors hover:border-up/50"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-up/15 text-up">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-up/15 text-up">
               <Settings className="size-4" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-sm font-bold text-chalk">You manage this gym</span>
-              <span className="block text-[0.72rem] leading-relaxed text-fog">
+              <span className="block text-2xs leading-relaxed text-fog">
                 Edit details, disciplines, hours and contact info.
               </span>
             </span>
@@ -324,14 +324,14 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
         {!gym.ownerId && (
           <Link
             href={`/gyms/${gym.slug}/claim`}
-            className="mt-6 flex items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-3.5 transition-colors hover:border-gold-500/40"
+            className="mt-6 flex items-center gap-3 card-surface px-4 py-3.5 transition-colors hover:border-gold-500/40"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gold-500/12 text-gold-300">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gold-500/12 text-gold-300">
               <ShieldQuestion className="size-4" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-sm font-bold text-chalk">Is this your gym?</span>
-              <span className="block text-[0.72rem] leading-relaxed text-fog">
+              <span className="block text-2xs leading-relaxed text-fog">
                 Claim the page to manage details, photos and classes.
               </span>
             </span>

@@ -29,7 +29,7 @@ export function PillarNav({ className }: { className?: string }) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors",
+              "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-display text-2xs font-bold uppercase tracking-wide transition-colors",
               active ? "bg-ink-800 text-chalk" : "text-mist hover:bg-ink-850 hover:text-chalk",
             )}
           >

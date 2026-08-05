@@ -125,11 +125,11 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             <p className="text-sm text-fog">@{u.username} · joined {u.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}</p>
           </div>
           {/* Reputation headline */}
-          <div className="shrink-0 rounded-2xl border border-ink-800 bg-ink-900 px-5 py-3 text-center">
+          <div className="shrink-0 card-surface px-5 py-3 text-center">
             <p className="inline-flex items-center gap-1.5 font-display text-2xl font-black tabular-nums text-chalk">
               <Trophy className="size-5 text-gold-400" /> {rep.toLocaleString()}
             </p>
-            <p className="text-[0.65rem] uppercase tracking-wider text-fog">Reputation</p>
+            <p className="text-3xs uppercase tracking-wider text-fog">Reputation</p>
           </div>
         </div>
 
@@ -147,7 +147,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             <span className="font-display text-sm font-bold tabular-nums text-chalk">
               {followCounts.followers.toLocaleString()}
             </span>
-            <span className="text-[0.7rem] uppercase tracking-wide text-fog">Followers</span>
+            <span className="text-2xs uppercase tracking-wide text-fog">Followers</span>
           </Link>
           <Link
             href={`/u/${u.username}/following`}
@@ -156,7 +156,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             <span className="font-display text-sm font-bold tabular-nums text-chalk">
               {followCounts.following.toLocaleString()}
             </span>
-            <span className="text-[0.7rem] uppercase tracking-wide text-fog">Following</span>
+            <span className="text-2xs uppercase tracking-wide text-fog">Following</span>
           </Link>
 
           {/* THE ACTION. Both counts were here and the button was not, so a
@@ -234,7 +234,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
           {activity.length === 0 ? (
             <Empty>Nothing to show yet — their picks will appear here.</Empty>
           ) : (
-            <ul className="divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800">
+            <ul className="divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800">
               {activity.map((a) => {
                 const body = (
                   <div className="flex items-center justify-between gap-3 bg-ink-900 px-4 py-3">
@@ -255,10 +255,10 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
         {/* Momentum footer — a public profile used to end cold. It's a high-
             traffic destination (every leaderboard row lands here), so it closes
             on the competition loop: out-predict them, or share the card. */}
-        <div className="mt-8 mb-4 flex flex-col items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-6 text-center sm:flex-row sm:justify-between sm:text-left">
+        <div className="mt-8 mb-4 flex flex-col items-center gap-3 card-surface p-6 text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <p className="font-display text-sm font-bold text-chalk">Think you can out-predict {displayName.split(" ")[0]}?</p>
-            <p className="mt-0.5 text-[0.72rem] text-fog">Call the next card and climb the same board.</p>
+            <p className="mt-0.5 text-2xs text-fog">Call the next card and climb the same board.</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <ButtonLink href="/events" size="sm">Predict a fight</ButtonLink>
@@ -272,10 +272,10 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
 
 function Tile({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
-      <p className="flex items-center gap-1.5 text-[0.65rem] uppercase tracking-wider text-fog">{icon}{label}</p>
+    <div className="card-surface p-4">
+      <p className="flex items-center gap-1.5 text-3xs uppercase tracking-wider text-fog">{icon}{label}</p>
       <p className="mt-1 font-display text-2xl font-black tabular-nums text-chalk">{value}</p>
-      <p className="text-[0.7rem] text-fog">{sub}</p>
+      <p className="text-2xs text-fog">{sub}</p>
     </div>
   );
 }
@@ -290,7 +290,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-2xl border border-dashed border-ink-800 bg-ink-900/40 p-6 text-center text-sm text-fog">{children}</p>;
+  return <p className="rounded-card border border-dashed border-ink-800 bg-ink-900/40 p-6 text-center text-sm text-fog">{children}</p>;
 }
 
 export const dynamic = "force-dynamic";

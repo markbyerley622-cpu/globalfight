@@ -65,7 +65,7 @@ export function EventEditor({ initial, card }: { initial: EditableEvent; card: R
         <Link href="/admin/events" className="text-xs text-fog hover:text-chalk">← Events</Link>
         <h1 className="min-w-0 truncate font-display text-lg font-bold text-chalk">{v.name}</h1>
         {isDraft && (
-          <span className="rounded bg-gold-500/15 px-1.5 py-0.5 text-[0.65rem] font-bold text-gold-300">
+          <span className="rounded bg-gold-500/15 px-1.5 py-0.5 text-3xs font-bold text-gold-300">
             DRAFT · not public
           </span>
         )}
@@ -180,7 +180,7 @@ export function EventEditor({ initial, card }: { initial: EditableEvent; card: R
             <Row label="Status" issue={save.issueFor("status")} locked={held("status")} onToggleLock={held("status") ? () => unlock("status") : undefined}>
               <Select value={v.status} onChange={bind("status")} options={STATUSES} invalid={!!save.issueFor("status")} />
             </Row>
-            <div className="px-3 py-2 text-[0.7rem] leading-relaxed text-fog">
+            <div className="px-3 py-2 text-2xs leading-relaxed text-fog">
               {isDraft
                 ? "Draft events are invisible everywhere — discovery, search, sitemap, feeds and calendar exports. Publishing requires exactly one main event on the card."
                 : "This event is live to the public."}
@@ -188,7 +188,7 @@ export function EventEditor({ initial, card }: { initial: EditableEvent; card: R
           </Section>
 
           <Section title="Automated updates">
-            <div className="px-3 py-2.5 text-[0.7rem] leading-relaxed text-fog">
+            <div className="px-3 py-2.5 text-2xs leading-relaxed text-fog">
               {save.lockedFields.length === 0 ? (
                 <>No fields held. Importers may update anything on this event.</>
               ) : (
@@ -197,7 +197,7 @@ export function EventEditor({ initial, card }: { initial: EditableEvent; card: R
                   someone edited them here. Importers still update everything else.
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {save.lockedFields.map((f) => (
-                      <span key={f} className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[0.65rem] text-gold-300">{f}</span>
+                      <span key={f} className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-3xs text-gold-300">{f}</span>
                     ))}
                   </div>
                 </>

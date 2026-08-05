@@ -287,16 +287,16 @@ export function GymGalleryManager({
         setDragging(false);
         void addFiles(Array.from(e.dataTransfer.files ?? []));
       }}
-      className={cn("rounded-xl transition-colors", dragging && "bg-blood-500/10 ring-2 ring-blood-500")}
+      className={cn("rounded-card transition-colors", dragging && "bg-blood-500/10 ring-2 ring-blood-500")}
     >
       {/* Bulk bar — only when something is selected. */}
       {anySelected && (
-        <div className="mb-2 flex items-center gap-2 rounded-xl border border-blood-500/40 bg-blood-500/10 px-3 py-2">
-          <span className="flex-1 text-[0.76rem] font-semibold text-chalk">{selected.size} selected</span>
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-blood-500/40 bg-blood-500/10 px-3 py-2">
+          <span className="flex-1 text-xs font-semibold text-chalk">{selected.size} selected</span>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="tap rounded-lg border border-ink-600 px-2.5 py-1.5 text-[0.68rem] font-bold uppercase tracking-wide text-mist hover:text-chalk"
+            className="tap rounded-lg border border-ink-600 px-2.5 py-1.5 text-2xs font-bold uppercase tracking-wide text-mist hover:text-chalk"
           >
             Clear
           </button>
@@ -307,7 +307,7 @@ export function GymGalleryManager({
                 void removeMany([...selected]);
               }
             }}
-            className="tap inline-flex items-center gap-1.5 rounded-lg border border-down/50 bg-down/15 px-2.5 py-1.5 text-[0.68rem] font-bold uppercase tracking-wide text-down"
+            className="tap inline-flex items-center gap-1.5 rounded-lg border border-down/50 bg-down/15 px-2.5 py-1.5 text-2xs font-bold uppercase tracking-wide text-down"
           >
             <Trash2 className="size-3.5" /> Delete
           </button>
@@ -331,7 +331,7 @@ export function GymGalleryManager({
                 key={p.id}
                 data-photo-id={p.id}
                 className={cn(
-                  "group relative aspect-square overflow-hidden rounded-xl border bg-ink-850 transition-shadow",
+                  "group relative aspect-square overflow-hidden rounded-lg border bg-ink-850 transition-shadow",
                   isSelected ? "border-blood-500 ring-2 ring-blood-500/50" : "border-ink-700",
                   dragId === p.id && "opacity-60 ring-2 ring-chalk",
                 )}
@@ -367,7 +367,7 @@ export function GymGalleryManager({
                 />
 
                 {isCover && (
-                  <span className="pointer-events-none absolute left-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-gold-500/90 px-1.5 py-0.5 font-display text-[0.55rem] font-black uppercase tracking-wider text-ink-950">
+                  <span className="pointer-events-none absolute left-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-gold-500/90 px-1.5 py-0.5 font-display text-4xs font-black uppercase tracking-wider text-ink-950">
                     <Star className="size-2.5" /> Cover
                   </span>
                 )}
@@ -397,12 +397,12 @@ export function GymGalleryManager({
           })}
 
           {pending.map((p) => (
-            <li key={p.key} className="relative aspect-square overflow-hidden rounded-xl border border-ink-700 bg-ink-850">
+            <li key={p.key} className="relative aspect-square overflow-hidden rounded-lg border border-ink-700 bg-ink-850">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.preview} alt="" className="size-full object-cover opacity-50" />
               <div className="absolute inset-x-0 bottom-0 bg-ink-950/85 px-1.5 py-1.5 backdrop-blur">
                 {p.error ? (
-                  <span className="block truncate text-[0.58rem] font-semibold text-down">{p.error}</span>
+                  <span className="block truncate text-4xs font-semibold text-down">{p.error}</span>
                 ) : (
                   <div className="h-1 overflow-hidden rounded-full bg-ink-700" role="progressbar" aria-valuenow={p.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Uploading photo">
                     <div className="h-full rounded-full bg-blood-500 transition-[width]" style={{ width: `${p.progress}%` }} />
@@ -413,7 +413,7 @@ export function GymGalleryManager({
                 <button
                   type="button"
                   onClick={() => { setPending((cur) => cur.filter((x) => x.key !== p.key)); void addFiles([p.file]); }}
-                  className="absolute inset-x-0 top-0 bg-ink-950/70 py-1 text-[0.58rem] font-bold uppercase text-chalk backdrop-blur"
+                  className="absolute inset-x-0 top-0 bg-ink-950/70 py-1 text-4xs font-bold uppercase text-chalk backdrop-blur"
                 >
                   Retry
                 </button>
@@ -427,10 +427,10 @@ export function GymGalleryManager({
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 aria-label="Add photos"
-                className="tap flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-ink-700 bg-ink-850 text-fog transition-colors hover:border-ink-600 hover:text-mist"
+                className="tap flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-ink-700 bg-ink-850 text-fog transition-colors hover:border-ink-600 hover:text-mist"
               >
                 <Plus className="size-5" />
-                <span className="text-[0.6rem] font-semibold">Add</span>
+                <span className="text-3xs font-semibold">Add</span>
               </button>
             </li>
           )}
@@ -442,9 +442,9 @@ export function GymGalleryManager({
         const p = photos.find((x) => x.id === editing);
         if (!p) return null;
         return (
-          <div className="mt-3 rounded-xl border border-ink-700 bg-ink-850 p-3">
+          <div className="mt-3 rounded-card border border-ink-700 bg-ink-850 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-display text-[0.68rem] font-bold uppercase tracking-wide text-mist">Photo details</span>
+              <span className="font-display text-2xs font-bold uppercase tracking-wide text-mist">Photo details</span>
               <button
                 type="button"
                 onClick={() => setEditing(null)}
@@ -479,13 +479,13 @@ export function GymGalleryManager({
         }}
       />
 
-      <p className="mt-2 text-[0.66rem] leading-relaxed text-fog">
+      <p className="mt-2 text-2xs leading-relaxed text-fog">
         {photos.length}/{MAX_PHOTOS} photos · drag the handle to reorder, or focus a photo and hold Alt with the
         arrow keys. Tap a photo to select it.
       </p>
 
       {error && (
-        <p role="alert" className="mt-1.5 flex items-center gap-1.5 text-[0.68rem] text-down">
+        <p role="alert" className="mt-1.5 flex items-center gap-1.5 text-2xs text-down">
           <AlertCircle className="size-3.5 shrink-0" /> {error}
         </p>
       )}
@@ -515,8 +515,8 @@ function MetaField({
   return (
     <label className="block">
       <span className="mb-1 flex items-baseline justify-between">
-        <span className="text-[0.66rem] font-semibold uppercase tracking-wide text-mist">{label}</span>
-        <span className="flex items-center gap-1 text-[0.6rem] text-fog">
+        <span className="text-2xs font-semibold uppercase tracking-wide text-mist">{label}</span>
+        <span className="flex items-center gap-1 text-3xs text-fog">
           {saved && <Check className="size-3 text-up" />}
           {hint}
         </span>
@@ -527,7 +527,7 @@ function MetaField({
         maxLength={max}
         onBlur={(e) => { onCommit(e.target.value.trim()); setSaved(true); setTimeout(() => setSaved(false), 1800); }}
         onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-        className="w-full rounded-lg border border-ink-700 bg-ink-900 px-2.5 py-2 text-[0.82rem] text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none"
+        className="w-full rounded-lg border border-ink-700 bg-ink-900 px-2.5 py-2 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none"
       />
     </label>
   );

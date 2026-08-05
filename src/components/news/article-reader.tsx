@@ -7,6 +7,7 @@ import { ExternalLink, Loader2, X } from "lucide-react";
 import { ShareMenu } from "@/components/share-menu";
 import { safeNewsCover } from "@/lib/media-safe";
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Read an article without leaving GlobalFight.
@@ -150,14 +151,14 @@ export function ArticleReader({
             type="button"
             onClick={onClose}
             aria-label="Close reader"
-            className="tap grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 text-mist transition-colors hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+            className="tap cr-touch-target grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 text-mist transition-colors hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
           >
             <X className="size-4" />
           </button>
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-chalk">{article.title}</p>
-            <p className="truncate text-[0.68rem] text-fog">
+            <p className="truncate text-2xs text-fog">
               {publisher}
               {article.author ? ` · ${article.author}` : ""}
             </p>
@@ -173,7 +174,7 @@ export function ArticleReader({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Open on ${publisher} in a new tab`}
-            className="tap grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 text-mist transition-colors hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+            className="tap cr-touch-target grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 text-mist transition-colors hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
           >
             <ExternalLink className="size-4" />
           </a>
@@ -229,7 +230,7 @@ export function ArticleReader({
               </div>
               <div className="mx-auto max-w-2xl px-5 pb-10 pt-6">
                 {article.category && (
-                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-blood-400">{article.category}</p>
+                  <p className="text-3xs font-bold uppercase tracking-[0.2em] text-blood-400">{article.category}</p>
                 )}
                 <h2 className="mt-2 font-display text-2xl font-bold leading-tight text-chalk md:text-3xl">
                   {article.title}
@@ -239,17 +240,17 @@ export function ArticleReader({
                   {article.author ? ` · ${article.author}` : ""}
                 </p>
                 {article.excerpt && (
-                  <p className="mt-4 text-[0.95rem] leading-relaxed text-mist">{article.excerpt}</p>
+                  <p className="mt-4 text-base leading-relaxed text-mist">{article.excerpt}</p>
                 )}
                 <a
                   href={article.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="tap mt-6 inline-flex items-center gap-2 rounded-xl bg-blood-500 px-5 py-3 font-display text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+                  className={cn(buttonVariants({ size: "md" }), "mt-6")}
                 >
                   Read on {publisher} <ExternalLink className="size-4" />
                 </a>
-                <p className="mt-3 text-[0.7rem] text-fog">
+                <p className="mt-3 text-2xs text-fog">
                   {publisher} doesn&apos;t allow their pages to be embedded, so this one opens in a new tab.
                 </p>
               </div>

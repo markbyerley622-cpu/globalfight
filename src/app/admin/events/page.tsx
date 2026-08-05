@@ -65,7 +65,7 @@ export default async function AdminEventsPage({
             <Link
               key={s || "all"}
               href={href}
-              className={`rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-2xs font-semibold transition-colors ${
                 active ? "border-blood-500 bg-blood-500 text-white" : "border-ink-700 text-fog hover:text-chalk"
               }`}
             >
@@ -78,7 +78,7 @@ export default async function AdminEventsPage({
       <div className="overflow-x-auto rounded-lg border border-ink-800">
         <table className="w-full min-w-[52rem] text-sm">
           <thead>
-            <tr className="border-b border-ink-800 bg-ink-900/60 text-left text-[0.68rem] uppercase tracking-wide text-fog">
+            <tr className="border-b border-ink-800 bg-ink-900/60 text-left text-2xs uppercase tracking-wide text-fog">
               <th className="px-3 py-2 font-semibold">Event</th>
               <th className="px-3 py-2 font-semibold">Promotion</th>
               <th className="px-3 py-2 font-semibold">Date</th>
@@ -95,7 +95,7 @@ export default async function AdminEventsPage({
                     {e.name}
                   </Link>
                   {e.lockedFields.length > 0 && (
-                    <span className="ml-2 text-[0.65rem] text-gold-400" title={`Held from automated updates: ${e.lockedFields.join(", ")}`}>
+                    <span className="ml-2 text-3xs text-gold-400" title={`Held from automated updates: ${e.lockedFields.join(", ")}`}>
                       {e.lockedFields.length} held
                     </span>
                   )}
@@ -105,7 +105,7 @@ export default async function AdminEventsPage({
                 <td className="truncate px-3 py-2 text-fog">{[e.venue, e.city].filter(Boolean).join(", ") || "—"}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-mist">{e._count.fights}</td>
                 <td className="px-3 py-2">
-                  <span className={`rounded px-1.5 py-0.5 text-[0.65rem] font-bold ${
+                  <span className={`rounded px-1.5 py-0.5 text-3xs font-bold ${
                     e.status === "DRAFT" ? "bg-gold-500/15 text-gold-300"
                     : e.status === "LIVE" ? "bg-blood-500/20 text-blood-300"
                     : e.status === "CANCELLED" || e.status === "POSTPONED" ? "bg-ink-800 text-fog"

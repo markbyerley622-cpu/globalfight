@@ -57,7 +57,7 @@ export function GymMembershipButtons({
           onClick={() => send({ join: !member }, "join")}
           aria-pressed={member}
           className={cn(
-            "tap inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
+            "tap inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
             member
               ? "border border-ink-600 bg-ink-800 text-chalk hover:border-ink-500"
               : "bg-volt-500 text-ink-950 hover:bg-volt-400",
@@ -81,7 +81,7 @@ export function GymMembershipButtons({
             onClick={() => send({ join: true, isHome: !isHome }, "home")}
             aria-pressed={isHome}
             className={cn(
-              "tap inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
+              "tap inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60",
               isHome
                 ? "border-gold-500/50 bg-gold-500/15 text-gold-300"
                 : "border-ink-700 text-mist hover:border-ink-600 hover:text-chalk",
@@ -92,7 +92,7 @@ export function GymMembershipButtons({
           </button>
         )}
       </div>
-      {error && <p className="text-[0.66rem] text-down">{error}</p>}
+      {error && <p className="text-2xs text-down">{error}</p>}
     </div>
   );
 }

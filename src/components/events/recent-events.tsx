@@ -27,7 +27,7 @@ const METHOD_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 function Badge({ children, cls }: { children: React.ReactNode; cls: string }) {
-  return <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wide", cls)}>{children}</span>;
+  return <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-3xs font-black uppercase tracking-wide", cls)}>{children}</span>;
 }
 
 // ── Recent Events band ──────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ export function RecentEvents({ events }: { events: RecentEvent[] }) {
     <section aria-label="Recent events" className="space-y-3">
       <div className="flex items-baseline justify-between">
         <h2 className="font-display text-sm font-black uppercase tracking-[0.18em] text-chalk">Recent events</h2>
-        <Link href="/events?status=completed" className="text-[0.7rem] font-semibold text-fog transition-colors hover:text-chalk">
+        <Link href="/events?status=completed" className="text-2xs font-semibold text-fog transition-colors hover:text-chalk">
           All results →
         </Link>
       </div>
@@ -142,7 +142,7 @@ function Card({ e }: { e: RecentEvent }) {
               <Badge cls="border-up/40 bg-up/12 text-up drop-shadow">Result</Badge>
             )}
             <span
-              className="inline-flex items-center rounded-md border px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wider drop-shadow"
+              className="inline-flex items-center rounded-md border px-2 py-0.5 text-2xs font-bold uppercase tracking-wider drop-shadow"
               style={{ color: accent, borderColor: `${accent}66`, background: `${accent}26` }}
             >
               {sportLabel}
@@ -163,7 +163,7 @@ function Card({ e }: { e: RecentEvent }) {
                 {m.winnerName}
               </p>
               <p className="mt-0.5 flex items-baseline gap-1.5 truncate drop-shadow">
-                <span className="shrink-0 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-fog">def.</span>
+                <span className="shrink-0 text-3xs font-bold uppercase tracking-[0.14em] text-fog">def.</span>
                 <span className="truncate font-display text-sm font-bold text-down">{m.loserName}</span>
               </p>
             </>
@@ -198,7 +198,7 @@ function Card({ e }: { e: RecentEvent }) {
               )}
             </div>
             {m.calledByPct != null && (
-              <p className={cn("mt-2 text-[0.68rem] font-semibold", m.upset ? "text-volt-300" : "text-fog")}>
+              <p className={cn("mt-2 text-2xs font-semibold", m.upset ? "text-volt-300" : "text-fog")}>
                 {m.upset ? `Only ${m.calledByPct}% saw it coming` : `${m.calledByPct}% of the room called it`}
               </p>
             )}
@@ -209,7 +209,7 @@ function Card({ e }: { e: RecentEvent }) {
           // block hand-wrote its own, which is how the rail ended up promising
           // "sources are checked hourly" for cards whose remaining bouts were never
           // published at all and never will be.
-          <p className="mt-2.5 text-[0.68rem] leading-snug text-fog">
+          <p className="mt-2.5 text-2xs leading-snug text-fog">
             {cov.detail ?? cov.label}
           </p>
         )}
@@ -227,7 +227,7 @@ function Card({ e }: { e: RecentEvent }) {
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 border-t border-ink-800 bg-ink-950/40 px-3.5 py-2.5 text-[0.7rem] font-semibold text-fog transition-colors group-hover:text-chalk">
+        <div className="flex items-center gap-1.5 border-t border-ink-800 bg-ink-950/40 px-3.5 py-2.5 text-2xs font-semibold text-fog transition-colors group-hover:text-chalk">
           See how the room did <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </div>
       )}

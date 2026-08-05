@@ -28,7 +28,7 @@ export function VideoRail({
         {moreHref && (
           <Link
             href={moreHref}
-            className="inline-flex items-center gap-1 text-[0.72rem] font-semibold text-fog transition-colors hover:text-blood-300"
+            className="inline-flex items-center gap-1 text-2xs font-semibold text-fog transition-colors hover:text-blood-300"
           >
             More <ArrowRight className="size-3.5" />
           </Link>

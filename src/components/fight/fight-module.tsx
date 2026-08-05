@@ -67,7 +67,7 @@ export function FightModule({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         className={cn(
-          "mt-3 flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
+          "mt-3 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
           open ? "border-blood-500/40 bg-blood-500/5" : "border-ink-700 bg-ink-900/60 hover:border-ink-600",
         )}
       >
@@ -80,7 +80,7 @@ export function FightModule({
         )}
         <span className="min-w-0 flex-1">
           <span className="block truncate font-display text-sm font-bold text-chalk">{battleLabel}</span>
-          <span className="flex items-center gap-1 text-[0.7rem] text-fog">
+          <span className="flex items-center gap-1 text-2xs text-fog">
             <MessagesSquare className="size-3" />
             {summary.voices > 0 ? `${summary.voices.toLocaleString()} in the room` : "Room is quiet — go first"}
           </span>

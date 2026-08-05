@@ -8,6 +8,7 @@ import { Star, ThumbsUp, BadgeCheck, Check, X, Loader2, Pencil, Trash2, ChevronD
 import { Button } from "@/components/ui/button";
 import { cn, timeAgo } from "@/lib/utils";
 import type { GymReviewData, ReviewDTO } from "@/lib/gym-reviews";
+import { ButtonLink } from "@/components/ui/button";
 
 // Presentation config kept local so this client component never imports the
 // server-only review module. Order = display order.
@@ -39,7 +40,7 @@ function Stars({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
 function StarInput({ value, onChange, label }: { value: number | null; onChange: (v: number) => void; label: string }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="w-24 text-[0.7rem] uppercase tracking-wide text-fog">{label}</span>
+      <span className="w-24 text-2xs uppercase tracking-wide text-fog">{label}</span>
       <span className="flex">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
@@ -78,7 +79,7 @@ export function GymReviews({
       {summary.count > 0 ? (
         <ReviewSummary summary={summary} />
       ) : (
-        <p className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/40 p-5 text-center text-sm text-fog">
+        <p className="rounded-card border border-dashed border-ink-700 bg-ink-900/40 p-5 text-center text-sm text-fog">
           No reviews yet — be the first to tell fighters what training at {gymName} is really like.
         </p>
       )}
@@ -86,9 +87,9 @@ export function GymReviews({
       {/* Compose / edit */}
       <div className="mt-4">
         {!signedIn ? (
-          <Link href="/account" className="inline-flex rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-blood-400">
+          <ButtonLink href="/account" size="sm" className="px-4">
             Sign in to review
-          </Link>
+          </ButtonLink>
         ) : composing ? (
           <ReviewForm
             gymSlug={gymSlug}
@@ -98,7 +99,7 @@ export function GymReviews({
           />
         ) : myReview ? (
           <div>
-            <p className="mb-2 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">Your review</p>
+            <p className="mb-2 font-display text-2xs font-bold uppercase tracking-wider text-fog">Your review</p>
             <ReviewCard review={myReview} gymSlug={gymSlug} onEdit={() => setComposing(true)} />
           </div>
         ) : (
@@ -122,17 +123,17 @@ export function GymReviews({
 
 function ReviewSummary({ summary }: { summary: GymReviewData["summary"] }) {
   return (
-    <div className="grid gap-4 rounded-2xl border border-ink-800 bg-ink-900 p-5 sm:grid-cols-[auto_1fr]">
+    <div className="grid gap-4 card-surface p-5 sm:grid-cols-[auto_1fr]">
       {/* Headline */}
       <div className="flex flex-col items-center justify-center gap-1 border-ink-800 pb-4 text-center sm:border-r sm:pb-0 sm:pr-6">
         <p className="font-display text-5xl font-black tabular-nums text-chalk">{summary.average.toFixed(1)}</p>
         <Stars value={Math.round(summary.average)} size="lg" />
-        <p className="text-[0.7rem] text-fog">{summary.count} review{summary.count === 1 ? "" : "s"}</p>
+        <p className="text-2xs text-fog">{summary.count} review{summary.count === 1 ? "" : "s"}</p>
         {summary.recommendedPct > 0 && (
-          <p className="text-[0.7rem] font-semibold text-up">{summary.recommendedPct}% recommend</p>
+          <p className="text-2xs font-semibold text-up">{summary.recommendedPct}% recommend</p>
         )}
         {summary.verifiedCount > 0 && (
-          <p className="inline-flex items-center gap-1 text-[0.66rem] text-fog"><BadgeCheck className="size-3 text-volt-400" /> {summary.verifiedCount} verified</p>
+          <p className="inline-flex items-center gap-1 text-2xs text-fog"><BadgeCheck className="size-3 text-volt-400" /> {summary.verifiedCount} verified</p>
         )}
       </div>
 
@@ -142,7 +143,7 @@ function ReviewSummary({ summary }: { summary: GymReviewData["summary"] }) {
           {summary.distribution.map((d) => {
             const pct = summary.count ? Math.round((d.count / summary.count) * 100) : 0;
             return (
-              <div key={d.star} className="flex items-center gap-2 text-[0.7rem] text-fog">
+              <div key={d.star} className="flex items-center gap-2 text-2xs text-fog">
                 <span className="w-3 tabular-nums">{d.star}</span>
                 <Star className="size-3 fill-gold-400 text-gold-400" />
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-700">
@@ -158,7 +159,7 @@ function ReviewSummary({ summary }: { summary: GymReviewData["summary"] }) {
             const v = summary.categoryAverages[key];
             if (v == null) return null;
             return (
-              <span key={key} className="inline-flex items-center gap-1.5 text-[0.72rem]">
+              <span key={key} className="inline-flex items-center gap-1.5 text-2xs">
                 <span className="text-fog">{label}</span>
                 <span className="inline-flex items-center gap-0.5 font-semibold text-chalk"><Star className="size-3 fill-gold-400 text-gold-400" />{v.toFixed(1)}</span>
               </span>
@@ -202,7 +203,7 @@ function ReviewCard({ review, gymSlug, onEdit }: { review: ReviewDTO; gymSlug: s
   const rated = CATEGORY_META.filter((c) => review.categories[c.key] != null);
 
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+    <div className="card-surface p-4">
       <div className="flex items-start gap-3">
         {review.authorImage ? (
           <Image src={review.authorImage} alt="" width={36} height={36} unoptimized className="size-9 shrink-0 rounded-full object-cover" />
@@ -217,34 +218,39 @@ function ReviewCard({ review, gymSlug, onEdit }: { review: ReviewDTO; gymSlug: s
               <span className="truncate font-display text-sm font-bold text-chalk">{review.authorName}</span>
             )}
             {review.verifiedMember && (
-              <span className="inline-flex items-center gap-0.5 rounded bg-volt-500/15 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wide text-volt-300">
+              <span className="inline-flex items-center gap-0.5 rounded bg-volt-500/15 px-1.5 py-0.5 text-4xs font-bold uppercase tracking-wide text-volt-300">
                 <BadgeCheck className="size-2.5" /> {review.authorRole ? ROLE_LABEL[review.authorRole] ?? "Member" : "Member"}
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.68rem] text-fog">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-fog">
             <Stars value={review.overall} />
             {review.skillLevel && <span className="capitalize">· {review.skillLevel}</span>}
             <span>· {timeAgo(new Date(review.createdAt))}{review.edited ? " · edited" : ""}</span>
           </div>
         </div>
+        {/* Edit sits next to a DESTRUCTIVE control, so this row deliberately does
+            NOT take `cr-touch-target`: 44px zones on a 4px gap overlap by 14px and
+            the later element wins, which would route "edit" taps into "delete".
+            Growing the real box (26px -> 30px) and the gap (4 -> 8) is the safe
+            half of that fix. */}
         {onEdit && (
-          <div className="flex shrink-0 gap-1">
-            <button onClick={onEdit} className="rounded p-1.5 text-fog hover:text-chalk" aria-label="Edit review"><Pencil className="size-3.5" /></button>
-            <button onClick={remove} disabled={busy} className="rounded p-1.5 text-fog hover:text-blood-400" aria-label="Delete review"><Trash2 className="size-3.5" /></button>
+          <div className="flex shrink-0 gap-2">
+            <button onClick={onEdit} className="rounded p-2 text-fog hover:text-chalk" aria-label="Edit review"><Pencil className="size-3.5" /></button>
+            <button onClick={remove} disabled={busy} className="rounded p-2 text-fog hover:text-blood-400" aria-label="Delete review"><Trash2 className="size-3.5" /></button>
           </div>
         )}
       </div>
 
       {review.recommended && (
-        <p className="mt-2 inline-flex items-center gap-1 text-[0.7rem] font-semibold text-up"><Check className="size-3.5" /> Recommends this gym</p>
+        <p className="mt-2 inline-flex items-center gap-1 text-2xs font-semibold text-up"><Check className="size-3.5" /> Recommends this gym</p>
       )}
       {review.title && <p className="mt-2 font-display text-sm font-bold text-chalk">{review.title}</p>}
 
       <div className="mt-1.5">
         <p className={cn("whitespace-pre-wrap break-words text-sm leading-relaxed text-mist", !expanded && long && "line-clamp-4")}>{review.body}</p>
         {long && (
-          <button onClick={() => setExpanded((v) => !v)} className="mt-1 inline-flex items-center gap-0.5 text-[0.7rem] font-semibold text-blood-300">
+          <button onClick={() => setExpanded((v) => !v)} className="mt-1 inline-flex items-center gap-0.5 text-2xs font-semibold text-blood-300">
             {expanded ? "Show less" : "Read more"} <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
           </button>
         )}
@@ -253,7 +259,7 @@ function ReviewCard({ review, gymSlug, onEdit }: { review: ReviewDTO; gymSlug: s
       {rated.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
           {rated.map((c) => (
-            <span key={c.key} className="inline-flex items-center gap-1 text-[0.68rem] text-fog">
+            <span key={c.key} className="inline-flex items-center gap-1 text-2xs text-fog">
               {c.label} <span className="inline-flex items-center gap-0.5 font-semibold text-mist"><Star className="size-2.5 fill-gold-400 text-gold-400" />{review.categories[c.key]}</span>
             </span>
           ))}
@@ -262,7 +268,7 @@ function ReviewCard({ review, gymSlug, onEdit }: { review: ReviewDTO; gymSlug: s
       {review.disciplines.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {review.disciplines.map((d) => (
-            <span key={d} className="rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-fog">{d}</span>
+            <span key={d} className="rounded-md border border-ink-700 bg-ink-950/40 px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wide text-fog">{d}</span>
           ))}
         </div>
       )}
@@ -346,7 +352,7 @@ function ReviewForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-2xl border border-ink-700 bg-ink-900 p-4">
+    <form onSubmit={submit} className="space-y-4 card-surface p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{existing ? "Edit your review" : "Write a review"}</h3>
         <button type="button" onClick={onClose} className="text-fog hover:text-chalk" aria-label="Close"><X className="size-4" /></button>
@@ -372,7 +378,7 @@ function ReviewForm({
 
       {/* Skill level */}
       <div>
-        <p className="mb-1.5 text-[0.7rem] uppercase tracking-wide text-fog">Your level</p>
+        <p className="mb-1.5 text-2xs uppercase tracking-wide text-fog">Your level</p>
         <div className="flex flex-wrap gap-1.5">
           {SKILL_LEVELS.map((lvl) => (
             <button key={lvl} type="button" onClick={() => setSkill(skill === lvl ? "" : lvl)} className={cn("rounded-lg border px-2.5 py-1 text-xs font-semibold capitalize transition-colors", skill === lvl ? "border-blood-500 bg-blood-500/15 text-chalk" : "border-ink-700 text-fog hover:border-ink-600")}>
@@ -385,7 +391,7 @@ function ReviewForm({
       {/* Disciplines trained */}
       {disciplines.length > 0 && (
         <div>
-          <p className="mb-1.5 text-[0.7rem] uppercase tracking-wide text-fog">What you train here</p>
+          <p className="mb-1.5 text-2xs uppercase tracking-wide text-fog">What you train here</p>
           <div className="flex flex-wrap gap-1.5">
             {disciplines.map((d) => (
               <button key={d} type="button" onClick={() => toggleDiscipline(d)} className={cn("rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors", picked.includes(d) ? "border-volt-500 bg-volt-500/15 text-chalk" : "border-ink-700 text-fog hover:border-ink-600")}>

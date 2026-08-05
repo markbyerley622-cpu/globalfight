@@ -33,10 +33,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
             ))}
           </nav>
-          <span className="ml-auto text-[0.7rem] text-fog">
+          <span className="ml-auto text-2xs text-fog">
             {user.name ?? user.username} · {user.role}
           </span>
-          <Link href="/" className="text-[0.7rem] text-fog transition-colors hover:text-chalk">Exit ↗</Link>
+          <Link href="/" className="text-2xs text-fog transition-colors hover:text-chalk">Exit ↗</Link>
         </div>
       </header>
       {children}

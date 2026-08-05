@@ -134,7 +134,7 @@ export function OnboardingFlow({ initial }: {
                     <PromotionLogo promotion={p.slug} size="sm" />
                     <span className="min-w-0">
                       <span className="block truncate font-display text-sm font-bold text-chalk">{p.name}</span>
-                      <span className="text-[0.7rem] text-fog">{p.upcoming} upcoming</span>
+                      <span className="text-2xs text-fog">{p.upcoming} upcoming</span>
                     </span>
                   </Choice>
                 ))}
@@ -158,7 +158,7 @@ export function OnboardingFlow({ initial }: {
                     )}
                     <span className="min-w-0">
                       <span className="block truncate font-display text-sm font-bold text-chalk">{f.name}</span>
-                      <span className="flex items-center gap-1 text-[0.7rem] tabular-nums text-fog">
+                      <span className="flex items-center gap-1 text-2xs tabular-nums text-fog">
                         <Flag code={f.countryCode} /> {f.record}
                       </span>
                     </span>
@@ -213,7 +213,7 @@ function Choice({ selected, onClick, children, row }: {
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "tap rounded-xl border p-3 text-left transition-colors",
+        "tap rounded-card border p-3 text-left transition-colors",
         row ? "flex items-center gap-2.5" : "flex flex-col gap-0.5",
         selected ? "border-blood-500 bg-blood-500/10" : "border-ink-700 hover:border-ink-600 hover:bg-ink-900",
       )}
@@ -227,7 +227,7 @@ function Choice({ selected, onClick, children, row }: {
 function Skeleton() {
   return (
     <div className="grid grid-cols-2 gap-2.5" aria-hidden>
-      {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-ink-900" />)}
+      {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-card bg-ink-900" />)}
     </div>
   );
 }

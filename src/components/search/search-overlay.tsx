@@ -85,7 +85,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
     </Link>
   );
 
-  const head = (label: string) => <p className="px-3 pb-1 pt-3 font-display text-[0.62rem] font-bold uppercase tracking-widest text-fog">{label}</p>;
+  const head = (label: string) => <p className="px-3 pb-1 pt-3 font-display text-3xs font-bold uppercase tracking-widest text-fog">{label}</p>;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[12vh]" role="dialog" aria-modal="true">
@@ -101,7 +101,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             className="h-14 flex-1 bg-transparent text-base text-chalk outline-none placeholder:text-fog"
           />
           {loading && <Loader2 className="size-4 animate-spin text-mist" />}
-          <button onClick={onClose} className="rounded-md p-1.5 text-mist hover:bg-ink-700 hover:text-chalk" aria-label="Close search"><X className="size-5" /></button>
+          <button onClick={onClose} className="cr-touch-target rounded-md p-1.5 text-mist hover:bg-ink-700 hover:text-chalk" aria-label="Close search"><X className="size-5" /></button>
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto p-2">
@@ -225,7 +225,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           {res.pages.length > 0 && head("Pages")}
           {res.pages.map((p) => row(`p-${p.href}-${p.label}`, p.href, <Compass className="size-4" />, p.label))}
         </div>
-        <div className="flex items-center justify-between border-t border-ink-700 px-4 py-2 text-[0.7rem] text-fog">
+        <div className="flex items-center justify-between border-t border-ink-700 px-4 py-2 text-2xs text-fog">
           <span>Search across Combat Reviews</span>
           <span><kbd className="rounded border border-ink-600 px-1.5 py-0.5">ESC</kbd> to close</span>
         </div>

@@ -44,7 +44,7 @@ export async function ScheduleSection({ events: eventsIn }: { events?: FightEven
                   </div>
                 </div>
                 <div className="shrink-0 rounded-lg border border-ink-700 bg-ink-950/40 px-4 py-3 text-center">
-                  <p className="mb-1 text-[0.6rem] uppercase tracking-widest text-fog">First bell in</p>
+                  <p className="mb-1 text-3xs uppercase tracking-widest text-fog">First bell in</p>
                   <Countdown date={e.date} compact />
                 </div>
               </Link>

@@ -436,7 +436,7 @@ export function ReelsOverlay({
         <Logo href={null} sizeClass="h-7" showWordmark={false} className="pointer-events-auto" />
         <span className="pointer-events-none font-display text-sm font-semibold uppercase tracking-wide text-chalk/90">Feed</span>
         <div className="flex-1" />
-        <button onClick={onClose} aria-label="Close reels" className="pointer-events-auto flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/40 text-chalk backdrop-blur-md">
+        <button onClick={onClose} aria-label="Close reels" className="cr-touch-target pointer-events-auto flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/40 text-chalk backdrop-blur-md">
           <X className="size-5" />
         </button>
       </div>
@@ -486,17 +486,17 @@ export function ReelsOverlay({
               {/* info */}
               <div className="absolute bottom-[calc(1.9rem+env(safe-area-inset-bottom))] left-4 right-[5.25rem] z-[3] text-chalk">
                 <div className="mb-1.5 flex items-center gap-2">
-                  <span className="font-display text-[0.95rem] font-bold tracking-tight [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">{cleanTitle(v.channel)}</span>
+                  <span className="font-display text-base font-bold tracking-tight [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">{cleanTitle(v.channel)}</span>
                   {isNewToday(v.publishedAt) && (
-                    <span className="rounded-full bg-blood-500 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-widest text-white shadow-glow-red">New</span>
+                    <span className="rounded-full bg-blood-500 px-1.5 py-0.5 text-4xs font-bold uppercase tracking-widest text-white shadow-glow-red">New</span>
                   )}
                 </div>
-                <p className="mb-2 line-clamp-2 text-[0.9rem] font-medium leading-snug [text-shadow:0_1px_8px_rgba(0,0,0,0.85)]">{cleanTitle(v.title)}</p>
-                <div className="flex flex-wrap items-center gap-1.5 text-[0.7rem] text-chalk/60">
+                <p className="mb-2 line-clamp-2 text-sm font-medium leading-snug [text-shadow:0_1px_8px_rgba(0,0,0,0.85)]">{cleanTitle(v.title)}</p>
+                <div className="flex flex-wrap items-center gap-1.5 text-2xs text-chalk/60">
                   {pill && (
-                    <span className={`rounded px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wider ${pill[1] ? "bg-blood-500/90 text-white" : "bg-white/10 text-chalk/90"}`}>{pill[0]}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-4xs font-bold uppercase tracking-wider ${pill[1] ? "bg-blood-500/90 text-white" : "bg-white/10 text-chalk/90"}`}>{pill[0]}</span>
                   )}
-                  <span className="rounded px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wider bg-white/10 text-chalk/90">{TOPIC_LABEL[v.topic ?? ""] ?? v.topic}</span>
+                  <span className="rounded px-1.5 py-0.5 text-4xs font-bold uppercase tracking-wider bg-white/10 text-chalk/90">{TOPIC_LABEL[v.topic ?? ""] ?? v.topic}</span>
                   {[fmtViews(v.viewCount), timeAgo(v.publishedAt)].filter(Boolean).map((s, k) => (
                     <span key={k} className="before:mr-1.5 before:text-chalk/30 before:content-['·']">{s}</span>
                   ))}
@@ -587,7 +587,7 @@ function RailButton({ children, label, onClick, active, respectIndex }: { childr
       >
         {children}
       </span>
-      <small className="text-[0.64rem] font-semibold tracking-wide text-white/95 [text-shadow:0_1px_5px_rgba(0,0,0,0.9)]">{label}</small>
+      <small className="text-3xs font-semibold tracking-wide text-white/95 [text-shadow:0_1px_5px_rgba(0,0,0,0.9)]">{label}</small>
     </button>
   );
 }

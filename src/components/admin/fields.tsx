@@ -22,7 +22,7 @@ export function Row({ label, hint, issue, locked, onToggleLock, children }: {
   return (
     <div className="grid grid-cols-[10rem_1fr] items-start gap-3 border-b border-ink-800/70 px-3 py-2 last:border-0">
       <div className="flex items-center gap-1.5 pt-1.5">
-        <label className="text-[0.7rem] font-semibold uppercase tracking-wide text-fog">{label}</label>
+        <label className="text-2xs font-semibold uppercase tracking-wide text-fog">{label}</label>
         {onToggleLock && (
           <button
             type="button"
@@ -39,9 +39,9 @@ export function Row({ label, hint, issue, locked, onToggleLock, children }: {
       </div>
       <div className="min-w-0">
         {children}
-        {hint && !issue && <p className="mt-1 text-[0.68rem] text-fog">{hint}</p>}
+        {hint && !issue && <p className="mt-1 text-2xs text-fog">{hint}</p>}
         {issue && (
-          <p className="mt-1 flex items-start gap-1 text-[0.68rem] text-blood-300">
+          <p className="mt-1 flex items-start gap-1 text-2xs text-blood-300">
             <AlertCircle className="mt-px size-3 shrink-0" /> {issue}
           </p>
         )}

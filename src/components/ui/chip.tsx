@@ -23,9 +23,13 @@ import { cn } from "@/lib/utils";
 export type ChipTone = "accent" | "neutral";
 export type ChipSize = "sm" | "md";
 
+//  Size varies the HIT AREA, not the type: both steps sit at `text-2xs` on the
+//  shared base below. They used to differ by 0.04rem (0.68 vs 0.72), which is
+//  half a pixel — invisible as hierarchy, but enough to make a chip row and a
+//  badge row fail to line up.
 const SIZE: Record<ChipSize, string> = {
-  sm: "gap-1.5 px-3 py-1.5 text-[0.68rem]",
-  md: "gap-1.5 px-3.5 py-2 text-[0.72rem]",
+  sm: "gap-1.5 px-3 py-1.5",
+  md: "gap-1.5 px-3.5 py-2",
 };
 
 const ACTIVE: Record<ChipTone, string> = {
@@ -37,7 +41,7 @@ const IDLE = "border-ink-700 bg-ink-850 text-mist hover:border-ink-600 hover:tex
 
 export function chipClass(active: boolean, tone: ChipTone = "accent", size: ChipSize = "md"): string {
   return cn(
-    "tap inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-display font-bold uppercase tracking-wide transition-colors",
+    "tap inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-display text-2xs font-bold uppercase tracking-wide transition-colors",
     SIZE[size],
     active ? ACTIVE[tone] : IDLE,
   );

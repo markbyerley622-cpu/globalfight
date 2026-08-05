@@ -71,7 +71,7 @@ export function SportFilter({ availableSlugs }: { availableSlugs?: string[] } = 
                 publishes a list we can use, and for several of them that may
                 never change. Stating the fact is both truer and more useful —
                 the reader learns the sport is unranked, not that we are late. */}
-            {soon && <span className="ml-1.5 text-[0.6rem] font-normal tracking-normal opacity-70">{t("No ranking")}</span>}
+            {soon && <span className="ml-1.5 text-3xs font-normal tracking-normal opacity-70">{t("No ranking")}</span>}
           </button>
         );
       })}

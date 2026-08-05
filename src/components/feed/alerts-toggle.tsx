@@ -86,7 +86,7 @@ export function AlertsToggle({ className }: { className?: string }) {
       aria-label={on ? "Fight alerts enabled" : "Fight alerts disabled"}
       title="Alerts for every fight you follow"
       className={cn(
-        "inline-flex min-h-11 items-center gap-1 rounded-md px-2 py-1 font-display text-[0.6rem] font-bold uppercase tracking-wide transition-colors",
+        "inline-flex min-h-11 items-center gap-1 rounded-md px-2 py-1 font-display text-3xs font-bold uppercase tracking-wide transition-colors",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
         on ? "bg-blood-500/12 text-blood-300 hover:bg-blood-500/20" : "bg-ink-800 text-fog hover:text-chalk",
         busy && "opacity-60",

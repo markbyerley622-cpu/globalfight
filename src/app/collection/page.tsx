@@ -62,7 +62,7 @@ export default async function CollectionPage() {
                 <Link
                   key={c.id}
                   href={`/fighters/${c.fighter.slug}`}
-                  className={`group flex flex-col items-center gap-2 rounded-xl border bg-ink-900 p-3 text-center transition-all hover:-translate-y-0.5 ${TINT[r].split(" ")[0]}`}
+                  className={`group flex flex-col items-center gap-2 rounded-card border bg-ink-900 p-3 text-center transition-all hover:-translate-y-0.5 ${TINT[r].split(" ")[0]}`}
                 >
                   <FighterAvatar
                     fighter={{ name: c.fighter.name, imageUrl: c.fighter.imageUrl ?? undefined, thumbUrl: c.fighter.thumbUrl ?? undefined, countryCode: c.fighter.countryCode ?? undefined }}
@@ -70,7 +70,7 @@ export default async function CollectionPage() {
                     showFlag
                   />
                   <div>
-                    <p className={`text-[0.55rem] font-bold uppercase tracking-wider ${TINT[r].split(" ")[1]}`}>{r}</p>
+                    <p className={`text-4xs font-bold uppercase tracking-wider ${TINT[r].split(" ")[1]}`}>{r}</p>
                     <p className="truncate font-display text-xs font-bold text-chalk">{c.fighter.name}</p>
                   </div>
                 </Link>

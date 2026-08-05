@@ -112,7 +112,7 @@ export function Sheet({
           // bottom sheet is a web page rather than an app surface.
           "cr-overscroll-contain w-full max-w-md animate-[sheet-up_.3s_cubic-bezier(.2,.8,.2,1)] overflow-y-auto border border-ink-700 bg-ink-900 outline-none",
           "max-h-[92dvh] rounded-t-3xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
-          "sm:max-h-[85dvh] sm:rounded-3xl sm:pb-6",
+          "sm:max-h-[85dvh] sm:rounded-2xl sm:pb-6",
           className,
         )}
         onClick={(e) => e.stopPropagation()}
@@ -124,7 +124,7 @@ export function Sheet({
             <button
               onClick={onClose}
               aria-label="Close"
-              className="flex size-11 items-center justify-center rounded-xl border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
+              className="flex size-11 items-center justify-center rounded-lg border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
             >
               <X className="size-4" />
             </button>

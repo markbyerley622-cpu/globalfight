@@ -165,14 +165,16 @@ export default function AccountPage() {
       />
       <div className="container-cr grid gap-8 py-10 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="card-surface p-5 sm:p-8">
-          <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-ink-700 bg-ink-950/50 p-1">
+          <div className="mb-6 grid grid-cols-2 gap-1 rounded-lg border border-ink-700 bg-ink-950/50 p-1">
             {(["signup", "signin"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => { setMode(m); setError(null); setSuccess(null); }}
                 className={cn(
-                  "rounded-lg py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors",
+                  // 4px = the track's 8px minus its 4px padding, so the two
+                  // curves stay concentric instead of the inner one bulging.
+                  "rounded-sm py-2.5 font-display text-xs font-bold uppercase tracking-wide transition-colors",
                   mode === m ? "bg-blood-500 text-white" : "text-mist hover:text-chalk",
                 )}
               >
@@ -198,7 +200,7 @@ export default function AccountPage() {
                 <div>
                   <span className="mb-2 flex items-baseline justify-between gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wide text-fog">I&rsquo;m joining as…</span>
-                    <span className="text-[0.6rem] text-fog">change anytime</span>
+                    <span className="text-3xs text-fog">change anytime</span>
                   </span>
                   {/* One compact grid — every role visible without scrolling through
                       four stacked groups. Selected card lifts + shows a check. */}
@@ -220,10 +222,10 @@ export default function AccountPage() {
                           )}
                         >
                           <span className="flex w-full items-center justify-between gap-1">
-                            <span className="font-display text-[0.72rem] font-bold leading-tight text-chalk">{r.label}</span>
+                            <span className="font-display text-2xs font-bold leading-tight text-chalk">{r.label}</span>
                             {on && <Check className="size-3.5 shrink-0 text-blood-400" />}
                           </span>
-                          <span className="line-clamp-1 text-[0.58rem] leading-tight text-fog">{r.blurb}</span>
+                          <span className="line-clamp-1 text-4xs leading-tight text-fog">{r.blurb}</span>
                         </button>
                       );
                     })}
@@ -425,7 +427,7 @@ function Field({
         />
       </div>
       {hint && (
-        <span className={cn("mt-1 block text-[0.7rem]", invalid ? "text-blood-300" : "text-fog")}>
+        <span className={cn("mt-1 block text-2xs", invalid ? "text-blood-300" : "text-fog")}>
           {hint}
         </span>
       )}

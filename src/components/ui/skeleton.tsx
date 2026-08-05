@@ -88,8 +88,8 @@ export function RowListSkeleton({ rows = 8, className }: { rows?: number; classN
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 rounded-xl border border-ink-800 bg-ink-900/60 p-3">
-          <Skeleton className="size-10 shrink-0 rounded-xl" />
+        <div key={i} className="flex items-center gap-3 rounded-card border border-ink-800 bg-ink-900/60 p-3">
+          <Skeleton className="size-10 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-3.5 w-2/5" />
             <Skeleton className="h-3 w-3/5" />

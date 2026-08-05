@@ -223,7 +223,7 @@ export function PredictionsMarkets() {
               </>
             )}
 
-            <p className="mt-8 text-center text-[0.65rem] text-fog">
+            <p className="mt-8 text-center text-3xs text-fog">
               Free to play. Live odds are sourced from third-party markets for analytical use — no wagering is facilitated.
             </p>
           </>
@@ -237,9 +237,9 @@ export function PredictionsMarkets() {
 function SegTabs<T extends string>({ tabs, value, onChange }: { tabs: readonly T[]; value: T; onChange: (t: T) => void }) {
   const idx = tabs.indexOf(value);
   return (
-    <div className="relative mt-4 flex rounded-xl border border-ink-800 bg-ink-900 p-1">
+    <div className="relative mt-4 flex rounded-lg border border-ink-800 bg-ink-900 p-1">
       <div
-        className="seg-ind absolute bottom-1 top-1 left-1 rounded-lg bg-ink-800 shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
+        className="seg-ind absolute bottom-1 top-1 left-1 rounded-sm bg-ink-800 shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
         style={{ width: `calc((100% - 0.5rem) / ${tabs.length})`, transform: `translateX(calc(${idx} * 100%))` }}
       />
       {tabs.map((tb) => (
@@ -247,7 +247,8 @@ function SegTabs<T extends string>({ tabs, value, onChange }: { tabs: readonly T
           key={tb}
           onClick={() => onChange(tb)}
           className={cn(
-            "seg relative z-10 min-h-11 flex-1 rounded-lg py-2 font-display text-[0.72rem] font-bold uppercase tracking-wide",
+            // 4px — matches the sliding indicator, both concentric with the p-1 track.
+            "seg relative z-10 min-h-11 flex-1 rounded-sm py-2 font-display text-2xs font-bold uppercase tracking-wide",
             value === tb ? "text-chalk" : "text-fog hover:text-mist",
           )}
         >
@@ -262,10 +263,10 @@ function SectionHeader({ eyebrow, title, meta }: { eyebrow: string; title: strin
   return (
     <div className="mb-3 mt-9 flex items-end justify-between gap-3">
       <div>
-        <div className="font-display text-[0.68rem] font-bold uppercase tracking-[0.2em] text-blood-400">{eyebrow}</div>
+        <div className="font-display text-2xs font-bold uppercase tracking-[0.2em] text-blood-400">{eyebrow}</div>
         <h2 className="mt-0.5 font-display text-xl font-bold uppercase tracking-tight text-chalk">{title}</h2>
       </div>
-      {meta && <span className="shrink-0 text-[0.62rem] font-semibold uppercase tracking-wide text-fog">{meta}</span>}
+      {meta && <span className="shrink-0 text-3xs font-semibold uppercase tracking-wide text-fog">{meta}</span>}
     </div>
   );
 }
@@ -275,7 +276,7 @@ function Pill({ label, active, onClick, subtle }: { label: string; active: boole
     <button
       onClick={onClick}
       className={cn(
-        "tap shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-[0.75rem] font-semibold",
+        "tap shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-semibold",
         active
           ? subtle ? "border-blood-500/60 bg-blood-500/15 text-blood-300" : "border-chalk bg-chalk text-ink-950"
           : "border-ink-700 bg-ink-800 text-mist hover:border-ink-600 hover:text-chalk",
@@ -288,7 +289,7 @@ function Pill({ label, active, onClick, subtle }: { label: string; active: boole
 
 function EmptyNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-900/50 px-6 py-10 text-center text-sm text-fog">
+    <div className="rounded-card border border-dashed border-ink-700 bg-ink-900/50 px-6 py-10 text-center text-sm text-fog">
       {children}
     </div>
   );
@@ -298,8 +299,8 @@ function CardSkeletonGrid() {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="glass h-52 rounded-2xl">
-          <div className="cr-shimmer h-full w-full rounded-2xl opacity-40" />
+        <div key={i} className="glass h-52 rounded-card">
+          <div className="cr-shimmer h-full w-full rounded-card opacity-40" />
         </div>
       ))}
     </div>
@@ -315,7 +316,7 @@ function LeaderboardPanel({ signedIn, name }: { signedIn: boolean; name: string 
   ];
   return (
     <div className="rise mt-6">
-      <div className="glass overflow-hidden rounded-2xl p-6 text-center">
+      <div className="glass overflow-hidden rounded-card p-6 text-center">
         <div className="mx-auto grid size-12 place-items-center rounded-full bg-gold-500/15 text-2xl">🏆</div>
         <h3 className="mt-3 font-display text-lg font-bold uppercase tracking-tight text-chalk">The Board Is Warming Up</h3>
         <p className="mx-auto mt-1.5 max-w-sm text-sm text-mist">
@@ -323,7 +324,7 @@ function LeaderboardPanel({ signedIn, name }: { signedIn: boolean; name: string 
         </p>
         <div className="mx-auto mt-4 flex max-w-md flex-wrap justify-center gap-2">
           {["Most Accurate", "Longest Streak", "This Month", "All Time"].map((c) => (
-            <span key={c} className="rounded-full border border-ink-700 bg-ink-800 px-3 py-1 text-[0.68rem] font-semibold text-mist">{c}</span>
+            <span key={c} className="rounded-full border border-ink-700 bg-ink-800 px-3 py-1 text-2xs font-semibold text-mist">{c}</span>
           ))}
         </div>
       </div>
@@ -331,7 +332,7 @@ function LeaderboardPanel({ signedIn, name }: { signedIn: boolean; name: string 
       {/* Locked preview rows — shape without fabricated data */}
       <div className="mt-3 space-y-2">
         {ranks.map((r, i) => (
-          <div key={i} className="glass flex items-center gap-3 rounded-xl px-4 py-3">
+          <div key={i} className="glass flex items-center gap-3 rounded-card px-4 py-3">
             <span className={cn("w-6 text-center text-lg", r.tone)}>{r.medal}</span>
             <div className="grid size-9 place-items-center rounded-full border border-ink-700 bg-ink-800 font-display text-xs font-bold text-fog">
               {i === 0 && signedIn ? (name?.[0]?.toUpperCase() ?? "1") : "—"}
@@ -340,9 +341,9 @@ function LeaderboardPanel({ signedIn, name }: { signedIn: boolean; name: string 
               <div className="font-display text-sm font-bold text-chalk">
                 {i === 0 && signedIn ? name ?? "You" : "Open spot"}
               </div>
-              <div className="text-[0.66rem] text-fog">Accuracy · Streak · Score</div>
+              <div className="text-2xs text-fog">Accuracy · Streak · Score</div>
             </div>
-            <span className="rounded-md bg-ink-800 px-2 py-1 text-[0.66rem] font-bold text-fog">—</span>
+            <span className="rounded-md bg-ink-800 px-2 py-1 text-2xs font-bold text-fog">—</span>
           </div>
         ))}
       </div>
@@ -358,7 +359,7 @@ function MyStatsPanel({ signedIn, community }: { signedIn: boolean; community: C
   if (!signedIn) {
     return (
       <div className="rise mt-6">
-        <div className="glass rounded-2xl p-8 text-center">
+        <div className="glass rounded-card p-8 text-center">
           <div className="mx-auto grid size-12 place-items-center rounded-full bg-blood-500/15 text-2xl">📊</div>
           <h3 className="mt-3 font-display text-lg font-bold uppercase tracking-tight text-chalk">Track Your Record</h3>
           <p className="mx-auto mt-1.5 max-w-xs text-sm text-mist">
@@ -381,17 +382,17 @@ function MyStatsPanel({ signedIn, community }: { signedIn: boolean; community: C
         <StatTile label="Streak" value="0" hint="Best 0" />
       </div>
 
-      <div className="glass rounded-2xl p-4">
-        <div className="font-display text-[0.68rem] font-bold uppercase tracking-[0.2em] text-blood-400">Recent Picks</div>
+      <div className="glass rounded-card p-4">
+        <div className="font-display text-2xs font-bold uppercase tracking-[0.2em] text-blood-400">Recent Picks</div>
         {myPicks.length === 0 ? (
           <p className="mt-2 text-sm text-mist">No picks yet. Head to <span className="text-chalk">Markets → Fight Pulse</span> and make your first call.</p>
         ) : (
           <ul className="mt-3 space-y-2.5">
             {myPicks.slice(0, 8).map((m) => (
               <li key={m.id} className="flex items-center gap-3">
-                <span className="rounded-md bg-ink-800 px-2 py-0.5 text-[0.58rem] font-bold uppercase text-mist">{m.sport}</span>
+                <span className="rounded-md bg-ink-800 px-2 py-0.5 text-4xs font-bold uppercase text-mist">{m.sport}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-chalk">{m.title}</span>
-                <span className="shrink-0 text-[0.7rem] font-semibold text-up">
+                <span className="shrink-0 text-2xs font-semibold text-up">
                   {m.options.find((o) => o.id === m.myVote)?.label}
                 </span>
               </li>
@@ -401,11 +402,11 @@ function MyStatsPanel({ signedIn, community }: { signedIn: boolean; community: C
       </div>
 
       {sportsFollowed.size > 0 && (
-        <div className="glass rounded-2xl p-4">
-          <div className="font-display text-[0.68rem] font-bold uppercase tracking-[0.2em] text-blood-400">Favourite Sports</div>
+        <div className="glass rounded-card p-4">
+          <div className="font-display text-2xs font-bold uppercase tracking-[0.2em] text-blood-400">Favourite Sports</div>
           <div className="mt-2.5 flex flex-wrap gap-2">
             {[...sportsFollowed].map((s) => (
-              <span key={s} className="rounded-full border border-ink-700 bg-ink-800 px-3 py-1 text-[0.7rem] font-semibold text-mist">
+              <span key={s} className="rounded-full border border-ink-700 bg-ink-800 px-3 py-1 text-2xs font-semibold text-mist">
                 {s} · {myPicks.filter((m) => m.sport === s).length}
               </span>
             ))}
@@ -418,10 +419,10 @@ function MyStatsPanel({ signedIn, community }: { signedIn: boolean; community: C
 
 function StatTile({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: "up" }) {
   return (
-    <div className="glass rounded-2xl p-3.5">
+    <div className="glass rounded-card p-3.5">
       <div className={cn("font-display text-2xl font-bold leading-none", accent === "up" ? "text-up" : "text-chalk")}>{value}</div>
-      <div className="mt-1 text-[0.66rem] font-semibold uppercase tracking-wide text-mist">{label}</div>
-      {hint && <div className="mt-0.5 text-[0.6rem] text-fog">{hint}</div>}
+      <div className="mt-1 text-2xs font-semibold uppercase tracking-wide text-mist">{label}</div>
+      {hint && <div className="mt-0.5 text-3xs text-fog">{hint}</div>}
     </div>
   );
 }

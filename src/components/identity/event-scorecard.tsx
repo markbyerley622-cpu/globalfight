@@ -32,7 +32,7 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-6 text-[0.6rem] font-black uppercase tracking-[0.2em] text-fog">
+      <div className="flex items-center justify-between px-6 pt-6 text-3xs font-black uppercase tracking-[0.2em] text-fog">
         <span>{card.event.promotion ?? "Scorecard"}</span>
         <span>{card.event.name}</span>
       </div>
@@ -54,7 +54,7 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
       {card.badges.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2 px-6">
           {card.badges.map((b) => (
-            <span key={b.label} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-[0.72rem] font-bold", BADGE_TIER_CLASS[b.tier])}>
+            <span key={b.label} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-2xs font-bold", BADGE_TIER_CLASS[b.tier])}>
               {b.label}
             </span>
           ))}
@@ -62,7 +62,7 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
       )}
 
       {/* Impact — what the night moved */}
-      <div className="mx-6 mt-4 flex items-center gap-2 rounded-2xl border border-gold-500/25 bg-gold-500/[0.06] px-4 py-3">
+      <div className="mx-6 mt-4 flex items-center gap-2 rounded-card border border-gold-500/25 bg-gold-500/[0.06] px-4 py-3">
         {card.repGained > 0 && (
           <span className="inline-flex items-center gap-1.5 font-display text-lg font-black text-chalk">
             <TrendingUp className="size-4 text-gold-400" />+{card.repGained}
@@ -83,7 +83,7 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
 
       {/* The story — per-bout ticks. Truth: which fighter they called, and whether
           it landed. No round/finish narrative that the data can't support. */}
-      <ul className="mx-6 mt-4 divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800">
+      <ul className="mx-6 mt-4 divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800">
         {card.bouts.map((b, i) => (
           <li key={i} className="flex items-center gap-3 bg-ink-900/60 px-3.5 py-2.5">
             <span className={cn("grid size-5 shrink-0 place-items-center rounded-full", b.correct ? "bg-volt-400 text-ink-950" : "bg-ink-700 text-fog")}>
@@ -93,7 +93,7 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
               <span className={cn("font-bold", b.correct ? "text-chalk" : "text-fog")}>{b.fighterCalled}</span>
               <span className="text-fog"> vs {b.opponent}</span>
             </span>
-            {b.main && <span className="shrink-0 text-[0.58rem] font-bold uppercase tracking-wider text-gold-400">Main</span>}
+            {b.main && <span className="shrink-0 text-4xs font-bold uppercase tracking-wider text-gold-400">Main</span>}
           </li>
         ))}
       </ul>
@@ -104,14 +104,14 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
           {card.user.image ? (
             <Image src={card.user.image} alt="" width={32} height={32} className="size-full object-cover" unoptimized />
           ) : (
-            <span className="flex size-full items-center justify-center bg-gradient-to-br from-blood-500 to-blood-800 text-[0.7rem] font-black text-white">{initials(card.user.name)}</span>
+            <span className="flex size-full items-center justify-center bg-gradient-to-br from-blood-500 to-blood-800 text-2xs font-black text-white">{initials(card.user.name)}</span>
           )}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold text-chalk">{card.user.name}</span>
-          <span className="block truncate text-[0.7rem] text-fog">{card.user.reputation.toLocaleString()} reputation{card.user.rank ? ` · #${card.user.rank}` : ""}</span>
+          <span className="block truncate text-2xs text-fog">{card.user.reputation.toLocaleString()} reputation{card.user.rank ? ` · #${card.user.rank}` : ""}</span>
         </span>
-        <span className="shrink-0 font-display text-[0.6rem] font-black uppercase tracking-[0.22em] text-fog">Combat Reviews</span>
+        <span className="shrink-0 font-display text-3xs font-black uppercase tracking-[0.22em] text-fog">Combat Reviews</span>
       </Link>
     </article>
   );

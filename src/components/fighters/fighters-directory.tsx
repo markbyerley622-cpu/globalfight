@@ -1,4 +1,5 @@
 "use client";
+import { ButtonLink } from "@/components/ui/button";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -135,7 +136,7 @@ export function FightersDirectory() {
       <div className="hidden overflow-hidden rounded-card border border-ink-700 lg:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink-700 bg-ink-900/60 text-left text-[0.65rem] uppercase tracking-wider text-fog">
+            <tr className="border-b border-ink-700 bg-ink-900/60 text-left text-3xs uppercase tracking-wider text-fog">
               <th className="px-4 py-3 font-semibold">{t("Name")}</th>
               <th className="px-4 py-3 font-semibold">{t("Sport")}</th>
               <th className="px-4 py-3 font-semibold">{t("Record")}</th>
@@ -246,9 +247,9 @@ function EmptyState({ t }: { t: (k: string) => string }) {
     <div className="p-10 text-center">
       <p className="font-display font-semibold text-chalk">{t("No fighters found")}</p>
       <p className="mt-1 text-sm text-fog">{t("Try adjusting your filters, or add your fighter profile.")}</p>
-      <Link href="/account" className="mt-4 inline-block rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">
+      <ButtonLink href="/account" size="sm" className="mt-4 px-4">
         {t("Add your profile")}
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

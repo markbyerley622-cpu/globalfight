@@ -62,7 +62,7 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
       >
         <header className="flex items-center justify-between border-b border-ink-800 px-4 py-2.5">
           <h2 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">History</h2>
-          <button onClick={onClose} className="rounded p-1 text-fog hover:text-chalk" aria-label="Close"><X className="size-4" /></button>
+          <button onClick={onClose} className="cr-touch-target rounded p-1 text-fog hover:text-chalk" aria-label="Close"><X className="size-4" /></button>
         </header>
 
         <div className="flex-1 overflow-y-auto">
@@ -80,8 +80,8 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
                 return (
                   <li key={e.id} className="px-4 py-3">
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-mono text-[0.7rem] text-blood-300">{e.action}</span>
-                      <span className="text-[0.68rem] text-fog">{timeAgo(e.at)}</span>
+                      <span className="font-mono text-2xs text-blood-300">{e.action}</span>
+                      <span className="text-2xs text-fog">{timeAgo(e.at)}</span>
                     </div>
                     <div className="mt-0.5 flex items-center gap-2">
                       <p className="text-xs text-mist">{e.actor}</p>
@@ -89,7 +89,7 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
                         <button
                           onClick={() => undo(e.id)}
                           disabled={undoing === e.id}
-                          className="inline-flex items-center gap-1 rounded border border-ink-700 px-1.5 py-0.5 text-[0.65rem] font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300 disabled:opacity-40"
+                          className="inline-flex items-center gap-1 rounded border border-ink-700 px-1.5 py-0.5 text-3xs font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300 disabled:opacity-40"
                         >
                           {undoing === e.id ? <Loader2 className="size-2.5 animate-spin" /> : <Undo2 className="size-2.5" />} Undo
                         </button>
@@ -98,7 +98,7 @@ export function AuditDrawer({ eventId, onClose }: { eventId: string; onClose: ()
                     {changes.length > 0 && (
                       <ul className="mt-1.5 space-y-1">
                         {changes.map((c, i) => (
-                          <li key={`${c.field}-${i}`} className="rounded bg-ink-900/60 px-2 py-1 text-[0.7rem]">
+                          <li key={`${c.field}-${i}`} className="rounded bg-ink-900/60 px-2 py-1 text-2xs">
                             <span className="font-mono text-fog">{c.field}</span>
                             <span className="mx-1.5 text-ink-600">·</span>
                             <span className="text-fog line-through">{show(c.from)}</span>

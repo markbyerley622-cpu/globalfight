@@ -50,7 +50,7 @@ export function VideoCard({ video, className }: { video: VideoCardData; classNam
   const thumb = thumbnailUrl(video.id);
 
   return (
-    <div className={cn("overflow-hidden rounded-xl border border-ink-700 bg-ink-900/60", className)}>
+    <div className={cn("overflow-hidden rounded-card border border-ink-700 bg-ink-900/60", className)}>
       {playing && src ? (
         <div className="aspect-video bg-black">
           <iframe
@@ -86,7 +86,7 @@ export function VideoCard({ video, className }: { video: VideoCardData; classNam
               </span>
             </span>
             {video.promotionName && (
-              <span className="absolute left-2 top-2 rounded-md bg-ink-950/80 px-1.5 py-0.5 font-display text-[0.6rem] font-bold uppercase tracking-wide text-chalk backdrop-blur">
+              <span className="absolute left-2 top-2 rounded-md bg-ink-950/80 px-1.5 py-0.5 font-display text-3xs font-bold uppercase tracking-wide text-chalk backdrop-blur">
                 {video.promotionName}
               </span>
             )}
@@ -96,14 +96,14 @@ export function VideoCard({ video, className }: { video: VideoCardData; classNam
 
       <div className="p-3">
         {video.reason && (
-          <p className="mb-1 font-display text-[0.62rem] font-bold uppercase tracking-widest text-blood-400">
+          <p className="mb-1 font-display text-3xs font-bold uppercase tracking-widest text-blood-400">
             {video.reason}
           </p>
         )}
         <p className="line-clamp-2 font-display text-sm font-bold leading-snug text-chalk">
           {cleanTitle(video.title)}
         </p>
-        <p className="mt-0.5 text-[0.7rem] text-fog">
+        <p className="mt-0.5 text-2xs text-fog">
           {video.channel}
           {video.publishedAt ? ` · ${timeAgo(new Date(video.publishedAt))}` : ""}
         </p>

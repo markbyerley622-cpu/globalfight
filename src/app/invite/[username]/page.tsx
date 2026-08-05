@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Swords, TrendingUp, Trophy, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { publicDisplayName, initialsFor } from "@/lib/display-name";
 import { SITE } from "@/lib/config";
+import { ButtonLink } from "@/components/ui/button";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The invite landing page.
@@ -68,13 +68,13 @@ export default async function InvitePage({ params }: { params: Promise<{ usernam
 
   return (
     <div className="container-cr max-w-2xl py-12 md:py-16">
-      <div className="rounded-3xl border border-ink-700 bg-gradient-to-b from-blood-500/10 to-transparent p-6 md:p-10">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-blood-400">You&apos;re invited</p>
+      <div className="rounded-card border border-ink-700 bg-gradient-to-b from-blood-500/10 to-transparent p-6 md:p-10">
+        <p className="text-2xs font-semibold uppercase tracking-[0.22em] text-blood-400">You&apos;re invited</p>
 
         <div className="mt-5 flex items-center gap-4">
           <span
             aria-hidden
-            className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-ink-700 bg-ink-850 font-display text-xl font-bold text-chalk"
+            className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-squircle border border-ink-700 bg-ink-850 font-display text-xl font-bold text-chalk"
           >
             {initialsFor(u)}
           </span>
@@ -96,10 +96,10 @@ export default async function InvitePage({ params }: { params: Promise<{ usernam
               { label: "Accuracy", value: accuracy !== null ? `${accuracy}%` : "—", icon: TrendingUp },
               { label: "Best streak", value: `${u.bestPickStreak}`, icon: Swords },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl border border-ink-800 bg-ink-900/60 px-3 py-2.5 text-center">
+              <div key={s.label} className="rounded-card border border-ink-800 bg-ink-900/60 px-3 py-2.5 text-center">
                 <s.icon aria-hidden className="mx-auto size-3.5 text-fog" />
                 <dd className="mt-1 font-display text-lg font-bold tabular-nums text-chalk">{s.value}</dd>
-                <dt className="text-[0.6rem] uppercase tracking-wide text-fog">{s.label}</dt>
+                <dt className="text-3xs uppercase tracking-wide text-fog">{s.label}</dt>
               </div>
             ))}
           </dl>
@@ -109,18 +109,12 @@ export default async function InvitePage({ params }: { params: Promise<{ usernam
           {/* `next` carries them into the app rather than dumping them on a dashboard
               after signup, and it names the person who invited them so the first
               thing they can do is follow them back. */}
-          <Link
-            href={`/account?next=/u/${u.username}`}
-            className="tap inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blood-500 px-5 py-3.5 font-display text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-blood-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
-          >
+          <ButtonLink href={`/account?next=/u/${u.username}`} size="lg" className="flex-1 text-sm">
             Create your account
-          </Link>
-          <Link
-            href={`/u/${u.username}`}
-            className="tap inline-flex items-center justify-center gap-2 rounded-xl border border-ink-700 px-5 py-3.5 text-sm font-semibold text-mist transition-colors hover:border-ink-600 hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
-          >
+          </ButtonLink>
+          <ButtonLink href={`/u/${u.username}`} variant="outline" size="lg" className="text-sm">
             <Users aria-hidden className="size-4" /> See their record
-          </Link>
+          </ButtonLink>
         </div>
       </div>
 
@@ -130,7 +124,7 @@ export default async function InvitePage({ params }: { params: Promise<{ usernam
           { t: "A real record", d: "Every call is graded. Your accuracy is public." },
           { t: "Settle it", d: "Challenge anyone. The fight is the referee." },
         ].map((f) => (
-          <div key={f.t} className="rounded-xl border border-ink-800 bg-ink-900/40 p-4">
+          <div key={f.t} className="rounded-card border border-ink-800 bg-ink-900/40 p-4">
             <p className="font-display text-sm font-bold uppercase text-chalk">{f.t}</p>
             <p className="mt-1 text-xs leading-relaxed text-fog">{f.d}</p>
           </div>

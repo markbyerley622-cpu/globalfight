@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { CommunityMarketView } from "@/features/predictions/community/types";
-import { Chip, ConsensusBar, Portrait, fmtNum, postVote, voteShares } from "@/components/predictions/shared";
+import { Badge } from "@/components/ui/badge";
+import { ConsensusBar, Portrait, fmtNum, postVote, voteShares } from "@/components/predictions/shared";
 
 /** Split a "Fighter A vs Fighter B" title into its two sides. */
 function sides(title: string): [string, string] | null {
@@ -47,13 +48,13 @@ export function DreamFightCard({
   }
 
   return (
-    <article className="glass pred-card overflow-hidden rounded-2xl">
+    <article className="glass pred-card overflow-hidden rounded-card">
       {/* Gold-tinted event header */}
       <div className="relative bg-gradient-to-b from-gold-500/10 to-transparent px-4 pt-3">
         <div className="flex items-center gap-1.5">
-          <Chip tone="neutral">{market.sport}</Chip>
-          {market.subtitle && <span className="truncate text-[0.62rem] font-semibold uppercase tracking-wide text-fog">{market.subtitle}</span>}
-          {market.statusLabel && <Chip tone="gold" className="ml-auto">{market.statusLabel}</Chip>}
+          <Badge tone="neutral" size="sm">{market.sport}</Badge>
+          {market.subtitle && <span className="truncate text-3xs font-semibold uppercase tracking-wide text-fog">{market.subtitle}</span>}
+          {market.statusLabel && <Badge tone="gold" size="sm" className="ml-auto">{market.statusLabel}</Badge>}
         </div>
 
         {/* Versus */}
@@ -77,13 +78,13 @@ export function DreamFightCard({
       </div>
 
       <div className="px-4 pb-4 pt-1">
-        {market.description && <p className="mt-2 text-[0.8rem] leading-relaxed text-mist">{market.description}</p>}
+        {market.description && <p className="mt-2 text-xs leading-relaxed text-mist">{market.description}</p>}
 
         {/* Momentum meter */}
         <div className="mt-3">
           <ConsensusBar leftLabel="Will happen" leftPct={willPct} rightLabel="Won't happen" rightPct={100 - willPct} />
         </div>
-        <p className="mt-2 text-[0.72rem] font-medium text-mist">
+        <p className="mt-2 text-2xs font-medium text-mist">
           {market.voteCount > 0 ? (
             <>
               <span className="text-chalk">{willPct}%</span> of {fmtNum(market.voteCount)} fan{market.voteCount === 1 ? "" : "s"} think this gets made
@@ -106,7 +107,7 @@ export function DreamFightCard({
                 onClick={() => vote(o.id)}
                 aria-pressed={picked}
                 className={cn(
-                  "tap min-h-11 rounded-xl border py-2.5 text-[0.72rem] font-bold uppercase tracking-wide",
+                  "tap min-h-11 rounded-lg border py-2.5 text-2xs font-bold uppercase tracking-wide",
                   picked
                     ? yes ? "border-up bg-up/15 text-up" : "border-blood-500 bg-blood-500/15 text-blood-300"
                     : disabled ? "border-ink-800 bg-ink-850 text-fog"
@@ -121,17 +122,17 @@ export function DreamFightCard({
         </div>
 
         <div className="mt-3 flex items-center justify-between border-t border-ink-800/70 pt-2.5">
-          <span className="text-[0.66rem] font-medium text-fog">
+          <span className="text-2xs font-medium text-fog">
             {fmtNum(market.voteCount)} vote{market.voteCount === 1 ? "" : "s"}
           </span>
-          <Link href="/community" className="tap text-[0.68rem] font-semibold text-mist hover:text-chalk">
+          <Link href="/community" className="tap text-2xs font-semibold text-mist hover:text-chalk">
             Discuss →
           </Link>
         </div>
 
-        {error && <p className="mt-2 text-center text-[0.68rem] font-semibold text-blood-300">{error}</p>}
+        {error && <p className="mt-2 text-center text-2xs font-semibold text-blood-300">{error}</p>}
         {!canVote && (
-          <Link href="/account" className="mt-2 block text-center text-[0.68rem] font-semibold text-blood-300">
+          <Link href="/account" className="mt-2 block text-center text-2xs font-semibold text-blood-300">
             Sign in to vote
           </Link>
         )}

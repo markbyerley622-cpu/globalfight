@@ -273,7 +273,7 @@ export function MapExplorer({ data }: { data: MapData }) {
           {/* Legend */}
           <div className="pointer-events-none absolute left-2 top-3 z-[430] flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-ink-700/70 bg-ink-950/70 px-2.5 py-1.5 backdrop-blur-md">
             {MAP_LAYERS.map((l) => (
-              <span key={l.id} className="flex items-center gap-1 text-[0.58rem] font-bold uppercase tracking-wider text-mist">
+              <span key={l.id} className="flex items-center gap-1 text-4xs font-bold uppercase tracking-wider text-mist">
                 <span
                   className="size-1.5 rounded-full"
                   style={{
@@ -288,7 +288,7 @@ export function MapExplorer({ data }: { data: MapData }) {
           </div>
 
           {locateError && (
-            <p className="absolute inset-x-3 top-14 z-[440] mx-auto max-w-xs rounded-lg border border-ink-700 bg-ink-950/90 px-3 py-2 text-center text-[0.7rem] text-mist backdrop-blur">
+            <p className="absolute inset-x-3 top-14 z-[440] mx-auto max-w-xs rounded-lg border border-ink-700 bg-ink-950/90 px-3 py-2 text-center text-2xs text-mist backdrop-blur">
               {locateError}
             </p>
           )}
@@ -323,7 +323,7 @@ export function MapExplorer({ data }: { data: MapData }) {
                 <PinDetail pin={pin} distanceKm={distanceTo(pin)} signedIn={data.signedIn} />
               ) : (
                 <div className="flex flex-col gap-1.5">
-                  <p className="mb-1 flex items-center gap-1.5 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">
+                  <p className="mb-1 flex items-center gap-1.5 font-display text-2xs font-bold uppercase tracking-wider text-fog">
                     <Layers className="size-3.5 text-blood-400" /> Everything here
                   </p>
                   {group.pins.map((p) => (
@@ -352,8 +352,8 @@ export function MapExplorer({ data }: { data: MapData }) {
                 )}
 
                 {data.unmapped.length > 0 && (filter === "all" || data.unmapped.some((u) => u.layer === filter)) && (
-                  <details className="mt-2 rounded-xl border border-ink-800 bg-ink-900/50 px-3 py-2.5">
-                    <summary className="flex cursor-pointer list-none items-center gap-2 text-[0.72rem] font-semibold text-mist">
+                  <details className="mt-2 rounded-lg border border-ink-800 bg-ink-900/50 px-3 py-2.5">
+                    <summary className="flex cursor-pointer list-none items-center gap-2 text-2xs font-semibold text-mist">
                       <MapPinOff className="size-3.5 text-fog" />
                       {data.unmapped.length} not yet mapped
                     </summary>
@@ -364,13 +364,13 @@ export function MapExplorer({ data }: { data: MapData }) {
                         .map((u) => (
                           <li key={u.id}>
                             <Link href={u.href ?? "#"} className="block rounded-lg px-2 py-1.5 hover:bg-ink-850">
-                              <span className="block truncate text-[0.78rem] font-semibold text-chalk">{u.name}</span>
-                              <span className="block truncate text-[0.68rem] text-fog">{u.place ?? u.subtitle}</span>
+                              <span className="block truncate text-xs font-semibold text-chalk">{u.name}</span>
+                              <span className="block truncate text-2xs text-fog">{u.place ?? u.subtitle}</span>
                             </Link>
                           </li>
                         ))}
                     </ul>
-                    <p className="mt-2 text-[0.66rem] leading-relaxed text-fog">
+                    <p className="mt-2 text-2xs leading-relaxed text-fog">
                       We only pin a place when we can locate it. These have a city or country we don&apos;t recognise yet.
                     </p>
                   </details>
@@ -410,7 +410,7 @@ function SheetDiscoveryHeader({
           {id === "nearby" && !hasLocation ? "Soonest" : label}
         </Chip>
       ))}
-      <span className="ml-auto shrink-0 pl-2 text-[0.66rem] uppercase tracking-wider text-fog">{count}</span>
+      <span className="ml-auto shrink-0 pl-2 text-2xs uppercase tracking-wider text-fog">{count}</span>
     </ChipRow>
   );
 }
@@ -425,24 +425,24 @@ function SheetSelectionHeader({
           type="button"
           onClick={onBack}
           aria-label="Back to everything here"
-          className="tap inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-[0.66rem] font-bold uppercase tracking-wide text-mist hover:text-chalk"
+          className="tap inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-2xs font-bold uppercase tracking-wide text-mist hover:text-chalk"
         >
           <ChevronLeft className="size-3.5" /> Back
         </button>
       )}
       <span className="min-w-0 flex-1">
         {title && (
-          <span className="block truncate font-display text-[0.82rem] font-bold uppercase tracking-wide text-chalk">
+          <span className="block truncate font-display text-sm font-bold uppercase tracking-wide text-chalk">
             {title}
           </span>
         )}
-        {subtitle && <span className="block truncate text-[0.68rem] text-fog">{subtitle}</span>}
+        {subtitle && <span className="block truncate text-2xs text-fog">{subtitle}</span>}
       </span>
       <button
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="tap grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-850 text-mist hover:text-chalk"
+        className="tap cr-touch-target grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-850 text-mist hover:text-chalk"
       >
         <X className="size-3.5" />
       </button>
@@ -462,7 +462,9 @@ function ControlButton({
       aria-label={label}
       title={label}
       className={cn(
-        "tap grid size-9 place-items-center rounded-xl border backdrop-blur-md transition-colors",
+        // Stacked in a `flex-col gap-2` cluster: 36px box + 8px gap = a 44px
+        // pitch, so the expanded hit zones tile exactly and never overlap.
+        "tap cr-touch-target grid size-9 place-items-center rounded-lg border backdrop-blur-md transition-colors",
         accent
           ? "border-blood-500/60 bg-blood-500/20 text-blood-300"
           : "border-ink-700/80 bg-ink-950/75 text-mist hover:border-ink-600 hover:text-chalk",
@@ -479,14 +481,14 @@ function SignInNote() {
   return (
     <Link
       href="/account"
-      className="mt-2 flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 px-3.5 py-3 transition-colors hover:border-blood-500/40"
+      className="mt-2 flex items-center gap-3 rounded-card border border-ink-700 bg-ink-900/60 px-3.5 py-3 transition-colors hover:border-blood-500/40"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blood-500/12 text-blood-300">
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-blood-500/12 text-blood-300">
         <Lock className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[0.8rem] font-bold text-chalk">You&apos;re seeing the public map</span>
-        <span className="block text-[0.7rem] leading-relaxed text-fog">
+        <span className="block font-display text-xs font-bold text-chalk">You&apos;re seeing the public map</span>
+        <span className="block text-2xs leading-relaxed text-fog">
           Sign in to see people who share their location with friends or gym mates — and to put yourself on it.
         </span>
       </span>

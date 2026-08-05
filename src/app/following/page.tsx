@@ -17,6 +17,7 @@ import { VideoCardProvider } from "@/components/feed/video-card";
 import { AlertsProvider } from "@/components/feed/alerts-toggle";
 import { FeedCard } from "@/components/feed/feed-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Following",
@@ -208,7 +209,7 @@ function FeedBand({
         <h2 className="inline-flex items-center gap-1.5 font-display text-sm font-black uppercase tracking-wide text-chalk">
           <Icon className="size-4 text-blood-400" /> {title}
         </h2>
-        {subtitle && <span className="shrink-0 text-[0.7rem] text-fog">{subtitle}</span>}
+        {subtitle && <span className="shrink-0 text-2xs text-fog">{subtitle}</span>}
       </div>
       <ol className={cn("grid gap-4", compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
         {items.map((item) => (
@@ -252,7 +253,7 @@ function RivalsTab({ rivals }: { rivals: Rival[] }) {
               <span className="block truncate font-display text-sm font-bold text-chalk">
                 {publicDisplayName(r)}
               </span>
-              <span className="mt-0.5 flex items-center gap-2 text-[0.7rem] text-fog">
+              <span className="mt-0.5 flex items-center gap-2 text-2xs text-fog">
                 <span className="tabular-nums">
                   <span className="text-up">{r.wins}W</span> · <span className="text-down">{r.losses}L</span>
                   {r.draws > 0 && <> · {r.draws}D</>}
@@ -264,7 +265,7 @@ function RivalsTab({ rivals }: { rivals: Rival[] }) {
             {r.streak !== 0 && (
               <span
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-display text-[0.66rem] font-bold uppercase tracking-wide",
+                  "inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-display text-2xs font-bold uppercase tracking-wide",
                   r.streak > 0 ? "bg-up/15 text-up" : "bg-down/15 text-down",
                 )}
               >
@@ -274,7 +275,7 @@ function RivalsTab({ rivals }: { rivals: Rival[] }) {
             )}
           </>
         );
-        const cls = "flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 p-3.5 transition-colors hover:border-blood-500/40 hover:bg-ink-900";
+        const cls = "flex items-center gap-3 rounded-card border border-ink-700 bg-ink-900/60 p-3.5 transition-colors hover:border-blood-500/40 hover:bg-ink-900";
         return (
           <li key={r.userId}>
             {r.username ? <Link href={`/u/${r.username}`} className={cls}>{body}</Link> : <div className={cls}>{body}</div>}
@@ -292,14 +293,14 @@ function CornerTab({ items }: { items: FeedItem[] }) {
     <div className="flex flex-col gap-2.5">
       <Link
         href="/podcasts"
-        className="group flex items-center gap-3 rounded-xl border border-ink-700 bg-gradient-to-r from-ink-850 to-ink-900 p-3.5 transition-colors hover:border-blood-500/40"
+        className="group flex items-center gap-3 rounded-card border border-ink-700 bg-gradient-to-r from-ink-850 to-ink-900 p-3.5 transition-colors hover:border-blood-500/40"
       >
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-blood-500/12 text-blood-300">
+        <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-blood-500/12 text-blood-300">
           <Mic className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-display text-sm font-bold text-chalk">Shows &amp; podcasts</span>
-          <span className="block text-[0.72rem] text-fog">Fight-week breakdowns, interviews and weekly shows.</span>
+          <span className="block text-2xs text-fog">Fight-week breakdowns, interviews and weekly shows.</span>
         </span>
         <ArrowRight className="size-4 shrink-0 text-fog transition-transform group-hover:translate-x-0.5 group-hover:text-blood-300" />
       </Link>
@@ -313,7 +314,7 @@ function CornerTab({ items }: { items: FeedItem[] }) {
         />
       ) : (
         <>
-          <h2 className="mt-2 px-1 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">
+          <h2 className="mt-2 px-1 font-display text-2xs font-bold uppercase tracking-wider text-fog">
             Corner men insight
           </h2>
           <ol className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -332,7 +333,7 @@ function CornerTab({ items }: { items: FeedItem[] }) {
 /** Following something but nothing has happened yet — a real, common state. */
 function EmptyFeed({ following, eventsOnly }: { following: boolean; eventsOnly: boolean }) {
   return (
-    <div className="rounded-xl border border-ink-700 bg-ink-900/60 p-6 text-center">
+    <div className="rounded-card border border-ink-700 bg-ink-900/60 p-6 text-center">
       <p className="font-display text-base font-bold text-chalk">
         {eventsOnly ? "No cards coming up" : following ? "Nothing new yet" : "Your feed is empty"}
       </p>
@@ -357,17 +358,14 @@ function EmptyFeed({ following, eventsOnly }: { following: boolean; eventsOnly: 
 function SignedOut() {
   return (
     <div className="px-4 py-16">
-      <div className="mx-auto max-w-md rounded-xl border border-ink-700 bg-ink-900/60 p-7 text-center">
+      <div className="mx-auto max-w-md rounded-card border border-ink-700 bg-ink-900/60 p-7 text-center">
         <h1 className="font-display text-xl font-black text-chalk">Following</h1>
         <p className="mt-2 text-sm text-fog">
           Sign in to follow events, fighters and promotions — and get everything they do in one place.
         </p>
-        <Link
-          href="/account"
-          className="mt-4 inline-flex rounded-lg bg-blood-500 px-5 py-2.5 font-display text-xs font-semibold uppercase text-white transition-colors hover:bg-blood-400"
-        >
+        <ButtonLink href="/account" size="sm" className="mt-4 px-5">
           Sign in
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   );

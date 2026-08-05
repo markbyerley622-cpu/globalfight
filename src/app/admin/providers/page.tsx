@@ -51,7 +51,7 @@ export default function ProvidersPage() {
     <Shell>
       {/* The master gate first. Every provider below is irrelevant if this is off,
           and that has cost a wrong diagnosis before — see cron-handler. */}
-      <div className={`mb-5 rounded-xl border p-4 ${data.scraperEnabled ? "border-up/30 bg-up/5" : "border-blood-500/40 bg-blood-500/5"}`}>
+      <div className={`mb-5 rounded-card border p-4 ${data.scraperEnabled ? "border-up/30 bg-up/5" : "border-blood-500/40 bg-blood-500/5"}`}>
         <p className="font-display text-sm font-bold text-chalk">
           ENABLE_SCRAPER is {data.scraperEnabled ? "ON" : "OFF"}
         </p>
@@ -65,9 +65,9 @@ export default function ProvidersPage() {
 
       {/* ── Providers ─────────────────────────────────────────────────────── */}
       <h2 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-fog">Providers</h2>
-      <div className="mb-8 overflow-x-auto rounded-xl border border-ink-800">
+      <div className="mb-8 overflow-x-auto rounded-card border border-ink-800">
         <table className="w-full min-w-[46rem] text-sm">
-          <thead className="bg-ink-900/60 text-left text-[0.68rem] uppercase tracking-wider text-fog">
+          <thead className="bg-ink-900/60 text-left text-2xs uppercase tracking-wider text-fog">
             <tr>
               <th className="px-3 py-2">Provider</th>
               <th className="px-3 py-2">State</th>
@@ -90,14 +90,14 @@ export default function ProvidersPage() {
         good as the bout evidence behind it.
       </p>
       <div className="mb-8 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-xl border border-ink-800 bg-ink-900/40 p-4">
+        <div className="rounded-card border border-ink-700 bg-ink-900/40 p-4">
           <p className="font-display text-2xl font-black tabular-nums text-chalk">
             {pct(data.graph.boutsWithRuleset, data.graph.bouts)}%
           </p>
           <p className="text-xs text-mist tabular-nums">
             {data.graph.boutsWithRuleset.toLocaleString()} of {data.graph.bouts.toLocaleString()} bouts have a verified ruleset
           </p>
-          <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-wider text-fog">Remaining UNKNOWN, by promotion</p>
+          <p className="mt-3 text-2xs font-bold uppercase tracking-wider text-fog">Remaining UNKNOWN, by promotion</p>
           <ul className="mt-1 space-y-0.5">
             {data.graph.unknownByPromotion.map((u) => (
               <li key={u.promotion} className="flex justify-between text-xs text-mist">
@@ -111,7 +111,7 @@ export default function ProvidersPage() {
           </ul>
         </div>
 
-        <div className="rounded-xl border border-ink-800 bg-ink-900/40 p-4">
+        <div className="rounded-card border border-ink-700 bg-ink-900/40 p-4">
           <p className="font-display text-2xl font-black tabular-nums text-chalk">
             {data.graph.fightersCalculated.toLocaleString()}
             <span className="text-sm font-bold text-fog"> / {data.graph.fighters.toLocaleString()}</span>
@@ -120,7 +120,7 @@ export default function ProvidersPage() {
             fighters with a persisted discipline graph ·{" "}
             <span className="text-chalk">{data.graph.multiDiscipline.toLocaleString()}</span> multi-discipline
           </p>
-          <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-wider text-fog">Confidence</p>
+          <p className="mt-3 text-2xs font-bold uppercase tracking-wider text-fog">Confidence</p>
           <ul className="mt-1 space-y-0.5">
             {data.graph.tiers.map((t) => (
               <li key={t.tier} className="flex justify-between text-xs">
@@ -131,7 +131,7 @@ export default function ProvidersPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[0.68rem] font-bold uppercase tracking-wider text-fog">
+          <p className="mt-3 text-2xs font-bold uppercase tracking-wider text-fog">
             Fighters per discipline <span className="font-normal normal-case">(crossovers count in each)</span>
           </p>
           <ul className="mt-1 grid grid-cols-2 gap-x-4">
@@ -156,7 +156,7 @@ export default function ProvidersPage() {
             <p className="mt-0.5 text-xs text-mist tabular-nums">
               {c.events.toLocaleString()} events · {c.bouts.toLocaleString()} bouts
             </p>
-            <p className="text-[0.68rem] text-fog tabular-nums">
+            <p className="text-2xs text-fog tabular-nums">
               {c.withBouts} with a card ({c.events ? Math.round((c.withBouts / c.events) * 100) : 0}%)
             </p>
           </div>
@@ -174,9 +174,9 @@ export default function ProvidersPage() {
           <li key={`${l.org}-${l.sport}`} className="rounded-lg border border-ink-800 bg-ink-900/40 p-3">
             <p className="flex flex-wrap items-baseline gap-2">
               <span className="font-display text-sm font-bold text-chalk">{l.org}</span>
-              <span className={`text-[0.65rem] font-bold uppercase tracking-wider ${LADDER[l.status]}`}>{l.status}</span>
-              <span className="text-[0.65rem] text-fog">{l.sport.replace(/_/g, " ")}</span>
-              {l.checked && <span className="ml-auto text-[0.65rem] tabular-nums text-fog">checked {l.checked}</span>}
+              <span className={`text-3xs font-bold uppercase tracking-wider ${LADDER[l.status]}`}>{l.status}</span>
+              <span className="text-3xs text-fog">{l.sport.replace(/_/g, " ")}</span>
+              {l.checked && <span className="ml-auto text-3xs tabular-nums text-fog">checked {l.checked}</span>}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-mist">{l.evidence}</p>
           </li>
@@ -192,14 +192,14 @@ function Row({ p }: { p: ProviderRow }) {
     <tr className="align-top">
       <td className="px-3 py-2.5">
         <p className="font-display text-sm font-bold text-chalk">{p.label}</p>
-        <p className="text-[0.68rem] text-fog">
+        <p className="text-2xs text-fog">
           <code>{p.source}</code> · {String(p.sport).replace(/_/g, " ")}
           {p.enabled === false && " · flag OFF"}
         </p>
-        <p className="mt-0.5 text-[0.68rem] leading-snug text-mist">{p.note}</p>
+        <p className="mt-0.5 text-2xs leading-snug text-mist">{p.note}</p>
       </td>
       <td className="px-3 py-2.5">
-        <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wider ${s.ring} ${s.text}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-3xs font-bold uppercase tracking-wider ${s.ring} ${s.text}`}>
           <s.icon className="size-3" /> {s.label}
         </span>
       </td>

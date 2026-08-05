@@ -56,7 +56,7 @@ export async function NewsSection() {
                 <CategoryIcon name={a.category} className="relative size-6 drop-shadow" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-blood-400">{a.category}</span>
+                <span className="text-3xs font-semibold uppercase tracking-wider text-blood-400">{a.category}</span>
                 <h4 className="truncate font-display text-base font-semibold text-chalk transition-colors group-hover:text-blood-300">{a.title}</h4>
                 <p className="text-xs text-fog">{formatDate(a.publishedAt)} · {a.views.toLocaleString()} reads</p>
               </div>

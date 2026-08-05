@@ -36,7 +36,7 @@ export default async function InviteHubPage() {
 
   return (
     <div className="container-cr max-w-2xl py-10 md:py-14">
-      <p className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-fog">
+      <p className="flex items-center gap-2 text-2xs font-semibold uppercase tracking-[0.22em] text-fog">
         <UserPlus aria-hidden className="size-3.5" /> Invite
       </p>
       <h1 className="mt-2 font-display text-3xl font-bold uppercase text-chalk md:text-4xl">
@@ -47,7 +47,7 @@ export default async function InviteHubPage() {
       </p>
 
       {/* THE PREVIEW — the same og:image the link will unfurl to. */}
-      <div className="mt-7 overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
+      <div className="mt-7 overflow-hidden card-surface">
         <Image
           src={`${path}/opengraph-image`}
           alt={`Your invite card: ${who} wants you on the card`}

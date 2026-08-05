@@ -46,7 +46,7 @@ export default async function MessagesPage() {
             }
           />
         ) : (
-          <ul className="divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900/40">
+          <ul className="divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800 bg-ink-900/40">
             {conversations.map((c) => (
               <li key={c.id}>
                 <Link
@@ -58,7 +58,7 @@ export default async function MessagesPage() {
                     {c.unread > 0 && (
                       <span
                         aria-hidden
-                        className="absolute -right-0.5 -top-0.5 grid min-w-[1.15rem] place-items-center rounded-full border-2 border-ink-900 bg-blood-500 px-1 text-[0.6rem] font-bold tabular-nums text-white"
+                        className="absolute -right-0.5 -top-0.5 grid min-w-[1.15rem] place-items-center rounded-full border-2 border-ink-900 bg-blood-500 px-1 text-3xs font-bold tabular-nums text-white"
                       >
                         {c.unread > 9 ? "9+" : c.unread}
                       </span>
@@ -70,7 +70,7 @@ export default async function MessagesPage() {
                       <span className={cn("truncate font-display text-sm", c.unread > 0 ? "font-black text-white" : "font-bold text-chalk")}>
                         {c.withUser.name}
                       </span>
-                      <span className="shrink-0 text-[0.65rem] tabular-nums text-fog">
+                      <span className="shrink-0 text-3xs tabular-nums text-fog">
                         {timeAgo(c.lastMessageAt)}
                       </span>
                     </span>

@@ -1,4 +1,6 @@
 "use client";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import type { FighterWebsitePayload } from "@/lib/voicebuild/template/fighterWebsitePayloadSchema";
 
@@ -8,7 +10,7 @@ import type { FighterWebsitePayload } from "@/lib/voicebuild/template/fighterWeb
 
 function InsImage({ label }: { label?: string }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink-600 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,.02)_0_12px,rgba(255,255,255,.045)_12px_24px)] text-center text-fog">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-ink-600 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,.02)_0_12px,rgba(255,255,255,.045)_12px_24px)] text-center text-fog">
       <span className="font-display text-xs font-bold uppercase tracking-[0.2em]">Insert image here</span>
       {label && <span className="text-[10px] uppercase tracking-wide text-ink-500">{label}</span>}
     </div>
@@ -78,7 +80,7 @@ export function ClaimSiteTemplate({ payload: p }: { payload: FighterWebsitePaylo
           <p className="font-display text-xs font-bold uppercase tracking-[0.3em] text-blood-400">About {l1}</p>
           {p.about.body && <p className="mt-5 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-mist">{p.about.body}</p>}
           {vitals.length > 0 && (
-            <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-ink-800 bg-ink-800 sm:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-card border border-ink-800 bg-ink-800 sm:grid-cols-4">
               {vitals.map(([k, val]) => (
                 <div key={k} className="bg-ink-950 p-4">
                   <div className="text-[10px] uppercase tracking-wide text-fog">{k}</div>
@@ -114,7 +116,7 @@ export function ClaimSiteTemplate({ payload: p }: { payload: FighterWebsitePaylo
       <footer className="border-t border-ink-800 px-6 py-24 text-center md:px-16">
         <p className="font-display text-5xl font-black uppercase tracking-tight md:text-7xl">{p.hero.title || "Your Name"}</p>
         {p.contact.businessEmail && (
-          <a href={`mailto:${p.contact.businessEmail}`} className="mt-6 inline-block rounded-xl bg-blood-500 px-6 py-3 font-display text-sm font-bold uppercase tracking-wide text-white">
+          <a href={`mailto:${p.contact.businessEmail}`} className={cn(buttonVariants({ size: "md" }), "mt-6 px-6")}>
             Business enquiries ↗
           </a>
         )}

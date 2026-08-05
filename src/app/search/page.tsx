@@ -55,7 +55,7 @@ export default function SearchPage() {
     res.people.length + res.promotions.length;
 
   const head = (label: string) => (
-    <h2 className="px-3 pb-1 pt-4 font-display text-[0.62rem] font-bold uppercase tracking-widest text-fog">
+    <h2 className="px-3 pb-1 pt-4 font-display text-3xs font-bold uppercase tracking-widest text-fog">
       {label}
     </h2>
   );
@@ -67,7 +67,7 @@ export default function SearchPage() {
         Fighters, cards, promotions, gyms and people — follow any of them from here.
       </p>
 
-      <div className="mt-6 flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900/60 px-4 focus-within:border-blood-500/40">
+      <div className="mt-6 flex items-center gap-3 rounded-lg border border-ink-700 bg-ink-900/60 px-4 focus-within:border-blood-500/40">
         <SearchIcon aria-hidden className="size-5 text-mist" />
         <input
           autoFocus
@@ -87,7 +87,7 @@ export default function SearchPage() {
         {!q ? "" : loading ? "Searching…" : `${total} result${total === 1 ? "" : "s"} for ${q}`}
       </p>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-ink-700 p-2">
+      <div className="mt-4 overflow-hidden rounded-card border border-ink-700 p-2">
         {!q && <p className="px-4 py-10 text-center text-sm text-fog">Start typing to search.</p>}
         {q && !loading && total === 0 && (
           <p className="px-4 py-10 text-center text-sm text-fog">No results for “{q}”.</p>

@@ -133,12 +133,12 @@ export function FightCardEditor({ eventId, initial, weightClasses }: {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <h2 className="font-display text-xs font-bold uppercase tracking-[0.14em] text-mist">Fight card</h2>
-        <span className="text-[0.7rem] text-fog">{fights.length} bouts</span>
+        <span className="text-2xs text-fog">{fights.length} bouts</span>
         {busy && <Loader2 className="size-3 animate-spin text-fog" />}
-        {error && <span className="text-[0.7rem] text-blood-300">{error}</span>}
+        {error && <span className="text-2xs text-blood-300">{error}</span>}
         <button
           onClick={() => setAdding((a) => !a)}
-          className="ml-auto inline-flex items-center gap-1 rounded-md border border-ink-700 px-2 py-1 text-[0.7rem] font-semibold text-fog hover:text-chalk"
+          className="ml-auto inline-flex items-center gap-1 rounded-md border border-ink-700 px-2 py-1 text-2xs font-semibold text-fog hover:text-chalk"
         >
           <Plus className="size-3" /> Add bout
         </button>
@@ -161,8 +161,8 @@ export function FightCardEditor({ eventId, initial, weightClasses }: {
               dragId.current = null;
             }}
           >
-            <span className="text-[0.65rem] font-bold uppercase tracking-wider text-fog">{SEGMENT_LABEL[seg]}</span>
-            <span className="text-[0.65rem] text-ink-600">{rows.length}</span>
+            <span className="text-3xs font-bold uppercase tracking-wider text-fog">{SEGMENT_LABEL[seg]}</span>
+            <span className="text-3xs text-ink-600">{rows.length}</span>
           </div>
 
           <div className="space-y-1">
@@ -191,7 +191,7 @@ export function FightCardEditor({ eventId, initial, weightClasses }: {
               );
             })}
             {rows.length === 0 && (
-              <p className="px-2 py-2 text-[0.7rem] text-ink-600">Empty — drag a bout here.</p>
+              <p className="px-2 py-2 text-2xs text-ink-600">Empty — drag a bout here.</p>
             )}
           </div>
         </section>
@@ -251,8 +251,8 @@ function FightRowEditor({
       <div className="flex items-center gap-2 px-2 py-1.5">
         <GripVertical className="size-3.5 shrink-0 cursor-grab text-ink-600" aria-hidden />
         <div className="flex shrink-0 flex-col">
-          <button onClick={onMoveUp} aria-label="Move up" className="tap px-0.5 text-[0.6rem] leading-none text-ink-600 hover:text-chalk">▲</button>
-          <button onClick={onMoveDown} aria-label="Move down" className="tap px-0.5 text-[0.6rem] leading-none text-ink-600 hover:text-chalk">▼</button>
+          <button onClick={onMoveUp} aria-label="Move up" className="tap px-0.5 text-3xs leading-none text-ink-600 hover:text-chalk">▲</button>
+          <button onClick={onMoveDown} aria-label="Move down" className="tap px-0.5 text-3xs leading-none text-ink-600 hover:text-chalk">▼</button>
         </div>
 
         <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left">
@@ -267,11 +267,11 @@ function FightRowEditor({
         </button>
 
         {saving && <Loader2 className="size-3 shrink-0 animate-spin text-fog" />}
-        <span className="shrink-0 text-[0.65rem] tabular-nums text-ink-600">{fight.scheduledRounds}r</span>
+        <span className="shrink-0 text-3xs tabular-nums text-ink-600">{fight.scheduledRounds}r</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-fog transition-transform", open && "rotate-180")} />
       </div>
 
-      {issues._ && <p className="px-3 pb-1.5 text-[0.68rem] text-blood-300">{issues._}</p>}
+      {issues._ && <p className="px-3 pb-1.5 text-2xs text-blood-300">{issues._}</p>}
 
       {open && (
         <div className="border-t border-ink-800">
@@ -336,7 +336,7 @@ function FightRowEditor({
           )}
 
           <div className="flex justify-end px-3 py-2">
-            <button onClick={onRemove} className="inline-flex items-center gap-1 rounded border border-ink-700 px-2 py-1 text-[0.7rem] font-semibold text-fog hover:border-blood-500/40 hover:text-blood-300">
+            <button onClick={onRemove} className="inline-flex items-center gap-1 rounded border border-ink-700 px-2 py-1 text-2xs font-semibold text-fog hover:border-blood-500/40 hover:text-blood-300">
               <Trash2 className="size-3" /> Remove bout
             </button>
           </div>
@@ -350,5 +350,5 @@ function Badge({ children, tone }: { children: React.ReactNode; tone: "blood" | 
   const cls = tone === "blood" ? "bg-blood-500/20 text-blood-300"
     : tone === "gold" ? "bg-gold-500/15 text-gold-300"
     : "bg-ink-800 text-fog";
-  return <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[0.6rem] font-bold uppercase", cls)}>{children}</span>;
+  return <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-3xs font-bold uppercase", cls)}>{children}</span>;
 }

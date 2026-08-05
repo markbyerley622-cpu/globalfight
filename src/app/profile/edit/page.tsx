@@ -22,7 +22,7 @@ export default function EditProfilePage() {
     <div className="mx-auto w-full max-w-2xl px-4 pb-16 pt-5 lg:max-w-3xl">
       <Link
         href="/profile"
-        className="mb-3 inline-flex items-center gap-1 text-[0.72rem] font-semibold uppercase tracking-wide text-fog hover:text-chalk"
+        className="mb-3 inline-flex items-center gap-1 text-2xs font-semibold uppercase tracking-wide text-fog hover:text-chalk"
       >
         <ChevronLeft className="size-3.5" /> Profile
       </Link>

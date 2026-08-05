@@ -18,7 +18,7 @@ function initials(name: string): string {
 }
 
 const SIZE = {
-  sm: "size-8 text-[0.7rem]",
+  sm: "size-8 text-2xs",
   md: "size-9 text-sm",
   lg: "size-11 text-base",
 } as const;
@@ -73,7 +73,7 @@ export function AuthorIdentity({
             : <span className="truncate">{name}</span>}
           {isStaff && <AdminBadge role={appRole} />}
           <RoleBadge role={role} sport={sportLabel} />
-          {op && <span className="rounded bg-blood-500/15 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-blood-300">OP</span>}
+          {op && <span className="rounded bg-blood-500/15 px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-wider text-blood-300">OP</span>}
         </p>
         {subline && <p className="truncate text-xs text-fog">{subline}</p>}
       </div>

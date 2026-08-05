@@ -38,7 +38,7 @@ export function NotificationSkeletonRows({ rows = 5 }: { rows?: number }) {
     // "loading", not five rows of decorative grey blocks.
     <div aria-hidden className="flex flex-col gap-2">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 rounded-xl border border-ink-800 bg-ink-900 px-3 py-2.5">
+        <div key={i} className="flex items-start gap-3 card-surface px-3 py-2.5">
           <Skeleton className="size-6 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-3.5 w-2/3" />
@@ -96,7 +96,7 @@ function FollowBackButton({ username, initiallyFollowing }: { username: string; 
       disabled={busy}
       aria-label={following ? `Unfollow ${username}` : `Follow ${username} back`}
       className={cn(
-        "tap relative z-10 mt-2 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.7rem] font-bold uppercase tracking-wide transition-colors disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
+        "tap relative z-10 mt-2 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-2xs font-bold uppercase tracking-wide transition-colors disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
         following
           ? "border-ink-700 bg-ink-850 text-mist hover:text-chalk"
           : "border-blood-500/50 bg-blood-500/15 text-blood-200 hover:border-blood-500 hover:bg-blood-500/25",
@@ -126,7 +126,7 @@ function GroupRow({
   const body = (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+        "flex items-start gap-3 rounded-card border px-3 py-2.5 transition-colors",
         group.unread
           ? "border-blood-500/30 bg-blood-500/5 hover:border-blood-500/50"
           : "border-ink-800 bg-ink-900 hover:border-ink-700",
@@ -139,7 +139,7 @@ function GroupRow({
         </p>
         {group.body && <p className="mt-0.5 text-xs text-mist">{group.body}</p>}
         {actor && <FollowBackButton username={actor.username} initiallyFollowing={actor.youFollow} />}
-        <p className="mt-1 flex items-center gap-1.5 text-[0.68rem] uppercase tracking-wide text-fog">
+        <p className="mt-1 flex items-center gap-1.5 text-2xs uppercase tracking-wide text-fog">
           <time dateTime={group.createdAt}>{timeAgo(group.createdAt)}</time>
           {group.count > 1 && (
             <>
@@ -169,7 +169,7 @@ function GroupRow({
             onNavigate?.();
           }}
           aria-label={`${group.unread ? "Unread: " : ""}${group.title}${group.count > 1 ? ` — ${group.count} notifications` : ""}`}
-          className="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+          className="block rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
         >
           {body}
         </Link>
@@ -234,7 +234,7 @@ function LoadMore({ state }: { state: NotificationsState }) {
         type="button"
         onClick={() => void loadMore()}
         disabled={state.loadingMore}
-        className="tap flex w-full items-center justify-center gap-2 rounded-xl border border-ink-800 py-2.5 text-xs font-semibold uppercase tracking-wide text-mist transition-colors hover:border-ink-700 hover:text-chalk disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+        className="tap flex w-full items-center justify-center gap-2 rounded-lg border border-ink-800 py-2.5 text-xs font-semibold uppercase tracking-wide text-mist transition-colors hover:border-ink-700 hover:text-chalk disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
       >
         {state.loadingMore ? <><Loader2 className="size-3.5 animate-spin" /> Loading…</> : "Load older"}
       </button>

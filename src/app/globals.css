@@ -28,6 +28,14 @@
   --color-gold-500: #e0a91b;
   --color-gold-600: #b8870f;
 
+  /* ── Podium: the other two medals ──
+     Gold has had tokens since day one, so every podium wrote rank 1 with
+     `gold-500`/`gold-400` and ranks 2 and 3 with raw `#cfd4dc`/`#cd7f32`
+     hex — one component, half tokenised. Single-step like `chalk`/`mist`,
+     because a medal has exactly one colour. */
+  --color-silver: #cfd4dc;
+  --color-bronze: #cd7f32;
+
   /* ── Electric (data / live) ── */
   --color-volt-400: #38bdf8;
   --color-volt-500: #0ea5e9;
@@ -53,8 +61,47 @@
   --font-display: var(--font-oswald), "Arial Narrow", sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Radii ── */
+  /* ── Micro-type ramp (below Tailwind's text-xs / 12px) ─────────────────────
+     Tailwind's ramp stops at 12px, and this app's meta layer — badges, chips,
+     counts, eyebrows, table cells, stat captions — lives entirely below that.
+     With no token to reach for, 137 files reached for `text-[…rem]` instead:
+     an audit found TWENTY-TWO distinct arbitrary sizes across 554 call sites,
+     eleven of them packed into the 8.8px–11.5px band. 0.65 / 0.66 / 0.68 /
+     0.70 / 0.72rem are not five decisions, they are one decision made five
+     times, and the sub-pixel drift between them is why adjacent components
+     read as belonging to different products.
+
+     Three steps at 9 / 10 / 11px close the gap under `xs`. Named to continue
+     Tailwind's own sequence downward, so the full ramp is:
+       4xs 9 · 3xs 10 · 2xs 11 · xs 12 · sm 14 · base 16
+
+     DELIBERATELY font-size only — no `--text-*--line-height` companions. A
+     bare `text-[0.7rem]` sets font-size and inherits line-height; defining the
+     paired token would make these utilities ALSO set line-height, silently
+     re-flowing 554 sites. Omitting it makes the migration provably
+     layout-neutral: the only thing that moves is the font size, by design. */
+  --text-4xs: 0.5625rem;
+  --text-3xs: 0.625rem;
+  --text-2xs: 0.6875rem;
+
+  /* ── Radii ──
+     The ladder, tightest to loosest. Every surface should name one of these
+     rather than reach for a Tailwind step, because the steps either side of
+     `card` (xl=12px, 2xl=16px) are visually indistinguishable from it and that
+     is precisely how one card radius became three.
+
+       md  (6px)   controls nested inside controls
+       lg  (8px)   buttons, inputs, icon tiles, rows, menu items
+       card (14px) content cards and panels — the primary surface
+       2xl (16px)  sheets, modals, full-bleed overlays
+       squircle    identity avatars/tiles: a deliberate look, not a container
+       full        pills, dots, round avatars
+
+     Nesting rule: an inner surface takes the tier BELOW its parent, so the
+     gap between the two curves stays even. A card (14) holding a padded inset
+     gives that inset `lg` (8), not another `card`. */
   --radius-card: 0.875rem;
+  --radius-squircle: 1.5rem;
 
   /* ── Breakpoint for ultra-wide ── */
   --breakpoint-3xl: 1920px;
@@ -841,11 +888,44 @@
   }
 }
 
-/* Comfortable thumb target without forcing a visual size change.
-   Opt-in: applied to icon-only controls that render smaller than a thumb. */
+/* ════════════════════════════════════════════════════════════════════
+   .cr-touch-target — a 44px thumb target on a control that stays small
+   ────────────────────────────────────────────────────────────────────
+   This shipped as `min-height/min-width: 44px` under a comment promising
+   "without forcing a visual size change" — but `min-*` beats `width`, so
+   it did the exact opposite: a `size-6` close button would have inflated
+   from 24px to a 44px bordered box. That contradiction is presumably why
+   it ended up with ZERO call sites while 18 controls sat under the floor.
+
+   The honest version expands the HIT AREA with a centred pseudo-element
+   and leaves the box alone. Layout is untouched; only the region that
+   answers a tap grows.
+
+   ── Where this is safe ──
+   The 44px zone can overhang siblings, and in an overlap the control
+   later in the DOM wins. So this is for controls with ~44px of clear
+   space around them: a lone dismiss button, or a cluster whose pitch is
+   already >= 44px (e.g. `size-9` + `gap-2` = 36 + 8). It is deliberately
+   NOT applied to tightly-packed icon pairs — a 4px-gap edit/delete row
+   would overlap by 14px and silently route "edit" taps into "delete".
+   Those keep their real box; see the audit note in docs/.
+   ════════════════════════════════════════════════════════════════════ */
 .cr-touch-target {
-  min-height: 44px;
+  position: relative;
+}
+.cr-touch-target::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: 100%;
+  height: 100%;
   min-width: 44px;
+  min-height: 44px;
+  /* Purely a hit region — never paints, never affects the control's own
+     background, border or focus ring. */
+  background: none;
 }
 
 /* Stop scroll CHAINING out of overlays.

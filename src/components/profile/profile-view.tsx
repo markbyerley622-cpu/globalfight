@@ -71,7 +71,7 @@ export function ProfileView({
     // Reserving the height costs nothing and removes the whole shift.
     return (
       <div className="mx-auto w-full max-w-2xl px-4 pb-8 lg:max-w-3xl" aria-busy="true">
-        <div className="min-h-[26rem] rounded-3xl border border-ink-800 bg-ink-900/40">
+        <div className="min-h-[26rem] rounded-card border border-ink-800 bg-ink-900/40">
           <div className="flex items-center justify-center gap-2 py-24 text-mist">
             <Loader2 className="size-5 animate-spin" /> {t("Loading…")}
           </div>
@@ -84,8 +84,8 @@ export function ProfileView({
   if (!user) {
     return (
       <div className="mx-auto w-full max-w-2xl px-4 py-10 lg:max-w-3xl">
-        <div className="overflow-hidden rounded-3xl border border-ink-800 bg-[radial-gradient(600px_260px_at_50%_0%,rgba(225,29,42,0.28),transparent_62%),linear-gradient(160deg,#12060a,#0a0d12)] p-8 text-center">
-          <div className="mx-auto grid size-20 place-items-center rounded-3xl border border-ink-700 bg-ink-900"><Swords className="size-8 text-blood-400" /></div>
+        <div className="overflow-hidden rounded-card border border-ink-800 bg-[radial-gradient(600px_260px_at_50%_0%,rgba(225,29,42,0.28),transparent_62%),linear-gradient(160deg,#12060a,var(--color-ink-900))] p-8 text-center">
+          <div className="mx-auto grid size-20 place-items-center rounded-squircle border border-ink-700 bg-ink-900"><Swords className="size-8 text-blood-400" /></div>
           <h1 className="mt-5 font-display text-2xl font-bold uppercase tracking-tight text-chalk">Build your Combat profile</h1>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-mist">
             Follow fighters, predict fights and claim your fighter page. Sign in to start your profile.
@@ -110,13 +110,13 @@ export function ProfileView({
         {user.bannerUrl ? (
           <Image src={user.bannerUrl} alt="" fill className="object-cover" unoptimized />
         ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(400px_200px_at_15%_0%,rgba(225,29,42,0.4),transparent_60%),radial-gradient(400px_200px_at_100%_100%,rgba(56,189,248,0.32),transparent_60%),linear-gradient(135deg,#141923,#0a0d12)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(400px_200px_at_15%_0%,rgba(225,29,42,0.4),transparent_60%),radial-gradient(400px_200px_at_100%_100%,rgba(56,189,248,0.32),transparent_60%),linear-gradient(135deg,var(--color-ink-800),var(--color-ink-900))]" />
         )}
         <button
           onClick={() => bannerRef.current?.click()}
           disabled={uploading !== null}
           aria-label="Change banner"
-          className="tap absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-ink-600/80 bg-ink-950/70 px-2.5 py-1.5 text-[0.68rem] font-semibold text-chalk backdrop-blur hover:bg-ink-900/80"
+          className="tap absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-ink-600/80 bg-ink-950/70 px-2.5 py-1.5 text-2xs font-semibold text-chalk backdrop-blur hover:bg-ink-900/80"
         >
           {uploading === "banner" ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
           Edit banner
@@ -127,9 +127,9 @@ export function ProfileView({
       {/* Avatar — editable */}
       <div className="relative -mt-10 w-fit">
         {user.image ? (
-          <Image src={user.image} alt="" width={84} height={84} className="size-[84px] rounded-3xl border-[3px] border-blood-500 bg-ink-950 object-cover shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]" unoptimized />
+          <Image src={user.image} alt="" width={84} height={84} className="size-[84px] rounded-squircle border-[3px] border-blood-500 bg-ink-950 object-cover shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]" unoptimized />
         ) : (
-          <span className="grid size-[84px] place-items-center rounded-3xl border-[3px] border-blood-500 bg-ink-950 font-display text-3xl font-bold text-blood-500 shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]">
+          <span className="grid size-[84px] place-items-center rounded-squircle border-[3px] border-blood-500 bg-ink-950 font-display text-3xl font-bold text-blood-500 shadow-[0_0_16px_-3px_rgba(225,29,42,0.55)]">
             {initials(user)}
           </span>
         )}
@@ -158,8 +158,8 @@ export function ProfileView({
         {user.name ?? user.username ?? "Your profile"}
       </h1>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <span className="rounded-lg border border-blood-500/25 bg-blood-500/12 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-blood-300">{role}</span>
-        {user.username && <span className="text-[0.8rem] text-fog">@{user.username}</span>}
+        <span className="rounded-lg border border-blood-500/25 bg-blood-500/12 px-2.5 py-1 text-2xs font-bold uppercase tracking-wide text-blood-300">{role}</span>
+        {user.username && <span className="text-xs text-fog">@{user.username}</span>}
         <EditProfileLink />
       </div>
 
@@ -187,14 +187,14 @@ export function ProfileView({
           like a settings row. */}
       <Link
         href="/today"
-        className="mt-5 flex items-center gap-3 rounded-2xl border border-blood-500/30 bg-[radial-gradient(320px_120px_at_0%_0%,rgba(225,29,42,0.18),transparent_70%),linear-gradient(150deg,#141923,#0a0d12)] p-4 transition-colors hover:border-blood-500/50"
+        className="mt-5 flex items-center gap-3 rounded-card border border-blood-500/30 bg-[radial-gradient(320px_120px_at_0%_0%,rgba(225,29,42,0.18),transparent_70%),linear-gradient(150deg,var(--color-ink-800),var(--color-ink-900))] p-4 transition-colors hover:border-blood-500/50"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-blood-500/40 bg-blood-500/12 text-blood-400">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-blood-500/40 bg-blood-500/12 text-blood-400">
           <Flame className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">Today</span>
-          <span className="block truncate text-[0.72rem] text-fog">Your streak, what moved, and what to do next</span>
+          <span className="block truncate text-2xs text-fog">Your streak, what moved, and what to do next</span>
         </span>
         <ChevronRight className="size-4 text-fog" />
       </Link>
@@ -211,7 +211,7 @@ export function ProfileView({
       {user.username && <InviteCard username={user.username} name={user.name ?? user.username} />}
 
       {/* Account shortcuts */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
+      <div className="mt-6 overflow-hidden card-surface">
         <Row href="/predictions/mine" icon={Star} name="My Predictions" desc="Your picks and how they landed" />
         <Row href="/invite" icon={UserPlus} name="Invite friends" desc="Your link, your card, who's joined" />
         {/* Was pointing at /profile/edit — the notification PREFERENCES — while the
@@ -249,7 +249,7 @@ function FollowStat({ href, value, label }: { href: string; value: number; label
       className="group flex items-baseline gap-1.5 rounded-lg px-1 py-0.5 transition-colors hover:bg-ink-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
     >
       <span className="font-display text-base font-bold text-chalk">{value.toLocaleString()}</span>
-      <span className="text-[0.75rem] text-fog group-hover:text-mist">{label}</span>
+      <span className="text-xs text-fog group-hover:text-mist">{label}</span>
     </Link>
   );
 }
@@ -257,19 +257,19 @@ function FollowStat({ href, value, label }: { href: string; value: number; label
 function InviteCard({ username, name }: { username: string; name: string }) {
   const path = `/invite/${username}`;
   return (
-    <section className="mt-6 rounded-2xl border border-blood-500/25 bg-gradient-to-b from-blood-500/10 to-transparent p-4">
+    <section className="mt-6 rounded-card border border-blood-500/25 bg-gradient-to-b from-blood-500/10 to-transparent p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-chalk">
             <UserPlus aria-hidden className="size-4 text-blood-400" /> Invite friends
           </h3>
-          <p className="mt-1 text-[0.72rem] leading-relaxed text-fog">
+          <p className="mt-1 text-2xs leading-relaxed text-fog">
             Your record travels with the invitation. Find out who can actually read a fight.
           </p>
         </div>
         <Link
           href="/invite"
-          className="shrink-0 text-[0.7rem] font-semibold uppercase tracking-wide text-mist underline underline-offset-2 transition-colors hover:text-chalk"
+          className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-mist underline underline-offset-2 transition-colors hover:text-chalk"
         >
           Open
         </Link>
@@ -285,10 +285,10 @@ function InviteCard({ username, name }: { username: string; name: string }) {
 function Row({ href, icon: Icon, name, desc }: { href: string; icon: typeof Star; name: string; desc: string }) {
   return (
     <Link href={href} className="flex items-center gap-3 border-b border-ink-800 px-4 py-3.5 transition-colors last:border-b-0 hover:bg-ink-800">
-      <span className="grid size-9 place-items-center rounded-xl border border-ink-700 bg-ink-800 text-mist"><Icon className="size-[1.05rem]" /></span>
+      <span className="grid size-9 place-items-center rounded-lg border border-ink-700 bg-ink-800 text-mist"><Icon className="size-[1.05rem]" /></span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-chalk">{name}</span>
-        <span className="block truncate text-[0.72rem] text-fog">{desc}</span>
+        <span className="block truncate text-2xs text-fog">{desc}</span>
       </span>
       <ChevronRight className="size-4 text-fog" />
     </Link>

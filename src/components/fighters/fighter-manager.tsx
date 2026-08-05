@@ -224,7 +224,7 @@ function MediaSection({ title, mediaType, items, setItems, post, del }: {
           <div key={m.id} className="group relative aspect-square overflow-hidden rounded-lg bg-ink-800">
             {mediaType === "photo"
               ? <Image src={m.url} alt={m.caption ?? ""} fill className="object-cover" sizes="120px" />
-              : <div className="flex size-full items-center justify-center p-2 text-center text-[0.6rem] text-fog">{m.caption || "video"}</div>}
+              : <div className="flex size-full items-center justify-center p-2 text-center text-3xs text-fog">{m.caption || "video"}</div>}
             <button onClick={async () => { if (await del("media", m.id)) setItems((x) => x.filter((i) => i.id !== m.id)); }} className="absolute right-1 top-1 rounded bg-ink-950/80 p-1 text-fog opacity-0 transition-opacity group-hover:opacity-100 hover:text-blood-400"><Trash2 className="size-3.5" /></button>
           </div>
         ))}

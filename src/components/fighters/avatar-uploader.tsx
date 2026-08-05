@@ -53,12 +53,12 @@ export function AvatarUploader({ slug, children, className }: { slug: string; ch
         className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 rounded-full bg-ink-950/65 text-white opacity-0 backdrop-blur-[1px] transition-opacity hover:opacity-100 focus-visible:opacity-100 group-hover/avatar:opacity-100 disabled:cursor-wait"
       >
         {busy ? <Loader2 className="size-6 animate-spin" /> : <Camera className="size-6" />}
-        <span className="px-1 text-center text-[0.6rem] font-semibold uppercase leading-tight tracking-wide">
+        <span className="px-1 text-center text-3xs font-semibold uppercase leading-tight tracking-wide">
           {busy ? "Uploading…" : "Change photo"}
         </span>
       </button>
       {error && (
-        <p className="absolute -bottom-7 left-1/2 z-20 w-max -translate-x-1/2 rounded bg-blood-500/90 px-2 py-1 text-[0.65rem] font-semibold text-white">
+        <p className="absolute -bottom-7 left-1/2 z-20 w-max -translate-x-1/2 rounded bg-blood-500/90 px-2 py-1 text-3xs font-semibold text-white">
           {error}
         </p>
       )}

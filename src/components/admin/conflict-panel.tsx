@@ -57,42 +57,42 @@ export function ConflictPanel({ eventId }: { eventId: string }) {
         <h2 className="font-display text-xs font-bold uppercase tracking-[0.14em] text-gold-200">
           Import disagreements
         </h2>
-        <span className="text-[0.7rem] text-gold-300/80">{conflicts.length}</span>
+        <span className="text-2xs text-gold-300/80">{conflicts.length}</span>
         <div className="ml-auto flex gap-1.5">
           <button
             onClick={() => resolve("accept")}
             disabled={!!busy}
-            className="rounded border border-gold-500/40 px-2 py-1 text-[0.7rem] font-semibold text-gold-200 hover:bg-gold-500/15 disabled:opacity-40"
+            className="rounded border border-gold-500/40 px-2 py-1 text-2xs font-semibold text-gold-200 hover:bg-gold-500/15 disabled:opacity-40"
           >
             Accept all
           </button>
           <button
             onClick={() => resolve("keep")}
             disabled={!!busy}
-            className="rounded border border-ink-700 px-2 py-1 text-[0.7rem] font-semibold text-fog hover:text-chalk disabled:opacity-40"
+            className="rounded border border-ink-700 px-2 py-1 text-2xs font-semibold text-fog hover:text-chalk disabled:opacity-40"
           >
             Keep all mine
           </button>
         </div>
       </header>
 
-      {error && <p className="border-b border-gold-500/20 px-3 py-1.5 text-[0.7rem] text-blood-300">{error}</p>}
+      {error && <p className="border-b border-gold-500/20 px-3 py-1.5 text-2xs text-blood-300">{error}</p>}
 
       <ul className="divide-y divide-gold-500/15">
         {conflicts.map((c) => (
           <li key={c.id} className="px-3 py-2">
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-mono text-[0.7rem] text-gold-300">{c.field}</span>
-              {c.subject && <span className="text-[0.7rem] text-fog">{c.subject}</span>}
-              {c.source && <span className="text-[0.65rem] text-ink-600">via {c.source}</span>}
+              <span className="font-mono text-2xs text-gold-300">{c.field}</span>
+              {c.subject && <span className="text-2xs text-fog">{c.subject}</span>}
+              {c.source && <span className="text-3xs text-ink-600">via {c.source}</span>}
             </div>
             <div className="mt-1 grid gap-1 sm:grid-cols-2">
               <div className="rounded border border-ink-700 bg-ink-950/50 px-2 py-1">
-                <p className="text-[0.6rem] uppercase tracking-wide text-fog">Yours (winning)</p>
+                <p className="text-3xs uppercase tracking-wide text-fog">Yours (winning)</p>
                 <p className="truncate text-xs text-chalk">{show(c.currentValue)}</p>
               </div>
               <div className="rounded border border-ink-800 bg-ink-950/30 px-2 py-1">
-                <p className="text-[0.6rem] uppercase tracking-wide text-fog">Imported</p>
+                <p className="text-3xs uppercase tracking-wide text-fog">Imported</p>
                 <p className="truncate text-xs text-mist">{show(c.importedValue)}</p>
               </div>
             </div>
@@ -100,14 +100,14 @@ export function ConflictPanel({ eventId }: { eventId: string }) {
               <button
                 onClick={() => resolve("accept", c.id)}
                 disabled={!!busy}
-                className="inline-flex items-center gap-1 rounded border border-gold-500/40 px-2 py-0.5 text-[0.68rem] font-semibold text-gold-200 hover:bg-gold-500/15 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded border border-gold-500/40 px-2 py-0.5 text-2xs font-semibold text-gold-200 hover:bg-gold-500/15 disabled:opacity-40"
               >
                 {busy === c.id && <Loader2 className="size-2.5 animate-spin" />} Accept import
               </button>
               <button
                 onClick={() => resolve("keep", c.id)}
                 disabled={!!busy}
-                className="rounded border border-ink-700 px-2 py-0.5 text-[0.68rem] font-semibold text-fog hover:text-chalk disabled:opacity-40"
+                className="rounded border border-ink-700 px-2 py-0.5 text-2xs font-semibold text-fog hover:text-chalk disabled:opacity-40"
               >
                 Keep mine
               </button>

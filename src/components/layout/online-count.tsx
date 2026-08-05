@@ -44,8 +44,8 @@ export function OnlineCount({ className }: { className?: string }) {
       title={`${n} ${n === 1 ? "person" : "people"} active in the last few minutes`}
     >
       <span aria-hidden className={cn("size-1.5 rounded-full", n > 0 ? "bg-up shadow-[0_0_6px] shadow-up" : "bg-fog")} />
-      <span className="font-display text-[0.68rem] font-bold tabular-nums text-chalk">{n}</span>
-      <span className="font-display text-[0.62rem] font-bold uppercase tracking-wider text-fog">online</span>
+      <span className="font-display text-2xs font-bold tabular-nums text-chalk">{n}</span>
+      <span className="font-display text-3xs font-bold uppercase tracking-wider text-fog">online</span>
     </span>
   );
 }

@@ -28,7 +28,7 @@ export function EventGeneralRoom({ slug }: { slug: string }) {
   }
   if (state.status === "error" || !state.room) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-ink-700 bg-ink-900 p-6 text-center">
+      <div className="flex flex-col items-center gap-2 card-surface p-6 text-center">
         <MessagesSquare className="size-7 text-fog" />
         <p className="text-sm text-mist">Card talk is unavailable right now — try again shortly.</p>
       </div>

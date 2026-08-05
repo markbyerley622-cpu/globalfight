@@ -9,7 +9,7 @@ export function DemoWorldBanner() {
     <div className="pointer-events-none fixed right-3 top-3 z-[150]">
       <span
         title="This environment contains simulated community data for testing purposes."
-        className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-volt-500/40 bg-ink-900/90 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-volt-300 shadow-lg backdrop-blur"
+        className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-volt-500/40 bg-ink-900/90 px-3 py-1 text-3xs font-bold uppercase tracking-wider text-volt-300 shadow-lg backdrop-blur"
       >
         <span className="size-1.5 rounded-full bg-volt-400" /> Demo World
       </span>

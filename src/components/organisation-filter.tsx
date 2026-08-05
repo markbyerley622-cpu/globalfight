@@ -48,7 +48,7 @@ export function OrganisationFilter({ organisations }: { organisations: string[] 
             key={p.value || "all"}
             onClick={() => pick(p.value)}
             className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 font-display text-[0.7rem] font-semibold uppercase tracking-wide transition-colors",
+              "shrink-0 rounded-full border px-3.5 py-1.5 font-display text-2xs font-semibold uppercase tracking-wide transition-colors",
               active
                 ? "border-gold-500 bg-gold-500/15 text-gold-300"
                 : "border-ink-700 bg-ink-900/60 text-mist hover:border-gold-500/50 hover:text-chalk",

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { ButtonLink } from "@/components/ui/button";
 
 /** Lightweight "in development" section used by the new Combat product pages. */
 export function ComingSoon({ points }: { points: string[] }) {
   return (
     <section className="container-cr py-12 lg:py-16">
-      <div className="mx-auto max-w-2xl rounded-2xl border border-ink-800 bg-ink-900/60 p-6 sm:p-8">
+      <div className="mx-auto max-w-2xl rounded-card border border-ink-800 bg-ink-900/60 p-6 sm:p-8">
         <span className="inline-flex items-center gap-2 rounded-full border border-blood-500/40 bg-blood-500/10 px-3 py-1 font-display text-xs font-semibold uppercase tracking-wide text-blood-300">
           In development
         </span>
@@ -26,12 +27,9 @@ export function ComingSoon({ points }: { points: string[] }) {
           ))}
         </ul>
         <div className="mt-7 flex flex-wrap gap-3">
-          <Link
-            href="/account"
-            className="rounded-lg bg-blood-500 px-4 py-2.5 font-display text-xs font-semibold uppercase text-white transition-colors hover:bg-blood-400"
-          >
+          <ButtonLink href="/account" size="sm" className="px-4">
             Get early access
-          </Link>
+          </ButtonLink>
           <Link
             href="/"
             className="rounded-lg border border-ink-700 bg-ink-850/60 px-4 py-2.5 font-display text-xs font-semibold uppercase text-chalk transition-colors hover:border-ink-600"

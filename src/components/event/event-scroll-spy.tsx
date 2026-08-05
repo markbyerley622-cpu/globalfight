@@ -71,7 +71,7 @@ export function EventScrollSpy({ sections }: { sections: SpySection[] }) {
               scrollToSection(section.id);
             }}
             className={cn(
-              "flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all sm:min-h-12 sm:px-5 sm:text-base",
+              "flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all sm:min-h-12 sm:px-5 sm:text-base",
               isActive
                 ? "bg-chalk text-ink-950 shadow-glow-red"
                 : "text-mist hover:bg-ink-800 hover:text-chalk active:scale-95",

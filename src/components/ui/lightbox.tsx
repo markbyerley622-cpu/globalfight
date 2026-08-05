@@ -127,14 +127,14 @@ export function Lightbox({
     >
       {/* Chrome */}
       <div className="flex shrink-0 items-center justify-between gap-3 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <span className="font-display text-[0.72rem] font-bold uppercase tracking-wider tabular-nums text-mist">
+        <span className="font-display text-2xs font-bold uppercase tracking-wider tabular-nums text-mist">
           {index + 1} / {count}
         </span>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           aria-label="Close photo viewer"
-          className="tap grid size-9 place-items-center rounded-xl border border-ink-700 bg-ink-900/80 text-mist hover:text-chalk"
+          className="tap grid size-9 place-items-center rounded-lg border border-ink-700 bg-ink-900/80 text-mist hover:text-chalk"
         >
           <X className="size-4" />
         </button>
@@ -174,7 +174,7 @@ export function Lightbox({
           onClick={(e) => e.stopPropagation()}
         >
           {image.caption && <p className="text-sm leading-relaxed text-chalk">{image.caption}</p>}
-          {image.credit && <p className="mt-0.5 text-[0.7rem] text-fog">📷 {image.credit}</p>}
+          {image.credit && <p className="mt-0.5 text-2xs text-fog">📷 {image.credit}</p>}
         </div>
       )}
 

@@ -35,7 +35,7 @@ export interface ManagedGym {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-ink-700 bg-ink-850 px-3 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none";
+  "w-full rounded-lg border border-ink-700 bg-ink-850 px-3 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none";
 
 /** Same save model as the profile editor: toggles are optimistic, text commits
  *  on blur. Deliberately the same, so managing a gym feels like editing a
@@ -82,11 +82,11 @@ export function GymManageForm({ gym }: { gym: ManagedGym }) {
   return (
     <div className="flex flex-col gap-4">
       {error ? (
-        <p className="sticky top-0 z-10 rounded-xl border border-down/40 bg-down/15 px-3.5 py-2.5 text-[0.76rem] font-semibold text-down backdrop-blur">
+        <p className="sticky top-0 z-10 rounded-lg border border-down/40 bg-down/15 px-3.5 py-2.5 text-xs font-semibold text-down backdrop-blur">
           {error}
         </p>
       ) : (saving || justSaved) ? (
-        <p className="sticky top-0 z-10 inline-flex items-center gap-1.5 self-start rounded-full border border-ink-700 bg-ink-950/90 px-3 py-1.5 text-[0.7rem] font-semibold text-mist backdrop-blur">
+        <p className="sticky top-0 z-10 inline-flex items-center gap-1.5 self-start rounded-full border border-ink-700 bg-ink-950/90 px-3 py-1.5 text-2xs font-semibold text-mist backdrop-blur">
           {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3 text-up" />}
           {saving ? "Saving…" : "Saved"}
         </p>
@@ -250,13 +250,13 @@ export function GymManageForm({ gym }: { gym: ManagedGym }) {
         </div>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-3">
-        <span className="text-[0.74rem] text-fog">
+      <div className="flex flex-wrap items-center justify-between gap-2 card-surface px-4 py-3">
+        <span className="text-xs text-fog">
           {g.memberCount} member{g.memberCount === 1 ? "" : "s"} · {g.verified ? "Verified" : "Unverified"}
         </span>
         <Link
           href={`/gyms/${g.slug}`}
-          className="tap rounded-lg border border-ink-600 bg-ink-800 px-3.5 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-chalk hover:border-ink-500"
+          className="tap rounded-lg border border-ink-600 bg-ink-800 px-3.5 py-2 font-display text-2xs font-bold uppercase tracking-wide text-chalk hover:border-ink-500"
         >
           View public page
         </Link>
@@ -267,9 +267,9 @@ export function GymManageForm({ gym }: { gym: ManagedGym }) {
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+    <section className="card-surface p-4">
       <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</h3>
-      {subtitle && <p className="mt-1 text-[0.72rem] leading-relaxed text-fog">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-2xs leading-relaxed text-fog">{subtitle}</p>}
       <div className="mt-3 flex flex-col gap-3">{children}</div>
     </section>
   );
@@ -279,8 +279,8 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   return (
     <label className="block">
       <span className="mb-1.5 flex items-baseline justify-between">
-        <span className="font-display text-[0.68rem] font-bold uppercase tracking-wide text-mist">{label}</span>
-        {hint && <span className="text-[0.62rem] text-fog">{hint}</span>}
+        <span className="font-display text-2xs font-bold uppercase tracking-wide text-mist">{label}</span>
+        {hint && <span className="text-3xs text-fog">{hint}</span>}
       </span>
       {children}
     </label>

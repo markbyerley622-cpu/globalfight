@@ -27,7 +27,7 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
       />
 
       <p
-        className="mb-1 text-center font-display text-[0.7rem] font-bold uppercase tracking-[0.3em]"
+        className="mb-1 text-center font-display text-2xs font-bold uppercase tracking-[0.3em]"
         style={{ color: "var(--accent, #f2555f)" }}
       >
         {fight.mainEvent ? "Main Event" : "Featured Bout"}
@@ -48,7 +48,7 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
 
       {market ? (
         <div className="mt-5">
-          <div className="mb-1.5 flex items-center justify-between text-[0.65rem] uppercase tracking-wider text-fog">
+          <div className="mb-1.5 flex items-center justify-between text-3xs uppercase tracking-wider text-fog">
             <span>Market implied probability</span>
             <span>{market.books} book{market.books === 1 ? "" : "s"}</span>
           </div>

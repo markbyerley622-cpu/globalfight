@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import { useRef, useState } from "react";
 import { X, Mic, Square, Loader2, Wand2, ShieldCheck, Check, RotateCcw } from "lucide-react";
@@ -90,13 +91,13 @@ export function VoiceClaim({ slug: _slug, onClose, onVerifyId }: { slug: string;
         className={`absolute inset-0 h-full w-full border-0 transition-all duration-700 ${generated ? "" : "scale-105 blur-lg brightness-[0.4]"}`}
       />
 
-      <button onClick={onClose} aria-label="Close" className="absolute right-4 top-4 z-20 rounded-full bg-ink-800/80 p-2 text-mist backdrop-blur hover:text-chalk">
+      <button onClick={onClose} aria-label="Close" className="cr-touch-target absolute right-4 top-4 z-20 rounded-full bg-ink-800/80 p-2 text-mist backdrop-blur hover:text-chalk">
         <X className="size-5" />
       </button>
 
       {!generated && (
         <div className="absolute inset-0 z-10 flex items-center justify-center p-6">
-          <div className="w-full max-w-lg rounded-3xl border border-ink-700 bg-ink-900/90 p-8 shadow-2xl backdrop-blur-xl">
+          <div className="w-full max-w-lg rounded-2xl border border-ink-700 bg-ink-900/90 p-8 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-2 text-blood-400">
               <ShieldCheck className="size-5" />
               <p className="font-display text-xs font-bold uppercase tracking-[0.25em]">Claim profile</p>
@@ -105,7 +106,7 @@ export function VoiceClaim({ slug: _slug, onClose, onVerifyId }: { slug: string;
             <p className="mt-2 text-sm text-mist">Say it all in one take — we fill the site behind this box. Skip anything you don&apos;t have.</p>
 
             {!built && (
-              <div className="mt-5 rounded-xl border border-ink-700 bg-ink-950/60 p-4">
+              <div className="mt-5 rounded-card border border-ink-700 bg-ink-950/60 p-4">
                 {SCRIPT.map((line, i) => (
                   <p key={i} className="text-sm leading-relaxed text-mist">{line}</p>
                 ))}
@@ -141,12 +142,12 @@ export function VoiceClaim({ slug: _slug, onClose, onVerifyId }: { slug: string;
                   </p>
                 )}
                 <div className="mt-5 flex gap-3">
-                  <button onClick={reset} className="flex items-center justify-center gap-2 rounded-xl border border-ink-700 px-4 py-3 text-sm text-mist hover:text-chalk">
+                  <Button onClick={reset} variant="outline" size="md" className="px-4">
                     <RotateCcw className="size-4" /> Redo
-                  </button>
-                  <button onClick={() => setGenerated(true)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blood-500 px-6 py-3 font-display text-sm font-bold uppercase tracking-wide text-white transition hover:brightness-110">
+                  </Button>
+                  <Button onClick={() => setGenerated(true)} size="md" className="flex-1 px-6">
                     <Wand2 className="size-4" /> Generate website
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

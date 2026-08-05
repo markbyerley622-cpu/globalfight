@@ -1,7 +1,7 @@
 "use client";
+import { ButtonLink } from "@/components/ui/button";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, AlertCircle, Pencil, Trash2, Check, X, Wifi, Reply, CornerDownRight, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -172,7 +172,7 @@ export function ThreadDiscussion({
             {t("Delete thread")}
           </button>
         ) : <span />}
-        <span className={cn("flex items-center gap-1.5 text-[0.65rem] uppercase tracking-wider", live ? "text-up" : "text-fog")}>
+        <span className={cn("flex items-center gap-1.5 text-3xs uppercase tracking-wider", live ? "text-up" : "text-fog")}>
           <Wifi className="size-3" /> {live ? t("Live") : t("Connecting…")}
         </span>
       </div>
@@ -206,7 +206,7 @@ export function ThreadDiscussion({
         ) : (
           <div className="card-surface flex flex-col items-center gap-2 p-5 text-center">
             <p className="text-sm text-mist">{t("Join the conversation.")}</p>
-            <Link href="/account" className="rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase text-white hover:bg-blood-400">{t("Sign in to reply")}</Link>
+            <ButtonLink href="/account" size="sm" className="px-4">{t("Sign in to reply")}</ButtonLink>
           </div>
         )}
       </div>
@@ -268,10 +268,12 @@ function PostItem({
           op={isOp}
           subline={subline}
         />
+        {/* Same rule as the gym-review action row: no `cr-touch-target` beside a
+            destructive control — grow the real box and the gap instead. */}
         {canManage && !post.deleted && !editing && (
-          <div className="flex shrink-0 gap-1">
-            <button onClick={() => { setDraft(post.content); setEditing(true); }} className="rounded p-1.5 text-fog hover:text-chalk" aria-label="Edit"><Pencil className="size-3.5" /></button>
-            <button onClick={remove} disabled={busy} className="rounded p-1.5 text-fog hover:text-blood-400" aria-label="Delete"><Trash2 className="size-3.5" /></button>
+          <div className="flex shrink-0 gap-2">
+            <button onClick={() => { setDraft(post.content); setEditing(true); }} className="rounded p-2 text-fog hover:text-chalk" aria-label="Edit"><Pencil className="size-3.5" /></button>
+            <button onClick={remove} disabled={busy} className="rounded p-2 text-fog hover:text-blood-400" aria-label="Delete"><Trash2 className="size-3.5" /></button>
           </div>
         )}
       </div>

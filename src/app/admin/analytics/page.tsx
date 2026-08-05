@@ -71,7 +71,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 function Big({ icon: Icon, label, hint, value }: { icon: typeof Target; label: string; hint?: string; value: number | string }) {
   return (
-    <div className="col-span-2 rounded-2xl border border-blood-500/30 bg-[radial-gradient(400px_140px_at_20%_0%,rgba(225,29,42,0.18),transparent_65%)] p-5">
+    <div className="col-span-2 rounded-card border border-blood-500/30 bg-[radial-gradient(400px_140px_at_20%_0%,rgba(225,29,42,0.18),transparent_65%)] p-5">
       <div className="mb-1 flex items-center gap-2 text-blood-300"><Icon className="size-4" /><span className="font-display text-xs font-bold uppercase tracking-wide">{label}</span></div>
       <p className="font-display text-4xl font-black tabular-nums text-chalk">{typeof value === "number" ? value.toLocaleString() : value}</p>
       {hint && <p className="mt-0.5 text-xs text-fog">{hint}</p>}
@@ -81,22 +81,22 @@ function Big({ icon: Icon, label, hint, value }: { icon: typeof Target; label: s
 
 function Tile({ icon: Icon, label, hint, value }: { icon: typeof Target; label: string; hint?: string; value: number | string }) {
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
-      <div className="mb-1 flex items-center gap-1.5 text-fog"><Icon className="size-3.5" /><span className="text-[0.65rem] font-semibold uppercase tracking-wide">{label}</span></div>
+    <div className="card-surface p-4">
+      <div className="mb-1 flex items-center gap-1.5 text-fog"><Icon className="size-3.5" /><span className="text-3xs font-semibold uppercase tracking-wide">{label}</span></div>
       <p className="font-display text-2xl font-bold tabular-nums text-chalk">{typeof value === "number" ? value.toLocaleString() : value}</p>
-      {hint && <p className="mt-0.5 text-[0.65rem] text-fog">{hint}</p>}
+      {hint && <p className="mt-0.5 text-3xs text-fog">{hint}</p>}
     </div>
   );
 }
 
 function Ret({ label, data }: { label: string; data: LaunchMetrics["retentionD1"] }) {
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-fog">{label} retention</p>
+    <div className="card-surface p-4">
+      <p className="text-3xs font-semibold uppercase tracking-wide text-fog">{label} retention</p>
       {data ? (
         <>
           <p className="font-display text-2xl font-bold tabular-nums text-chalk">{data.pct}%</p>
-          <p className="mt-0.5 text-[0.65rem] text-fog">{data.returned}/{data.cohort} returned</p>
+          <p className="mt-0.5 text-3xs text-fog">{data.returned}/{data.cohort} returned</p>
         </>
       ) : (
         <p className="mt-1 text-sm text-fog">No cohort yet</p>

@@ -151,7 +151,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
             return (
               <div key={m.id}>
                 {newDay && (
-                  <p className="py-3 text-center text-[0.65rem] font-semibold uppercase tracking-wider text-fog">
+                  <p className="py-3 text-center text-3xs font-semibold uppercase tracking-wider text-fog">
                     {dayLabel(m.at)}
                   </p>
                 )}
@@ -166,7 +166,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                     )}
                   >
                     <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.body}</p>
-                    <p className={cn("mt-0.5 text-right text-[0.6rem] tabular-nums", m.fromMe ? "text-white/70" : "text-fog")}>
+                    <p className={cn("mt-0.5 text-right text-3xs tabular-nums", m.fromMe ? "text-white/70" : "text-fog")}>
                       {timeLabel(m.at)}
                     </p>
                   </div>
@@ -197,13 +197,13 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
           }}
           rows={1}
           placeholder={`Message ${who?.name ?? ""}…`}
-          className="max-h-32 min-h-[2.75rem] flex-1 resize-y rounded-xl border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none"
+          className="max-h-32 min-h-[2.75rem] flex-1 resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none"
         />
         <button
           type="submit"
           disabled={!draft.trim() || sending || over}
           aria-label="Send message"
-          className="tap grid size-11 shrink-0 place-items-center rounded-xl bg-blood-500 text-white transition-colors hover:bg-blood-400 disabled:cursor-not-allowed disabled:bg-ink-800 disabled:text-fog"
+          className="tap grid size-11 shrink-0 place-items-center rounded-lg bg-blood-500 text-white transition-colors hover:bg-blood-400 disabled:cursor-not-allowed disabled:bg-ink-800 disabled:text-fog"
         >
           {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         </button>

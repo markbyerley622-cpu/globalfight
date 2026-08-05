@@ -26,7 +26,7 @@ export function GymPublicGallery({ photos, gymName }: { photos: LightboxImage[];
               type="button"
               onClick={() => lightbox.open(i)}
               aria-label={`Open photo ${i + 1} of ${photos.length}${p.caption ? `: ${p.caption}` : ""}`}
-              className="group relative block aspect-square w-full overflow-hidden rounded-xl border border-ink-700 bg-ink-850"
+              className="group relative block aspect-square w-full overflow-hidden rounded-lg border border-ink-700 bg-ink-850"
             >
               <Image
                 src={p.thumbUrl}

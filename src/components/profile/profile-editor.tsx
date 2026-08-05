@@ -10,6 +10,7 @@ import { REGISTRY_ROLE_DEFS, ROLE_GROUPS, rolesInGroup } from "@/lib/roles";
 import { SPORTS } from "@/lib/sports";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
+import { ButtonLink } from "@/components/ui/button";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The profile control centre.
@@ -128,7 +129,7 @@ export function ProfileEditor() {
 
   if (!p) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-6 text-sm text-fog">
+      <div className="flex items-center gap-2 card-surface px-4 py-6 text-sm text-fog">
         <Loader2 className="size-4 animate-spin" /> Loading your profile…
       </div>
     );
@@ -164,7 +165,7 @@ export function ProfileEditor() {
         </Field>
 
         {p.username && (
-          <p className="text-[0.7rem] text-fog">
+          <p className="text-2xs text-fog">
             Your profile is at{" "}
             <Link href={`/u/${p.username}`} className="font-semibold text-blood-300 underline-offset-2 hover:underline">
               /u/{p.username}
@@ -179,7 +180,7 @@ export function ProfileEditor() {
         <div className="flex flex-col gap-3">
           {ROLE_GROUPS.map((g) => (
             <div key={g.id}>
-              <span className="mb-1.5 block font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-fog">
+              <span className="mb-1.5 block font-display text-3xs font-bold uppercase tracking-[0.16em] text-fog">
                 {g.label}
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -198,7 +199,7 @@ export function ProfileEditor() {
           ))}
         </div>
         {REGISTRY_ROLE_DEFS.find((r) => r.value === p.registryRole)?.claimable && (
-          <p className="mt-1 rounded-xl border border-gold-500/30 bg-gold-500/10 px-3 py-2.5 text-[0.72rem] leading-relaxed text-gold-300">
+          <p className="mt-1 rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-2.5 text-2xs leading-relaxed text-gold-300">
             This role can be verified. Claim your fighter page or your gym to get the verified badge — a role on its
             own is a self-declaration, not a verification.
           </p>
@@ -267,29 +268,29 @@ export function ProfileEditor() {
         {homeGym ? (
           <Link
             href={`/gyms/${homeGym.slug}`}
-            className="flex items-center gap-3 rounded-xl border border-volt-500/25 bg-volt-500/8 px-3.5 py-3 transition-colors hover:border-volt-500/40"
+            className="flex items-center gap-3 rounded-card border border-volt-500/25 bg-volt-500/8 px-3.5 py-3 transition-colors hover:border-volt-500/40"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-volt-500/15 text-volt-400">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-volt-500/15 text-volt-400">
               <Dumbbell className="size-4" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-display text-sm font-bold text-chalk">{homeGym.name}</span>
-              <span className="block truncate text-[0.7rem] text-fog">{homeGym.city ?? "Change from the gym page"}</span>
+              <span className="block truncate text-2xs text-fog">{homeGym.city ?? "Change from the gym page"}</span>
             </span>
             <ChevronRight className="size-4 shrink-0 text-fog" />
           </Link>
         ) : (
-          <div className="rounded-xl border border-dashed border-ink-700 px-3.5 py-4 text-center">
-            <p className="text-[0.78rem] text-fog">
+          <div className="rounded-lg border border-dashed border-ink-700 px-3.5 py-4 text-center">
+            <p className="text-xs text-fog">
               No home gym set. Find where you train and tap &ldquo;I train here&rdquo;.
             </p>
             <div className="mt-2.5 flex justify-center gap-2">
-              <Link href="/gyms" className="tap rounded-lg bg-blood-500 px-3.5 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-white hover:bg-blood-400">
+              <ButtonLink href="/gyms" size="sm" className="px-3.5">
                 Find your gym
-              </Link>
-              <Link href="/gyms/new" className="tap rounded-lg border border-ink-700 px-3.5 py-2 font-display text-[0.7rem] font-bold uppercase tracking-wide text-mist hover:text-chalk">
+              </ButtonLink>
+              <ButtonLink href="/gyms/new" variant="outline" size="sm" className="px-3.5">
                 Add it
-              </Link>
+              </ButtonLink>
             </div>
           </div>
         )}
@@ -345,14 +346,14 @@ export function ProfileEditor() {
                 onClick={() => save({ mapVisibility: id })}
                 aria-pressed={active}
                 className={cn(
-                  "tap flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  "tap flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
                   active ? "border-blood-500/50 bg-blood-500/10" : "border-ink-700 bg-ink-850 hover:border-ink-600",
                 )}
               >
                 <Icon className={cn("size-4 shrink-0", active ? "text-blood-300" : "text-fog")} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.82rem] font-semibold text-chalk">{label}</span>
-                  <span className="block text-[0.68rem] leading-relaxed text-fog">{help}</span>
+                  <span className="block text-sm font-semibold text-chalk">{label}</span>
+                  <span className="block text-2xs leading-relaxed text-fog">{help}</span>
                 </span>
                 {active && <Check className="size-4 shrink-0 text-blood-300" />}
               </button>
@@ -380,7 +381,7 @@ export function ProfileEditor() {
           </Field>
         </div>
 
-        <p className="text-[0.68rem] leading-relaxed text-fog">
+        <p className="text-2xs leading-relaxed text-fog">
           We store the city, not your position. Your pin sits at the city centre — never at an address, and never from
           your device&apos;s GPS.
         </p>
@@ -399,9 +400,9 @@ export function ProfileEditor() {
           </Chip>
         </div>
 
-        {warning && <p className="text-[0.7rem] leading-relaxed text-gold-300">{warning}</p>}
+        {warning && <p className="text-2xs leading-relaxed text-gold-300">{warning}</p>}
         {onMap && (
-          <Link href="/map" className="text-center text-[0.72rem] font-semibold text-blood-300 underline-offset-2 hover:underline">
+          <Link href="/map" className="text-center text-2xs font-semibold text-blood-300 underline-offset-2 hover:underline">
             See yourself on the map
           </Link>
         )}
@@ -413,15 +414,15 @@ export function ProfileEditor() {
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
 const inputClass =
-  "w-full rounded-xl border border-ink-700 bg-ink-850 px-3 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none";
+  "w-full rounded-lg border border-ink-700 bg-ink-850 px-3 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-ink-600 focus:outline-none";
 
 function Card({
   title, subtitle, children,
 }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+    <section className="card-surface p-4">
       <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</h3>
-      {subtitle && <p className="mt-1 text-[0.72rem] leading-relaxed text-fog">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-2xs leading-relaxed text-fog">{subtitle}</p>}
       <div className="mt-3 flex flex-col gap-3">{children}</div>
     </section>
   );
@@ -431,8 +432,8 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   return (
     <label className="block">
       <span className="mb-1.5 flex items-baseline justify-between">
-        <span className="font-display text-[0.68rem] font-bold uppercase tracking-wide text-mist">{label}</span>
-        {hint && <span className="text-[0.62rem] text-fog">{hint}</span>}
+        <span className="font-display text-2xs font-bold uppercase tracking-wide text-mist">{label}</span>
+        {hint && <span className="text-3xs text-fog">{hint}</span>}
       </span>
       {children}
     </label>
@@ -478,14 +479,14 @@ function StatusBar({
 }: { saving: boolean; saved: boolean; error: string | null }) {
   if (error) {
     return (
-      <p className="sticky top-0 z-10 rounded-xl border border-down/40 bg-down/15 px-3.5 py-2.5 text-[0.76rem] font-semibold text-down backdrop-blur">
+      <p className="sticky top-0 z-10 rounded-lg border border-down/40 bg-down/15 px-3.5 py-2.5 text-xs font-semibold text-down backdrop-blur">
         {error}
       </p>
     );
   }
   if (!saving && !saved) return null;
   return (
-    <p className="sticky top-0 z-10 inline-flex items-center gap-1.5 self-start rounded-full border border-ink-700 bg-ink-950/90 px-3 py-1.5 text-[0.7rem] font-semibold text-mist backdrop-blur">
+    <p className="sticky top-0 z-10 inline-flex items-center gap-1.5 self-start rounded-full border border-ink-700 bg-ink-950/90 px-3 py-1.5 text-2xs font-semibold text-mist backdrop-blur">
       {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3 text-up" />}
       {saving ? "Saving…" : "Saved"}
     </p>
@@ -497,7 +498,7 @@ export function EditProfileLink() {
   return (
     <Link
       href="/profile/edit"
-      className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-600 bg-ink-800 px-3 py-1.5 font-display text-[0.68rem] font-bold uppercase tracking-wide text-chalk hover:border-ink-500"
+      className="tap inline-flex items-center gap-1.5 rounded-lg border border-ink-600 bg-ink-800 px-3 py-1.5 font-display text-2xs font-bold uppercase tracking-wide text-chalk hover:border-ink-500"
     >
       <Pencil className="size-3" /> Edit profile
     </Link>

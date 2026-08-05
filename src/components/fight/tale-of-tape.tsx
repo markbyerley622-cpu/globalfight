@@ -57,7 +57,7 @@ export function TaleOfTape({ red, blue }: { red: TapeFighter; blue: TapeFighter 
           {rows.map((row, i) => (
             <tr key={row.label} className={cn(i % 2 === 1 && "bg-ink-950/30")}>
               <td className="w-[38%] px-3 py-2 text-left font-semibold tabular-nums text-chalk">{row.r ?? "—"}</td>
-              <th scope="row" className="px-2 py-2 text-center text-[0.65rem] font-medium uppercase tracking-wider text-fog">
+              <th scope="row" className="px-2 py-2 text-center text-3xs font-medium uppercase tracking-wider text-fog">
                 {row.label}
               </th>
               <td className="w-[38%] px-3 py-2 text-right font-semibold tabular-nums text-chalk">{row.b ?? "—"}</td>
@@ -72,7 +72,7 @@ export function TaleOfTape({ red, blue }: { red: TapeFighter; blue: TapeFighter 
 function Corner({ f, tone, alignEnd }: { f: TapeFighter; tone: "red" | "blue"; alignEnd?: boolean }) {
   return (
     <div className={cn("min-w-0", alignEnd && "text-right")}>
-      <span className={cn("text-[0.6rem] font-bold uppercase tracking-wider", tone === "red" ? "text-blood-400" : "text-volt-400")}>
+      <span className={cn("text-3xs font-bold uppercase tracking-wider", tone === "red" ? "text-blood-400" : "text-volt-400")}>
         {tone === "red" ? "Red corner" : "Blue corner"}
       </span>
       <FighterLink name={f.name} slug={f.slug} className="mt-0.5 block truncate font-display text-base font-bold leading-tight text-chalk hover:text-blood-300 hover:underline" />

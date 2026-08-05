@@ -105,7 +105,7 @@ export default async function MyPredictionsPage() {
               <Stat value={String(totalCount)} label="Total calls" sub="all time" />
             </div>
             {totalCount > picks.length && (
-              <p className="-mt-3 mb-5 text-center text-[0.7rem] text-fog">Showing your {picks.length} most recent calls.</p>
+              <p className="-mt-3 mb-5 text-center text-2xs text-fog">Showing your {picks.length} most recent calls.</p>
             )}
 
             {open.length > 0 && (
@@ -173,14 +173,14 @@ function PickRow({ pick, status, username }: { pick: PickData; status: PickStatu
         "flex items-center gap-3 border-b border-ink-800 px-4 py-3.5 transition-colors last:border-b-0 hover:bg-ink-800/50",
       )}
     >
-      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl border bg-ink-950/40", outcome.ring, outcome.tone)}>
+      <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg border bg-ink-950/40", outcome.ring, outcome.tone)}>
         <Icon className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-display text-sm font-bold text-chalk">
           {pickedName} <span className="font-normal text-fog">vs {opponent}</span>
         </span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.7rem] text-fog">
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-fog">
           {fight.event?.name && <span className="truncate">{fight.event.name}</span>}
           {fight.titleFight && <span className="text-gold-400">· Title</span>}
           {pick.confidence != null && (
@@ -191,7 +191,7 @@ function PickRow({ pick, status, username }: { pick: PickData; status: PickStatu
           {method && <span>· {method}</span>}
         </span>
       </span>
-      <span className={cn("shrink-0 font-display text-[0.62rem] font-bold uppercase tracking-wide", outcome.tone)}>
+      <span className={cn("shrink-0 font-display text-3xs font-bold uppercase tracking-wide", outcome.tone)}>
         {outcome.label}
       </span>
     </Link>
@@ -200,10 +200,10 @@ function PickRow({ pick, status, username }: { pick: PickData; status: PickStatu
 
 function Stat({ value, label, sub }: { value: string; label: string; sub: string }) {
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-3.5 text-center">
+    <div className="card-surface p-3.5 text-center">
       <p className="font-display text-2xl font-bold tabular-nums text-chalk">{value}</p>
-      <p className="text-[0.6rem] uppercase tracking-wider text-fog">{label}</p>
-      <p className="mt-0.5 text-[0.65rem] text-mist">{sub}</p>
+      <p className="text-3xs uppercase tracking-wider text-fog">{label}</p>
+      <p className="mt-0.5 text-3xs text-mist">{sub}</p>
     </div>
   );
 }
@@ -211,8 +211,8 @@ function Stat({ value, label, sub }: { value: string; label: string; sub: string
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-6">
-      <h2 className="mb-2.5 px-0.5 font-display text-[0.72rem] font-bold uppercase tracking-wider text-fog">{title}</h2>
-      <div className="overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">{children}</div>
+      <h2 className="mb-2.5 px-0.5 font-display text-2xs font-bold uppercase tracking-wider text-fog">{title}</h2>
+      <div className="overflow-hidden card-surface">{children}</div>
     </section>
   );
 }
@@ -220,7 +220,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SignedOut() {
   return (
     <div className="px-4 py-16">
-      <div className="mx-auto max-w-md rounded-xl border border-ink-700 bg-ink-900/60 p-7 text-center">
+      <div className="mx-auto max-w-md rounded-card border border-ink-700 bg-ink-900/60 p-7 text-center">
         <h1 className="font-display text-xl font-black text-chalk">My Predictions</h1>
         <p className="mt-2 text-sm text-fog">Sign in to see every fight you&apos;ve called and how your picks landed.</p>
         <ButtonLink href="/account" className="mt-4">Sign in</ButtonLink>

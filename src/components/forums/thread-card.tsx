@@ -136,7 +136,7 @@ export function ThreadCard({
       {/* body — plain container now; the link above covers it */}
       <div className="pointer-events-none flex min-w-0 flex-1 gap-3 p-2.5 sm:p-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.65rem]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-3xs">
             {thread.pinned && <Pin className="size-3 shrink-0 text-gold-400" />}
             {showCategory && (
               <span className="rounded-full bg-ink-800 px-2 py-0.5 font-bold uppercase tracking-wider text-mist">
@@ -160,7 +160,7 @@ export function ThreadCard({
             </span>
           </div>
 
-          <h3 className="font-display text-sm font-semibold leading-snug text-chalk group-hover:text-blood-300 sm:text-[0.95rem]">
+          <h3 className="font-display text-sm font-semibold leading-snug text-chalk group-hover:text-blood-300 sm:text-base">
             {thread.title}
           </h3>
 
@@ -173,7 +173,7 @@ export function ThreadCard({
             <span className="flex items-center gap-1 rounded px-1.5 py-1 group-hover:bg-ink-800">
               <Send className="size-3.5" />Share
             </span>
-            <span className="ml-auto flex items-center gap-1 text-[0.7rem]">
+            <span className="ml-auto flex items-center gap-1 text-2xs">
               <Eye className="size-3.5" />{thread.views}
             </span>
           </div>

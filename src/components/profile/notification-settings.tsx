@@ -144,22 +144,22 @@ export function NotificationSettings() {
 
   if (!prefs) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-5 text-sm text-fog">
+      <div className="flex items-center gap-2 card-surface px-4 py-5 text-sm text-fog">
         <Loader2 className="size-4 animate-spin" /> Loading notification settings…
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
+    <div className="overflow-hidden card-surface">
       {/* Push opt-in */}
       <div className="flex items-start gap-3 border-b border-ink-800 px-4 py-3.5">
-        <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", pushState === "on" ? "bg-up/15 text-up" : "bg-ink-800 text-fog")}>
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", pushState === "on" ? "bg-up/15 text-up" : "bg-ink-800 text-fog")}>
           {pushState === "on" ? <Bell className="size-[1.05rem]" /> : <BellOff className="size-[1.05rem]" />}
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Push notifications</p>
-          <p className="mt-0.5 text-[0.76rem] leading-relaxed text-fog">
+          <p className="mt-0.5 text-xs leading-relaxed text-fog">
             {pushState === "on" && "This device will get fight reminders and replies, even when the app is closed."}
             {pushState === "off" && "Get fight reminders and replies when the app is closed."}
             {pushState === "denied" && "Blocked in your browser settings. Re-allow notifications for this site, then reload."}
@@ -173,7 +173,7 @@ export function NotificationSettings() {
             type="button"
             onClick={pushState === "on" ? disablePush : enablePush}
             className={cn(
-              "tap shrink-0 rounded-lg px-3 py-2 font-display text-[0.68rem] font-bold uppercase tracking-wide transition-colors",
+              "tap shrink-0 rounded-lg px-3 py-2 font-display text-2xs font-bold uppercase tracking-wide transition-colors",
               pushState === "on"
                 ? "border border-ink-600 bg-ink-800 text-chalk hover:border-ink-500"
                 : "bg-blood-500 text-white hover:bg-blood-400",
@@ -187,7 +187,7 @@ export function NotificationSettings() {
 
       {/* Categories */}
       <div className="px-4 py-3.5">
-        <p className="mb-2 flex items-center justify-between font-display text-[0.7rem] font-bold uppercase tracking-wide text-mist">
+        <p className="mb-2 flex items-center justify-between font-display text-2xs font-bold uppercase tracking-wide text-mist">
           What to tell me about
           {saved && <Check className="size-3.5 text-up" />}
         </p>
@@ -202,13 +202,13 @@ export function NotificationSettings() {
                 onClick={() => save({ [key]: !on } as Partial<Prefs>)}
                 aria-pressed={on}
                 className={cn(
-                  "tap flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  "tap flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
                   on ? "border-blood-500/40 bg-blood-500/10" : "border-ink-700 bg-ink-850 hover:border-ink-600",
                 )}
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.82rem] font-semibold text-chalk">{c.label}</span>
-                  <span className="block text-[0.68rem] leading-relaxed text-fog">{c.help}</span>
+                  <span className="block text-sm font-semibold text-chalk">{c.label}</span>
+                  <span className="block text-2xs leading-relaxed text-fog">{c.help}</span>
                 </span>
                 <span
                   aria-hidden
@@ -225,10 +225,10 @@ export function NotificationSettings() {
         </div>
 
         {/* Quiet hours */}
-        <p className="mb-2 mt-4 flex items-center gap-1.5 font-display text-[0.7rem] font-bold uppercase tracking-wide text-mist">
+        <p className="mb-2 mt-4 flex items-center gap-1.5 font-display text-2xs font-bold uppercase tracking-wide text-mist">
           <Moon className="size-3" /> Quiet hours
         </p>
-        <p className="mb-2 text-[0.68rem] leading-relaxed text-fog">
+        <p className="mb-2 text-2xs leading-relaxed text-fog">
           Push is held during these hours. Notifications still arrive in the app — you just aren&apos;t woken by them.
         </p>
         <div className="flex flex-wrap items-center gap-2">
@@ -261,11 +261,11 @@ export function NotificationSettings() {
           ))}
         </div>
         {prefs.timezone && prefs.quietHoursStart !== null && (
-          <p className="mt-1.5 text-[0.66rem] text-fog">Times are in {prefs.timezone}.</p>
+          <p className="mt-1.5 text-2xs text-fog">Times are in {prefs.timezone}.</p>
         )}
 
         {error && (
-          <p role="alert" className="mt-2 flex items-center gap-1.5 text-[0.7rem] text-down">
+          <p role="alert" className="mt-2 flex items-center gap-1.5 text-2xs text-down">
             <AlertCircle className="size-3.5 shrink-0" /> {error}
           </p>
         )}

@@ -40,14 +40,14 @@ export function FollowList({
   }
 
   return (
-    <ul className="divide-y divide-ink-800 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900">
+    <ul className="divide-y divide-ink-800 overflow-hidden card-surface">
       {people.map((p) => (
         <li key={p.username}>
           <Link
             href={`/u/${p.username}`}
             className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-ink-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
           >
-            <span className="size-10 shrink-0 overflow-hidden rounded-xl border border-ink-700 bg-ink-850">
+            <span className="size-10 shrink-0 overflow-hidden rounded-lg border border-ink-700 bg-ink-850">
               {p.image ? (
                 <Image src={p.image} alt="" width={80} height={80} className="size-full object-cover" unoptimized />
               ) : (

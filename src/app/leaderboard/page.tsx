@@ -85,12 +85,12 @@ export default async function LeaderboardPage({
           ) : (
             <>
               <Podium leaders={leaders.slice(0, 3)} />
-              <ol className="mt-4 overflow-hidden rounded-2xl border border-ink-800">
+              <ol className="mt-4 overflow-hidden rounded-card border border-ink-800">
                 {leaders.map((u, i) => (
                   <LeaderRow key={u.id} leader={u} rank={i + 1} />
                 ))}
               </ol>
-              <p className="mt-3 text-center text-[0.68rem] text-fog">
+              <p className="mt-3 text-center text-2xs text-fog">
                 {win === "all"
                   ? "Points are earned by calling fights correctly. Upsets pay more than favourites."
                   : "Points earned inside this window. Accuracy and streak are career figures."}
@@ -139,7 +139,7 @@ function Podium({ leaders }: { leaders: Leader[] }) {
   const order = [leaders[1], leaders[0], leaders[2]];
   const rank = [2, 1, 3];
   return (
-    <div className="grid grid-cols-3 gap-2 rounded-2xl border border-ink-800 bg-gradient-to-b from-ink-850 to-ink-900 p-4">
+    <div className="grid grid-cols-3 gap-2 rounded-card border border-ink-800 bg-gradient-to-b from-ink-850 to-ink-900 p-4">
       {order.map((u, i) => {
         const first = rank[i] === 1;
         return (
@@ -147,7 +147,7 @@ function Podium({ leaders }: { leaders: Leader[] }) {
             key={u.id}
             leader={u}
             className={cn(
-              "flex flex-col items-center rounded-xl px-1.5 py-2 text-center transition-colors hover:bg-ink-850",
+              "flex flex-col items-center rounded-lg px-1.5 py-2 text-center transition-colors hover:bg-ink-850",
               first && "-mt-2",
             )}
           >
@@ -155,20 +155,20 @@ function Podium({ leaders }: { leaders: Leader[] }) {
               <Avatar leader={u} size={first ? 62 : 48} />
               <span
                 className={cn(
-                  "absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-ink-700 bg-ink-950 px-1.5 font-display text-[0.62rem] font-black",
+                  "absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-ink-700 bg-ink-950 px-1.5 font-display text-3xs font-black",
                   MEDAL[rank[i] - 1],
                 )}
               >
                 {rank[i]}
               </span>
             </span>
-            <span className={cn("mt-2.5 max-w-full truncate font-display font-bold text-chalk", first ? "text-sm" : "text-[0.78rem]")}>
+            <span className={cn("mt-2.5 max-w-full truncate font-display font-bold text-chalk", first ? "text-sm" : "text-xs")}>
               {publicDisplayName(u)}
             </span>
-            <span className="mt-0.5 inline-flex items-center gap-1 font-display text-[0.8rem] font-black tabular-nums text-gold-300">
+            <span className="mt-0.5 inline-flex items-center gap-1 font-display text-xs font-black tabular-nums text-gold-300">
               <Trophy className="size-3" /> {u.points.toLocaleString()}
             </span>
-            <span className="text-[0.64rem] text-fog">{u.accuracy}% acc</span>
+            <span className="text-3xs text-fog">{u.accuracy}% acc</span>
           </LeaderLink>
         );
       })}
@@ -194,7 +194,7 @@ function LeaderRow({ leader, rank }: { leader: Leader; rank: number }) {
           <span className="block truncate font-display text-sm font-bold text-chalk">
             {publicDisplayName(leader)}
           </span>
-          <span className="mt-0.5 flex items-center gap-3 text-[0.68rem] text-fog">
+          <span className="mt-0.5 flex items-center gap-3 text-2xs text-fog">
             <span className="inline-flex items-center gap-1"><Target className="size-3" /> {leader.accuracy}% acc</span>
             <span className="inline-flex items-center gap-1"><Flame className="size-3" /> {leader.bestPickStreak}</span>
             <span className="hidden sm:inline">{leader.picksCorrect}/{leader.picksResolved} correct</span>
@@ -204,7 +204,7 @@ function LeaderRow({ leader, rank }: { leader: Leader; rank: number }) {
           <span className="block font-display text-base font-black tabular-nums text-chalk">
             {leader.points.toLocaleString()}
           </span>
-          <span className="block text-[0.62rem] uppercase tracking-wider text-fog">pts</span>
+          <span className="block text-3xs uppercase tracking-wider text-fog">pts</span>
         </span>
       </LeaderLink>
     </li>
@@ -248,7 +248,7 @@ function FighterRankings({ enabled }: { enabled: boolean }) {
             A divisional ranking table is an editorial compilation, not a fact. Ours could not be traced to a
             licensed source, so it is not displayed. Rankings return — divisions, P4P and champions — once a
             licensed source is in place.
-            <span className="mt-2 block text-[0.72rem]">
+            <span className="mt-2 block text-2xs">
               The predictor board above is unaffected: those points are earned on this platform.
             </span>
           </>
@@ -270,11 +270,11 @@ function RankingCard({ href, title, desc }: { href: string; title: string; desc:
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 px-4 py-4 transition-colors hover:border-gold-500/40 hover:bg-ink-850"
+      className="group flex items-center gap-3 card-surface px-4 py-4 transition-colors hover:border-gold-500/40 hover:bg-ink-850"
     >
       <span className="min-w-0 flex-1">
         <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</span>
-        <span className="mt-0.5 block text-[0.72rem] leading-relaxed text-fog">{desc}</span>
+        <span className="mt-0.5 block text-2xs leading-relaxed text-fog">{desc}</span>
       </span>
       <ArrowRight className="size-4 shrink-0 text-fog transition-transform group-hover:translate-x-0.5 group-hover:text-gold-300" />
     </Link>

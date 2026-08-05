@@ -125,7 +125,7 @@ export function EventCard({
             )}
             {isOff && <Badge tone="neutral">{event.status}</Badge>}
             <span
-              className="inline-flex items-center rounded-md border px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wider drop-shadow"
+              className="inline-flex items-center rounded-md border px-2 py-0.5 text-2xs font-bold uppercase tracking-wider drop-shadow"
               style={{ color: accent, borderColor: `${accent}66`, background: `${accent}26` }}
             >
               {sportLabel}
@@ -160,7 +160,7 @@ export function EventCard({
           {event.mainEvent && (() => {
             const intel = matchupIntel(event.mainEvent.redRank, event.mainEvent.blueRank);
             return intel ? (
-              <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wider text-volt-300 drop-shadow">{intel}</p>
+              <p className="mt-1 truncate text-3xs font-bold uppercase tracking-wider text-volt-300 drop-shadow">{intel}</p>
             ) : (
               <p className="mt-1 truncate text-xs text-mist">{cardTitle}</p>
             );
@@ -192,7 +192,7 @@ export function EventCard({
         {event.venue && <p className="mt-1 truncate text-xs text-fog">{event.venue}</p>}
 
         {!isDone && !isOff && (
-          <p className="mt-2.5 flex items-center gap-2 text-[0.65rem] uppercase tracking-wider text-fog">
+          <p className="mt-2.5 flex items-center gap-2 text-3xs uppercase tracking-wider text-fog">
             First bell <Countdown date={event.date} compact />
           </p>
         )}
@@ -225,7 +225,7 @@ export function EventCard({
             nothing rather than a dead control. */}
         {event.mainEvent && event.mainEvent.scheduled && !isDone && !isOff && (
           <div className="mt-3 border-t border-ink-800 pt-3">
-            <p className="mb-1.5 flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-wider text-fog">
+            <p className="mb-1.5 flex items-center gap-1.5 text-3xs font-bold uppercase tracking-wider text-fog">
               <Swords className="size-3 text-blood-400" /> {QUICK_PICK_LABEL} · Main event
             </p>
             <BoutPick
@@ -317,7 +317,7 @@ function CornerName({
         </span>
       </FighterLink>
       {record && (
-        <span className="mt-0.5 whitespace-nowrap font-mono text-[0.7rem] font-semibold tabular-nums text-mist drop-shadow">
+        <span className="mt-0.5 whitespace-nowrap font-mono text-2xs font-semibold tabular-nums text-mist drop-shadow">
           {record}
         </span>
       )}
@@ -334,7 +334,7 @@ function RankChip({ r }: { r: FighterRank | null }) {
   if (!r) return null;
   return (
     <span
-      className="mr-1 inline-flex items-baseline rounded bg-volt-500/20 px-1.5 py-0.5 align-middle text-[0.6rem] font-bold uppercase tracking-wide text-volt-200"
+      className="mr-1 inline-flex items-baseline rounded bg-volt-500/20 px-1.5 py-0.5 align-middle text-3xs font-bold uppercase tracking-wide text-volt-200"
       title={r.kind === "p4p" ? "Pound-for-pound rank" : "Divisional rank"}
     >
       {r.kind === "p4p" ? "P4P " : ""}#{r.rank}
@@ -356,7 +356,7 @@ function ActionPill({
     <>
       <Icon className={`size-3.5 shrink-0 ${isTba ? "text-fog" : "text-blood-400"}`} />
       <span className="flex min-w-0 flex-col leading-tight">
-        <span className="text-[0.55rem] font-semibold uppercase tracking-wider text-fog">{label}</span>
+        <span className="text-4xs font-semibold uppercase tracking-wider text-fog">{label}</span>
         <span className={`truncate text-xs font-semibold ${isTba ? "text-fog" : "text-chalk"}`}>{shown}</span>
       </span>
     </>

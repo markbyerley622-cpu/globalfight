@@ -281,7 +281,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             correct copy in the wrong place: repeated per bout it became the
             single largest block of text on the page, and the sentence that
             matters legally is the one a reader has stopped reading. */}
-        <p className="mb-3 flex items-center gap-1.5 text-[0.7rem] text-fog">
+        <p className="mb-3 flex items-center gap-1.5 text-2xs text-fog">
           <Swords className="size-3.5 shrink-0 text-blood-400" />
           Tap a corner to call each bout — correct calls earn points. Skill, not betting.
         </p>
@@ -355,9 +355,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 function RoomSkeleton() {
   return (
     <div className="mx-auto max-w-3xl space-y-3" aria-hidden>
-      <div className="h-11 rounded-xl bg-ink-800/50" />
-      <div className="h-24 rounded-xl bg-ink-900/70 ring-1 ring-ink-800/60" />
-      <div className="ml-6 h-16 rounded-xl bg-ink-900/50 ring-1 ring-ink-800/50" />
+      <div className="h-11 rounded-lg bg-ink-800/50" />
+      <div className="h-24 rounded-card bg-ink-900/70 ring-1 ring-ink-800/60" />
+      <div className="ml-6 h-16 rounded-card bg-ink-900/50 ring-1 ring-ink-800/50" />
     </div>
   );
 }
@@ -462,7 +462,7 @@ function BoutPrediction({ fight, crowd, myPick, market, eventDate }: { fight: Fi
 // ── Panels ────────────────────────────────────────────────────────────────
 function CoveragePanel({ articles }: { articles: Article[] }) {
   if (!articles.length) {
-    return <p className="rounded-xl border border-ink-700 bg-ink-900 p-4 text-sm text-fog">No coverage connected for this event yet.</p>;
+    return <p className="card-surface p-4 text-sm text-fog">No coverage connected for this event yet.</p>;
   }
   // Reddit-style: grouped by topic with a heading + count per bucket.
   const groups = groupCoverage(articles);
@@ -482,7 +482,7 @@ function CoveragePanel({ articles }: { articles: Article[] }) {
               <Link
                 key={a.id}
                 href={`/news/${a.slug}`}
-                className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3 transition-all hover:-translate-y-0.5 hover:border-blood-500/40"
+                className="flex items-center gap-3 card-surface p-3 transition-all hover:-translate-y-0.5 hover:border-blood-500/40"
               >
                 <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-ink-800">
                   {/* Real cover when the feed gives one (via /api/img), else locally

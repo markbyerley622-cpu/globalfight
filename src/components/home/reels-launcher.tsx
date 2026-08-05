@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -37,13 +38,10 @@ export function ReelsLauncher() {
       {/* Desktop: a slim bar above the feed — visible, not overwhelming. */}
       <div className="hidden border-b border-ink-800 bg-ink-950/60 lg:block">
         <div className="container-cr flex items-center justify-between py-2.5">
-          <span className="font-display text-[0.72rem] font-bold uppercase tracking-[0.2em] text-fog">Combat Feed</span>
-          <button
-            onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blood-500 px-4 py-2 font-display text-xs font-semibold uppercase tracking-wide text-white shadow-[0_8px_30px_-12px_rgba(225,29,42,0.8)] transition-colors hover:bg-blood-400"
-          >
+          <span className="font-display text-2xs font-bold uppercase tracking-[0.2em] text-fog">Combat Feed</span>
+          <Button onClick={() => setOpen(true)} size="sm" className="px-4">
             <Film className="size-4" /> Reels
-          </button>
+          </Button>
         </div>
       </div>
 

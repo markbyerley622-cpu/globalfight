@@ -62,7 +62,7 @@ export default async function DivisionPage({ params }: { params: Promise<{ slug:
 
       <div className="container-cr py-10">
         <div className="mx-auto max-w-3xl card-surface overflow-hidden">
-          <div className="grid grid-cols-[2rem_2rem_1fr_auto] items-center gap-3 border-b border-ink-700 px-4 py-2.5 text-[0.65rem] font-semibold uppercase tracking-wider text-fog">
+          <div className="grid grid-cols-[2rem_2rem_1fr_auto] items-center gap-3 border-b border-ink-700 px-4 py-2.5 text-3xs font-semibold uppercase tracking-wider text-fog">
             <span>#</span><span></span><span>Fighter</span><span>Rating</span>
           </div>
           {ranking.rankings.length > 0 ? (

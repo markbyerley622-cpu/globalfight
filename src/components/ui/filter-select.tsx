@@ -58,7 +58,7 @@ export function FilterSelect({
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 z-40 mt-1.5 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 shadow-2xl">
+        <div className="absolute left-0 right-0 z-40 mt-1.5 overflow-hidden rounded-card border border-ink-700 bg-ink-900 shadow-2xl">
           {searchable && (
             <div className="flex items-center gap-2 border-b border-ink-800 px-3">
               <Search className="size-4 text-fog" />

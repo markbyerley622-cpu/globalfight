@@ -6,7 +6,7 @@ export default function Loading() {
       <HeaderSkeleton />
       <div className="mt-5 flex flex-col gap-4">
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-40 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-40 w-full rounded-card" />
         ))}
       </div>
     </div>

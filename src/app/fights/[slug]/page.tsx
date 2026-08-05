@@ -114,7 +114,7 @@ export default async function FightPage({ params }: { params: Promise<{ slug: st
         </div>
 
         {!scheduled && (
-          <div className="mt-4 rounded-xl border border-ink-700 bg-ink-900 p-4 text-sm">
+          <div className="mt-4 card-surface p-4 text-sm">
             {won ? (
               <p className="text-chalk">
                 <span className="font-display font-bold text-blood-300">{won === "red" ? fight.red.name : fight.blue.name}</span>{" "}

@@ -87,7 +87,7 @@ export default function DataHealthPage() {
 
         {state === "ok" && data && data.checks.map((c) => <CheckCard key={c.id} check={c} />)}
 
-        {data && <p className="text-center text-[0.7rem] text-fog">Scanned {new Date(data.generatedAt).toLocaleString()}</p>}
+        {data && <p className="text-center text-2xs text-fog">Scanned {new Date(data.generatedAt).toLocaleString()}</p>}
       </div>
     </>
   );
@@ -161,23 +161,23 @@ function JobRow({ job }: { job: JobHealth }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="font-semibold text-chalk">{job.label}</span>
-          <code className="text-[0.7rem] text-fog">/api/cron/{job.route}</code>
-          <span className="text-[0.7rem] text-fog">{cadence(job.everyMinutes)}</span>
+          <code className="text-2xs text-fog">/api/cron/{job.route}</code>
+          <span className="text-2xs text-fog">{cadence(job.everyMinutes)}</span>
         </div>
         {/* Consequence, not just status — "overdue" means nothing to a reader who
             does not already know what this job feeds. */}
         {job.state !== "ok" && <p className="mt-0.5 text-fog">{job.matters}</p>}
         {job.lastError && (
-          <p className="mt-1 break-words rounded border border-ink-700 bg-ink-900/60 px-2 py-1 font-mono text-[0.68rem] text-blood-200">
+          <p className="mt-1 break-words rounded border border-ink-700 bg-ink-900/60 px-2 py-1 font-mono text-2xs text-blood-200">
             {job.lastError}
           </p>
         )}
       </div>
       <div className="shrink-0 text-right">
         <p className={`font-semibold ${s.text}`}>{s.label}</p>
-        <p className="text-[0.7rem] text-fog">ran {since(job.minutesSinceLastRun)}</p>
+        <p className="text-2xs text-fog">ran {since(job.minutesSinceLastRun)}</p>
         {job.recentFailures > 0 && (
-          <p className="text-[0.7rem] text-blood-300">{job.recentFailures}/{job.sampled} failed</p>
+          <p className="text-2xs text-blood-300">{job.recentFailures}/{job.sampled} failed</p>
         )}
       </div>
     </li>
@@ -287,7 +287,7 @@ function CheckCard({ check }: { check: HealthCheck }) {
       {check.samples.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-ink-800/60 pt-3">
           {check.samples.map((s, i) => (
-            <Link key={i} href={s.href} className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-2 py-1 text-[0.7rem] text-mist transition-colors hover:border-blood-500/50 hover:text-chalk">
+            <Link key={i} href={s.href} className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-950/40 px-2 py-1 text-2xs text-mist transition-colors hover:border-blood-500/50 hover:text-chalk">
               {s.label} <ArrowRight className="size-3 opacity-60" />
             </Link>
           ))}

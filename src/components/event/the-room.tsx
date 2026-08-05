@@ -24,7 +24,7 @@ export function TheRoom({ room }: { room: EventRoom }) {
         <div className="mb-4 flex items-center gap-2">
           <Users className="size-4 text-fog" />
           <h2 className="font-display text-sm font-black uppercase tracking-[0.18em] text-chalk">The Room</h2>
-          <span className="ml-auto text-[0.7rem] text-fog">{room.crowdTotal.toLocaleString()} callers</span>
+          <span className="ml-auto text-2xs text-fog">{room.crowdTotal.toLocaleString()} callers</span>
         </div>
 
         <div className="space-y-3">
@@ -43,32 +43,32 @@ export function TheRoom({ room }: { room: EventRoom }) {
         {(room.topCaller || room.perfectCount > 0) && (
           <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
             {room.topCaller && (
-              <div className="flex items-center gap-2.5 rounded-2xl border border-ink-800 bg-ink-900/70 p-3">
+              <div className="flex items-center gap-2.5 rounded-card border border-ink-800 bg-ink-900/70 p-3">
                 <span className="size-9 shrink-0 overflow-hidden rounded-full ring-1 ring-gold-500/40">
                   {room.topCaller.image ? (
                     <Image src={room.topCaller.image} alt="" width={36} height={36} className="size-full object-cover" unoptimized />
                   ) : (
-                    <span className="flex size-full items-center justify-center bg-gradient-to-br from-gold-600 to-gold-800 text-[0.7rem] font-black text-white">{initials(room.topCaller.name)}</span>
+                    <span className="flex size-full items-center justify-center bg-gradient-to-br from-gold-600 to-gold-800 text-2xs font-black text-white">{initials(room.topCaller.name)}</span>
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-wider text-gold-400"><Crown className="size-3" /> Top caller</p>
+                  <p className="flex items-center gap-1 text-3xs font-bold uppercase tracking-wider text-gold-400"><Crown className="size-3" /> Top caller</p>
                   {room.topCaller.username ? (
                     <Link href={`/u/${room.topCaller.username}`} className="block truncate text-sm font-bold text-chalk hover:text-gold-200">{room.topCaller.name}</Link>
                   ) : (
                     <p className="truncate text-sm font-bold text-chalk">{room.topCaller.name}</p>
                   )}
-                  <p className="text-[0.7rem] text-fog">{room.topCaller.reputation.toLocaleString()} reputation</p>
+                  <p className="text-2xs text-fog">{room.topCaller.reputation.toLocaleString()} reputation</p>
                 </div>
               </div>
             )}
             {room.perfectCount > 0 && (
-              <div className="flex items-center gap-2.5 rounded-2xl border border-ink-800 bg-ink-900/70 p-3">
+              <div className="flex items-center gap-2.5 rounded-card border border-ink-800 bg-ink-900/70 p-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-full border border-volt-500/40 bg-volt-500/12 text-volt-300"><Trophy className="size-4" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-volt-300">Perfect call club</p>
+                  <p className="text-3xs font-bold uppercase tracking-wider text-volt-300">Perfect call club</p>
                   <p className="font-display text-lg font-black leading-none text-chalk">{room.perfectCount.toLocaleString()}</p>
-                  <p className="text-[0.7rem] text-fog">called the winner and the finish</p>
+                  <p className="text-2xs text-fog">called the winner and the finish</p>
                 </div>
               </div>
             )}

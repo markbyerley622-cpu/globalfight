@@ -64,12 +64,12 @@ export default async function ScorecardPage({ params }: { params: Promise<Params
         </div>
 
         {!isMine && (
-          <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-6 text-center">
-            <span className="grid size-11 place-items-center rounded-2xl border border-blood-500/40 bg-blood-500/12 text-blood-400">
+          <div className="mt-8 flex flex-col items-center gap-3 card-surface p-6 text-center">
+            <span className="grid size-11 place-items-center rounded-lg border border-blood-500/40 bg-blood-500/12 text-blood-400">
               <Swords className="size-5" />
             </span>
             <p className="font-display text-sm font-bold text-chalk">Think you can call a card better?</p>
-            <p className="-mt-1 text-[0.72rem] text-fog">Predict the next one and build a record like this.</p>
+            <p className="-mt-1 text-2xs text-fog">Predict the next one and build a record like this.</p>
             <ButtonLink href="/events" size="sm">Call the next card</ButtonLink>
           </div>
         )}

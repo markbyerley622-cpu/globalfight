@@ -34,7 +34,7 @@ export function RecordDonut({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-3xl font-black text-chalk">{wins}-{losses}-{draws}</span>
-        <span className="text-[0.65rem] uppercase tracking-widest text-fog">Pro Record</span>
+        <span className="text-3xs uppercase tracking-widest text-fog">Pro Record</span>
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ export function ActivityBars({ data }: { data: { label: string; value: number }[
               title={`${d.label}: ${d.value}`}
             />
           </div>
-          <span className="text-[0.6rem] text-fog">{d.label}</span>
+          <span className="text-3xs text-fog">{d.label}</span>
         </div>
       ))}
     </div>

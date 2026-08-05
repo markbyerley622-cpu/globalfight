@@ -7,7 +7,7 @@ export default function Loading() {
       <ChipRowSkeleton chips={2} />
       <div className="mt-4"><ChipRowSkeleton chips={3} /></div>
       {/* The podium is the page's anchor — omitting it is the layout jump. */}
-      <Skeleton className="mt-5 h-36 w-full rounded-2xl" />
+      <Skeleton className="mt-5 h-36 w-full rounded-card" />
       <RowListSkeleton rows={8} className="mt-4" />
     </div>
   );

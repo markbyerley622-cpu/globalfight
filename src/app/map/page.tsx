@@ -33,7 +33,7 @@ export default async function MapPage() {
           <h1 className="font-display text-xl font-black uppercase tracking-tight text-chalk lg:text-2xl">
             Location
           </h1>
-          <p className="font-display text-[0.62rem] font-bold uppercase tracking-[0.18em] text-blood-400">
+          <p className="font-display text-3xs font-bold uppercase tracking-[0.18em] text-blood-400">
             Explore &amp; discover
           </p>
         </div>

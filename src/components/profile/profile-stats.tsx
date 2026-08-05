@@ -27,7 +27,7 @@ export function ProfileStats() {
   }, []);
 
   if (!data) {
-    return <div className="mt-6 flex items-center justify-center gap-2 rounded-2xl border border-ink-800 bg-ink-900 py-8 text-mist"><Loader2 className="size-4 animate-spin" /> Loading your record…</div>;
+    return <div className="mt-6 flex items-center justify-center gap-2 card-surface py-8 text-mist"><Loader2 className="size-4 animate-spin" /> Loading your record…</div>;
   }
   const s = data.stats;
   if (!s) return null;
@@ -42,8 +42,8 @@ export function ProfileStats() {
   return (
     <div className="mt-6 space-y-5">
       {/* Reputation headline */}
-      <div className="overflow-hidden rounded-2xl border border-ink-800 bg-[radial-gradient(600px_200px_at_50%_0%,rgba(225,29,42,0.18),transparent_65%)] p-5 text-center">
-        <p className="text-[0.65rem] uppercase tracking-[0.25em] text-fog">Combat Reputation</p>
+      <div className="overflow-hidden rounded-card border border-ink-800 bg-[radial-gradient(600px_200px_at_50%_0%,rgba(225,29,42,0.18),transparent_65%)] p-5 text-center">
+        <p className="text-3xs uppercase tracking-[0.25em] text-fog">Combat Reputation</p>
         <p className="mt-1 font-display text-5xl font-black tabular-nums text-chalk">{s.reputation.toLocaleString()}</p>
         {s.rank != null ? (
           <p className="mt-1 text-xs font-semibold text-blood-300">Rank #{s.rank.toLocaleString()} on the board</p>
@@ -54,8 +54,8 @@ export function ProfileStats() {
 
       {isNew ? (
         // ── Activation: the profile IS the call to predict ────────────────
-        <div className="rounded-2xl border border-blood-500/30 bg-blood-500/[0.06] p-6 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-blood-500/15 text-blood-300">
+        <div className="rounded-card border border-blood-500/30 bg-blood-500/[0.06] p-6 text-center">
+          <span className="mx-auto grid size-12 place-items-center rounded-lg bg-blood-500/15 text-blood-300">
             <ListChecks className="size-6" />
           </span>
           <h3 className="mt-3 font-display text-lg font-bold text-chalk">Make your first prediction</h3>
@@ -64,7 +64,7 @@ export function ProfileStats() {
           </p>
           <ButtonLink href="/events" className="mt-4">Find a fight to predict</ButtonLink>
           {follows === 0 && (
-            <p className="mt-3 text-[0.72rem] text-fog">
+            <p className="mt-3 text-2xs text-fog">
               Or <Link href="/leaderboard" className="font-semibold text-blood-300 hover:text-blood-200">follow a fighter</Link> to fill your feed.
             </p>
           )}
@@ -84,21 +84,21 @@ export function ProfileStats() {
               every call, how it landed, what's still open. */}
           <Link
             href="/predictions/mine"
-            className="flex items-center justify-between rounded-2xl border border-ink-800 bg-ink-900 p-4 transition-colors hover:border-ink-700 hover:bg-ink-850"
+            className="flex items-center justify-between card-surface p-4 transition-colors hover:border-ink-700 hover:bg-ink-850"
           >
             <span>
               <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">My predictions</span>
-              <span className="block text-[0.72rem] text-fog">Every call you&apos;ve made — open one to see how it landed</span>
+              <span className="block text-2xs text-fog">Every call you&apos;ve made — open one to see how it landed</span>
             </span>
             <span className="font-display text-sm font-semibold text-blood-300">View →</span>
           </Link>
           <Link
             href="/leaderboard"
-            className="flex items-center justify-between rounded-2xl border border-ink-800 bg-ink-900 p-4 transition-colors hover:border-ink-700 hover:bg-ink-850"
+            className="flex items-center justify-between card-surface p-4 transition-colors hover:border-ink-700 hover:bg-ink-850"
           >
             <span>
               <span className="block font-display text-sm font-bold uppercase tracking-wide text-chalk">See where you rank</span>
-              <span className="block text-[0.72rem] text-fog">Your reputation against every predictor on the board</span>
+              <span className="block text-2xs text-fog">Your reputation against every predictor on the board</span>
             </span>
             <span className="font-display text-sm font-semibold text-blood-300">View →</span>
           </Link>
@@ -129,11 +129,11 @@ function Tile({ icon: Icon, label, value, sub, href }: { icon: typeof Target; la
     <>
       <Icon className="mx-auto mb-1 size-4 text-blood-400" />
       <p className="font-display text-2xl font-bold tabular-nums text-chalk">{value}</p>
-      <p className="text-[0.6rem] uppercase tracking-wider text-fog">{label}</p>
-      <p className="mt-0.5 text-[0.65rem] text-mist">{sub}</p>
+      <p className="text-3xs uppercase tracking-wider text-fog">{label}</p>
+      <p className="mt-0.5 text-3xs text-mist">{sub}</p>
     </>
   );
-  const cls = "block rounded-2xl border border-ink-800 bg-ink-900 p-3.5 text-center";
+  const cls = "block card-surface p-3.5 text-center";
   return href ? (
     <Link href={href} className={`${cls} transition-colors hover:border-ink-700 hover:bg-ink-850`}>{inner}</Link>
   ) : (
@@ -143,7 +143,7 @@ function Tile({ icon: Icon, label, value, sub, href }: { icon: typeof Target; la
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+    <div className="card-surface p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">{title}</h3>
       </div>
