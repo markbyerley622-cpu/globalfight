@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { SPORTS } from "@/lib/sports";
 import type { EventFacet } from "@/lib/events-query";
 import { cn } from "@/lib/utils";
+import { preserveScrollOnNextNavigation } from "@/components/layout/scroll-restoration";
 
 // Every filter lives in the URL and nothing is filtered on the client — this
 // component only WRITES query params; the server does the work and re-renders.
@@ -57,8 +58,19 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   function write(p: URLSearchParams) {
     p.delete("page"); // any filter change invalidates the current page
     const qs = p.toString();
-    // scroll:false keeps the reader where they were; ScrollRestoration keys on
-    // pathname+search, so each filter combination remembers its own position.
+    // BOTH of these are required, and the second is the one that actually works.
+    //
+    // `scroll: false` only tells Next not to call window.scrollTo — and the
+    // document never scrolls in this app (AppShell is a 100dvh frame; `#main` is
+    // the real scroller). So on its own it did nothing, and every pill tap threw
+    // the reader back to the top: ScrollRestoration keys on pathname+search,
+    // saw a brand-new key on a non-Back navigation, treated it as a new
+    // destination and set `#main`.scrollTop = 0.
+    //
+    // Selecting filters is not arriving somewhere new — it is narrowing the list
+    // you are already reading, and with six pills active that reset happened on
+    // every single adjustment.
+    preserveScrollOnNextNavigation();
     router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
@@ -86,6 +98,8 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   }
 
   function clearAll() {
+    // Clearing is a filter change like any other — stay put.
+    preserveScrollOnNextNavigation();
     router.push(pathname, { scroll: false });
   }
 

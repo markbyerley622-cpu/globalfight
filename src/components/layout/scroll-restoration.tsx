@@ -56,6 +56,47 @@ const MAX_RESTORE_MS = 5000;
 
 type Positions = Map<string, number>;
 
+/**
+ * ── "Keep me where I am for this next navigation" ──────────────────────────
+ *
+ * The effect below treats every non-Back navigation as a NEW DESTINATION and
+ * pins the container to the top. That is right for a link and wrong for a
+ * filter: toggling a pill rewrites the query string, which changes the key,
+ * which re-ran the effect and slammed `#main` to 0 — so adding a fourth sport
+ * threw the reader back to the top of the page every single time.
+ *
+ * `router.push(..., { scroll: false })` does NOT prevent this. Next's option
+ * governs Next's own `window.scrollTo`, and the document here never scrolls
+ * (AppShell is a 100dvh frame; `#main` is the real scroller). This module is the
+ * only thing touching that element, so this is the only place the behaviour can
+ * be expressed.
+ *
+ * Deliberately a SIGNAL rather than a rule like "same pathname, query-only
+ * change → preserve". That rule would also capture pagination, and Next-page is
+ * a case where the top is correct: the pager sits at the BOTTOM of the list, so
+ * holding the offset would land the reader at the end of a page they have not
+ * read. The caller knows which of the two it is; this file cannot, and should
+ * not learn what a filter param looks like.
+ *
+ * The TTL exists because a push is not guaranteed. Tapping "All" when nothing is
+ * selected produces an identical URL and no navigation at all, which would leave
+ * the flag armed for whatever came next — a Pager click that then wrongly kept
+ * its offset. One second is far longer than the gap between calling this and the
+ * router committing, and far shorter than any human follow-up tap.
+ */
+let preserveUntil = 0;
+const PRESERVE_TTL_MS = 1000;
+
+export function preserveScrollOnNextNavigation(): void {
+  preserveUntil = performance.now() + PRESERVE_TTL_MS;
+}
+
+function consumePreserveRequest(): boolean {
+  const armed = performance.now() < preserveUntil;
+  preserveUntil = 0;
+  return armed;
+}
+
 function load(): Positions {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -144,8 +185,16 @@ export function ScrollRestoration() {
     // and to the event page's scroll-spy; do not fight either.
     const hasHash = window.location.hash.length > 1;
 
+    // The caller asked to stay put (a filter toggle — see
+    // preserveScrollOnNextNavigation). Touch nothing: not the reset, not a
+    // restore. The scroll listener below still records the position under the
+    // NEW key, so Back to this filter combination continues to work.
+    // Consumed unconditionally so the flag cannot survive into a later
+    // navigation, even when this branch does not use it.
+    const preserve = consumePreserveRequest() && !pop;
+
     let cancelled = false;
-    if (!hasHash) {
+    if (!hasHash && !preserve) {
       // Restore only when going Back/Forward. A fresh push is a new destination and
       // belongs at the top — anything else would be its own "why am I halfway down
       // this page" bug.

@@ -122,9 +122,26 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
             Filters govern BOTH lists, so they lead — and they stay pinned
             (see EventFilters, `sticky`) rather than scrolling away, so
             narrowing the list never means scrolling back up to find the pills.
-            Recent events moves BELOW the upcoming grid: a completed card is
-            what you look at after you have seen what's next, not before. */}
+            That is the part that fixed the scroll-jump; the rail's own position
+            below them is a separate call (see Recent events). */}
         <EventFilters facets={facets} />
+
+        {/* ── RECENT EVENTS — above the upcoming grid, by product decision ──
+            What just happened leads. A fan arriving the morning after a card
+            wants the result before the calendar, and the rail is the only place
+            on this page that carries their own pick outcome.
+
+            The original scroll-jump complaint is already solved by the filters
+            being FIRST and pinned, so the rail sitting here no longer pushes the
+            controls off-screen or moves them when a filter changes — it scrolls
+            under them like everything else.
+
+            Default view ONLY. `isDefaultView` gates the query itself, so the
+            moment someone filters, pages or picks a status, this is empty and
+            the grid rises to sit directly under the pills — a fixed "recently
+            completed" rail would otherwise argue with the query they just
+            wrote. */}
+        {recentEvents.length > 0 && <RecentEvents events={recentEvents} />}
 
         {/* SAY when the default view was swapped.
             The wrestling, judo, taekwondo and sambo calendars are annual
@@ -155,7 +172,13 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
             different thing with identical framing.
             Derived from the active filter rather than hardcoded to "Upcoming
             events": a fixed label would be wrong the moment someone taps Results. */}
-        <div>
+        {/* The seam exists only when the Recent events rail is above this. Two
+            labelled sections stacked with nothing between them read as one long
+            list whose heading changed halfway down — and on mobile the rail is a
+            horizontal scroller, so the boundary matters more, not less. On a
+            filtered view the rail is absent and the grid sits directly under the
+            pills, where a rule over nothing would be a line under the filters. */}
+        <div className={recentEvents.length > 0 ? "border-t border-ink-800/60 pt-5" : undefined}>
           <h2 className="font-display text-lg font-bold uppercase tracking-tight text-chalk">
             {listHeading(sp, fellBackToCompleted)}
           </h2>
@@ -186,15 +209,6 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
         )}
 
         <Pager page={page} hasNext={page + 1 < pages} />
-
-        {/* Recent results, AFTER what's next. Default view only — when someone
-            is filtering or paging, a fixed "recently completed" rail argues
-            with the query they just wrote. */}
-        {recentEvents.length > 0 && (
-          <div className="border-t border-ink-800/60 pt-6">
-            <RecentEvents events={recentEvents} />
-          </div>
-        )}
       </div>
     </>
   );
