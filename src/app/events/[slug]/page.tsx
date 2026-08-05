@@ -42,7 +42,6 @@ import { getEventRoom } from "@/lib/identity/event-room";
 import { EventHeader } from "@/components/event/event-header";
 import { EventSchedule } from "@/components/event/event-schedule";
 import { resultCoverage } from "@/lib/events/result-coverage";
-import { HeadlineMatchup } from "@/components/event/headline-matchup";
 import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
 import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress, excludeFight } from "@/lib/card-segments";
 import { FightRow } from "@/components/event/fight-row";
@@ -258,37 +257,48 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       <EventScrollSpy sections={spy} />
 
       {/* ── THE FEATURED BOUT — ONE MODULE, RENDERED ONCE ────────────────────
-          The bout the reader opened the event for, as a single hero unit:
+          The bout the reader opened the event for, as a single unit:
 
             matchup  →  prediction  →  challenge  →  discussion
 
-          It is the SAME FightModule every other bout on the card is built from,
-          with HeadlineMatchup as its header instead of the compact FightRow, and
-          the `full` BoutPick instead of the compact one. Not a parallel
-          implementation — one component, one /api/fights/[slug]/pick write, one
-          room.
+          IDENTICAL IN FORM TO EVERY OTHER BOUT. It is the same FightModule, the
+          same FightRow header (fighter portraits, records, KO%, the bout's slot
+          on the card) and the same compact BoutPick — only its POSITION is
+          special.
 
-          THIS BOUT IS EXCLUDED FROM THE CARD BELOW (see cardBlocks). Previously
-          it appeared in both places, so the same fight carried two prediction
-          controls over one crowd bar, two challenge entry points and — because
-          segmentCard reverses each block so the main event closes the show, and
-          CollapsibleFights only mounts the first three — the duplicate was
-          buried at the bottom behind "View N more predictions", which is why it
-          read as a second, unrelated module rather than an obvious repeat.
+          It briefly used HeadlineMatchup + the `full` BoutPick, and that was
+          wrong: the full variant wraps the two lock buttons in "Community
+          Prediction" and "Your Challenge" section headings, an explainer
+          sentence, a finish-method row and a restated confirmation banner. Next
+          to the lean rows below it, the most important bout on the card read as
+          a different, busier component — the one module on the page that did not
+          match the system it sits at the top of. Consistency IS the hierarchy
+          here; the position already says which bout matters.
+
+          THIS BOUT IS EXCLUDED FROM THE CARD BELOW (see cardBlocks). It used to
+          appear in both places, so the same fight carried two prediction
+          controls over one crowd bar and two challenge entry points.
 
           Rendered for a COMPLETED bout too, not just a scheduled one: the card
-          no longer contains it, so gating this on `result === "SCHEDULED"` would
+          no longer contains it, so gating on `result === "SCHEDULED"` would
           delete the main event from a finished event's page entirely.
           BoutPrediction already renders the outcome + how the crowd called it
           when the bout is decided. */}
       {headline && (
-        <section id="main-event" className="reveal scroll-mt-16">
+        <section id="main-event" className="reveal scroll-mt-16 px-4 py-6">
           <FightModule
             fightSlug={headline.slug}
             summary={roomsByFightId.get(headline.id) ?? { voices: 0, battle: null }}
-            // Full-bleed: HeadlineMatchup brings its own padding and bottom
-            // seam, so it must not be nested inside the section's own gutter.
-            header={<HeadlineMatchup fight={headline} />}
+            header={
+              <FightRow
+                fight={headline}
+                index={fights.indexOf(headline)}
+                market={marketBySlug.get(headline.slug) ?? null}
+                estimatedAt={boutTimes.get(headline.id)?.toISOString() ?? null}
+                estimated={segmentsDerived}
+                progress={boutProgress(headline, headline.id === liveBoutId)}
+              />
+            }
             pick={
               <BoutPrediction
                 fight={headline}
@@ -296,11 +306,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 myPick={myPicksByFightId.get(headline.id) ?? null}
                 market={marketBySlug.get(headline.slug) ?? null}
                 eventDate={event.date}
-                variant="full"
               />
             }
-            className="px-4 pb-6"
-            bodyClassName="mx-auto max-w-2xl"
           />
         </section>
       )}

@@ -3,19 +3,24 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, Bell, Settings, ChevronRight, Loader2, Swords, Camera, Dumbbell, Pencil, Flame, UserPlus } from "lucide-react";
+import { Star, Settings, ChevronRight, Loader2, Swords, Camera, Flame } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
-import { ProfileSettings } from "./profile-settings";
 import { ProfileStats } from "./profile-stats";
 import { EditProfileLink } from "./profile-editor";
-import { ShareMenu, CopyLinkButton } from "@/components/share-menu";
 
 const initials = (u: { name: string | null; username: string | null }) =>
   (u.name ?? u.username ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
-/** The user's profile: identity (with editable banner + avatar) + account
- *  shortcuts + settings. */
+/**
+ * Your own profile: IDENTITY ONLY — editable banner + avatar, handle, role,
+ * follow counts, reputation/accuracy/streak and your predictions.
+ *
+ * Account administration (display name, username, email, password, sign out,
+ * notification preferences, invites, gyms, profile editing) lives at
+ * /profile/settings. See the note above the Settings row for why the two were
+ * separated.
+ */
 export function ProfileView({
   followCounts = null,
   username: serverUsername = null,
@@ -161,6 +166,19 @@ export function ProfileView({
         <span className="rounded-lg border border-blood-500/25 bg-blood-500/12 px-2.5 py-1 text-2xs font-bold uppercase tracking-wide text-blood-300">{role}</span>
         {user.username && <span className="text-xs text-fog">@{user.username}</span>}
         <EditProfileLink />
+        {/* SEE WHAT EVERYONE ELSE SEES. /u/<handle> is the public identity —
+            the page that carries the Follow button, the bio and the record a
+            stranger judges you on — and from your own profile there was no way
+            to reach it. Without this the owner can only guess what their
+            profile looks like to the people they are inviting. */}
+        {(user.username ?? serverUsername) && (
+          <Link
+            href={`/u/${user.username ?? serverUsername}`}
+            className="text-2xs font-semibold uppercase tracking-wide text-fog underline underline-offset-2 transition-colors hover:text-chalk"
+          >
+            View public profile
+          </Link>
+        )}
       </div>
 
       {/* Followers / following. Shown even at zero: "0 followers" is a real
@@ -202,44 +220,44 @@ export function ProfileView({
       {/* Identity: reputation, accuracy, streak, prediction history, activity */}
       <ProfileStats />
 
-      {/* INVITES. This lived only at /invite, which nothing linked to — a growth
-          feature reachable exclusively by typing the URL. It belongs in the account
-          area, and the two actions people actually want (copy, share) are here
-          rather than one navigation away. The full centre — preview card, stats —
-          is still one tap on the heading, so this is an entry point and not a
-          second implementation of it. */}
-      {user.username && <InviteCard username={user.username} name={user.name ?? user.username} />}
+      {/* ── WHAT REMAINS HERE IS IDENTITY ────────────────────────────────────
+          Everything that administers the ACCOUNT — display name, username,
+          email, password, sign out, notification preferences, invites, gyms,
+          profile editing — moved to /profile/settings.
 
-      {/* Account shortcuts */}
+          This page was two products stacked on one screen: a public combat
+          identity on top, and a settings form underneath. Those are opposite
+          mental models, and interleaving them meant the profile a user looks at
+          most opened onto password fields and an invite prompt sitting between
+          them and their own record.
+
+          What is left is the one destination that is not administration:
+          your predictions, which ARE the identity this product is built on. */}
       <div className="mt-6 overflow-hidden card-surface">
         <Row href="/predictions/mine" icon={Star} name="My Predictions" desc="Your picks and how they landed" />
-        <Row href="/invite" icon={UserPlus} name="Invite friends" desc="Your link, your card, who's joined" />
-        {/* Was pointing at /profile/edit — the notification PREFERENCES — while the
-            notification centre itself had no entry point in the profile at all. */}
-        <Row href="/notifications" icon={Bell} name="Notifications" desc="Results, cards and fight-week news" />
-        <Row href="/profile/edit" icon={Pencil} name="Edit profile" desc="Role, disciplines, links, map presence" />
-        <Row href="/gyms" icon={Dumbbell} name="Gyms" desc="Where you train, and who trains there" />
       </div>
 
-      {/* Settings */}
-      <div className="mt-5 flex items-center gap-2 px-1">
-        <Settings className="size-4 text-fog" />
-        <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Settings</h3>
-      </div>
-      <div className="mt-3">
-        <ProfileSettings />
-      </div>
+      {/* ONE way into account management, at the bottom, where a thing you need
+          occasionally belongs — not interleaved with the thing you came for. */}
+      <Link
+        href="/profile/settings"
+        className="mt-4 flex items-center gap-3 rounded-card border border-ink-800 bg-ink-900/60 px-4 py-3.5 transition-colors hover:border-ink-700 hover:bg-ink-800"
+      >
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-800 text-mist">
+          <Settings className="size-[1.05rem]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-chalk">{t("Settings")}</span>
+          <span className="block truncate text-2xs text-fog">
+            Account, profile details, notifications, invites and gyms
+          </span>
+        </span>
+        <ChevronRight className="size-4 text-fog" />
+      </Link>
     </div>
   );
 }
 
-/**
- * The invite entry point, with the two actions that get used.
- *
- * Deliberately NOT a copy of the /invite centre: no preview image (it is a 1200x630
- * fetch that would compete with the profile's own content) and no stats. It gives
- * the link, copy, share, and a way through to the rest.
- */
 /** One tappable count. Mirrors the pair on /u/[username] so the two profiles
  *  read identically — the same fact should not have two presentations. */
 function FollowStat({ href, value, label }: { href: string; value: number; label: string }) {
@@ -251,34 +269,6 @@ function FollowStat({ href, value, label }: { href: string; value: number; label
       <span className="font-display text-base font-bold text-chalk">{value.toLocaleString()}</span>
       <span className="text-xs text-fog group-hover:text-mist">{label}</span>
     </Link>
-  );
-}
-
-function InviteCard({ username, name }: { username: string; name: string }) {
-  const path = `/invite/${username}`;
-  return (
-    <section className="mt-6 rounded-card border border-blood-500/25 bg-gradient-to-b from-blood-500/10 to-transparent p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-chalk">
-            <UserPlus aria-hidden className="size-4 text-blood-400" /> Invite friends
-          </h3>
-          <p className="mt-1 text-2xs leading-relaxed text-fog">
-            Your record travels with the invitation. Find out who can actually read a fight.
-          </p>
-        </div>
-        <Link
-          href="/invite"
-          className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-mist underline underline-offset-2 transition-colors hover:text-chalk"
-        >
-          Open
-        </Link>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <CopyLinkButton path={path} />
-        <ShareMenu path={path} title={`${name} invited you to Combat Reviews`} label="Share invite" />
-      </div>
-    </section>
   );
 }
 
