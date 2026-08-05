@@ -87,9 +87,20 @@ export function EventCard({
 
   return (
     <article
-      className="card-surface group relative overflow-hidden transition-colors hover:border-blood-500/40"
+      className="card-link-host card-surface group relative cursor-pointer overflow-hidden transition-all hover:-translate-y-0.5 hover:border-blood-500/40 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.8)] active:translate-y-0"
       style={{ "--accent": accent } as React.CSSProperties}
     >
+      {/* Whole-card navigation. aria-hidden + tabIndex -1 because the "Full
+          card" CTA below is the SAME destination and is already in the tab
+          order — without this a screen reader announces the destination twice
+          and keyboard users tab through a link they cannot see. This overlay is
+          a pointer affordance only. */}
+      <Link
+        href={`/events/${event.slug}`}
+        aria-hidden
+        tabIndex={-1}
+        className="card-link-overlay"
+      />
       {/* Meaningful visual context, in priority order: event hero → poster →
           the two fighters facing each other → owned sport photo → sport gradient.
           Never an empty box. */}

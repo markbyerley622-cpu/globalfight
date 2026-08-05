@@ -251,7 +251,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           bouts: b.fights.length,
         }))}
       />
-      {headline && <HeadlineMatchup fight={headline} market={marketBySlug.get(headline.slug) ?? null} />}
+      {headline && <HeadlineMatchup fight={headline} />}
 
       {/* Sticky scroll-spy, then the sections continuously below it. */}
       <EventScrollSpy sections={spy} />

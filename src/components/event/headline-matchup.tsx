@@ -1,20 +1,18 @@
 import { FighterLink } from "@/components/fighter-link";
 import { cn, formatRecord } from "@/lib/utils";
 import type { Fight } from "@/lib/types";
-import type { MarketProb } from "@/lib/market";
-import { OddsDisclosure } from "@/components/odds-disclosure";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { Flag } from "@/components/flag";
 import { Badge } from "@/components/ui/badge";
-import { ProbabilityBar } from "@/components/probability-bar";
 
 /**
  * The headline matchup: the reason the user opened the event. Symmetric red vs
- * blue framing with records, country, division and a title indicator — plus the
- * market-implied win probability when live lines are connected. Tapping opens
- * the full bout breakdown.
+ * blue framing with records, country, division and a title indicator. Tapping
+ * opens the full bout breakdown.
+ *
+ * Deliberately carries NO bookmaker line — see the note in the body.
  */
-export function HeadlineMatchup({ fight, market }: { fight: Fight; market: MarketProb | null }) {
+export function HeadlineMatchup({ fight }: { fight: Fight }) {
   const { red, blue } = fight;
 
   return (
@@ -46,22 +44,22 @@ export function HeadlineMatchup({ fight, market }: { fight: Fight; market: Marke
         <Corner fighter={blue} side="blue" alignEnd />
       </div>
 
-      {market ? (
-        <div className="mt-5">
-          <div className="mb-1.5 flex items-center justify-between text-3xs uppercase tracking-wider text-fog">
-            <span>Market implied probability</span>
-            <span>{market.books} book{market.books === 1 ? "" : "s"}</span>
-          </div>
-          <ProbabilityBar redLabel={red.name} blueLabel={blue.name} redProbability={market.redP} />
-          {/* Non-negotiable: the licence for this data requires attribution and
-              18+/RG messaging on every surface that shows it. */}
-          <OddsDisclosure />
-        </div>
-      ) : (
-        <p className="mt-5 rounded-lg bg-ink-800 px-3 py-2 text-center text-xs text-fog">
-          Awaiting live betting lines for this bout.
-        </p>
-      )}
+      {/* ── Bookmaker odds removed from the event surface ──────────────────
+          This used to render "Market implied probability · N books" plus the
+          mandatory 18+/RG disclosure, and an "Awaiting live betting lines"
+          placeholder when there was no market.
+
+          Removing ONLY the disclosure was not an option: ingestion-registry.ts
+          records The Odds API terms as "18+ / responsible-gambling messaging
+          required wherever the data is displayed", so the notice and the data
+          are a package — you drop both or neither.
+
+          Dropping both is also the better product call. This is a prediction
+          app, not a betting one; the community's own read belongs here, and a
+          bookmaker line invites the comparison we do not want to host.
+
+          The predictions surface still shows market data under its own
+          disclosure; that is a separate, opted-into destination. */}
     </section>
   );
 }

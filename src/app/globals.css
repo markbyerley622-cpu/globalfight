@@ -278,6 +278,28 @@
     background: var(--color-blood-500);
   }
 
+  /* ── Whole-surface navigation ──────────────────────────────────────────
+     A card that navigates from anywhere you press it, WITHOUT nesting
+     interactive elements inside an anchor (invalid HTML, and screen readers
+     announce the whole card as one giant link).
+
+     Instead: an absolutely-positioned overlay link, with every direct child of
+     the host lifted above it. Real controls inside the card — Quick Pick, Watch,
+     Tickets, Share, Follow — keep working because they sit on a higher layer.
+
+     Order matters and the obvious version is wrong: lifting every direct child
+     above the overlay leaves the overlay unreachable, because those children
+     tile the whole card. So the overlay goes ON TOP of the content, and only
+     genuinely INTERACTIVE descendants are raised above the overlay.
+
+     `:where()` keeps specificity at zero so a component can still opt out with
+     an ordinary utility class. */
+  .card-link-host > .card-link-overlay { position: absolute; inset: 0; z-index: 2; }
+  .card-link-host :where(a:not(.card-link-overlay), button, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])) {
+    position: relative;
+    z-index: 3;
+  }
+
   .card-surface {
     background: linear-gradient(160deg, var(--color-ink-850), var(--color-ink-900));
     border: 1px solid var(--color-ink-700);
