@@ -55,15 +55,22 @@ export function EventHeader({
 
   return (
     <header
-      className="relative overflow-hidden border-b border-ink-700/70 px-4 pb-5 pt-4"
+      // pt respects the safe area (notch / Dynamic Island) with a 1.25rem floor,
+      // so the Back button is never tucked under system chrome on a PWA.
+      className="relative overflow-hidden border-b border-ink-700/70 px-4 pb-5 pt-[max(1.25rem,calc(0.75rem+env(safe-area-inset-top)))]"
       style={{
+        // Origin moved off 0% 0%. The hottest point of the promotion glow used
+        // to sit exactly where the Back button is, so the control read as part
+        // of the artwork rather than as chrome you can press. Centring it puts
+        // the glow behind the poster and title, which is what it is for, and
+        // leaves the top-left corner clean.
         backgroundImage:
-          "radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--accent, #e11d2a) 14%, transparent), transparent 70%)",
+          "radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--accent, #e11d2a) 14%, transparent), transparent 70%)",
       }}
     >
       {/* Leaf page: this sits outside the section tabs, so mobile needs an
           explicit way back to where the fan came from. */}
-      <div className="relative mb-3">
+      <div className="relative mb-4">
         <BackButton fallback="/events" label="Back to events" />
       </div>
 
