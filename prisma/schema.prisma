@@ -508,6 +508,87 @@ model ImportConflict {
   @@index([resolvedAt])
 }
 
+/// Manual identity verification for professional registry roles.
+///
+/// Deliberately NOT a signup gate. An account exists and works the moment
+/// someone registers; this runs afterwards and only gates the verified badge
+/// and professional privileges. Gating registration on a human review queue
+/// means abandoning every signup that arrives while the queue is asleep.
+///
+/// Submissions are never deleted — a declined attempt stays as history so a
+/// pattern of resubmissions is visible to the next reviewer. The DOCUMENTS are
+/// deleted on the retention schedule (see IdentityDocument); the decision
+/// record outlives them, which is the right way round.
+model IdentityVerification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("IdentityVerifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The registry role AT SUBMISSION. Snapshotted rather than read live: a
+  /// reviewer approving "coach" must not have that decision silently re-pointed
+  /// at "promoter" because the user edited their profile mid-review.
+  role String
+
+  /// PENDING | APPROVED | DECLINED | RESUBMIT_REQUESTED
+  status String @default("PENDING")
+
+  /// Which attempt this is for the user, 1-based. Cheap to read, and it is the
+  /// number a reviewer actually wants ("this is their 4th try").
+  attempt Int @default(1)
+
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+  reviewerId  String?
+  reviewer    User?     @relation("IdentityVerificationsReviewed", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  /// Shown to the user. Kept separate from reviewNote so an internal note can
+  /// never be leaked by a careless select.
+  declineReason String? @db.Text
+  /// Staff-only. Never returned by any user-facing endpoint.
+  reviewNote    String? @db.Text
+
+  documents IdentityDocument[]
+
+  @@index([status, submittedAt])
+  @@index([userId, submittedAt])
+}
+
+/// One uploaded document belonging to a verification request.
+///
+/// A child table rather than front/back/supporting columns on the parent: the
+/// per-object bookkeeping the private store requires (provider, scan status,
+/// content type, size, retention deadline, deletion outcome) is seven fields,
+/// and three inline copies of it is twenty-one columns that the cleanup job
+/// would then have to unroll by hand. This way retention iterates one table.
+model IdentityDocument {
+  id             String               @id @default(cuid())
+  verificationId String
+  verification   IdentityVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+
+  /// FRONT | BACK | SUPPORTING
+  kind String
+
+  /// Opaque object key — never a fetchable address, never returned to a client.
+  storageKey      String
+  storageProvider String
+  contentType     String
+  byteSize        Int
+  /// PENDING | CLEAN | INFECTED | SKIPPED. Anything but CLEAN refuses to stream.
+  scanStatus      String   @default("PENDING")
+  uploadedAt      DateTime @default(now())
+
+  /// Retention. The cleanup job deletes bytes past this deadline and records
+  /// the outcome; the parent decision row survives.
+  deleteAfter     DateTime?
+  deletedAt       DateTime?
+  deletionStatus  String? // null | PENDING | DELETED | FAILED
+  deletionError   String? // last failure reason — never the key or a URL
+
+  @@index([verificationId])
+  @@index([deleteAfter])
+  @@index([deletionStatus])
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String? // user who performed the action
@@ -1318,6 +1399,12 @@ model User {
   name          String?
   email         String?   @unique
   emailVerified DateTime?
+  /// When staff approved this user's professional identity. A timestamp rather
+  /// than a boolean, matching `emailVerified` above: "verified" and "verified
+  /// on 4 August" are different questions and only one of them survives a
+  /// boolean. The verified badge derives from this — there is no separate flag
+  /// to fall out of sync with it.
+  professionalVerifiedAt DateTime?
   image         String?
   username      String?   @unique
   bannerUrl     String? // profile cover image (user-uploaded)
@@ -1438,6 +1525,8 @@ model User {
   sessions          Session[]
   passwordResets    PasswordResetToken[]
   emailVerifications EmailVerificationToken[]
+  identityVerifications         IdentityVerification[] @relation("IdentityVerifications")
+  identityVerificationsReviewed IdentityVerification[] @relation("IdentityVerificationsReviewed")
   predictions       Prediction[]
   articles          Article[]
   threads           ForumThread[]
@@ -2025,6 +2114,7 @@ enum NotificationType {
   BATTLE_REPLY // your rival spoke in the battle room
   STREAK_REMINDER // your daily visit streak is alive but not yet extended today
   GYM_REVIEW // a gym you follow (or own) received a review
+  IDENTITY_VERIFICATION // your professional identity review moved (submitted/approved/declined)
   SYSTEM
 }
 

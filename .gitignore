@@ -34,3 +34,7 @@ wikicard-cleanup-backup-*.json
 # artefact of the fallback path and must never be committed.
 /public/fighters/
 /public/headshots/
+
+# Private evidence / identity documents stored on local disk in dev.
+# NEVER tracked: in local development this directory holds real uploads.
+.private/

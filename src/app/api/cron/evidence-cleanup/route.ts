@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cleanupExpiredEvidence } from "@/lib/evidence/lifecycle";
+import { cleanupExpiredIdentityDocuments } from "@/lib/identity-verification";
 import { purgeStaleResetTokens } from "@/lib/auth-password-reset";
 import { log } from "@/lib/scraper/logger";
 import { cronAuthorized } from "@/lib/scraper/cron-handler";
@@ -30,16 +31,22 @@ export async function GET(req: Request) {
   const started = Date.now();
   try {
     const evidence = await cleanupExpiredEvidence();
+    // Identity documents live in their own table, so the claim sweep above does
+    // not see them. Without this they would be retained forever.
+    const identity = await cleanupExpiredIdentityDocuments();
     const resetTokensPurged = await purgeStaleResetTokens();
     const durationMs = Date.now() - started;
 
-    log.info({ ...evidence, resetTokensPurged, durationMs }, "cron:evidence-cleanup");
+    log.info({ ...evidence, identity, resetTokensPurged, durationMs }, "cron:evidence-cleanup");
 
     // A non-zero stillFailing means documents we intended to destroy are still in
     // the bucket. Surface it as a non-200 so a monitor notices rather than a
     // green tick hiding retained passports.
-    const status = evidence.stillFailing > 0 ? 500 : 200;
-    return NextResponse.json({ ok: evidence.stillFailing === 0, ...evidence, resetTokensPurged, durationMs }, { status });
+    // Same rule for identity documents: a failed delete is a retained passport,
+    // so it must not report green either.
+    const failing = evidence.stillFailing > 0 || identity.failed > 0;
+    const status = failing ? 500 : 200;
+    return NextResponse.json({ ok: !failing, ...evidence, identity, resetTokensPurged, durationMs }, { status });
   } catch (e) {
     log.error({ err: (e as Error).message }, "cron:evidence-cleanup-failed");
     return NextResponse.json({ ok: false, error: "cleanup failed" }, { status: 500 });

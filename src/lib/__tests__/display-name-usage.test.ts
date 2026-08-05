@@ -36,6 +36,10 @@ const ALLOWED: Record<string, string> = {
   "app/account/page.tsx": "your own account page, showing your own name to you",
   "app/admin/layout.tsx": "the signed-in admin's own name in the admin chrome",
   "app/admin/gym-claims/page.tsx": "staff reviewing a claim need the real name on file",
+  "app/admin/identity-verification/page.tsx":
+    "identity review queue — staff-only (the admin layout 404s for everyone else). The whole task is comparing the name on file against the name on a passport, so publicDisplayName would defeat the page",
+  "app/admin/identity-verification/[id]/page.tsx":
+    "identity review detail — same reason; the reviewer must see the real name to match it to the document",
   "lib/admin/events.ts": "staff audit log — the actor's real name is the point",
   "app/today/page.tsx": "greets the viewer by their own first name",
   "components/layout/nav-sheet.tsx": "the viewer's own avatar initial in their own nav",

@@ -45,6 +45,8 @@
     "audit:disciplines": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/discipline-audit.mts",
     "dm:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/dm-smoke.mts",
     "verify:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/email-verify-smoke.mts",
+    "seed:admin": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/seed-admin.mts",
+    "identity:smoke": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/identity-verify-smoke.mts",
     "repair:invalid-winners": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/repair-invalid-winners.mts",
     "repair:entity-duplicates": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/merge-entity-duplicates.mts",
     "repair:cross-promo-dupes": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/repair-cross-promo-event-duplicates.mts",

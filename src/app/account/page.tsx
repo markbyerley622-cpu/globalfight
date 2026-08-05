@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Mail, Lock, User, Heart, Bookmark, Bell, ShieldCheck, Check, Loader2, AlertCircle, LogOut,
+  BadgeCheck, ArrowRight,
 } from "lucide-react";
+import { isProfessionalRole } from "@/lib/identity-verification-shared";
 import { PageHero } from "@/components/page-hero";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
@@ -104,6 +106,28 @@ export default function AccountPage() {
           title={`Welcome${user.name ? `, ${user.name.split(" ")[0]}` : ""}`}
           description="Your Combat Reviews account. Manage your profile, follows and registry claims."
         />
+        {/* The nudge, not a gate. Signup already finished — this is the first
+            place a professional role is asked to prove who they are, and it is
+            dismissible by simply not clicking it. Fans never see it. */}
+        {isProfessionalRole(user.registryRole) && (
+          <div className="container-cr pt-6">
+            <Link
+              href="/account/verification"
+              className="flex items-center gap-3 rounded-card border border-gold-500/30 bg-gold-500/10 p-4 transition-colors hover:border-gold-500/50"
+            >
+              <BadgeCheck className="size-5 shrink-0 text-gold-300" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-sm font-bold text-gold-200">
+                  Verify your professional identity
+                </span>
+                <span className="block text-xs text-gold-200/70">
+                  Get your verified badge and unlock {roleName} features. Takes a couple of minutes.
+                </span>
+              </span>
+              <ArrowRight className="size-4 shrink-0 text-gold-300" />
+            </Link>
+          </div>
+        )}
         <div className="container-cr grid gap-6 py-10 lg:grid-cols-[1fr_1.4fr]">
           <div className="card-surface p-6">
             <div className="flex items-center gap-4">
