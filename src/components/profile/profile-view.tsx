@@ -24,11 +24,21 @@ const initials = (u: { name: string | null; username: string | null }) =>
 export function ProfileView({
   followCounts = null,
   username: serverUsername = null,
+  predictions = null,
 }: {
   /** Resolved on the server in app/profile/page.tsx. Null when signed out. */
   followCounts?: { followers: number; following: number } | null;
   /** The signed-in handle as the SERVER saw it, used only to build the links. */
   username?: string | null;
+  /**
+   * Current picks + recent results, SERVER-RENDERED and passed straight
+   * through. A slot rather than a fetch: this component is a client component
+   * (it owns the avatar/banner uploads), and the profile service is
+   * server-only. Passing the finished markup down keeps the queries on the
+   * server and out of the client bundle — the same slot pattern the event page
+   * uses for a bout's prediction.
+   */
+  predictions?: React.ReactNode;
 } = {}) {
   const t = useT();
   const { user, loading, refresh } = useAuth();
@@ -219,6 +229,9 @@ export function ProfileView({
 
       {/* Identity: reputation, accuracy, streak, prediction history, activity */}
       <ProfileStats />
+
+      {/* The two sections this profile exists for, directly under the record. */}
+      {predictions}
 
       {/* ── WHAT REMAINS HERE IS IDENTITY ────────────────────────────────────
           Everything that administers the ACCOUNT — display name, username,

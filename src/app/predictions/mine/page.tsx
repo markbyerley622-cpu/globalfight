@@ -30,7 +30,20 @@ const METHOD_LABEL: Record<string, string> = {
   UD: "Decision", SD: "Decision", MD: "Decision", DECISION: "Decision",
 };
 
-export default async function MyPredictionsPage() {
+/**
+ * `?filter=active|completed` — where the profile's "View all" links land.
+ *
+ * A FILTER on the page that already exists, rather than two new pages. The
+ * profile shows a preview of each section; this is the same record, scoped to
+ * the half the reader asked for. Anything else (including a missing or junk
+ * value) falls through to the full record, so a mistyped link is never a dead
+ * end.
+ */
+type SP = Promise<{ filter?: string }>;
+
+export default async function MyPredictionsPage({ searchParams }: { searchParams: SP }) {
+  const filter = (await searchParams).filter;
+  const only = filter === "active" || filter === "completed" ? filter : null;
   const user = await getCurrentUser();
   if (!user) return <SignedOut />;
 
@@ -111,17 +124,28 @@ export default async function MyPredictionsPage() {
               <p className="-mt-3 mb-5 text-center text-2xs text-fog">Showing your {picks.length} most recent calls.</p>
             )}
 
-            {open.length > 0 && (
+            {/* The filter hides the sections the reader did not ask for, and says
+                so — an unexplained short list reads as missing data. */}
+            {only && (
+              <p className="mb-4 flex flex-wrap items-center justify-center gap-2 text-2xs text-fog">
+                Showing {only === "active" ? "open calls" : "settled calls"} only.
+                <Link href="/predictions/mine" className="font-semibold text-blood-300 underline-offset-2 hover:underline">
+                  Show everything
+                </Link>
+              </p>
+            )}
+
+            {only !== "completed" && open.length > 0 && (
               <Section title="Open">
                 {open.map((p) => <PickRow key={p.fight.slug} pick={p} status={p.status} username={user.username} />)}
               </Section>
             )}
-            {waiting.length > 0 && (
+            {only !== "completed" && waiting.length > 0 && (
               <Section title="Awaiting result">
                 {waiting.map((p) => <PickRow key={p.fight.slug} pick={p} status={p.status} username={user.username} />)}
               </Section>
             )}
-            {settled.length > 0 && (
+            {only !== "active" && settled.length > 0 && (
               <Section title="Settled">
                 {settled.map((p) => <PickRow key={p.fight.slug} pick={p} status={p.status} username={user.username} />)}
               </Section>

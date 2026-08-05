@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { ProfileView } from "@/components/profile/profile-view";
 import { getCurrentUser } from "@/lib/auth";
 import { getFollowCounts } from "@/lib/geo/people";
+import { getProfileOverview } from "@/lib/profile/profile-service";
+import { CurrentPicks } from "@/components/profile/current-picks";
+import { RecentResults } from "@/components/profile/recent-results";
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -27,12 +30,23 @@ export const metadata: Metadata = {
  */
 export default async function ProfilePage() {
   const viewer = await getCurrentUser();
-  const followCounts = viewer ? await getFollowCounts(viewer.id) : null;
+  // One parallel wave, not two sequential awaits.
+  const [followCounts, overview] = viewer
+    ? await Promise.all([getFollowCounts(viewer.id), getProfileOverview(viewer.id)])
+    : [null, null];
 
   return (
     <ProfileView
       followCounts={followCounts}
       username={viewer?.username ?? null}
+      predictions={
+        overview ? (
+          <>
+            <CurrentPicks picks={overview.currentPicks} more={overview.moreCurrent} isSelf />
+            <RecentResults groups={overview.recentResults} more={overview.moreResults} isSelf />
+          </>
+        ) : null
+      }
     />
   );
 }

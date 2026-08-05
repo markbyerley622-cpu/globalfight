@@ -6,6 +6,9 @@ import { Trophy, Target, Flame, ListChecks, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getTrainingNowFor } from "@/lib/geo/presence";
 import { getProfileStats } from "@/lib/profile-stats";
+import { getProfileOverview } from "@/lib/profile/profile-service";
+import { CurrentPicks } from "@/components/profile/current-picks";
+import { RecentResults } from "@/components/profile/recent-results";
 import { SITE } from "@/lib/config";
 import { getUserActivity } from "@/lib/activity";
 import { Badge } from "@/components/ui/badge";
@@ -74,8 +77,12 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const viewer = await getCurrentUser();
   const isSelf = viewer?.id === u.id;
 
-  const [stats, activity, rankedTotal, trainingNow, followCounts, viewerFollows, mutuals] = await Promise.all([
+  const [stats, overview, activity, rankedTotal, trainingNow, followCounts, viewerFollows, mutuals] = await Promise.all([
     getProfileStats(u.id),
+    // Current picks + recent results, from the one profile service. Joined to
+    // the EXISTING parallel wave rather than fetched after it, so the two new
+    // sections cost the page nothing beyond the slowest query already in flight.
+    getProfileOverview(u.id),
     getUserActivity(u.id, 8),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
     // Live gym check-in. Derived from CheckIn rather than a stored status
@@ -245,6 +252,18 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
           <Tile icon={<ListChecks className="size-4 text-volt-400" />} label="Predictions" value={resolved ? String(resolved) : "—"} sub={resolved ? `${correct} correct` : "no calls yet"} />
           <Tile icon={<Trophy className="size-4 text-gold-400" />} label="Rank" value={rank ? `#${rank}` : "—"} sub={percentile ? `top ${percentile}%` : "unranked"} />
         </div>
+
+        {/* ── THE TWO SECTIONS A PROFILE EXISTS FOR ───────────────────────────
+            What are they calling right now, and how have they been doing? Both
+            sit directly under Combat Reputation, above everything else, because
+            they are the reason to visit a profile at all — the stat tiles say
+            how good someone is, these say what they are DOING.
+
+            Both come from the one profile service in a single composed call, so
+            adding Activity or Achievements later is a field on that object
+            rather than another pass over this page. */}
+        <CurrentPicks picks={overview.currentPicks} more={overview.moreCurrent} isSelf={isSelf} />
+        <RecentResults groups={overview.recentResults} more={overview.moreResults} isSelf={isSelf} />
 
         {/* Recent activity */}
         <Section title="Recent form">
