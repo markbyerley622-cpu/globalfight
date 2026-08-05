@@ -90,29 +90,27 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   }
 
   return (
-    <div className="space-y-3">
+    /*
+     * PINNED. The filters govern every list on the page, so they may not scroll
+     * away from the lists they govern — narrowing to Boxing used to mean
+     * scrolling back to the top to find the pills again, and on a phone that is
+     * most of the page.
+     *
+     * `top-0` is relative to #main, the app shell's single scroll region (the
+     * document itself never scrolls here — see app-shell). The negative inline
+     * margins let the blurred backing plate span the container's own 1rem
+     * padding, so rows slide UNDER an opaque bar instead of past a floating
+     * island with content visible either side of it.
+     *
+     * Order is the reader's: what sport → whose card → where → when. "When"
+     * comes last because it is the only group that is meaningfully optional —
+     * the other three are how a fan describes the card they are looking for.
+     */
+    <div className="sticky top-0 z-20 -mx-4 space-y-3 border-b border-ink-800 bg-ink-950/95 px-4 py-3 backdrop-blur-xl">
       <Row label="Sport">
         <Pill onClick={() => set("sport", "")} active={many("sport").length === 0}>All</Pill>
         {FILTER_SPORTS.map((s) => (
           <Pill key={s.slug} onClick={() => toggle("sport", s.slug)} active={has("sport", s.slug)}>{s.label}</Pill>
-        ))}
-      </Row>
-
-      <Row label="When">
-        {STATUSES.map((s) => (
-          <Pill
-            key={s.value}
-            onClick={() => set("status", s.value === "upcoming" ? "" : s.value)}
-            active={(get("status") || "upcoming") === s.value}
-          >
-            {s.label}
-          </Pill>
-        ))}
-        <span className="mx-1 w-px shrink-0 self-stretch bg-ink-700" aria-hidden />
-        {WINDOWS.map((w) => (
-          <Pill key={w.value} onClick={() => set("when", get("when") === w.value ? "" : w.value)} active={get("when") === w.value}>
-            {w.label}
-          </Pill>
         ))}
       </Row>
 
@@ -137,6 +135,24 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
           ))}
         </Row>
       )}
+
+      <Row label="When">
+        {STATUSES.map((s) => (
+          <Pill
+            key={s.value}
+            onClick={() => set("status", s.value === "upcoming" ? "" : s.value)}
+            active={(get("status") || "upcoming") === s.value}
+          >
+            {s.label}
+          </Pill>
+        ))}
+        <span className="mx-1 w-px shrink-0 self-stretch bg-ink-700" aria-hidden />
+        {WINDOWS.map((w) => (
+          <Pill key={w.value} onClick={() => set("when", get("when") === w.value ? "" : w.value)} active={get("when") === w.value}>
+            {w.label}
+          </Pill>
+        ))}
+      </Row>
 
       {/* The count is the whole point once filters combine: with four groups on
           screen it is easy to forget that MMA is still on three rows up. It

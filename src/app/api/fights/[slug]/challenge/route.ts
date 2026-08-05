@@ -17,7 +17,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
-  const targetId = typeof body.userId === "string" ? body.userId : null;
+
+  /**
+   * Two ways to name an opponent, because there are two callers.
+   *
+   *  - `userId`   — the community room, which already holds the speaker's id
+   *                 from the room DTO it rendered.
+   *  - `username` — the friend picker, which is fed by /api/users/search.
+   *                 That endpoint deliberately does NOT return internal ids:
+   *                 a typeahead open to any signed-in user is exactly the
+   *                 surface you do not want handing out primary keys, and the
+   *                 handle is the public identifier every other route uses.
+   *
+   * Resolved here rather than inside challengeUser so the service layer keeps
+   * one identity type and the ownership rules it enforces stay unchanged.
+   */
+  const username = typeof body.username === "string" ? body.username.trim().replace(/^@+/, "") : null;
+  let targetId = typeof body.userId === "string" ? body.userId : null;
+  if (!targetId && username) {
+    const target = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+    // Same 400 as "no opponent given" — a challenge endpoint must not double as
+    // a username-existence oracle for anyone with a session.
+    if (!target) return NextResponse.json({ error: "No opponent given." }, { status: 400 });
+    targetId = target.id;
+  }
   if (!targetId) return NextResponse.json({ error: "No opponent given." }, { status: 400 });
 
   const fight = await prisma.fight.findUnique({ where: { slug }, select: { id: true, result: true, event: { select: { date: true } } } });

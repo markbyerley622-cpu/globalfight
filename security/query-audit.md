@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 944 across 794 files
-- **By class:** 643 public · 209 user-owned · 92 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 76 medium · 🟡 162 low · ⚪ 706 info
+- **Queries analysed:** 995 across 810 files
+- **By class:** 671 public · 232 user-owned · 92 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 81 medium · 🟡 175 low · ⚪ 739 info
 
 ## 🔴 High risk
 
@@ -16,6 +16,7 @@ _None._ No private-model read/write was found without an ownership filter.
 
 | Location | Function | Model | Query | Why |
 |---|---|---|---|---|
+| `src/app/admin/identity-verification/[id]/page.tsx:30` | v | IdentityVerification (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/app/api/admin/gym-claims/[id]/evidence/route.ts:38` | claim | GymClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/admin/gym-claims/[id]/route.ts:31` | claim | GymClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/admin/gym-claims/[id]/route.ts:40` | POST | GymClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
@@ -82,6 +83,10 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/geo/presence.ts:62` | checkIn | CheckIn (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:102` | getPresence | CheckIn (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:118` | coaches | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/identity-verification.ts:191` | row | IdentityVerification (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/identity-verification.ts:206` | reviewVerification | IdentityVerification (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/identity-verification.ts:308` | listVerifications | IdentityVerification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/identity-verification.ts:334` | verificationStats | IdentityVerification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/identity/event-room.ts:80` | _getEventRoom | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/intelligence/return-engine.ts:48` | audienceFor | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/intelligence/return-engine.ts:50` | audienceFor | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
@@ -99,6 +104,7 @@ _None._ No private-model read/write was found without an ownership filter.
 |---|---|---|
 | Article | PUBLIC | curated |
 | ArticleTag | PUBLIC | curated |
+| ArticleView | PUBLIC | auto (heuristic) |
 | AuditLog | PUBLIC | auto (heuristic) |
 | Champion | PUBLIC | auto (heuristic) |
 | CommunityMarket | PUBLIC | auto (heuristic) |
@@ -131,6 +137,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | Gym | PUBLIC | curated |
 | GymPhoto | PUBLIC | curated |
 | GymReview | PUBLIC | curated |
+| IdentityDocument | PUBLIC | auto (heuristic) |
 | ImportConflict | PUBLIC | auto (heuristic) |
 | JobLease | PUBLIC | auto (heuristic) |
 | Language | PUBLIC | auto (heuristic) |
@@ -141,6 +148,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | ProviderHealth | PUBLIC | auto (heuristic) |
 | ProviderSync | PUBLIC | auto (heuristic) |
 | Ranking | PUBLIC | curated |
+| RankingSnapshot | PUBLIC | auto (heuristic) |
 | RankSnapshot | PUBLIC | auto (heuristic) |
 | ResultCandidate | PUBLIC | auto (heuristic) |
 | ResultEvidence | PUBLIC | auto (heuristic) |
@@ -148,7 +156,6 @@ _None._ No private-model read/write was found without an ownership filter.
 | Tag | PUBLIC | auto (heuristic) |
 | Title | PUBLIC | auto (heuristic) |
 | User | PUBLIC | auto (heuristic) |
-| VerificationToken | PUBLIC | auto (heuristic) |
 | WeightClass | PUBLIC | curated |
 | Battle | SHARED | curated |
 | CommunityMember | SHARED | curated |
@@ -165,6 +172,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | CardAward | USER_OWNED | curated |
 | CheckIn | USER_OWNED | curated |
 | ConversationMember | USER_OWNED | auto (heuristic) |
+| EmailVerificationToken | USER_OWNED | auto (heuristic) |
 | FavoriteEvent | USER_OWNED | curated |
 | FavoriteFighter | USER_OWNED | curated |
 | FavoritePromotion | USER_OWNED | curated |
@@ -173,6 +181,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | ForumBookmark | USER_OWNED | curated |
 | ForumSubscription | USER_OWNED | curated |
 | GymReviewVote | USER_OWNED | curated |
+| IdentityVerification | USER_OWNED | auto (heuristic) |
 | Notification | USER_OWNED | curated |
 | PasswordResetToken | USER_OWNED | curated |
 | PushSubscription | USER_OWNED | curated |

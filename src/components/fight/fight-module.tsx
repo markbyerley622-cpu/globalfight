@@ -19,12 +19,22 @@ import { cn } from "@/lib/utils";
  * queries until a reader actually walks into one.
  */
 export function FightModule({
-  fightSlug, summary, header, pick,
+  fightSlug, summary, header, pick, className, bodyClassName,
 }: {
   fightSlug: string;
   summary: RoomSummary;
   header: React.ReactNode;
   pick: React.ReactNode;
+  /**
+   * Applied to everything BELOW the header. The featured-bout hero uses this to
+   * gutter its prediction and discussion while letting HeadlineMatchup — which
+   * carries its own padding and full-bleed seam — run edge to edge. Down the
+   * card the header is a FightRow that lives inside the section's own gutter,
+   * so both are left unset there.
+   */
+  className?: string;
+  /** Applied to the prediction + discussion stack, e.g. to centre and cap it. */
+  bodyClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -59,36 +69,67 @@ export function FightModule({
   return (
     <div id={anchor} ref={ref} className="scroll-mt-16">
       {header}
-      <div className="mt-3">{pick}</div>
+      {/* Header stays where the caller put it; everything below it is one
+          stack, so the hero can gutter and centre the body without the
+          full-bleed matchup inheriting the same box. */}
+      <div className={className}>
+        <div className={bodyClassName}>
+          <div className="mt-3">{pick}</div>
 
-      {/* The way in. One tap, one room, no second page. */}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className={cn(
-          "mt-3 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
-          open ? "border-blood-500/40 bg-blood-500/5" : "border-ink-700 bg-ink-900/60 hover:border-ink-600",
-        )}
-      >
-        {battle?.opponentName ? (
-          <ForumAvatar name={battle.opponentName} image={battle.opponentImage} size="sm" />
-        ) : (
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink-800 text-blood-300">
-            <Swords className="size-4" />
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-display text-sm font-bold text-chalk">{battleLabel}</span>
-          <span className="flex items-center gap-1 text-2xs text-fog">
-            <MessagesSquare className="size-3" />
-            {summary.voices > 0 ? `${summary.voices.toLocaleString()} in the room` : "Room is quiet — go first"}
-          </span>
-        </span>
-        <ChevronDown className={cn("size-4 shrink-0 text-fog transition-transform", open && "rotate-180")} />
-      </button>
+          {/* The way in. One tap, one room, no second page.
+              The COUNT LEADS. It used to be a 10px line of grey text under the
+              battle label — "23 in the room" — which is the single strongest signal
+              on a fight card that there is something happening here, rendered as
+              the quietest thing on it. A reader scanning fourteen bouts for the one
+              worth opening was being asked to read fourteen subtitles.
+              It is now a counter chip on the left of the row, sized and weighted
+              like the notification badges elsewhere in the app, and it lights up
+              in blood when the room is actually busy. */}
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-label={
+              summary.voices > 0
+                ? `Discussion — ${summary.voices} message${summary.voices === 1 ? "" : "s"}. ${battleLabel}`
+                : `Discussion — no messages yet. ${battleLabel}`
+            }
+            className={cn(
+              "mt-3 flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all",
+              open
+                ? "border-blood-500/40 bg-blood-500/5"
+                : "border-ink-700 bg-ink-900/60 hover:border-ink-600 hover:bg-ink-900 active:scale-[0.995]",
+            )}
+          >
+            <span
+              className={cn(
+                "flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 font-display text-xs font-black tabular-nums transition-colors",
+                summary.voices > 0
+                  ? "border-blood-500/45 bg-blood-500/15 text-blood-200"
+                  : "border-ink-700 bg-ink-800 text-fog",
+              )}
+            >
+              <MessagesSquare className="size-3.5" aria-hidden />
+              {summary.voices > 0 ? summary.voices.toLocaleString() : "0"}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-display text-sm font-bold text-chalk">
+                {summary.voices > 0 ? "Discussion" : "Start the discussion"}
+              </span>
+              <span className="flex items-center gap-1.5 truncate text-2xs text-fog">
+                {battle?.opponentName && (
+                  <ForumAvatar name={battle.opponentName} image={battle.opponentImage} size="sm" className="size-4" />
+                )}
+                {!battle?.opponentName && <Swords className="size-3 shrink-0" aria-hidden />}
+                <span className="truncate">{battleLabel}</span>
+              </span>
+            </span>
+            <ChevronDown className={cn("size-4 shrink-0 text-fog transition-transform", open && "rotate-180")} />
+          </button>
 
-      {open && <FightRoom fightSlug={fightSlug} />}
+          {open && <FightRoom fightSlug={fightSlug} />}
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import "./fighter-site.css";
 import { useCallback, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { FighterWebsitePayload } from "@/lib/voicebuild/template/fighterWebsitePayloadSchema";
+import { HIGHLIGHTS_LABEL } from "@/lib/event-format";
 
 // The MR-2 website TEMPLATE, data-driven. Lives in its own folder so it can be
 // populated from any FighterWebsitePayload (voice pipeline today, backend
@@ -120,7 +121,7 @@ export default function FighterSite({ payload: p }: { payload: FighterWebsitePay
           <div className="heroActions">
             {p.media.mainHighlightsUrl && (
               <a className="primaryBtn" href={p.media.mainHighlightsUrl} target="_blank" rel="noreferrer">
-                Watch Highlights
+                {HIGHLIGHTS_LABEL}
               </a>
             )}
             {booking && (

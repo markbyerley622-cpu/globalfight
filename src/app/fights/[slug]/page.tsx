@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/utils";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { picksLocked, pickStatus, STATUS_PRESENTATION } from "@/lib/intelligence/pick-status";
 import { FightRoom } from "@/components/fight/fight-room";
+import { ChallengeFriend } from "@/components/fight/challenge-friend";
 import { TaleOfTape } from "@/components/fight/tale-of-tape";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -153,6 +154,11 @@ export default async function FightPage({ params }: { params: Promise<{ slug: st
                 marketRedP={market?.redP ?? null}
                 locked={locked}
                 lockedNote={locked ? STATUS_PRESENTATION[status].detail : undefined}
+                // Same slot, same component, on every surface that takes a pick:
+                // the event card grid, the event page's main-event block, each
+                // row of the fight card, and here. A challenge started from any
+                // of them is the same POST to the same route.
+                challenge={<ChallengeFriend fightSlug={fight.slug} />}
               />
             </div>
           );

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { winningCorner, boutOutcomeView } from "@/lib/event-format";
+import { winningCorner, boutOutcomeView, featuredFight, orderFights } from "@/lib/event-format";
 import type { Fight, Fighter } from "@/lib/types";
 
 // The audit's #1 trust failure: /results showed Marina Spasić beating Stephanie
@@ -90,4 +90,47 @@ test("draw, no-contest, cancellation and pending never name a winner", () => {
 test("cancellation outranks a stale recorded result", () => {
   // A bout pulled from the card keeps its row; it must not still be reported as won.
   assert.equal(boutOutcomeView(bout({ cancelled: true, winnerId: red.id })).kind, "cancelled");
+});
+
+// ── featuredFight ─────────────────────────────────────────────────────────
+//
+// THE regression these lock down: the event page renders the featured bout as a
+// hero (matchup + prediction + challenge + discussion) and the fight card below
+// renders everything else. Both sides ask THIS function which bout that is. When
+// the page derived it inline instead, the hero and the card each had their own
+// answer and the main event rendered twice — two prediction controls over one
+// crowd bar, on the same fight.
+
+test("featuredFight picks the flagged main event, wherever it sits in the list", () => {
+  const prelim = bout({ id: "p1", slug: "prelim", mainEvent: false, titleFight: false });
+  const main = bout({ id: "m1", slug: "main", mainEvent: true });
+  assert.equal(featuredFight([prelim, main])?.id, "m1");
+});
+
+test("featuredFight falls back to the top of the bill when no mainEvent flag is set", () => {
+  // Boxing, BKFC, ONE and Glory cards routinely arrive from ingestion with no
+  // mainEvent flag on any bout. orderFights has already sorted by billing tier,
+  // so the first element IS the headline — which is exactly what HeadlineMatchup
+  // labels "Featured Bout".
+  const a = bout({ id: "a", slug: "a", mainEvent: false, titleFight: false });
+  const b = bout({ id: "b", slug: "b", mainEvent: false, titleFight: false });
+  assert.equal(featuredFight([a, b])?.id, "a");
+});
+
+test("featuredFight is null only when there is no card at all", () => {
+  assert.equal(featuredFight([]), null);
+});
+
+test("featuredFight agrees with orderFights — the hero is always the first ordered bout", () => {
+  // The card is rendered from the ORDERED list and the hero from this function.
+  // If they ever disagreed, the hero would show one bout and the card would fail
+  // to exclude it, putting a different fight on screen twice.
+  const undercard = bout({ id: "u", slug: "u", mainEvent: false, coMain: false, titleFight: false });
+  const coMain = bout({ id: "c", slug: "c", mainEvent: false, coMain: true, titleFight: false });
+  const main = bout({ id: "m", slug: "m", mainEvent: true, titleFight: false });
+  for (const order of [[undercard, coMain, main], [main, undercard, coMain], [coMain, main, undercard]]) {
+    const ordered = orderFights(order);
+    assert.equal(featuredFight(ordered)?.id, ordered[0].id);
+    assert.equal(featuredFight(ordered)?.id, "m");
+  }
 });

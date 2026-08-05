@@ -6,6 +6,7 @@ import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Com
 import { Flag } from "@/components/flag";
 import { SearchHit, type SearchFollowMaps } from "@/components/search/search-hit";
 import { publicDisplayName } from "@/lib/display-name";
+import { useT } from "@/lib/i18n";
 
 type FighterHit = {
   slug: string; name: string; nickname?: string | null;
@@ -32,6 +33,7 @@ const EMPTY: Results = {
 };
 
 export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const [q, setQ] = useState("");
   const [res, setRes] = useState<Results>(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -226,7 +228,13 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           {res.pages.map((p) => row(`p-${p.href}-${p.label}`, p.href, <Compass className="size-4" />, p.label))}
         </div>
         <div className="flex items-center justify-between border-t border-ink-700 px-4 py-2 text-2xs text-fog">
-          <span>Search across Combat Reviews</span>
+          {/* The shortcut is worth ADVERTISING here — this footer is the only
+              place a reader ever learns it exists, and a shortcut nobody knows
+              about is the same as no shortcut. */}
+          <span className="hidden sm:inline">
+            {t("Press")} <kbd className="rounded border border-ink-600 px-1.5 py-0.5">/</kbd> {t("anywhere to search")}
+          </span>
+          <span className="sm:hidden">Search across Combat Reviews</span>
           <span><kbd className="rounded border border-ink-600 px-1.5 py-0.5">ESC</kbd> to close</span>
         </div>
       </div>

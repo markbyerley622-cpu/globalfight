@@ -4,7 +4,8 @@ import type { BoutProgress } from "@/lib/card-segments";
 import { LocalTime } from "@/components/event/event-schedule";
 import type { Fight } from "@/lib/types";
 import type { MarketProb } from "@/lib/market";
-import { boutLabel, highlightsUrl, winningCorner } from "@/lib/event-format";
+import { boutLabel, highlightsUrl, winningCorner, HIGHLIGHTS_LABEL } from "@/lib/event-format";
+import { getServerT } from "@/lib/i18n-server";
 import { formatRecord, koPercentage } from "@/lib/utils";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { ProbabilityBar } from "@/components/probability-bar";
@@ -20,7 +21,15 @@ import { ProbabilityBar } from "@/components/probability-bar";
  * (see components/fight/fight-module), and the arena it used to link to is the
  * block directly beneath it.
  */
-export function FightRow({
+/**
+ * ASYNC because the highlights CTA is translated at SSR rather than after
+ * hydration — `getServerT` reads the request's `locale` cookie, and `cookies()`
+ * is request-cached, so a fourteen-bout card resolves it once and not once per
+ * row. Safe to be async here: the only consumer is the event page, a Server
+ * Component, which passes this into FightModule's `header` slot exactly the way
+ * it already passes BoutPrediction into `pick`.
+ */
+export async function FightRow({
   fight,
   index,
   market,
@@ -45,6 +54,10 @@ export function FightRow({
   const redWon = won === "red";
   const blueWon = won === "blue";
   const redP = market?.redP ?? fight.prediction?.redProbability;
+  // ONE string, ONE key. HIGHLIGHTS_LABEL is both the English copy and the
+  // dictionary key it is looked up by (lib/i18n-dict keys on English), so there
+  // is no second place a surface could disagree about the wording.
+  const t = await getServerT();
 
   return (
     <div
@@ -147,7 +160,7 @@ export function FightRow({
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-1.5 border-t border-ink-700/70 py-2 text-xs font-semibold text-blood-300 transition-colors hover:bg-blood-500/10"
         >
-          <PlayCircle className="size-4" /> Watch highlights &amp; KO clips
+          <PlayCircle className="size-4" /> {t(HIGHLIGHTS_LABEL)}
         </a>
       )}
     </div>
@@ -179,27 +192,55 @@ function Corner({
       className={`group/f flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 ${alignEnd ? "flex-row-reverse text-right" : "text-left"}`}
     >
       {/* The avatar carries the crown so the winner is identifiable from the
-          artwork alone, at a glance, without reading the name row. */}
+          artwork alone, at a glance, without reading the name row.
+
+          BROADCAST WEIGHT. The crown was a 20px chip with a 12px glyph tucked
+          against the avatar's corner — correct information, whispered. On a
+          results page the single fact a reader is scanning for is WHO WON, and
+          it was the quietest thing in the row: smaller than the method badge,
+          smaller than the title ribbon, and carried mostly by a font-weight
+          change on the name.
+          It is now sized and lit like an ESPN/UFC lower third — a haloed gold
+          medallion over a gold-ringed portrait, with the word WINNER spelled
+          out beneath the name. `crown-pop` is the arrival; the ring and the
+          halo are static, so nothing here depends on motion being allowed. */}
       <span className="relative shrink-0">
-        <FighterAvatar fighter={fighter} size="md" showFlag />
+        <span
+          className={
+            won
+              ? "block rounded-full ring-2 ring-gold-400 shadow-[0_0_0_4px_rgba(224,169,27,0.14),0_0_26px_-4px_rgba(224,169,27,0.75)]"
+              : "block"
+          }
+        >
+          <FighterAvatar fighter={fighter} size="md" showFlag />
+        </span>
         {won && (
           <span
             // Gold, and the ONLY gold thing in the row besides a title bar — a
             // winner marker has to be unmistakable. It replaced a small blood-red
             // "✓" appended to the name, which read as a checkbox and was invisible
             // next to the losing corner's identical-weight name.
-            className="absolute -right-1 -top-1.5 flex size-5 items-center justify-center rounded-full border border-gold-400/70 bg-ink-950 text-gold-300 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.9)]"
+            className="cr-crown-pop absolute -right-1.5 -top-2.5 flex size-7 items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-b from-gold-300 to-gold-500 text-ink-950 shadow-[0_3px_12px_-2px_rgba(0,0,0,0.95),0_0_18px_-2px_rgba(224,169,27,0.9)]"
             title="Winner"
-            aria-label="Winner"
           >
-            <Crown className="size-3" aria-hidden />
+            <Crown className="size-4 fill-current" aria-hidden />
           </span>
         )}
       </span>
       <div className={`min-w-0 ${dim ? "opacity-60" : ""}`}>
-        <p className={`truncate font-display text-sm leading-tight transition-colors group-hover/f:text-blood-300 ${won ? "font-black text-white" : "font-bold text-chalk"}`}>
+        <p className={`truncate font-display leading-tight transition-colors group-hover/f:text-blood-300 ${won ? "text-base font-black text-white sm:text-[1.0625rem]" : "text-sm font-bold text-chalk"}`}>
           {fighter.name}
         </p>
+        {won && (
+          // Spelled out, not only crowned. Colour and an icon alone leave the
+          // outcome unreadable to anyone with a gold/grey deficiency, and this
+          // is the one fact the row exists to deliver on a completed bout.
+          <span
+            className={`mt-0.5 inline-flex items-center gap-1 rounded-sm bg-gold-400 px-1.5 py-px font-display text-4xs font-black uppercase tracking-[0.14em] text-ink-950 ${alignEnd ? "flex-row-reverse" : ""}`}
+          >
+            Winner
+          </span>
+        )}
         <p className="truncate text-xs tabular-nums text-mist">
           {formatRecord(fighter.wins, fighter.losses, fighter.draws)}
           {ko > 0 && (

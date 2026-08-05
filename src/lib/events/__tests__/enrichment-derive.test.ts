@@ -208,11 +208,48 @@ test("eventStats counts pending bouts only AFTER the card has happened", () => {
 
 test("enrichmentNavigation only offers a Coverage anchor when there is coverage", () => {
   const bare = enrichmentNavigation({ slug: "x", boutCount: 5, coverageCount: 0, videoCount: 0 });
-  assert.deepEqual(bare.sections.map((s) => s.id), ["card", "card-talk"]);
+  assert.deepEqual(bare.sections.map((s) => s.id), ["main-event", "card"]);
   assert.equal(bare.href, "/events/x");
-  assert.equal(bare.sections[0].badge, 5);
 
   const rich = enrichmentNavigation({ slug: "x", boutCount: 5, coverageCount: 3, videoCount: 2 });
-  assert.deepEqual(rich.sections.map((s) => s.id), ["card", "card-talk", "coverage"]);
+  assert.deepEqual(rich.sections.map((s) => s.id), ["main-event", "card", "coverage"]);
   assert.equal(rich.sections[2].badge, 5, "badge is coverage + videos");
+});
+
+test("the card badge counts the bouts the card ACTUALLY renders", () => {
+  // The featured bout is hoisted into its own hero section and excluded from the
+  // card below it, so a 5-bout event has 4 bouts in the card. A badge of 5 would
+  // promise a bout that section does not contain.
+  const nav = enrichmentNavigation({ slug: "x", boutCount: 5, coverageCount: 0, videoCount: 0 });
+  const card = nav.sections.find((s) => s.id === "card");
+  assert.equal(card?.badge, 4);
+});
+
+test("enrichmentNavigation drops the Main event anchor when the card is empty", () => {
+  // An unannounced event has no headline bout to predict, so an anchor to the
+  // main-event section would be a scroll-spy tab that jumps to nothing. "Fight
+  // card" survives, because that section is where the page explains WHY it is
+  // empty.
+  const empty = enrichmentNavigation({ slug: "x", boutCount: 0, coverageCount: 0, videoCount: 0 });
+  assert.deepEqual(empty.sections.map((s) => s.id), ["card"]);
+});
+
+test("a one-bout card is the hero and nothing else — no empty Fight card anchor", () => {
+  // The single bout IS the featured bout. A "Fight card" tab here would scroll
+  // to a section holding zero bouts, immediately after showing the only one.
+  const solo = enrichmentNavigation({ slug: "x", boutCount: 1, coverageCount: 0, videoCount: 0 });
+  assert.deepEqual(solo.sections.map((s) => s.id), ["main-event"]);
+
+  // Coverage is independent of the card and still offered.
+  const soloWithMedia = enrichmentNavigation({ slug: "x", boutCount: 1, coverageCount: 2, videoCount: 0 });
+  assert.deepEqual(soloWithMedia.sections.map((s) => s.id), ["main-event", "coverage"]);
+});
+
+test("enrichmentNavigation no longer offers a card-wide talk anchor", () => {
+  // Discussion moved into each bout's own module. A "Card talk" tab would point
+  // at a section the event page does not render any more.
+  for (const bouts of [0, 1, 12]) {
+    const nav = enrichmentNavigation({ slug: "x", boutCount: bouts, coverageCount: 1, videoCount: 0 });
+    assert.ok(!nav.sections.some((s) => s.id === "card-talk"), `bouts=${bouts}`);
+  }
 });

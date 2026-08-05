@@ -17,6 +17,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Pound for Pound": "Libra por libra", "Fight Schedule": "Calendario de combates",
     "Live rankings": "Clasificaciones en vivo", "Upcoming Schedule": "Próximos eventos",
     "Breaking News": "Última hora", "News & Analysis": "Noticias y análisis",
+    "Highlights & Results": "Resúmenes y resultados",
   },
   fr: {
     Rankings: "Classements", Fighters: "Combattants", Schedule: "Calendrier", Results: "Résultats",
@@ -24,6 +25,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "Connexion", "Sign up": "S'inscrire", "Pound for Pound": "Livre pour livre",
     "Fight Schedule": "Calendrier des combats", "Live rankings": "Classements en direct",
     "Upcoming Schedule": "Prochains événements", "Breaking News": "Dernières nouvelles", "News & Analysis": "Actualités et analyses",
+    "Highlights & Results": "Résumés et résultats",
   },
   de: {
     Rankings: "Rangliste", Fighters: "Kämpfer", Schedule: "Termine", Results: "Ergebnisse",
@@ -31,6 +33,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "Anmelden", "Sign up": "Registrieren", "Pound for Pound": "Pound for Pound",
     "Fight Schedule": "Kampfplan", "Live rankings": "Ranglisten live", "Upcoming Schedule": "Kommende Termine",
     "Breaking News": "Eilmeldung", "News & Analysis": "Nachrichten & Analyse",
+    "Highlights & Results": "Highlights & Ergebnisse",
   },
   pt: {
     Rankings: "Classificação", Fighters: "Lutadores", Schedule: "Calendário", Results: "Resultados",
@@ -38,6 +41,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "Entrar", "Sign up": "Cadastrar-se", "Pound for Pound": "Peso por peso",
     "Fight Schedule": "Calendário de lutas", "Live rankings": "Classificações ao vivo",
     "Upcoming Schedule": "Próximos eventos", "Breaking News": "Últimas notícias", "News & Analysis": "Notícias e análises",
+    "Highlights & Results": "Melhores momentos e resultados",
   },
   it: {
     Rankings: "Classifiche", Fighters: "Combattenti", Schedule: "Calendario", Results: "Risultati",
@@ -45,6 +49,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "Accedi", "Sign up": "Registrati", "Pound for Pound": "Libbra per libbra",
     "Fight Schedule": "Calendario dei match", "Live rankings": "Classifiche in diretta",
     "Upcoming Schedule": "Prossimi eventi", "Breaking News": "Ultim'ora", "News & Analysis": "Notizie e analisi",
+    "Highlights & Results": "Highlights e risultati",
   },
   ar: {
     Rankings: "التصنيفات", Fighters: "المقاتلون", Schedule: "الجدول", Results: "النتائج",
@@ -52,6 +57,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "تسجيل الدخول", "Sign up": "إنشاء حساب", "Pound for Pound": "رطل مقابل رطل",
     "Fight Schedule": "جدول النزالات", "Live rankings": "التصنيفات المباشرة",
     "Upcoming Schedule": "الفعاليات القادمة", "Breaking News": "أخبار عاجلة", "News & Analysis": "الأخبار والتحليلات",
+    "Highlights & Results": "أبرز اللقطات والنتائج",
   },
   ja: {
     Rankings: "ランキング", Fighters: "ファイター", Schedule: "スケジュール", Results: "結果",
@@ -59,6 +65,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "サインイン", "Sign up": "新規登録", "Pound for Pound": "パウンド・フォー・パウンド",
     "Fight Schedule": "試合スケジュール", "Live rankings": "ランキングをライブ配信",
     "Upcoming Schedule": "今後の予定", "Breaking News": "速報", "News & Analysis": "ニュースと分析",
+    "Highlights & Results": "ハイライトと結果",
   },
   zh: {
     Rankings: "排名", Fighters: "格斗选手", Schedule: "赛程", Results: "成绩",
@@ -66,6 +73,7 @@ const MESSAGES: Partial<Record<Locale, Dict>> = {
     "Sign in": "登录", "Sign up": "注册", "Pound for Pound": "磅对磅",
     "Fight Schedule": "比赛日程", "Live rankings": "排名实时更新",
     "Upcoming Schedule": "即将到来的赛程", "Breaking News": "突发新闻", "News & Analysis": "新闻与分析",
+    "Highlights & Results": "精彩集锦与赛果",
   },
 };
 

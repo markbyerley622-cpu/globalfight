@@ -83,6 +83,37 @@ export function segmentCard<T extends SegmentableFight>(
 }
 
 /**
+ * The same blocks with ONE bout removed, and any block it emptied dropped.
+ *
+ * ── What this is for ───────────────────────────────────────────────────────
+ * The event page promotes the featured bout into a hero module of its own
+ * (matchup + prediction + challenge + discussion). Without this, that bout was
+ * ALSO still in the broadcast blocks below, so the same fight rendered twice
+ * with two of every control — a reader was asked to call Roach vs Zepeda in the
+ * hero and then again as a bout on the card, against the same crowd bar.
+ *
+ * It is a data-level filter rather than a `key !== featuredId` guard inside the
+ * render loop, because the render loop is not the only thing that cares: a block
+ * that contained nothing but the main event must disappear entirely rather than
+ * render an empty "Main card" heading with no bouts under it.
+ *
+ * ── Order and timing are deliberately NOT recomputed ───────────────────────
+ * Callers must run `estimateBoutTimes` on the FULL blocks and filter afterwards.
+ * The featured bout still occupies real time in the night's run order, so
+ * dropping it before the estimate would slide every remaining walkout time
+ * earlier and quietly make the whole schedule wrong.
+ */
+export function excludeFight<T extends { id: string }>(
+  blocks: { meta: SegmentMeta; fights: T[] }[],
+  fightId: string | null,
+): { meta: SegmentMeta; fights: T[] }[] {
+  if (!fightId) return blocks;
+  return blocks
+    .map((b) => ({ meta: b.meta, fights: b.fights.filter((f) => f.id !== fightId) }))
+    .filter((b) => b.fights.length > 0);
+}
+
+/**
  * Estimated walkout time per bout, keyed by fight id.
  *
  * Anchors each block at `eventDate - offset`, then runs its bouts back to back.

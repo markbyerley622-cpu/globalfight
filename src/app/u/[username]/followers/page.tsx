@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db";
 import { publicDisplayName } from "@/lib/display-name";
 import { listFollows, getFollowCounts } from "@/lib/geo/people";
 import { FollowList } from "@/components/profile/follow-list";
+import { getCurrentUser } from "@/lib/auth";
+import { searchFollowState } from "@/lib/search-follow";
 
 async function loadUser(username: string) {
   return prisma.user.findUnique({
@@ -31,10 +33,22 @@ export default async function FollowersPage({ params }: { params: Promise<{ user
   const u = await loadUser(username);
   if (!u?.username) notFound();
 
+  // The viewer is resolved BEFORE the list so their own follow state can be
+  // batched with it — every row carries a Follow button now, and asking per row
+  // would be one query per person on a page built to hold hundreds.
+  const viewer = await getCurrentUser();
   const [people, counts] = await Promise.all([
     listFollows(u.id, "followers"),
     getFollowCounts(u.id),
   ]);
+  // searchFollowState is the ONE batched follow-state reader in the codebase
+  // (built for the search overlay's five families). Only the `people` family is
+  // asked for here; the others short-circuit on their empty key arrays, so this
+  // is a single query.
+  const follow = await searchFollowState(viewer?.id ?? null, {
+    fighterSlugs: [], eventSlugs: [], gymSlugs: [], promotionSlugs: [],
+    usernames: people.map((p) => p.username),
+  });
   const who = publicDisplayName(u);
 
   return (
@@ -63,7 +77,13 @@ export default async function FollowersPage({ params }: { params: Promise<{ user
       </div>
 
       <div className="mt-5">
-        <FollowList people={people} direction="followers" ownerName={who} />
+        <FollowList
+          people={people}
+          direction="followers"
+          ownerName={who}
+          following={follow.following.people}
+          viewerUsername={viewer?.username ?? null}
+        />
       </div>
     </div>
   );

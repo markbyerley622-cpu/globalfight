@@ -25,7 +25,7 @@ import { marketProbability, type MarketProb } from "@/lib/market";
 import { safeNewsCover } from "@/lib/media-safe";
 import type { Article, Fight } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { orderFights, groupCoverage, winningCorner } from "@/lib/event-format";
+import { orderFights, groupCoverage, winningCorner, featuredFight } from "@/lib/event-format";
 import { getEventEnrichment } from "@/lib/events/enrichment";
 import { VideoRail } from "@/components/feed/video-rail";
 import { resolvePromotion } from "@/lib/promotions";
@@ -44,14 +44,13 @@ import { EventSchedule } from "@/components/event/event-schedule";
 import { resultCoverage } from "@/lib/events/result-coverage";
 import { HeadlineMatchup } from "@/components/event/headline-matchup";
 import { EventScrollSpy, type SpySection } from "@/components/event/event-scroll-spy";
-import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress } from "@/lib/card-segments";
+import { segmentCard, estimateBoutTimes, currentBoutId, boutProgress, excludeFight } from "@/lib/card-segments";
 import { FightRow } from "@/components/event/fight-row";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { picksLocked, pickStatus, STATUS_PRESENTATION } from "@/lib/intelligence/pick-status";
 import { FightModule } from "@/components/fight/fight-module";
+import { ChallengeFriend } from "@/components/fight/challenge-friend";
 import { CollapsibleFights } from "@/components/event/collapsible-fights";
-import { EventGeneralRoom } from "@/components/event/event-general-room";
-import { WhenVisible } from "@/components/when-visible";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -97,7 +96,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // Read in the order fans expect: main event, co-main, titles, then the
   // official undercard order.
   const fights = orderFights(event.fights);
-  const headline = fights.find((f) => f.mainEvent) ?? fights[0];
+  // THE featured bout, from the one shared definition (lib/event-format). This
+  // page must not re-derive it: the hero renders it and the card below skips it,
+  // and two copies of "which bout is the headline" is how it ended up on the
+  // page twice.
+  const headline = featuredFight(fights);
 
   // Result completeness, from the ONE shared definition. Passed to the schedule
   // banner so it cannot contradict the card rendered below it — that banner used to
@@ -122,8 +125,17 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   // when no provider gave us blocks — every time is then labelled an estimate.
   const { derived: segmentsDerived, blocks } = segmentCard(fights);
   const eventDate = new Date(event.date);
+  // Walkout times and the live bout are derived from the FULL blocks — the
+  // featured bout still occupies real time in the run of the night, and the
+  // schedule strip above still counts it. Only the RENDERED card drops it.
   const boutTimes = estimateBoutTimes(blocks, eventDate);
   const liveBoutId = currentBoutId(blocks, event.status);
+  // The card section renders everything EXCEPT the featured bout, which has its
+  // own hero module. See lib/card-segments::excludeFight — a filter on the data,
+  // not a guard inside the render loop, so a block left holding nothing but the
+  // main event disappears instead of rendering an empty broadcast heading.
+  const cardBlocks = excludeFight(blocks, headline?.id ?? null);
+  const cardBoutCount = cardBlocks.reduce((n, b) => n + b.fights.length, 0);
 
   // Resolve the viewer once up front (cache-deduped) and reuse it below.
   const viewer = await getCurrentUser();
@@ -239,11 +251,70 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         />
       )}
       {room && <TheRoom room={room} />}
+
+      {/* Sticky scroll-spy, then the sections continuously below it. It sits
+          ABOVE the featured bout so the rail is pinned from the first scroll
+          rather than appearing partway down the page. */}
+      <EventScrollSpy sections={spy} />
+
+      {/* ── THE FEATURED BOUT — ONE MODULE, RENDERED ONCE ────────────────────
+          The bout the reader opened the event for, as a single hero unit:
+
+            matchup  →  prediction  →  challenge  →  discussion
+
+          It is the SAME FightModule every other bout on the card is built from,
+          with HeadlineMatchup as its header instead of the compact FightRow, and
+          the `full` BoutPick instead of the compact one. Not a parallel
+          implementation — one component, one /api/fights/[slug]/pick write, one
+          room.
+
+          THIS BOUT IS EXCLUDED FROM THE CARD BELOW (see cardBlocks). Previously
+          it appeared in both places, so the same fight carried two prediction
+          controls over one crowd bar, two challenge entry points and — because
+          segmentCard reverses each block so the main event closes the show, and
+          CollapsibleFights only mounts the first three — the duplicate was
+          buried at the bottom behind "View N more predictions", which is why it
+          read as a second, unrelated module rather than an obvious repeat.
+
+          Rendered for a COMPLETED bout too, not just a scheduled one: the card
+          no longer contains it, so gating this on `result === "SCHEDULED"` would
+          delete the main event from a finished event's page entirely.
+          BoutPrediction already renders the outcome + how the crowd called it
+          when the bout is decided. */}
+      {headline && (
+        <section id="main-event" className="reveal scroll-mt-16">
+          <FightModule
+            fightSlug={headline.slug}
+            summary={roomsByFightId.get(headline.id) ?? { voices: 0, battle: null }}
+            // Full-bleed: HeadlineMatchup brings its own padding and bottom
+            // seam, so it must not be nested inside the section's own gutter.
+            header={<HeadlineMatchup fight={headline} />}
+            pick={
+              <BoutPrediction
+                fight={headline}
+                crowd={crowdByFightId.get(headline.id) ?? { red: 0, blue: 0, total: 0 }}
+                myPick={myPicksByFightId.get(headline.id) ?? null}
+                market={marketBySlug.get(headline.slug) ?? null}
+                eventDate={event.date}
+                variant="full"
+              />
+            }
+            className="px-4 pb-6"
+            bodyClassName="mx-auto max-w-2xl"
+          />
+        </section>
+      )}
+
+      {/* Countdown · broadcast blocks · venue — the "when and where", read after
+          the reader has seen the fight and had the chance to call it. */}
       <EventSchedule
         date={event.date}
         status={event.status}
         coverage={coverage}
         estimated={segmentsDerived}
+        // The FULL blocks: the schedule describes the night as it will actually
+        // run, and the main event is part of that whether or not this page
+        // renders it inside the card section below.
         blocks={blocks.map((b) => ({
           key: b.meta.key,
           label: b.meta.label,
@@ -251,14 +322,19 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           bouts: b.fights.length,
         }))}
       />
-      {headline && <HeadlineMatchup fight={headline} />}
 
-      {/* Sticky scroll-spy, then the sections continuously below it. */}
-      <EventScrollSpy sections={spy} />
+      {/* ── THE REST OF THE CARD ─────────────────────────────────────────────
+          Every remaining bout as an independent module carrying its own
+          prediction, battle and discussion — the featured bout is NOT here; it
+          is the hero above.
 
-      {/* The card IS the product surface: every bout is an independent module
-          carrying its own prediction, battle and discussion. */}
-      <ScrollSection id="card" title="Fight card" seam={false}>
+          The section is skipped entirely on a one-bout card, where the hero
+          already showed the only fight: rendering "Fight card" over nothing (or
+          worse, over the "no bouts announced" explainer) would claim the card
+          was empty seconds after displaying it. The scroll-spy applies the same
+          rule from the same input — see enrichmentNavigation. */}
+      {(fights.length === 0 || cardBoutCount > 0) && (
+      <ScrollSection id="card" title="Fight card" seam={Boolean(headline)}>
         {fights.length === 0 ? (
           /* AN EMPTY CARD IS SEVERAL DIFFERENT STATES, not one.
              "The promotion hasn't announced it", "we don't cover this promotion" and
@@ -285,11 +361,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <Swords className="size-3.5 shrink-0 text-blood-400" />
           Tap a corner to call each bout — correct calls earn points. Skill, not betting.
         </p>
-        {/* Compressed: the top bouts (main event + co-main + one) render; the
-            rest tuck behind a "View N more predictions" toggle so a reader reaches
-            the card talk + coverage without scrolling past every bout. */}
+        {/* Compressed: the first few bouts of the run order render; the rest
+            tuck behind a "View N more predictions" toggle so a reader reaches
+            coverage without scrolling past every bout on a fourteen-fight show. */}
         <CollapsibleFights initialVisible={3}>
-          {blocks.flatMap((block) => block.fights).map((f) => (
+          {/* cardBlocks, NOT blocks — the featured bout is excluded at the data
+              level so it cannot render twice. `index` is still resolved against
+              the FULL ordered list, so "Bout 7" keeps meaning bout 7 of the real
+              card rather than being renumbered by the exclusion. */}
+          {cardBlocks.flatMap((block) => block.fights).map((f) => (
                   <FightModule
                     key={f.id}
                     fightSlug={f.slug}
@@ -319,14 +399,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </>
         )}
       </ScrollSection>
+      )}
 
-      {/* Card-wide talk. Provisioned only when the reader reaches it, so the
-          write stays off every page load. */}
-      <ScrollSection id="card-talk" title="Card talk">
-        <WhenVisible placeholder={<RoomSkeleton />}>
-          <EventGeneralRoom slug={event.slug} />
-        </WhenVisible>
-      </ScrollSection>
+      {/* NO card-wide talk section.
+          It sat at the bottom of the page as one large room for an entire
+          fourteen-bout event, directly under fourteen better-scoped ones. Every
+          comment in it was about a specific fight and was stranded away from
+          that fight's prediction, its crowd split and its battle. A bout is the
+          scope a fan argues in, so the discussion lives in the bout's module —
+          see components/fight/fight-module, where each row carries its own
+          reply count and opens its own thread.
+          `EventGeneralRoom` and `/api/events/[slug]/room` are intentionally left
+          in place: they are still the provisioning path a room needs, and the
+          general room is reachable from a bout thread. Nothing was deleted that
+          a thread depends on. */}
 
       {(enrichment.coverage.length > 0 || enrichment.videos.length > 0) && (
         <ScrollSection id="coverage" title="Related coverage">
@@ -346,18 +432,6 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       {/* Tail space so the last section can scroll clear of the sticky rail and
           the bottom tab bar — no abrupt end to the document. */}
       <div className="h-16" aria-hidden />
-    </div>
-  );
-}
-
-/** Space-holding skeleton while a room mounts — no words, no spinner, no mention
- *  of loading; it simply reads as the conversation settling in. */
-function RoomSkeleton() {
-  return (
-    <div className="mx-auto max-w-3xl space-y-3" aria-hidden>
-      <div className="h-11 rounded-lg bg-ink-800/50" />
-      <div className="h-24 rounded-card bg-ink-900/70 ring-1 ring-ink-800/60" />
-      <div className="ml-6 h-16 rounded-card bg-ink-900/50 ring-1 ring-ink-800/50" />
     </div>
   );
 }
@@ -397,7 +471,15 @@ function ScrollSection({
  * bout collapses to its outcome and how the crowd called it. The battle and the
  * discussion that hang off this prediction live one block below, in the arena.
  */
-function BoutPrediction({ fight, crowd, myPick, market, eventDate }: { fight: Fight; crowd: CrowdRead; myPick: MyPick | null; market: MarketProb | null; eventDate: string }) {
+function BoutPrediction({ fight, crowd, myPick, market, eventDate, variant = "compact" }: {
+  fight: Fight;
+  crowd: CrowdRead;
+  myPick: MyPick | null;
+  market: MarketProb | null;
+  eventDate: string;
+  /** `full` for the single main-event slot; `compact` for every row of the card. */
+  variant?: "full" | "compact";
+}) {
   if (fight.result === "SCHEDULED") {
     // The card may have STARTED without a result being ingested yet. Picks are
     // closed at first bell (castPick enforces it server-side), so the control must
@@ -419,7 +501,9 @@ function BoutPrediction({ fight, crowd, myPick, market, eventDate }: { fight: Fi
         // variant's headings and explainer copy are correct once and noise
         // twelve times. The card states "Skill, not betting" ONCE, above the
         // first bout — see the card header — rather than under every one.
-        variant="compact"
+        // The main-event slot at the top of the page passes `full`.
+        variant={variant}
+        challenge={<ChallengeFriend fightSlug={fight.slug} />}
       />
     );
   }

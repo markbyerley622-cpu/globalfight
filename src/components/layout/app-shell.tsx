@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
 import { Search } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { AnalyticsPageviews } from "@/components/analytics-pageviews";
@@ -18,14 +17,32 @@ import { OnlineCount } from "./online-count";
 import { NotificationBell } from "./notification-bell";
 import { MessagesButton } from "./messages-button";
 import { ScrollRestoration } from "./scroll-restoration";
+import { SearchOverlay } from "@/components/search/search-overlay";
 import { useAuth } from "@/lib/auth-client";
+import { useT } from "@/lib/i18n";
 import { useTrackNavigation } from "@/lib/navigation-history";
+
+/**
+ * Is the user mid-typing? Then "/" is a slash, not a shortcut.
+ *
+ * Without this the shortcut steals the character from every input on the site —
+ * a forum reply, a gym search, the search box itself — which is the classic way
+ * a single-key shortcut ships broken. `isContentEditable` covers the rich-text
+ * composers, which are not <input> elements and would otherwise be missed.
+ */
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable === true;
+}
 
 /**
  * App-wide shell: a 100dvh flex frame with a fixed top bar (logo · search ·
  * menu burger), the swipeable section tabs, a live-ticker slot, a single inner
- * scroll region, a sponsors strip and a bottom tab bar. Search jumps to the
- * fighters directory; the burger opens the full nav (NavSheet).
+ * scroll region, a sponsors strip and a bottom tab bar. Search opens the
+ * universal SearchOverlay (also on "/" and Cmd/Ctrl-K); the burger opens the
+ * full nav (NavSheet).
  */
 export function AppShell({
   ticker,
@@ -40,13 +57,38 @@ export function AppShell({
   const router = useRouter();
   const mainRef = useRef<HTMLElement>(null);
   const [navOpen, setNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { user } = useAuth();
+  const t = useT();
 
   // Records in-app navigation depth, so every Back control knows whether
   // router.back() stays inside the app. See lib/navigation-history.
   useTrackNavigation();
 
-  useEffect(() => { setNavOpen(false); }, [pathname]);
+  useEffect(() => { setNavOpen(false); setSearchOpen(false); }, [pathname]);
+
+  /**
+   * "/" focuses search — the convention every reader already knows from GitHub,
+   * Slack, Notion and X. Bound at the shell, not inside the overlay, because the
+   * overlay is unmounted when closed and a shortcut that only works once search
+   * is already open is not a shortcut.
+   *
+   * Cmd/Ctrl-K is bound to the same thing: it is what a laptop user reaches for
+   * first, and honouring both costs one line. `preventDefault` on Cmd-K stops
+   * Firefox opening its own address-bar search.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || isTyping(e.target)) return;
+      const cmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
+      if (e.key === "/" || cmdK) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Mobile: swipe left/right between the current section's surfaces. Ignores
   // horizontal scrollers ([data-hscroll]) and mostly-vertical swipes.
@@ -137,13 +179,25 @@ export function AppShell({
             <PillarNav className="ml-3 hidden lg:flex" />
             <div className="ml-auto flex items-center gap-2">
               <OnlineCount />
-              <Link
-                href="/fighters"
-                aria-label="Search fighters"
-                className="flex size-9 items-center justify-center rounded-lg border border-ink-700 bg-ink-800 text-mist transition-colors hover:text-chalk"
+              {/* UNIVERSAL SEARCH — the entry point to everything.
+                  This was a Link to /fighters: a magnifying glass in the site
+                  header that navigated to the fighter directory and searched
+                  nothing else. Meanwhile SearchOverlay — which already searches
+                  fighters, events, promotions, gyms, PEOPLE, news, videos,
+                  communities, forum threads and static pages, grouped by
+                  category with a working Follow button on every row — had no
+                  mount point anywhere in the app.
+                  Nothing new was built here. The finished component was simply
+                  connected to the control that was pretending to be it. */}
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                aria-label={t("Search fighters, events, people and more")}
+                aria-keyshortcuts="/"
+                className="flex size-9 items-center justify-center rounded-lg border border-ink-700 bg-ink-800 text-mist transition-colors hover:border-blood-500/40 hover:text-chalk"
               >
                 <Search className="size-[1.05rem]" />
-              </Link>
+              </button>
               {/* In-app notifications — mounted for signed-in users only; anon
                   visitors have nothing to poll. This is the surface engine
                   notifications (pick results, fight-week, follows) land on. */}
@@ -182,6 +236,7 @@ export function AppShell({
         <BottomTabBar className="lg:hidden" />
       </div>
 
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <NavSheet open={navOpen} onClose={() => setNavOpen(false)} />
       {/* Always mounted: keeps other tabs in step after a follow. */}
       <FollowSync />

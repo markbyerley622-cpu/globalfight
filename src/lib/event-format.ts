@@ -99,6 +99,32 @@ export function orderFights(fights: Fight[]): Fight[] {
     .map(({ f }) => f);
 }
 
+/**
+ * THE featured bout — the one the event page promotes to its hero.
+ *
+ * ── Why this is a function and not an inline expression ────────────────────
+ * It was `fights.find((f) => f.mainEvent) ?? fights[0]`, written inline on the
+ * event page. The moment a second surface needed to know which bout was the
+ * hero — the page hoisted the featured bout out of the card, and the card then
+ * had to know which one to SKIP — that expression existed in two places, and
+ * two copies of "which bout is the headline" is exactly how the same fight ends
+ * up rendered twice. One definition; both callers ask it.
+ *
+ * The `?? fights[0]` fallback is load-bearing across promotions, not a
+ * defensive shrug. UFC and PFL cards arrive with `mainEvent` set; a good number
+ * of ingested Boxing, BKFC, ONE and Glory cards do not set the flag at all. For
+ * those, `orderFights` has already sorted by billing tier (main → co-main →
+ * title → card order), so the first element IS the top of the bill. That is why
+ * this takes an ALREADY-ORDERED list — passing raw `event.fights` would pick
+ * whatever the scraper happened to insert first.
+ *
+ * Returns null only for a card with no bouts (an announced event whose card has
+ * not dropped).
+ */
+export function featuredFight(orderedFights: Fight[]): Fight | null {
+  return orderedFights.find((f) => f.mainEvent) ?? orderedFights[0] ?? null;
+}
+
 /** Human label for a bout's slot on the card. */
 export function boutLabel(fight: Fight, index: number): string {
   if (fight.mainEvent) return "Main event";
@@ -106,6 +132,24 @@ export function boutLabel(fight: Fight, index: number): string {
   if (fight.titleFight) return "Title fight";
   return `Bout ${index + 1}`;
 }
+
+/**
+ * The name of the post-fight coverage CTA, in ONE place.
+ *
+ * Three surfaces had three different names for one destination — the bout row,
+ * the fighter site and the coverage taxonomy each wrote their own — which makes
+ * a single action look like three separate features. Two of the three also led
+ * with the verb "Watch", promising an embedded player this app does not host,
+ * and both named the finish rather than the outcome. What a reader actually
+ * gets from that tap on a completed bout is highlights AND the result, so that
+ * is what it says.
+ *
+ * This string is ALSO the i18n key (the dictionary in lib/i18n-dict keys on
+ * English), so there is one constant and one translation entry rather than a
+ * constant per surface. Change it here and every surface follows — including
+ * COVERAGE_GROUPS below, whose `highlights` bucket reads the same value.
+ */
+export const HIGHLIGHTS_LABEL = "Highlights & Results";
 
 /**
  * YouTube search deep link for a completed bout's highlights — a pragmatic way
@@ -139,7 +183,7 @@ const COVERAGE_GROUPS: { key: string; label: string; test: RegExp }[] = [
   // Post-fight sections lead — for a completed card these are what fans want, and
   // for an upcoming card their keywords simply don't match. Distinct keywords
   // from the pre-fight groups below so first-match grouping stays unambiguous.
-  { key: "highlights", label: "Highlights", test: /highlights|full fight|watch:|knockout of|finish of the|round[- ]by[- ]round/i },
+  { key: "highlights", label: HIGHLIGHTS_LABEL, test: /highlights|full fight|watch:|knockout of|finish of the|round[- ]by[- ]round/i },
   { key: "result", label: "Official result", test: /\brecap\b|\breport\b|official result|scorecard|post[- ]fight report|full results/i },
   { key: "interview", label: "Interviews", test: /interview|speaks (out|to)|post[- ]?fight (interview|reaction)|in his own words/i },
   { key: "next", label: "What's next", test: /what.?s next|next fight|calls? out|callout|rematch|wants (to face|next)|targets? next|eyes (a|next)/i },

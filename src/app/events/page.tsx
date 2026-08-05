@@ -111,8 +111,19 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
         description="Upcoming fights with predictions, full cards, venues, broadcasters and live countdowns."
       />
       <div className="container-cr space-y-5 py-8">
-        {recentEvents.length > 0 && <RecentEvents events={recentEvents} />}
+        {/* ── FILTERS FIRST, ALWAYS ────────────────────────────────────────
+            The order used to be Recent events → Filters → Upcoming events,
+            which put a horizontally-scrolling results rail between the reader
+            and the only controls on the page. Worse, it made every filter
+            change feel like a jump: the reader had scrolled past the rail to
+            reach the pills, and the re-render dropped them back at a control
+            they had already used, above the list they were actually reading.
 
+            Filters govern BOTH lists, so they lead — and they stay pinned
+            (see EventFilters, `sticky`) rather than scrolling away, so
+            narrowing the list never means scrolling back up to find the pills.
+            Recent events moves BELOW the upcoming grid: a completed card is
+            what you look at after you have seen what's next, not before. */}
         <EventFilters facets={facets} />
 
         {/* SAY when the default view was swapped.
@@ -175,6 +186,15 @@ export default async function EventsPage({ searchParams }: { searchParams: SP })
         )}
 
         <Pager page={page} hasNext={page + 1 < pages} />
+
+        {/* Recent results, AFTER what's next. Default view only — when someone
+            is filtering or paging, a fixed "recently completed" rail argues
+            with the query they just wrote. */}
+        {recentEvents.length > 0 && (
+          <div className="border-t border-ink-800/60 pt-6">
+            <RecentEvents events={recentEvents} />
+          </div>
+        )}
       </div>
     </>
   );

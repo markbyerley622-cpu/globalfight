@@ -158,11 +158,35 @@ export function enrichmentNavigation(input: {
   videoCount: number;
 }): EnrichmentNavigation {
   const media = input.coverageCount + input.videoCount;
+
+  /**
+   * The featured bout is rendered ONCE, as its own hero section, and the fight
+   * card below it holds the REMAINDER. Both facts fall out of the bout count
+   * alone, which is why this needs no extra parameter and cannot drift from
+   * what the page actually renders:
+   *
+   *   0 bouts — no hero (nothing to feature). "Fight card" still exists,
+   *             because that section is where the page explains WHY the card is
+   *             empty (classifyCard / cardStateCopy).
+   *   1 bout  — the hero IS the whole card. No "Fight card" anchor: it would
+   *             scroll to a section holding zero bouts, having just shown the
+   *             only one.
+   *   2+      — both, and the card's badge counts what is actually in it.
+   */
+  const hasFeatured = input.boutCount > 0;
+  const cardBouts = Math.max(0, input.boutCount - 1);
+  const hasCard = input.boutCount === 0 || cardBouts > 0;
+
   return {
     href: `/events/${input.slug}`,
     sections: [
-      { id: "card", label: "Fight card", badge: input.boutCount },
-      { id: "card-talk", label: "Card talk" },
+      ...(hasFeatured ? [{ id: "main-event", label: "Main event" }] : []),
+      ...(hasCard ? [{ id: "card", label: "Fight card", badge: cardBouts }] : []),
+      // NO "card-talk". The event-wide room was removed: a bout is the scope a
+      // fan argues in, and every bout now carries its own thread inside its own
+      // module (components/fight/fight-module). A second, card-wide room sat at
+      // the bottom of the page competing with fourteen better-scoped ones and
+      // collecting the comments that should have been on a fight.
       ...(media > 0 ? [{ id: "coverage", label: "Coverage", badge: media }] : []),
     ],
   };
