@@ -502,21 +502,41 @@ function CompactCorner({
         // was which. Tinted at rest, solid when chosen; no "Red corner" /
         // "Blue corner" label needed, which is what buys the vertical space
         // this variant runs on.
-        "tap relative flex min-h-11 w-full items-center justify-between gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-all duration-200",
-        disabled ? "cursor-default" : "active:scale-[0.98]",
+        // DOMINANCE, not just colour. The card used to barely change once a
+        // call was made: both pills stayed the same size and the chosen one
+        // simply filled in. That reads as "a form field was set", not "you
+        // backed this fighter".
+        //
+        // So the chosen corner grows and lifts and the other recedes and
+        // shrinks. `scale` is a compositor-only transform — it does not affect
+        // layout, so this costs no reflow and no CLS on a fourteen-bout card.
+        // 250ms on --ease-out-back gives the settle a slight overshoot; the
+        // reduced-motion backstop in globals.css neutralises it for anyone who
+        // asked for that.
+        "tap relative flex min-h-11 w-full items-center justify-between gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-all duration-[250ms] ease-out-back will-change-transform",
+        disabled ? "cursor-default" : "active:scale-[0.97]",
         picked
-          // Chosen: solid corner colour, white text. AA-safe — white on
-          // blood-600 and on volt-600 both clear 4.5:1 at this weight.
-          ? tone === "red"
-            ? "border-blood-500 bg-blood-600 font-bold text-white shadow-glow-red"
-            : "border-volt-500 bg-volt-600 font-bold text-white"
+          // Chosen: solid corner colour, white text, lifted forward. AA-safe —
+          // white on blood-600 and on volt-600 both clear 4.5:1 at this weight.
+          // Blue previously had NO glow while red did, so the two corners were
+          // not rewarded equally for the same action.
+          ? cn(
+              "z-10 scale-[1.03] font-bold text-white",
+              tone === "red"
+                ? "border-blood-500 bg-blood-600 shadow-glow-red"
+                : "border-volt-500 bg-volt-600 shadow-glow-volt",
+            )
           : dimmed
             // The corner NOT chosen. Recedes rather than disappearing — it is
             // still the way to change your mind, so it must stay legible and
-            // tappable, just quieter than the call you actually made.
-            ? tone === "red"
-              ? "border-blood-500/20 bg-blood-500/[0.04] text-fog opacity-60 hover:opacity-100"
-              : "border-volt-500/20 bg-volt-500/[0.04] text-fog opacity-60 hover:opacity-100"
+            // tappable, just quieter than the call you actually made. Hover
+            // restores it fully so changing your mind never feels discouraged.
+            ? cn(
+                "scale-[0.97] text-fog opacity-55 saturate-50 hover:scale-100 hover:opacity-100 hover:saturate-100",
+                tone === "red"
+                  ? "border-blood-500/20 bg-blood-500/[0.04]"
+                  : "border-volt-500/20 bg-volt-500/[0.04]",
+              )
             : disabled
               ? "border-ink-800 text-fog"
               // At rest: lightly tinted so the corner is readable at a glance.
@@ -529,6 +549,14 @@ function CompactCorner({
           wrap the pill to two lines and break the row's rhythm. */}
       <span className="min-w-0 truncate font-display text-xs font-bold leading-tight">{name}</span>
       <span className="flex shrink-0 items-center gap-1">
+        {/* "Your pick" in words, not only in colour. Colour alone fails for the
+            ~8% of men with a red/green or blue deficiency, and this is the one
+            piece of state on the card the reader most needs to be sure of. */}
+        {picked && (
+          <span className="hidden rounded-sm bg-white/20 px-1.5 py-0.5 font-display text-4xs font-black uppercase tracking-wider text-white sm:inline">
+            Your pick
+          </span>
+        )}
         {underdog && <Flame className="size-3 text-gold-400" aria-label="Underdog" />}
         {picked && <CheckCircle2 className="size-4" />}
       </span>
