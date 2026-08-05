@@ -160,9 +160,12 @@ export default function VerifyEmailPage() {
             inputMode="numeric"
             autoComplete="one-time-code"
             autoFocus
-            placeholder="000000"
+            // Dots, not zeros. A "000000" placeholder at this size and tracking
+            // reads as six digits already typed — caught in the visual pass,
+            // where the empty field looked pre-filled.
+            placeholder="••••••"
             aria-describedby={error ? "verify-error" : undefined}
-            className="mt-5 h-14 w-full rounded-lg border border-ink-700 bg-ink-950/50 text-center font-display text-2xl font-bold tracking-[0.4em] text-chalk outline-none placeholder:text-fog/40 focus:border-blood-500/50"
+            className="mt-5 h-14 w-full rounded-lg border border-ink-700 bg-ink-950/50 text-center font-display text-2xl font-bold tracking-[0.4em] text-chalk outline-none placeholder:text-fog/30 focus:border-blood-500/50"
           />
 
           {error && (
