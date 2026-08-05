@@ -24,6 +24,24 @@ import { log } from "@/lib/scraper/logger";
 export type EventStatusFilter = "upcoming" | "live" | "completed" | "cancelled";
 export type DateWindow = "week" | "month" | "quarter";
 
+/**
+ * Filters are MULTI-VALUE. A user following both MMA and boxing wants both, and
+ * the old single-value contract forced an either/or that no combat-sports fan
+ * actually wants.
+ *
+ * Encoding is comma-separated in ONE query param (`?sport=mma,boxing`) rather
+ * than repeated params, because it round-trips through URLSearchParams,
+ * Next's typed `query` objects and a shared link identically — repeated keys
+ * do not survive all three.
+ *
+ * Parsing is tolerant on purpose: hand-edited URLs, stray whitespace and casing
+ * all resolve rather than being punished, and duplicates collapse.
+ */
+export function parseMulti(raw: string | undefined | null): string[] {
+  if (!raw) return [];
+  return [...new Set(raw.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean))];
+}
+
 export interface EventFilters {
   sport?: string;      // sport SLUG (mma, boxing…)
   promotion?: string;  // registry slug (ufc, one…)

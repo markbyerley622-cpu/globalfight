@@ -252,7 +252,16 @@ export function EventCard({
         )}
 
         {event.mainEvent && event.mainEvent.scheduled && !isDone && !isOff && (
-          <div className="mt-3 border-t border-ink-800 pt-3">
+          // z-[3] lifts the WHOLE Quick Pick block above the whole-card link
+          // overlay, so tapping a fighter PICKS instead of navigating, while a
+          // tap anywhere else still opens the full card.
+          //
+          // The overlay's `:where(button, a, …)` rule was supposed to handle
+          // this, but it has zero specificity AND the pills now carry their own
+          // transforms (the dominance scale), which creates a nested stacking
+          // context that traps their z-index inside it. Raising the container
+          // fixes it once for every control it holds, transforms or not.
+          <div className="relative z-[3] mt-3 border-t border-ink-800 pt-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-3xs font-bold uppercase tracking-wider text-fog">
               <Swords className="size-3 text-blood-400" /> {QUICK_PICK_LABEL} · Main event
             </p>
