@@ -2149,16 +2149,34 @@ model Notification {
 
 enum ActivityType {
   PICK_MADE
+  PICK_CHANGED
   PICK_CORRECT
+  PICK_MISSED
   CARD_EARNED
   REP_MILESTONE
   FOLLOW
   THREAD_CREATED
+  POST_CREATED
+  CHALLENGE_SENT
+  CHALLENGE_ACCEPTED
   BATTLE_WON
+  BADGE_EARNED
 }
 
 /// One shared activity stream. Everything a user does that's worth surfacing
 /// emits here; the homepage/profile feeds read from it.
+///
+/// EXTENDING: a new activity kind is a value on ActivityType plus an emitter
+/// call — never a new table and never a new column. `title` is the rendered
+/// sentence and `url` is where it points, both resolved at WRITE time, so a
+/// feed read is one indexed query with no joins and no per-row lookups however
+/// many kinds exist. `meta` carries anything a future renderer might want
+/// (deltas, opponent handles) without a migration.
+///
+/// The cost of that shape is that `title` is a snapshot: if a user later
+/// changes their display name, sentences already written keep the old one. That
+/// is the right trade for a feed — it is a log of what happened, and rewriting
+/// history to match a renamed account would be worse.
 model Activity {
   id        String       @id @default(cuid())
   userId    String

@@ -54,7 +54,15 @@ export function PageHero({
               if (canGoBack) router.back();
               else if (backFallback) router.push(backFallback);
             }}
-            className="mb-4 inline-flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850/70 px-3 py-1.5 text-xs font-semibold text-mist backdrop-blur transition-colors hover:border-ink-600 hover:text-chalk active:scale-[0.98]"
+            // `flex w-fit`, NOT `inline-flex`. The eyebrow immediately below is
+            // `.eyebrow`, which is itself inline-flex — so two inline-level
+            // siblings shared a line box and "Every card that matters" wrapped
+            // up beside the Back button instead of starting underneath it. A
+            // block-level button ends the line; `w-fit` keeps it hugging its
+            // label rather than stretching the full container width.
+            // PageHero renders on every top-level page, so this was the same
+            // collision everywhere, not just on /events.
+            className="mb-4 flex w-fit items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850/70 px-3 py-1.5 text-xs font-semibold text-mist backdrop-blur transition-colors hover:border-ink-600 hover:text-chalk active:scale-[0.98]"
           >
             <ArrowLeft className="size-4" />
             {t("Back")}

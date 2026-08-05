@@ -1,4 +1,5 @@
 import "server-only";
+import { activityPickMade } from "@/lib/activity/emit";
 import { prisma } from "@/lib/db";
 import { track } from "@/lib/analytics";
 import { pairBattle } from "@/lib/battles";
@@ -46,7 +47,14 @@ export async function castPick(
   if (!isCorner(corner)) throw new Error("Invalid corner");
   const f = await prisma.fight.findUnique({
     where: { slug: fightSlug },
-    select: { id: true, result: true, event: { select: { date: true } } },
+    // Fighter names + the event slug are selected here so the activity row can
+    // be written without a SECOND lookup on the hot pick path.
+    select: {
+      id: true, result: true,
+      red: { select: { name: true } },
+      blue: { select: { name: true } },
+      event: { select: { date: true, slug: true } },
+    },
   });
   if (!f) throw new Error("Fight not found");
   if (f.result !== "SCHEDULED") throw new Error("This bout is already decided");
@@ -73,6 +81,18 @@ export async function castPick(
     update: { corner, confidence: conf, method: m },
   });
   track(existing ? "prediction_changed" : "prediction_made", userId, { fight: fightSlug, corner });
+
+  // ACTIVITY. PICK_MADE was in the enum with no producer, so a member's feed
+  // stayed empty until a fight they called resolved — days or weeks. This is the
+  // only activity that fires at the moment they act, which is what makes a new
+  // profile look alive at all. Best-effort by contract (see activity/emit).
+  await activityPickMade(prisma, userId, {
+    fightSlug,
+    eventSlug: f.event?.slug ?? null,
+    fighterName: corner === "RED" ? f.red?.name ?? "the red corner" : f.blue?.name ?? "the blue corner",
+    finish: m === "KO" ? "KO/TKO" : m === "SUB" ? "submission" : m === "UD" ? "decision" : null,
+    changed: Boolean(existing && existing.corner !== corner),
+  });
   // Prediction Battles: pair with an opposite-corner opponent (best-effort — a
   // pairing hiccup must never break a pick).
   try { await pairBattle(userId, fightId); } catch { /* non-fatal */ }

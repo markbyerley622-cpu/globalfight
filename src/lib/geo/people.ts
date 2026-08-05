@@ -1,4 +1,5 @@
 import "server-only";
+import { activityFollowed } from "@/lib/activity/emit";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { resolvePoint } from "./gazetteer";
@@ -186,6 +187,20 @@ export async function setFollow(followerId: string, followingId: string, on: boo
     create: { followerId, followingId },
     update: {},
   });
+
+  // ACTIVITY, for the FOLLOWER — following someone is their action, and it is
+  // one of the few things that fills a feed before any fight resolves.
+  try {
+    const target = await prisma.user.findUnique({
+      where: { id: followingId }, select: { name: true, username: true },
+    });
+    if (target?.username) {
+      await activityFollowed(prisma, followerId, {
+        targetName: publicDisplayName(target),
+        targetUsername: target.username,
+      });
+    }
+  } catch { /* non-fatal */ }
 
   // Tell them. FOLLOW has been in the NotificationType enum with no producer,
   // so until now gaining a follower was completely silent — and a follow is the

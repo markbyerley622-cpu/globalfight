@@ -162,11 +162,17 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
           />
         </div>
 
+        {/* A count you cannot open is decoration — the same fix the user
+            profiles got. A gym's followers ARE its community, and being able to
+            see who is in it is most of the reason to follow one. */}
         {gymFollowers > 0 && (
-          <p className="mt-1 text-xs text-fog">
-            <span className="font-semibold text-mist">{gymFollowers.toLocaleString()}</span>{" "}
+          <Link
+            href={`/gyms/${gym.slug}/followers`}
+            className="mt-1 inline-flex items-baseline gap-1 rounded-md px-1 py-0.5 text-xs text-fog transition-colors hover:bg-ink-800 hover:text-mist focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
+          >
+            <span className="font-semibold text-mist">{gymFollowers.toLocaleString()}</span>
             {gymFollowers === 1 ? "follower" : "followers"}
-          </p>
+          </Link>
         )}
 
         {gym.disciplines.length > 0 && (

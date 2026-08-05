@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { X } from "lucide-react";
+import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { SPORTS } from "@/lib/sports";
 import type { EventFacet } from "@/lib/events-query";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,39 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+
+  /**
+   * COLLAPSE ONCE PINNED.
+   *
+   * All four rows pinned to the top is roughly 150px of chrome — on a 780px
+   * phone that is a fifth of the screen permanently occupied by controls,
+   * following the reader down a list they are trying to look at.
+   *
+   * So the bar has two shapes. At the top of the page it is fully open, because
+   * that is when someone is deciding what to look at. Once it sticks it drops to
+   * the Sport row plus a toggle: sport is the filter people actually change
+   * mid-scroll, and the rest are set once and left. Tapping the toggle brings
+   * them back at any time, and the active-count on it means a collapsed bar
+   * never hides the fact that filters are on.
+   */
+  const sentinel = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    // A zero-height marker directly ABOVE the sticky bar: while it is on screen
+    // the bar is in its resting place; the moment it scrolls out, the bar is
+    // pinned. Cheaper and steadier than reading scrollTop on every frame, and it
+    // observes inside #main because the document itself never scrolls here.
+    const io = new IntersectionObserver(
+      ([e]) => setStuck(!e.isIntersecting),
+      { root: document.getElementById("main"), threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const get = (k: string) => params.get(k) ?? "";
 
@@ -120,7 +154,10 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
      * comes last because it is the only group that is meaningfully optional —
      * the other three are how a fan describes the card they are looking for.
      */
-    <div className="sticky top-0 z-20 -mx-4 space-y-3 border-b border-ink-800 bg-ink-950/95 px-4 py-3 backdrop-blur-xl">
+    <>
+    {/* The stuck-detector. Zero height, no paint. */}
+    <div ref={sentinel} aria-hidden className="h-px" />
+    <div className="sticky top-0 z-20 -mx-4 space-y-3 border-b border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur-xl">
       <Row label="Sport">
         <Pill onClick={() => set("sport", "")} active={many("sport").length === 0}>All</Pill>
         {FILTER_SPORTS.map((s) => (
@@ -128,6 +165,11 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
         ))}
       </Row>
 
+      {/* Everything below the sport row collapses once the bar is pinned.
+          `showSecondary` is true whenever the bar is resting, so the page still
+          opens with every filter visible. */}
+      {(!stuck || open) && (
+      <>
       {facets.promotions.length > 0 && (
         <Row label="Promotion">
           <Pill onClick={() => set("promotion", "")} active={many("promotion").length === 0}>All</Pill>
@@ -179,7 +221,29 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
           <X className="size-3.5" /> Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
         </button>
       )}
+      </>
+      )}
+
+      {/* The toggle, only while pinned. It carries the active count so a
+          collapsed bar can never hide that filters are on — the one thing a
+          reader must not lose when the controls fold away. */}
+      {stuck && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="tap flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-ink-800 bg-ink-900/60 px-3 py-1 text-2xs font-bold uppercase tracking-wider text-fog transition-colors hover:border-ink-700 hover:text-mist"
+        >
+          <SlidersHorizontal className="size-3" aria-hidden />
+          {open ? "Fewer filters" : "More filters"}
+          {activeCount > 0 && (
+            <span className="rounded-full bg-blood-500 px-1.5 text-3xs font-black text-white tabular-nums">{activeCount}</span>
+          )}
+          <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+        </button>
+      )}
     </div>
+    </>
   );
 }
 

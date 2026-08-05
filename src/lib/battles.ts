@@ -1,4 +1,5 @@
 import "server-only";
+import { activityChallenge } from "@/lib/activity/emit";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
@@ -183,6 +184,31 @@ export async function challengeUser(
 
   if ("error" in result) return { error: result.error };
   if (result.matched) await announceMatch(fightId, challengerId, targetId);
+
+  // ACTIVITY for BOTH sides — one sent it, the other took it on. Neither type
+  // had a producer before, so challenges were invisible outside the room.
+  try {
+    const [me, them, fight] = await Promise.all([
+      prisma.user.findUnique({ where: { id: challengerId }, select: { name: true, username: true } }),
+      prisma.user.findUnique({ where: { id: targetId }, select: { name: true, username: true } }),
+      prisma.fight.findUnique({ where: { id: fightId }, select: { slug: true } }),
+    ]);
+    if (fight && me && them) {
+      await activityChallenge(prisma, challengerId, {
+        accepted: false,
+        opponentName: publicDisplayName(them),
+        opponentUsername: them.username,
+        fightSlug: fight.slug,
+      });
+      await activityChallenge(prisma, targetId, {
+        accepted: true,
+        opponentName: publicDisplayName(me),
+        opponentUsername: me.username,
+        fightSlug: fight.slug,
+      });
+    }
+  } catch { /* non-fatal */ }
+
   return { battleId: result.battleId };
 }
 

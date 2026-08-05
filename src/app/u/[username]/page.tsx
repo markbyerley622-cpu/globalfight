@@ -8,14 +8,14 @@ import { getTrainingNowFor } from "@/lib/geo/presence";
 import { getProfileStats } from "@/lib/profile-stats";
 import { getProfileOverview } from "@/lib/profile/profile-service";
 import { CurrentPicks } from "@/components/profile/current-picks";
+import { ActivityFeed } from "@/components/profile/activity-feed";
+import { getActivity } from "@/lib/activity/read";
 import { RecentResults } from "@/components/profile/recent-results";
 import { SITE } from "@/lib/config";
-import { getUserActivity } from "@/lib/activity";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { ShareMenu } from "@/components/share-menu";
-import { timeAgo } from "@/lib/utils";
 import { publicDisplayName } from "@/lib/display-name";
 import { getFollowCounts, getMutualFollowers } from "@/lib/geo/people";
 import { getCurrentUser } from "@/lib/auth";
@@ -83,7 +83,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
     // the EXISTING parallel wave rather than fetched after it, so the two new
     // sections cost the page nothing beyond the slowest query already in flight.
     getProfileOverview(u.id),
-    getUserActivity(u.id, 8),
+    getActivity(u.id, { limit: 12 }),
     prisma.user.count({ where: { picksResolved: { gt: 0 } } }),
     // Live gym check-in. Derived from CheckIn rather than a stored status
     // field, so it cannot disagree with the check-in that produced it and it
@@ -265,28 +265,19 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
         <CurrentPicks picks={overview.currentPicks} more={overview.moreCurrent} isSelf={isSelf} />
         <RecentResults groups={overview.recentResults} more={overview.moreResults} isSelf={isSelf} />
 
-        {/* Recent activity */}
-        <Section title="Recent form">
-          {activity.length === 0 ? (
-            <Empty>Nothing to show yet — their picks will appear here.</Empty>
-          ) : (
-            <ul className="divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800">
-              {activity.map((a) => {
-                const body = (
-                  <div className="flex items-center justify-between gap-3 bg-ink-900 px-4 py-3">
-                    <span className="truncate text-sm text-chalk">{a.title}</span>
-                    <span className="shrink-0 text-xs text-fog">{timeAgo(a.createdAt)}</span>
-                  </div>
-                );
-                return a.url ? (
-                  <li key={a.id}><Link href={a.url} className="block transition-colors hover:bg-ink-850">{body}</Link></li>
-                ) : (
-                  <li key={a.id}>{body}</li>
-                );
-              })}
-            </ul>
-          )}
-        </Section>
+        {/* THE ACTIVITY FEED, replacing the old "Recent form" list.
+            That list read the same Activity table but rendered a flat, 8-row,
+            unpaginated strip with no icons and no way to see more — and it was
+            fed by only three emitters, all of which fire when a fight RESOLVES,
+            so a new member's profile showed nothing at all. Both halves are
+            fixed: nine emitters now cover the actions people actually take, and
+            this is cursor-paginated. */}
+        <ActivityFeed
+          initialItems={activity.items}
+          initialCursor={activity.nextCursor}
+          username={u.username}
+          isSelf={isSelf}
+        />
 
         {/* Momentum footer — a public profile used to end cold. It's a high-
             traffic destination (every leaderboard row lands here), so it closes
@@ -314,19 +305,6 @@ function Tile({ icon, label, value, sub }: { icon: React.ReactNode; label: strin
       <p className="text-2xs text-fog">{sub}</p>
     </div>
   );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8">
-      <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.18em] text-fog">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-card border border-dashed border-ink-800 bg-ink-900/40 p-6 text-center text-sm text-fog">{children}</p>;
 }
 
 export const dynamic = "force-dynamic";

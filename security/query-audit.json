@@ -1,14 +1,14 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1010,
+    "queries": 1022,
     "high": 0,
     "medium": 81,
     "low": 178,
-    "info": 751,
-    "public": 686,
-    "userOwned": 232,
-    "shared": 92,
+    "info": 763,
+    "public": 691,
+    "userOwned": 238,
+    "shared": 93,
     "admin": 0
   },
   "models": [
@@ -963,7 +963,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 235,
+      "line": 261,
       "fn": "battles",
       "model": "Battle",
       "method": "findMany",
@@ -976,7 +976,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 258,
+      "line": 284,
       "fn": "fresh",
       "model": "Battle",
       "method": "findUnique",
@@ -989,7 +989,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 262,
+      "line": 288,
       "fn": "resolveFightBattles",
       "model": "Battle",
       "method": "update",
@@ -1002,7 +1002,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 279,
+      "line": 305,
       "fn": "resolveFightBattles",
       "model": "Battle",
       "method": "update",
@@ -1379,7 +1379,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 573,
+      "line": 592,
       "fn": "onBattleRoomMessage",
       "model": "Battle",
       "method": "update",
@@ -1392,7 +1392,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 692,
+      "line": 711,
       "fn": "toggleBookmark",
       "model": "ForumBookmark",
       "method": "delete",
@@ -1405,7 +1405,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 700,
+      "line": 719,
       "fn": "toggleSubscription",
       "model": "ForumSubscription",
       "method": "delete",
@@ -1418,7 +1418,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 264,
+      "line": 279,
       "fn": "getMutualFollowers",
       "model": "UserFollow",
       "method": "findMany",
@@ -2588,33 +2588,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 283,
-      "fn": "resolveFightBattles",
-      "model": "User",
-      "method": "update",
-      "klass": "PUBLIC",
-      "kind": "write",
-      "ownership": "unscoped",
-      "severity": "LOW",
-      "confidence": "high",
-      "why": "Public model write — relies on app-layer auth (expected)."
-    },
-    {
-      "file": "src/lib/battles.ts",
-      "line": 284,
-      "fn": "resolveFightBattles",
-      "model": "User",
-      "method": "update",
-      "klass": "PUBLIC",
-      "kind": "write",
-      "ownership": "unscoped",
-      "severity": "LOW",
-      "confidence": "high",
-      "why": "Public model write — relies on app-layer auth (expected)."
-    },
-    {
-      "file": "src/lib/battles.ts",
-      "line": 302,
+      "line": 309,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "update",
@@ -2628,6 +2602,32 @@
     {
       "file": "src/lib/battles.ts",
       "line": 310,
+      "fn": "resolveFightBattles",
+      "model": "User",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/battles.ts",
+      "line": 328,
+      "fn": "resolveFightBattles",
+      "model": "User",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/battles.ts",
+      "line": 336,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "update",
@@ -2965,7 +2965,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 176,
+      "line": 177,
       "fn": "ensureForumSeed",
       "model": "ForumCategory",
       "method": "upsert",
@@ -2978,7 +2978,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 182,
+      "line": 183,
       "fn": "ensureForumSeed",
       "model": "ForumCategory",
       "method": "deleteMany",
@@ -2991,7 +2991,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 320,
+      "line": 321,
       "fn": "getThread",
       "model": "ForumThread",
       "method": "update",
@@ -3004,7 +3004,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 417,
+      "line": 428,
       "fn": "deleteThread",
       "model": "ForumThread",
       "method": "delete",
@@ -3017,7 +3017,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 471,
+      "line": 482,
       "fn": "createPost",
       "model": "ForumThread",
       "method": "update",
@@ -3030,7 +3030,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 600,
+      "line": 619,
       "fn": "updated",
       "model": "ForumPost",
       "method": "update",
@@ -3043,7 +3043,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 617,
+      "line": 636,
       "fn": "deletePost",
       "model": "ForumPost",
       "method": "update",
@@ -3056,7 +3056,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 620,
+      "line": 639,
       "fn": "deletePost",
       "model": "ForumThread",
       "method": "update",
@@ -3069,7 +3069,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 662,
+      "line": 681,
       "fn": "addReaction",
       "model": "ForumThread",
       "method": "update",
@@ -3082,7 +3082,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 674,
+      "line": 693,
       "fn": "addReaction",
       "model": "ForumPost",
       "method": "update",
@@ -3095,7 +3095,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 706,
+      "line": 725,
       "fn": "t",
       "model": "ForumThread",
       "method": "update",
@@ -3108,7 +3108,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 730,
+      "line": 749,
       "fn": "createReport",
       "model": "ForumReport",
       "method": "upsert",
@@ -4888,6 +4888,19 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/app/api/users/[username]/activity/route.ts",
+      "line": 29,
+      "fn": "user",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/app/api/users/[username]/follow/route.ts",
       "line": 26,
       "fn": "target",
@@ -5175,7 +5188,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 42,
+      "line": 55,
       "fn": "MyPredictionsPage",
       "model": "FightPick",
       "method": "findMany",
@@ -5188,7 +5201,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 60,
+      "line": 73,
       "fn": "MyPredictionsPage",
       "model": "User",
       "method": "findUnique",
@@ -5201,7 +5214,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 64,
+      "line": 77,
       "fn": "MyPredictionsPage",
       "model": "FightPick",
       "method": "count",
@@ -5214,7 +5227,7 @@
     },
     {
       "file": "src/app/predictions/mine/page.tsx",
-      "line": 67,
+      "line": 80,
       "fn": "MyPredictionsPage",
       "model": "FightPick",
       "method": "count",
@@ -5279,7 +5292,7 @@
     },
     {
       "file": "src/app/u/[username]/page.tsx",
-      "line": 33,
+      "line": 36,
       "fn": "loadUser",
       "model": "User",
       "method": "findUnique",
@@ -5292,7 +5305,7 @@
     },
     {
       "file": "src/app/u/[username]/page.tsx",
-      "line": 80,
+      "line": 87,
       "fn": "PublicProfile",
       "model": "User",
       "method": "count",
@@ -5502,6 +5515,32 @@
       "file": "src/lib/activity.ts",
       "line": 31,
       "fn": "getUserActivity",
+      "model": "Activity",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/activity/emit.ts",
+      "line": 50,
+      "fn": "emitActivity",
+      "model": "Activity",
+      "method": "create",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/activity/read.ts",
+      "line": 59,
+      "fn": "rows",
       "model": "Activity",
       "method": "findMany",
       "klass": "USER_OWNED",
@@ -6735,7 +6774,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 40,
+      "line": 41,
       "fn": "pick",
       "model": "FightPick",
       "method": "findUnique",
@@ -6748,7 +6787,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 48,
+      "line": 49,
       "fn": "mine",
       "model": "Battle",
       "method": "findFirst",
@@ -6761,7 +6800,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 54,
+      "line": 55,
       "fn": "open",
       "model": "Battle",
       "method": "findFirst",
@@ -6774,7 +6813,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 60,
+      "line": 61,
       "fn": "joined",
       "model": "Battle",
       "method": "updateMany",
@@ -6787,7 +6826,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 66,
+      "line": 67,
       "fn": "matched",
       "model": "Battle",
       "method": "create",
@@ -6800,7 +6839,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 80,
+      "line": 81,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -6813,7 +6852,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 86,
+      "line": 87,
       "fn": "users",
       "model": "User",
       "method": "findMany",
@@ -6823,19 +6862,6 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/battles.ts",
-      "line": 116,
-      "fn": "challengeUser",
-      "model": "FightPick",
-      "method": "findUnique",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
     },
     {
       "file": "src/lib/battles.ts",
@@ -6852,7 +6878,20 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 126,
+      "line": 118,
+      "fn": "challengeUser",
+      "model": "FightPick",
+      "method": "findUnique",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/battles.ts",
+      "line": 127,
       "fn": "existing",
       "model": "Battle",
       "method": "findFirst",
@@ -6865,7 +6904,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 140,
+      "line": 141,
       "fn": "blocking",
       "model": "Battle",
       "method": "findFirst",
@@ -6878,7 +6917,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 156,
+      "line": 157,
       "fn": "waiting",
       "model": "Battle",
       "method": "findFirst",
@@ -6891,7 +6930,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 161,
+      "line": 162,
       "fn": "joined",
       "model": "Battle",
       "method": "updateMany",
@@ -6904,7 +6943,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 168,
+      "line": 169,
       "fn": "result",
       "model": "Battle",
       "method": "updateMany",
@@ -6917,7 +6956,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 172,
+      "line": 173,
       "fn": "created",
       "model": "Battle",
       "method": "create",
@@ -6930,7 +6969,46 @@
     },
     {
       "file": "src/lib/battles.ts",
+      "line": 192,
+      "fn": "challengeUser",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/battles.ts",
+      "line": 193,
+      "fn": "challengeUser",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/battles.ts",
       "line": 194,
+      "fn": "challengeUser",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/battles.ts",
+      "line": 220,
       "fn": "row",
       "model": "Rivalry",
       "method": "findUnique",
@@ -6943,7 +7021,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 196,
+      "line": 222,
       "fn": "bumpRivalry",
       "model": "Rivalry",
       "method": "create",
@@ -6956,7 +7034,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 213,
+      "line": 239,
       "fn": "bumpRivalry",
       "model": "Rivalry",
       "method": "update",
@@ -6969,7 +7047,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 244,
+      "line": 270,
       "fn": "rows",
       "model": "FightPick",
       "method": "groupBy",
@@ -6982,7 +7060,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 250,
+      "line": 276,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -6995,7 +7073,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 269,
+      "line": 295,
       "fn": "resolveFightBattles",
       "model": "FightPick",
       "method": "findUnique",
@@ -7008,7 +7086,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 270,
+      "line": 296,
       "fn": "resolveFightBattles",
       "model": "FightPick",
       "method": "findUnique",
@@ -7021,7 +7099,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 293,
+      "line": 319,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "findUnique",
@@ -7034,7 +7112,7 @@
     },
     {
       "file": "src/lib/battles.ts",
-      "line": 294,
+      "line": 320,
       "fn": "resolveFightBattles",
       "model": "User",
       "method": "findUnique",
@@ -8594,7 +8672,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 195,
+      "line": 196,
       "fn": "cats",
       "model": "ForumCategory",
       "method": "findMany",
@@ -8607,7 +8685,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 210,
+      "line": 211,
       "fn": "viewerFlags",
       "model": "ForumBookmark",
       "method": "findMany",
@@ -8620,7 +8698,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 211,
+      "line": 212,
       "fn": "viewerFlags",
       "model": "ForumSubscription",
       "method": "findMany",
@@ -8633,7 +8711,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 223,
+      "line": 224,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -8646,7 +8724,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 264,
+      "line": 265,
       "fn": "subs",
       "model": "ForumSubscription",
       "method": "findMany",
@@ -8659,7 +8737,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 279,
+      "line": 280,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -8672,7 +8750,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 296,
+      "line": 297,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -8685,7 +8763,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 311,
+      "line": 312,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -8698,7 +8776,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 329,
+      "line": 330,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -8711,7 +8789,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 334,
+      "line": 335,
       "fn": "rows",
       "model": "ForumPost",
       "method": "findMany",
@@ -8724,7 +8802,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 369,
+      "line": 370,
       "fn": "category",
       "model": "ForumCategory",
       "method": "findUnique",
@@ -8737,7 +8815,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 373,
+      "line": 374,
       "fn": "author",
       "model": "User",
       "method": "findUnique",
@@ -8750,7 +8828,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 383,
+      "line": 384,
       "fn": "createThread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -8763,7 +8841,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 386,
+      "line": 387,
       "fn": "thread",
       "model": "ForumThread",
       "method": "create",
@@ -8776,7 +8854,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 411,
+      "line": 422,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -8789,7 +8867,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 428,
+      "line": 439,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -8802,7 +8880,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 449,
+      "line": 460,
       "fn": "q",
       "model": "ForumPost",
       "method": "findFirst",
@@ -8815,7 +8893,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 462,
+      "line": 473,
       "fn": "post",
       "model": "ForumPost",
       "method": "create",
@@ -8828,7 +8906,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 516,
+      "line": 535,
       "fn": "posts",
       "model": "ForumPost",
       "method": "findMany",
@@ -8841,7 +8919,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 529,
+      "line": 548,
       "fn": "mentioned",
       "model": "User",
       "method": "findMany",
@@ -8854,7 +8932,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 576,
+      "line": 595,
       "fn": "onBattleRoomMessage",
       "model": "Rivalry",
       "method": "updateMany",
@@ -8867,7 +8945,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 577,
+      "line": 596,
       "fn": "me",
       "model": "User",
       "method": "findUnique",
@@ -8880,22 +8958,9 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 578,
+      "line": 597,
       "fn": "fight",
       "model": "Fight",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/forum/repo.ts",
-      "line": 592,
-      "fn": "post",
-      "model": "ForumPost",
       "method": "findUnique",
       "klass": "PUBLIC",
       "kind": "read",
@@ -8919,20 +8984,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 632,
-      "fn": "existing",
-      "model": "ForumReaction",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unknown",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/forum/repo.ts",
-      "line": 634,
+      "line": 630,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -8945,7 +8997,33 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 645,
+      "line": 651,
+      "fn": "existing",
+      "model": "ForumReaction",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unknown",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/forum/repo.ts",
+      "line": 653,
+      "fn": "post",
+      "model": "ForumPost",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/forum/repo.ts",
+      "line": 664,
       "fn": "addReaction",
       "model": "ForumReaction",
       "method": "deleteMany",
@@ -8958,7 +9036,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 649,
+      "line": 668,
       "fn": "addReaction",
       "model": "ForumReaction",
       "method": "create",
@@ -8971,7 +9049,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 659,
+      "line": 678,
       "fn": "reactionCount",
       "model": "ForumReaction",
       "method": "count",
@@ -8984,7 +9062,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 666,
+      "line": 685,
       "fn": "all",
       "model": "ForumReaction",
       "method": "findMany",
@@ -8997,7 +9075,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 676,
+      "line": 695,
       "fn": "thread",
       "model": "ForumPost",
       "method": "findUnique",
@@ -9010,7 +9088,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 684,
+      "line": 703,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -9023,7 +9101,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 691,
+      "line": 710,
       "fn": "existing",
       "model": "ForumBookmark",
       "method": "findUnique",
@@ -9036,7 +9114,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 693,
+      "line": 712,
       "fn": "toggleBookmark",
       "model": "ForumBookmark",
       "method": "create",
@@ -9049,7 +9127,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 699,
+      "line": 718,
       "fn": "existing",
       "model": "ForumSubscription",
       "method": "findUnique",
@@ -9062,7 +9140,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 701,
+      "line": 720,
       "fn": "toggleSubscription",
       "model": "ForumSubscription",
       "method": "create",
@@ -9075,7 +9153,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 714,
+      "line": 733,
       "fn": "rows",
       "model": "ForumBookmark",
       "method": "findMany",
@@ -9192,19 +9270,6 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 49,
-      "fn": "loadViewer",
-      "model": "UserFollow",
-      "method": "findMany",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
-    },
-    {
-      "file": "src/lib/geo/people.ts",
       "line": 50,
       "fn": "loadViewer",
       "model": "UserFollow",
@@ -9220,6 +9285,19 @@
       "file": "src/lib/geo/people.ts",
       "line": 51,
       "fn": "loadViewer",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 52,
+      "fn": "loadViewer",
       "model": "GymMember",
       "method": "findMany",
       "klass": "SHARED",
@@ -9231,7 +9309,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 114,
+      "line": 115,
       "fn": "rows",
       "model": "User",
       "method": "findMany",
@@ -9244,7 +9322,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 180,
+      "line": 181,
       "fn": "setFollow",
       "model": "UserFollow",
       "method": "deleteMany",
@@ -9257,7 +9335,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 184,
+      "line": 185,
       "fn": "setFollow",
       "model": "UserFollow",
       "method": "upsert",
@@ -9270,7 +9348,20 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 198,
+      "line": 194,
+      "fn": "target",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 213,
       "fn": "me",
       "model": "User",
       "method": "findUnique",
@@ -9283,7 +9374,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 215,
+      "line": 230,
       "fn": "getFollowCounts",
       "model": "UserFollow",
       "method": "count",
@@ -9296,7 +9387,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 216,
+      "line": 231,
       "fn": "getFollowCounts",
       "model": "UserFollow",
       "method": "count",
@@ -9309,7 +9400,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 263,
+      "line": 278,
       "fn": "getMutualFollowers",
       "model": "UserFollow",
       "method": "count",
@@ -9322,7 +9413,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 307,
+      "line": 322,
       "fn": "rows",
       "model": "UserFollow",
       "method": "findMany",
@@ -9335,7 +9426,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 313,
+      "line": 328,
       "fn": "rows",
       "model": "UserFollow",
       "method": "findMany",
@@ -11701,7 +11792,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 33,
+      "line": 34,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -11714,7 +11805,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 47,
+      "line": 48,
       "fn": "f",
       "model": "Fight",
       "method": "findUnique",
@@ -11727,7 +11818,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 66,
+      "line": 74,
       "fn": "existing",
       "model": "FightPick",
       "method": "findUnique",
@@ -11740,7 +11831,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 70,
+      "line": 78,
       "fn": "castPick",
       "model": "FightPick",
       "method": "upsert",
@@ -11753,7 +11844,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 85,
+      "line": 105,
       "fn": "clearPick",
       "model": "FightPick",
       "method": "deleteMany",
@@ -11766,7 +11857,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 90,
+      "line": 110,
       "fn": "rows",
       "model": "FightPick",
       "method": "groupBy",
@@ -11779,7 +11870,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 108,
+      "line": 128,
       "fn": "row",
       "model": "FightPick",
       "method": "findUnique",
@@ -11792,7 +11883,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 123,
+      "line": 143,
       "fn": "rows",
       "model": "FightPick",
       "method": "findMany",
@@ -11805,7 +11896,7 @@
     },
     {
       "file": "src/lib/picks.ts",
-      "line": 141,
+      "line": 161,
       "fn": "rows",
       "model": "FightPick",
       "method": "groupBy",
@@ -11913,6 +12004,71 @@
       "fn": "getEventPickSummary",
       "model": "CardAward",
       "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/profile/queries.ts",
+      "line": 69,
+      "fn": "rows",
+      "model": "FightPick",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/profile/queries.ts",
+      "line": 89,
+      "fn": "queryCurrentPicks",
+      "model": "FightPick",
+      "method": "groupBy",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/profile/queries.ts",
+      "line": 94,
+      "fn": "queryCurrentPicks",
+      "model": "Battle",
+      "method": "findMany",
+      "klass": "SHARED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Shared model with a relationship/owner filter."
+    },
+    {
+      "file": "src/lib/profile/queries.ts",
+      "line": 160,
+      "fn": "rows",
+      "model": "FightPick",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/profile/queries.ts",
+      "line": 172,
+      "fn": "ledger",
+      "model": "ReputationEvent",
+      "method": "groupBy",
       "klass": "USER_OWNED",
       "kind": "read",
       "ownership": "scoped",

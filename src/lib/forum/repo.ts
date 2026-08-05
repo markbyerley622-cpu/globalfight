@@ -22,6 +22,7 @@ import { extractMentions } from "@/lib/mentions";
 import { notify } from "@/lib/notifications-store";
 import { publicDisplayName } from "@/lib/display-name";
 import { assertPublishable } from "@/lib/moderation/text";
+import { activityPosted } from "@/lib/activity/emit";
 
 // ─── Visibility ─────────────────────────────────────────────────────────────
 // Battle rooms are ForumThreads with visibility="battle": same posts, reactions,
@@ -397,6 +398,16 @@ export async function createThread(input: {
     },
     include: THREAD_INCLUDE,
   });
+  // ACTIVITY. THREAD_CREATED was declared in the enum with no producer.
+  // `visibility` is passed through so a private battle room never emits — a
+  // public feed row would leak both its existence and its URL.
+  await activityPosted(prisma, input.authorId, {
+    isThread: true,
+    title: thread.title,
+    url: `/forums/${category.slug}/${slug}`,
+    visibility: input.visibility ?? "public",
+  });
+
   // A private battle room is never announced to the category — only its two
   // participants are told about it (via notify, from the battle domain).
   if ((input.visibility ?? "public") === "public") {
@@ -479,6 +490,14 @@ export async function createPost(input: {
       input.threadSlug, post.id, post.content, quote?.quotedId,
     );
   }
+  // Replies too — but only in a PUBLIC thread. `thread.battle` being set is the
+  // signal that this is a private rivalry room.
+  await activityPosted(prisma, input.authorId, {
+    isThread: false,
+    title: thread.title,
+    url: `/forums/${thread.category.slug}/${input.threadSlug}`,
+    visibility: thread.battle ? "battle" : "public",
+  });
   await publish({ type: "post:new", threadSlug: input.threadSlug, postId: post.id });
   return mapPost(post as PostRow, input.authorId);
 }
