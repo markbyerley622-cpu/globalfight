@@ -188,5 +188,13 @@ export function useAuthGate(): AuthGate {
     [user, loading],
   );
 
-  return { ready: !loading, signedIn: !loading && Boolean(user), requireSignIn };
+  // MEMOISED. Returning a fresh object literal made every useCallback that
+  // depends on the gate change identity on EVERY render, which in turn made any
+  // effect keyed on that callback re-run continuously — the replay effect could
+  // never settle long enough to fire. A hook that guards a write must be stable
+  // or it destabilises everything downstream of it.
+  return useMemo(
+    () => ({ ready: !loading, signedIn: !loading && Boolean(user), requireSignIn }),
+    [loading, user, requireSignIn],
+  );
 }
