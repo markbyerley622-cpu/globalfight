@@ -16,6 +16,11 @@ const KIND_LABEL: Record<string, string> = {
   FRONT: "ID — front", BACK: "ID — back", SUPPORTING: "Supporting document",
 };
 
+/** Reading order for a reviewer, which is not alphabetical order. */
+const KIND_ORDER = ["FRONT", "BACK", "SUPPORTING"];
+const byKind = (a: { kind: string }, b: { kind: string }) =>
+  KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind);
+
 export default async function VerificationDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -35,7 +40,9 @@ export default async function VerificationDetail({ params }: { params: Promise<{
       },
       reviewer: { select: { name: true, username: true } },
       documents: {
-        orderBy: { kind: "asc" },
+        // Sorted in code, not by the database: `kind: "asc"` is alphabetical,
+        // which puts BACK before FRONT. The front of an ID is the primary
+        // document and a reviewer should meet it first.
         select: { id: true, kind: true, contentType: true, byteSize: true, scanStatus: true, deletedAt: true, uploadedAt: true },
       },
     },
@@ -94,7 +101,7 @@ export default async function VerificationDetail({ params }: { params: Promise<{
           <p className="mt-3 text-xs text-fog">No documents attached.</p>
         ) : (
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            {v.documents.map((d) => (
+            {[...v.documents].sort(byKind).map((d) => (
               <figure key={d.id}>
                 <figcaption className="mb-1.5 flex items-center gap-2 text-2xs font-bold uppercase tracking-wide text-mist">
                   {KIND_LABEL[d.kind] ?? d.kind}
