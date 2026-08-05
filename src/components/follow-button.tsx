@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, BellRing, UserCheck, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-client";
+import { useAuthGate } from "@/lib/auth-client";
 import { broadcastFollowChange } from "@/components/layout/follow-sync";
 
 // Entity kind → its follow endpoint. Adding a followable thing is one line here,
@@ -70,7 +70,7 @@ export function FollowButton({
   name?: string;
   className?: string;
 }) {
-  const { user } = useAuth();
+  const gate = useAuthGate();
   const router = useRouter();
   const [following, setFollowing] = useState(initialFollowing);
   const [busy, setBusy] = useState(false);
@@ -82,7 +82,10 @@ export function FollowButton({
   useEffect(() => { setFollowing(initialFollowing); }, [initialFollowing]);
 
   async function toggle() {
-    if (!user) { window.location.href = "/account"; return; }
+    // PENDING means auth has not resolved yet — bail WITHOUT redirecting. The
+    // old `if (!user)` treated that as signed-out and threw a signed-in user
+    // off the page mid-tap. See useAuthGate.
+    if (gate.requireSignIn() !== "OK") return;
     if (busy) return;
     setBusy(true);
     const optimistic = !following;

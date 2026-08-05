@@ -126,3 +126,67 @@ export function useAuth(): AuthValue {
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  The three auth states, as one decision.
+//
+//  `useAuth()` returns { user, loading }, and EVERY call site that guarded a
+//  write wrote `if (!user) { location.href = "/account" }` — conflating two
+//  states that are not the same thing:
+//
+//      loading === true,  user === null   →  we don't know yet
+//      loading === false, user === null   →  genuinely signed out
+//
+//  During the /api/auth/me round-trip the first state looks exactly like the
+//  second, so tapping a control in that window HARD-REDIRECTED a signed-in user
+//  to /account — losing the page, the scroll and any optimistic state. On the
+//  prediction pill that is the single most-tapped control in the product.
+//
+//  Six components had the bug independently, which is the signal that the
+//  answer is not six fixes: the gate belongs next to the state it reads, so a
+//  seventh component cannot reintroduce it.
+//
+//  Deliberately NOT solved with a delay, a timeout or a retry. The provider
+//  already knows whether it has resolved; the call sites simply never asked.
+// ════════════════════════════════════════════════════════════════════════════
+
+export type AuthGateResult = "PENDING" | "REDIRECTED" | "OK";
+
+export interface AuthGate {
+  /** Auth has resolved — safe to treat `signedIn` as the truth. */
+  ready: boolean;
+  /** Resolved AND has a user. False while pending, so never use it to redirect. */
+  signedIn: boolean;
+  /**
+   * Call at the top of a write handler:
+   *
+   *   if (gate.requireSignIn() !== "OK") return;
+   *
+   * PENDING    — still resolving. The caller bails and the user simply taps
+   *              again a moment later. No redirect, nothing destroyed.
+   * REDIRECTED — genuinely signed out; the sign-in navigation has started.
+   * OK         — proceed.
+   */
+  requireSignIn: (next?: string) => AuthGateResult;
+}
+
+export function useAuthGate(): AuthGate {
+  const { user, loading } = useAuth();
+
+  const requireSignIn = useCallback(
+    (next?: string): AuthGateResult => {
+      if (loading) return "PENDING";
+      if (!user) {
+        // `next` returns them to what they were doing instead of dumping them
+        // on the account page with no way back.
+        const target = next ?? (typeof window !== "undefined" ? window.location.pathname : "");
+        window.location.href = target ? `/account?next=${encodeURIComponent(target)}` : "/account";
+        return "REDIRECTED";
+      }
+      return "OK";
+    },
+    [user, loading],
+  );
+
+  return { ready: !loading, signedIn: !loading && Boolean(user), requireSignIn };
+}

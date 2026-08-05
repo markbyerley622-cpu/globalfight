@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bookmark, Bell, BellRing, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-client";
+import { useAuthGate } from "@/lib/auth-client";
 import { ShareMenu, CopyLinkButton } from "@/components/share-menu";
 import { ReportButton } from "@/components/forums/report-dialog";
 import type { ForumThreadDTO } from "@/lib/forum/types";
@@ -13,14 +13,17 @@ import type { ForumThreadDTO } from "@/lib/forum/types";
  * Copy Link, Report. Optimistic toggles backed by /bookmark and /follow.
  */
 export function ThreadEngagement({ thread }: { thread: ForumThreadDTO }) {
-  const { user } = useAuth();
+  const gate = useAuthGate();
   const [bookmarked, setBookmarked] = useState(!!thread.bookmarked);
   const [following, setFollowing] = useState(!!thread.following);
   const shareCount = thread.shareCount;
   const [busy, setBusy] = useState<string | null>(null);
 
   async function toggle(kind: "bookmark" | "follow") {
-    if (!user) { window.location.href = "/account"; return; }
+    // PENDING means auth has not resolved yet — bail WITHOUT redirecting. The
+    // old `if (!user)` treated that as signed-out and threw a signed-in user
+    // off the page mid-tap. See useAuthGate.
+    if (gate.requireSignIn() !== "OK") return;
     if (busy) return;
     setBusy(kind);
     const optimistic = kind === "bookmark" ? !bookmarked : !following;

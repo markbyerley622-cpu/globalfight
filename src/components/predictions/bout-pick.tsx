@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Star, Loader2, Flame, Users, Swords, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-client";
+import { useAuthGate } from "@/lib/auth-client";
 import { ProbabilityBar } from "@/components/probability-bar";
 
 type Corner = "RED" | "BLUE";
@@ -116,7 +116,7 @@ export function BoutPick({
    */
   variant?: "full" | "compact";
 }) {
-  const { user } = useAuth();
+  const gate = useAuthGate();
   const [crowd, setCrowd] = useState<Crowd>(initialCrowd);
   const [pick, setPick] = useState<Pick | null>(initialPick);
   const [busy, setBusy] = useState(false);
@@ -126,7 +126,10 @@ export function BoutPick({
   const [flash, setFlash] = useState(false);
 
   async function send(corner: Corner, confidence: number | null, method: Method | null) {
-    if (!user) { window.location.href = "/account"; return; }
+    // PENDING means auth has not resolved yet — bail WITHOUT redirecting. The
+    // old `if (!user)` treated that as signed-out and threw a signed-in user
+    // off the page mid-tap. See useAuthGate.
+    if (gate.requireSignIn() !== "OK") return;
     // Belt and braces: the buttons are disabled when locked, and the write is
     // refused here too, so no code path optimistically moves the crowd bar for a
     // pick the server is going to reject.
