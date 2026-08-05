@@ -26,7 +26,7 @@ export default async function globalSetup() {
   const ctx = await request.newContext({ baseURL });
 
   let res = await ctx.post("/api/auth/signup", {
-    data: { ...PRIMARY, registryRole: "fan", ageConfirmed: true },
+    data: { ...PRIMARY, registryRole: "fan", ageConfirmed: true, termsAccepted: true },
   });
 
   if (res.status() === 409 || res.status() === 429) {

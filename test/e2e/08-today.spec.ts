@@ -55,7 +55,7 @@ async function useFreshAccount(page: Page): Promise<boolean> {
       email: uniqueEmail("today"),
       password: STRONG_PASSWORD,
       registryRole: "fan",
-      ageConfirmed: true,
+      ageConfirmed: true, termsAccepted: true,
     },
   });
   if (res.status() === 429) {
