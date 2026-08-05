@@ -31,18 +31,58 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   const params = useSearchParams();
 
   const get = (k: string) => params.get(k) ?? "";
-  const active = ["sport", "promotion", "status", "country", "when"].filter((k) => {
-    const v = get(k);
-    return v && !(k === "status" && v === "upcoming");
-  });
 
+  /** The selected values for a multi-value key. Comma-encoded, matching parseMulti. */
+  const many = (k: string): string[] =>
+    get(k).split(",").map((v) => v.trim()).filter(Boolean);
+
+  const has = (k: string, v: string) => many(k).includes(v);
+
+  /**
+   * Keys the user can combine. `status` and `when` stay single-valued on
+   * purpose — "upcoming AND completed" is every event, i.e. no filter at all,
+   * and two date windows at once has no meaningful answer either.
+   */
+  const MULTI = ["sport", "promotion", "country"] as const;
+
+  // Every individual selection, so the count reflects "3 filters" rather than
+  // "3 filter groups" — picking MMA + Boxing is two choices and should say so.
+  const activeCount =
+    MULTI.reduce((n, k) => n + many(k).length, 0) +
+    (get("when") ? 1 : 0) +
+    (get("status") && get("status") !== "upcoming" ? 1 : 0);
+
+
+
+  function write(p: URLSearchParams) {
+    p.delete("page"); // any filter change invalidates the current page
+    const qs = p.toString();
+    // scroll:false keeps the reader where they were; ScrollRestoration keys on
+    // pathname+search, so each filter combination remembers its own position.
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  /** Single-valued keys (status, when) — set or clear. */
   function set(key: string, value: string) {
     const p = new URLSearchParams(params.toString());
     if (value) p.set(key, value);
     else p.delete(key);
-    p.delete("page"); // any filter change invalidates the current page
-    const qs = p.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    write(p);
+  }
+
+  /**
+   * Multi-valued keys — toggle ONE value, leaving the rest of that group and
+   * every other group untouched. This was `p.set(key, value)`, which made the
+   * pills behave like radio buttons: choosing Boxing silently dropped MMA.
+   */
+  function toggle(key: string, value: string) {
+    const p = new URLSearchParams(params.toString());
+    const next = has(key, value)
+      ? many(key).filter((v) => v !== value)
+      : [...many(key), value];
+    if (next.length) p.set(key, next.join(","));
+    else p.delete(key);
+    write(p);
   }
 
   function clearAll() {
@@ -52,9 +92,9 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   return (
     <div className="space-y-3">
       <Row label="Sport">
-        <Pill onClick={() => set("sport", "")} active={!get("sport")}>All</Pill>
+        <Pill onClick={() => set("sport", "")} active={many("sport").length === 0}>All</Pill>
         {FILTER_SPORTS.map((s) => (
-          <Pill key={s.slug} onClick={() => set("sport", s.slug)} active={get("sport") === s.slug}>{s.label}</Pill>
+          <Pill key={s.slug} onClick={() => toggle("sport", s.slug)} active={has("sport", s.slug)}>{s.label}</Pill>
         ))}
       </Row>
 
@@ -78,9 +118,9 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
 
       {facets.promotions.length > 0 && (
         <Row label="Promotion">
-          <Pill onClick={() => set("promotion", "")} active={!get("promotion")}>All</Pill>
+          <Pill onClick={() => set("promotion", "")} active={many("promotion").length === 0}>All</Pill>
           {facets.promotions.map((p) => (
-            <Pill key={p.value} onClick={() => set("promotion", p.value)} active={get("promotion") === p.value}>
+            <Pill key={p.value} onClick={() => toggle("promotion", p.value)} active={has("promotion", p.value)}>
               {p.label} <Count n={p.count} />
             </Pill>
           ))}
@@ -89,21 +129,24 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
 
       {facets.countries.length > 0 && (
         <Row label="Location">
-          <Pill onClick={() => set("country", "")} active={!get("country")}>Anywhere</Pill>
+          <Pill onClick={() => set("country", "")} active={many("country").length === 0}>Anywhere</Pill>
           {facets.countries.map((c) => (
-            <Pill key={c.value} onClick={() => set("country", c.value)} active={get("country") === c.value}>
+            <Pill key={c.value} onClick={() => toggle("country", c.value)} active={has("country", c.value)}>
               {c.label} <Count n={c.count} />
             </Pill>
           ))}
         </Row>
       )}
 
-      {active.length > 0 && (
+      {/* The count is the whole point once filters combine: with four groups on
+          screen it is easy to forget that MMA is still on three rows up. It
+          counts individual SELECTIONS, not groups — MMA + Boxing reads as 2. */}
+      {activeCount > 0 && (
         <button
           onClick={clearAll}
           className="inline-flex items-center gap-1 rounded-full border border-ink-700 px-3 py-1.5 text-xs font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300"
         >
-          <X className="size-3.5" /> Clear {active.length} filter{active.length === 1 ? "" : "s"}
+          <X className="size-3.5" /> Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
         </button>
       )}
     </div>
