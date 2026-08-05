@@ -212,13 +212,13 @@ export function BoutPick({
       <div className="rounded-lg border border-ink-800 bg-ink-950/40 p-2.5">
         <div className="grid grid-cols-2 gap-2">
           <CompactCorner
-            name={redName} picked={pick?.corner === "RED"} tone="red"
+            name={redName} picked={pick?.corner === "RED"} tone="red" fightSlug={fightSlug}
             underdog={redUnderdog} disabled={locked} busy={busy}
             dimmed={pick != null && pick.corner !== "RED"}
             onClick={() => send("RED", pick?.corner === "RED" ? pick.confidence : null, pick?.corner === "RED" ? pick.method : null)}
           />
           <CompactCorner
-            name={blueName} picked={pick?.corner === "BLUE"} tone="blue"
+            name={blueName} picked={pick?.corner === "BLUE"} tone="blue" fightSlug={fightSlug}
             underdog={blueUnderdog} disabled={locked} busy={busy}
             dimmed={pick != null && pick.corner !== "BLUE"}
             onClick={() => send("BLUE", pick?.corner === "BLUE" ? pick.confidence : null, pick?.corner === "BLUE" ? pick.method : null)}
@@ -489,9 +489,11 @@ export function BoutPick({
  * IS the reward — a pick that saved silently felt like nothing had happened.
  */
 function CompactCorner({
-  name, picked, tone, underdog = false, disabled = false, busy = false, dimmed = false, onClick,
+  name, picked, tone, fightSlug, underdog = false, disabled = false, busy = false, dimmed = false, onClick,
 }: {
   name: string;
+  /** Stamped onto the control so a test can target one exact bout. */
+  fightSlug: string;
   picked: boolean;
   tone: "red" | "blue";
   underdog?: boolean;
@@ -508,6 +510,14 @@ function CompactCorner({
       disabled={disabled || busy}
       aria-pressed={picked}
       aria-label={`Pick ${name}`}
+      // Testability is a product feature. Selecting this control by nth() or
+      // by aria-pressed also matched the method pills and confidence stars,
+      // which produced a browser test that could not tell "the replay failed"
+      // from "the harness clicked the wrong thing".
+      data-testid="corner-pick"
+      data-corner={tone === "red" ? "RED" : "BLUE"}
+      data-fight={fightSlug}
+      data-picked={picked ? "true" : "false"}
       className={cn(
         // min-h-11 = 44px. MEASURED at 33px before this: `py-2` on a single
         // line of 12px text gives a 33px box, which is under every published
