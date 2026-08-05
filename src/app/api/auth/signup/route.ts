@@ -8,6 +8,9 @@ import { isPublishableName } from "@/lib/display-name";
 import { MINIMUM_AGE, AGE_POLICY_VERSION } from "@/lib/age-policy";
 import { LEGAL_POLICY_VERSION } from "@/lib/legal-config";
 import { hit, clientIp, POLICY } from "@/lib/rate-limit";
+import { issueVerificationCode, verificationEmail } from "@/lib/auth-email-verify";
+import { sendEmail } from "@/lib/email/send";
+import { log } from "@/lib/scraper/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -171,9 +174,28 @@ export async function POST(req: Request) {
     },
   });
 
+  // Send the verification code, but NEVER let it fail the signup.
+  //
+  // The account already exists and is valid at this point; a mail provider that
+  // is down, throttled or unconfigured must not turn that into a 500 that leaves
+  // the user staring at "something went wrong" for an account they now have. The
+  // /account/verify screen can always resend, so a miss here is recoverable —
+  // whereas a failed signup is not.
+  let verificationSent = false;
+  try {
+    const issued = await issueVerificationCode(user.id, clientIp(req));
+    if (issued.ok) {
+      const { subject, text } = verificationEmail(issued.code);
+      await sendEmail({ to: issued.email, subject, text });
+      verificationSent = true;
+    }
+  } catch (err) {
+    log.warn({ err: String(err) }, "auth:signup-verification-email-failed");
+  }
+
   const { tokenVersion, ...safe } = user;
   const token = await signSession(user.id, tokenVersion);
-  const res = NextResponse.json({ user: safe }, { status: 201 });
+  const res = NextResponse.json({ user: safe, verificationSent }, { status: 201 });
   res.cookies.set(SESSION_COOKIE, token, cookieOptions);
   return res;
 }

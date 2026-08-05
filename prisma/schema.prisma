@@ -1437,6 +1437,7 @@ model User {
   accounts          Account[]
   sessions          Session[]
   passwordResets    PasswordResetToken[]
+  emailVerifications EmailVerificationToken[]
   predictions       Prediction[]
   articles          Article[]
   threads           ForumThread[]
@@ -1606,12 +1607,39 @@ model Session {
   expires      DateTime
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+/// Email-address verification, by short numeric code.
+///
+/// Replaces the Auth.js-shaped `VerificationToken` that sat here unused — it had
+/// no userId, no attempt counter and no send timestamp, so it could not express
+/// either of the two controls a 6-digit code actually needs.
+///
+/// Why a code and not a link: the entropy is only ~20 bits, so the security does
+/// NOT come from the secret. It comes from three things this model stores —
+/// the code is bound to a `userId` (you must already hold the session to try
+/// one, which removes the global guessing attack entirely), `attempts` kills the
+/// token after a handful of wrong tries, and `expiresAt` keeps the window short.
+/// `codeHash` is sha256(code + userId), so two users sharing a code do not share
+/// a hash, and a leaked table still yields nothing replayable against a
+/// different account.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String // sha256(code + userId), hex. NOT unique — see note above.
+  /// The address the code was sent to. A code stops being valid if the user
+  /// changes their email before entering it.
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  /// Resend cooldown is measured from here, server-side. The UI countdown is a
+  /// courtesy; this is the control.
+  sentAt    DateTime  @default(now())
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+  requestIp String? // for abuse investigation; not shown to users
 
-  @@unique([identifier, token])
+  @@index([userId, usedAt])
+  @@index([expiresAt])
 }
 
 // ─── Scraper bookkeeping ────────────────────────────────────────────────

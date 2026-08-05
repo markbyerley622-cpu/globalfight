@@ -78,7 +78,7 @@ const AGGREGATE = new Set(["count", "aggregate", "groupBy"]); // row totals, not
 // Looked up by a CREDENTIAL/ENDPOINT server-side (token hash, push endpoint), never
 // by "the current viewer" — a userId filter would be wrong here, so these are not
 // user-facing reads and must not read as leaks.
-const AUTH_INTERNAL = new Set(["PasswordResetToken", "Session", "Account", "PushSubscription", "VerificationToken"]);
+const AUTH_INTERNAL = new Set(["PasswordResetToken", "Session", "Account", "PushSubscription", "EmailVerificationToken"]);
 const PRISMA_BASES = new Set(["prisma", "tx", "db", "client"]);
 const OWNER_KEY_RE = /(^|_)(user|author|owner|member|participant|follower|following|challenger|opponent|sender|recipient|created|uploaded)/i;
 const AUTH_MARKERS = ["getCurrentUser", "getSessionUserId", "requireUser", "requireStaff", "requireAdmin", "isAdmin", "assertAdmin"];

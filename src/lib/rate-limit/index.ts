@@ -98,6 +98,13 @@ export const POLICY = {
   resetRequestPerIp: { limit: 5, windowMs: 15 * 60_000 },
   resetRequestPerAccount: { limit: 3, windowMs: 60 * 60_000 },
   resetConfirm: { limit: 10, windowMs: 15 * 60_000 },
+  // Email verification. The 60s cooldown in auth-email-verify already paces
+  // sends; this is the outer bound that stops someone cycling codes all day to
+  // mail-bomb their own address from a signed-in session.
+  verifyRequestPerAccount: { limit: 6, windowMs: 60 * 60_000 },
+  // Generous, because the per-token attempt cap (5) is the real control against
+  // guessing — this only stops a client hammering the endpoint across reissues.
+  verifyConfirm: { limit: 20, windowMs: 15 * 60_000 },
   accountDelete: { limit: 5, windowMs: 15 * 60_000 },
   evidenceUpload: { limit: 5, windowMs: 60 * 60_000 },
   evidenceRead: { limit: 60, windowMs: 15 * 60_000 },
