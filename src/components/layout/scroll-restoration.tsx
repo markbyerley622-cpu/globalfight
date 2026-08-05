@@ -71,30 +71,54 @@ type Positions = Map<string, number>;
  * only thing touching that element, so this is the only place the behaviour can
  * be expressed.
  *
- * Deliberately a SIGNAL rather than a rule like "same pathname, query-only
- * change → preserve". That rule would also capture pagination, and Next-page is
- * a case where the top is correct: the pager sits at the BOTTOM of the list, so
- * holding the offset would land the reader at the end of a page they have not
- * read. The caller knows which of the two it is; this file cannot, and should
- * not learn what a filter param looks like.
+ * ── Why it RESTORES rather than prevents ─────────────────────────────────
+ * Two earlier attempts tried to stop the reset and both failed in the browser
+ * while looking correct in the source. Instrumenting it settled the question:
+ * the signal fires exactly as intended (armed, consumed, honoured) and the
+ * scroller still lands at 0 — and a trap on the `scrollTop` setter never fires,
+ * so NOTHING IS WRITING IT. Sampling every frame shows scrollHeight and
+ * scrollTop collapsing together in a single commit.
  *
- * The TTL exists because a push is not guaranteed. Tapping "All" when nothing is
- * selected produces an identical URL and no navigation at all, which would leave
- * the flag armed for whatever came next — a Pager click that then wrongly kept
- * its offset. One second is far longer than the gap between calling this and the
- * router committing, and far shorter than any human follow-up tap.
+ * The cause is `app/events/loading.tsx`. A route with a loading file is wrapped
+ * in Suspense, and on navigation React hides the current subtree to show the
+ * fallback. A hidden subtree has no scroll position, so the browser drops it —
+ * no assignment, no clamp, nothing to intercept. There is no way to "prevent"
+ * this from here.
+ *
+ * So the position is CAPTURED at the moment the filter is tapped and re-applied
+ * once the new content commits, through the same convergence loop that already
+ * serves Back/Forward. That loop re-applies across frames until the container
+ * stops growing, which also handles the case the naive fix could not: a filtered
+ * list shorter than the old scroll offset simply settles at the new maximum.
+ *
+ * ── Armed by PATHNAME, not by a deadline ─────────────────────────────────
+ * The first version used a 1000ms TTL. /events is `force-dynamic` and runs five
+ * database queries per render, so the round-trip routinely outlives that; the
+ * flag expired before the effect ran and it looked fixed only on a fast local
+ * build. Arming for a pathname removes time from the problem: a filter change
+ * stays on the same path however slow the server is, and navigating anywhere
+ * else discards the request without preserving.
+ *
+ * Still a SIGNAL rather than a rule like "same pathname, query-only change →
+ * preserve": that rule would also capture pagination, where the top IS correct
+ * (the pager sits at the bottom, so holding the offset lands the reader at the
+ * end of a page they have not read). The caller knows which it is.
  */
-let preserveUntil = 0;
-const PRESERVE_TTL_MS = 1000;
+let preserveRequest: { pathname: string; top: number } | null = null;
 
-export function preserveScrollOnNextNavigation(): void {
-  preserveUntil = performance.now() + PRESERVE_TTL_MS;
+export function preserveScrollOnNextNavigation(pathname: string): void {
+  // Captured NOW, before the navigation starts, because by the time the effect
+  // runs the position is already gone — see the note above about the Suspense
+  // fallback resetting the scroller.
+  const top = document.getElementById("main")?.scrollTop ?? 0;
+  preserveRequest = { pathname, top };
 }
 
-function consumePreserveRequest(): boolean {
-  const armed = performance.now() < preserveUntil;
-  preserveUntil = 0;
-  return armed;
+/** The position to return to, or null when this navigation did not ask. Single-use. */
+function consumePreserveRequest(pathname: string): number | null {
+  const top = preserveRequest?.pathname === pathname ? preserveRequest.top : null;
+  preserveRequest = null;
+  return top;
 }
 
 function load(): Positions {
@@ -185,20 +209,17 @@ export function ScrollRestoration() {
     // and to the event page's scroll-spy; do not fight either.
     const hasHash = window.location.hash.length > 1;
 
-    // The caller asked to stay put (a filter toggle — see
-    // preserveScrollOnNextNavigation). Touch nothing: not the reset, not a
-    // restore. The scroll listener below still records the position under the
-    // NEW key, so Back to this filter combination continues to work.
-    // Consumed unconditionally so the flag cannot survive into a later
-    // navigation, even when this branch does not use it.
-    const preserve = consumePreserveRequest() && !pop;
+    // The caller asked to stay put (a filter toggle). Consumed unconditionally so
+    // it can never survive into a later navigation.
+    const preservedTop = pop ? null : consumePreserveRequest(pathname);
 
     let cancelled = false;
-    if (!hasHash && !preserve) {
-      // Restore only when going Back/Forward. A fresh push is a new destination and
-      // belongs at the top — anything else would be its own "why am I halfway down
-      // this page" bug.
-      const target = pop ? store.get(key) ?? 0 : 0;
+    if (!hasHash) {
+      // Three cases, one convergence loop:
+      //   pop           → the position recorded for this exact URL
+      //   preserved     → where the reader was when they tapped the filter
+      //   anything else → the top, because a push is a new destination
+      const target = pop ? store.get(key) ?? 0 : preservedTop ?? 0;
 
       if (target === 0) {
         el.scrollTop = 0;

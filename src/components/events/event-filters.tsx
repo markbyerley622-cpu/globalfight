@@ -70,7 +70,7 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
     // Selecting filters is not arriving somewhere new — it is narrowing the list
     // you are already reading, and with six pills active that reset happened on
     // every single adjustment.
-    preserveScrollOnNextNavigation();
+    preserveScrollOnNextNavigation(pathname);
     router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
@@ -99,7 +99,7 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
 
   function clearAll() {
     // Clearing is a filter change like any other — stay put.
-    preserveScrollOnNextNavigation();
+    preserveScrollOnNextNavigation(pathname);
     router.push(pathname, { scroll: false });
   }
 
