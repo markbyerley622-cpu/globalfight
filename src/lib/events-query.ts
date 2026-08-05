@@ -155,24 +155,43 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
   // Normalised first, so casing and stray whitespace from a hand-edited URL
   // resolve instead of being punished.
   if (use("sport")) {
-    const slug = f.sport?.trim().toLowerCase();
-    const sport = slug ? SPORT_BY_SLUG[slug] : undefined;
-    if (slug && !sport) {
-      // Deliberately unsatisfiable: an unrecognised sport has no events.
-      where.sport = { in: [] };
-      log.warn({ slug: f.sport }, "events-query:unknown-sport-slug");
-    } else if (sport) {
-      where.sport = sport.value as Prisma.EventWhereInput["sport"];
+    // MULTI-VALUE. Within a group the values are OR — an event cannot be two
+    // sports at once, so ANDing them would always return nothing. That is
+    // precisely what the single-value version did when handed "mma,boxing":
+    // the whole string missed SPORT_BY_SLUG, fell into the unknown-slug branch
+    // and produced `{ in: [] }` — 0 events, while each sport alone worked.
+    const slugs = parseMulti(f.sport);
+    if (slugs.length) {
+      const known = slugs.map((sl) => SPORT_BY_SLUG[sl]).filter(Boolean);
+      const unknown = slugs.filter((sl) => !SPORT_BY_SLUG[sl]);
+      if (unknown.length) log.warn({ slugs: unknown }, "events-query:unknown-sport-slug");
+      // Some recognised -> honour those and ignore the typos, which is what a
+      // reader editing a shared link expects. All unrecognised -> `in: []`,
+      // deliberately unsatisfiable, keeping the original rule that a bad slug
+      // must never silently widen the result to every sport.
+      where.sport = { in: known.map((k) => k.value) } as Prisma.EventWhereInput["sport"];
     }
   }
 
   // Promotion is stored as free text; a registry slug maps to the aliases that
   // identify it, so selecting "ufc" matches "UFC 300" and "UFC Fight Night".
-  if (use("promotion") && f.promotion) {
-    where.OR = promotionSearchTerms([f.promotion]).map((t) => ({ promotion: { contains: t, mode: "insensitive" as const } }));
+  if (use("promotion")) {
+    const slugs = parseMulti(f.promotion);
+    if (slugs.length) {
+      // OR across every selected promotion's aliases, then ANDed with the other
+      // groups. Pushed onto AND rather than assigned to `where.OR`, because a
+      // bare OR here would be clobbered by — or would clobber — any other OR
+      // clause on this query, silently widening the filter.
+      const terms = promotionSearchTerms(slugs)
+        .map((t) => ({ promotion: { contains: t, mode: "insensitive" as const } }));
+      ((where.AND ??= []) as Prisma.EventWhereInput[]).push({ OR: terms });
+    }
   }
 
-  if (use("country") && f.country) where.countryCode = f.country.toUpperCase();
+  if (use("country")) {
+    const codes = parseMulti(f.country).map((c) => c.toUpperCase());
+    if (codes.length) where.countryCode = { in: codes };
+  }
 
   return where;
 }

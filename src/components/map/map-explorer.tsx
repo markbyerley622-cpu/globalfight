@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Plus, Minus, LocateFixed, Globe2, X, Loader2, MapPinOff, Layers, ChevronLeft,
-  Flame, Sparkles, Lock,
+  Flame, Lock,
 } from "lucide-react";
 import { distanceKm as haversine } from "@/lib/geo/gazetteer";
 import { MAP_LAYERS, type MapData, type MapLayer, type MapPin } from "@/lib/geo/types";
@@ -40,10 +40,14 @@ const FILTERS: { id: Filter; label: string }[] = [
  *  section fetches anything, so switching is instant and always consistent. */
 type Section = "nearby" | "live" | "trending";
 
-const SECTIONS: { id: Section; label: string; icon: typeof Flame }[] = [
+const SECTIONS: { id: Section; label: string; icon?: typeof Flame }[] = [
   { id: "nearby", label: "Nearby", icon: LocateFixed },
   { id: "live", label: "Live now", icon: Flame },
-  { id: "trending", label: "Trending", icon: Sparkles },
+  // Trending carries NO icon — the word says it, and the sparkle read as
+  // decoration beside chips whose icons actually mean something. The property
+  // is omitted rather than set to null so the notification-icon guard test,
+  // which scans for `icon:` keys, does not read the label as an icon name.
+  { id: "trending", label: "Trending" },
 ];
 
 export function MapExplorer({ data }: { data: MapData }) {
@@ -404,7 +408,7 @@ function SheetDiscoveryHeader({
           tone="neutral"
           size="sm"
         >
-          <Icon className="size-3" />
+          {Icon && <Icon className="size-3" />}
           {/* Without a granted location "Nearby" cannot mean nearby, so it
               says what it is actually sorted by rather than lying. */}
           {id === "nearby" && !hasLocation ? "Soonest" : label}
