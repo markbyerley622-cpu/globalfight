@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Star, Loader2, Flame, Users, Swords, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthGate } from "@/lib/auth-client";
@@ -124,12 +124,19 @@ export function BoutPick({
   // fired only when the CORNER changes (not on every confidence/method tweak),
   // so the reward marks the decision, not each adjustment.
   const [flash, setFlash] = useState(false);
+  // A tap that lands BEFORE auth resolves is remembered, not discarded.
+  // Verified: without this, a tap at 6x CPU throttle on Slow 3G no longer
+  // redirected (the P0 fix) but silently did nothing — the intent was dropped
+  // and the user was left tapping a dead control. Queue it, replay it the
+  // moment auth resolves. Event-driven; no delay, no polling, no retry loop.
+  const queued = useRef<{ corner: Corner; confidence: number | null; method: Method | null } | null>(null);
 
-  async function send(corner: Corner, confidence: number | null, method: Method | null) {
-    // PENDING means auth has not resolved yet — bail WITHOUT redirecting. The
-    // old `if (!user)` treated that as signed-out and threw a signed-in user
-    // off the page mid-tap. See useAuthGate.
-    if (gate.requireSignIn() !== "OK") return;
+  const send = useCallback(async function send(corner: Corner, confidence: number | null, method: Method | null) {
+    const decision = gate.requireSignIn();
+    // PENDING = auth still resolving. Do NOT redirect (that was the P0 bug) and
+    // do NOT drop the tap either — hold it and replay when we know who they are.
+    if (decision === "PENDING") { queued.current = { corner, confidence, method }; return; }
+    if (decision !== "OK") return;
     // Belt and braces: the buttons are disabled when locked, and the write is
     // refused here too, so no code path optimistically moves the crowd bar for a
     // pick the server is going to reject.
@@ -170,7 +177,15 @@ export function BoutPick({
     } finally {
       setBusy(false);
     }
-  }
+  }, [gate, locked, busy, pick, fightSlug, initialCrowd]);
+
+  // Replay a tap that beat the auth provider, the instant auth resolves.
+  useEffect(() => {
+    if (!gate.ready || !queued.current) return;
+    const q = queued.current;
+    queued.current = null;
+    void send(q.corner, q.confidence, q.method);
+  }, [gate.ready, send]);
 
   const redP = crowd.total ? crowd.red / crowd.total : 0.5;
 
