@@ -6,6 +6,7 @@ import { Trophy, Target, Flame, ListChecks, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getTrainingNowFor } from "@/lib/geo/presence";
 import { getProfileStats } from "@/lib/profile-stats";
+import { SITE } from "@/lib/config";
 import { getUserActivity } from "@/lib/activity";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -44,7 +45,23 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   const desc = stats && stats.picksResolved
     ? `${who} — ${stats.reputation.toLocaleString()} reputation · ${stats.accuracy}% accuracy · best ${stats.bestPickStreak}-fight streak on Combat Reviews.`
     : `${who} on Combat Reviews.`;
-  return { title: who, description: desc, alternates: { canonical: `/u/${u.username}` } };
+  // A public profile is a SHARE TARGET — it is what someone posts when they want
+  // to show off a record, and it had a canonical and nothing else, so every share
+  // rendered as a bare link. `images` is deliberately NOT set: ./opengraph-image
+  // generates the card, and setting it here shadows that route (the same mistake
+  // the event and fighter pages document).
+  return {
+    title: who,
+    description: desc,
+    alternates: { canonical: `/u/${u.username}` },
+    openGraph: {
+      title: who,
+      description: desc,
+      type: "profile",
+      url: `${SITE.url}/u/${u.username}`,
+    },
+    twitter: { card: "summary_large_image", title: who, description: desc },
+  };
 }
 
 export default async function PublicProfile({ params }: { params: Promise<{ username: string }> }) {

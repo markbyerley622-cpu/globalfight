@@ -24,7 +24,9 @@ const LEET: Record<string, string> = {
 };
 
 /** Characters people wedge between letters to defeat a word match. */
-const SEPARATORS = /[\s._\-*'"`~^()[\]{}<>\/\\,:;#%&=?]+/g;
+// `/` is NOT escaped: inside a character class it does not terminate the regex
+// literal, so a backslash there is dead weight that the build's lint rejects.
+const SEPARATORS = /[\s._\-*'"`~^()[\]{}<>/\\,:;#%&=?]+/g;
 
 /**
  * Invisible characters. Zero-width space/joiner/non-joiner and the BOM are the

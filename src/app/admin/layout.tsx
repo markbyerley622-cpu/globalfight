@@ -9,6 +9,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const nav = [
     { href: "/admin/events", label: "Events" },
+    // Reports lead the community half of the nav: it is the only queue here
+    // where the backlog is other members waiting on a decision.
+    { href: "/admin/reports", label: "Reports" },
     { href: "/admin/claims", label: "Claims" },
     { href: "/admin/identity-verification", label: "Identity" },
     { href: "/admin/data", label: "Data" },

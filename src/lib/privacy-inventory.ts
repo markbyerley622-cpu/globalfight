@@ -26,7 +26,8 @@ export const DATA_CATEGORIES: DataCategory[] = [
     data: "Name, email address, username, password (hashed with bcrypt — never stored in readable form), chosen role.",
     purpose: "To create and operate your account.",
     lawfulBasis: "Contract — we cannot give you an account without it.",
-    retention: "Until you delete your account. Deletion is immediate and permanent.",
+    retention:
+      "Until you delete your account. Deletion is immediate and permanent for your account and personal data. ONE EXCEPTION, stated plainly: discussion you posted stays on the thread it belongs to, re-attributed to \"Deleted User\" — removing it outright would delete the replies other people wrote underneath it. Your name, handle, photo and every other identifier are severed from it.",
     source: "prisma/schema.prisma — User",
   },
   {
@@ -60,8 +61,9 @@ export const DATA_CATEGORIES: DataCategory[] = [
     data: "Forum threads, posts, reactions, and any community activity.",
     purpose: "To run the community.",
     lawfulBasis: "Contract / legitimate interests.",
-    retention: "Until you delete it or your account.",
-    source: "prisma/schema.prisma — ForumThread, ForumPost",
+    retention:
+      "Until you delete it. Deleting your ACCOUNT does not delete posts you have already published: they are kept and re-attributed to \"Deleted User\", because deleting a thread would take every reply inside it — other people's writing — with it. Reactions, bookmarks and subscriptions are deleted outright.",
+    source: "prisma/schema.prisma — ForumThread, ForumPost; src/lib/account/tombstone.ts",
   },
   {
     category: "Private messages",
@@ -74,7 +76,7 @@ export const DATA_CATEGORIES: DataCategory[] = [
   },
   {
     category: "Predictions and picks",
-    data: "The fighter you picked in each bout, your confidence, when you picked, whether it was correct, your streaks, accuracy and leaderboard position, and any head-to-head battles you enter.",
+    data: "The fighter you picked in each bout, optionally how you think it ends, when you picked, whether it was correct, your streaks, accuracy and leaderboard position, and any head-to-head battles you enter. (A 1–5 confidence rating was collected previously; the control was removed and nothing new records it. Values on older picks are retained and still shown to you.)",
     purpose: "To score your predictions and rank them against other people's.",
     lawfulBasis: "Contract — this is the core of the service.",
     retention:
@@ -121,11 +123,26 @@ export const DATA_CATEGORIES: DataCategory[] = [
   },
   {
     category: "Moderation and reports",
-    data: "Reports you make or that are made about your content, and moderator decisions.",
+    data: "Reports you make or that are made about your content, moderator decisions, and the moderator audit trail (who acted, when, on what).",
     purpose: "To keep the community safe and to allow appeals.",
     lawfulBasis: "Legitimate interests — running a safe platform.",
     retention: "Kept while needed to handle the report and any appeal.",
-    source: "prisma/schema.prisma — ForumReport, CopyrightReport",
+    source: "prisma/schema.prisma — ForumReport, CopyrightReport, AuditLog; src/lib/moderation/reports.ts",
+  },
+  {
+    // Added when automated screening shipped. Content is inspected BEFORE it is
+    // stored, which is processing that a reader is entitled to know about — and
+    // the honest framing matters: it is a rule check on the text of the post,
+    // not profiling, and it produces no decision about the PERSON.
+    category: "Automated content screening",
+    data:
+      "The text of a post, thread title or comment is checked against a fixed set of rules at the moment you submit it. The check runs in memory on our own servers, is not sent anywhere else, and nothing about the check is stored when the content passes.",
+    purpose:
+      "To stop slurs, incitement against a group, and spam being published. Ordinary swearing is explicitly permitted and is not screened.",
+    lawfulBasis: "Legitimate interests — running a safe platform.",
+    retention:
+      "Nothing is retained. A blocked post is never written to the database; you are shown a message and your text stays in the box for you to edit. There is no automated decision-making about you as a person, no profiling, and no consequence to your account from a blocked post.",
+    source: "src/lib/moderation/text/",
   },
   {
     category: "Audit logs",

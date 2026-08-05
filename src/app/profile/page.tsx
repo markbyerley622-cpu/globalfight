@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: "Profile",
   description: "Your Combat Reviews profile — identity, reputation, saved clips, predictions and activity.",
   alternates: { canonical: "/profile" },
+  // Your OWN dashboard, not your public identity — /u/<handle> is the page meant
+  // to be indexed and shared. Without this, a signed-out crawler indexes the
+  // sign-in gate under a URL that promises a profile.
+  robots: { index: false, follow: false },
 };
 
 /**

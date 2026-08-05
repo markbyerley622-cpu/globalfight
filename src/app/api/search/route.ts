@@ -5,6 +5,8 @@ import { getThreads } from "@/lib/forum/repo";
 import { prisma } from "@/lib/db";
 import { recommendVideos } from "@/lib/feed/recommend";
 import { getCurrentUser } from "@/lib/auth";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 import { PROMOTIONS } from "@/lib/promotions";
 import { searchFollowState } from "@/lib/search-follow";
 import { publicDisplayName } from "@/lib/display-name";
@@ -45,6 +47,12 @@ export async function GET(req: Request) {
     follow: null,
   };
   if (!q) return NextResponse.json(empty);
+
+  // Bounded before any query runs. Anonymous by design (search must work signed
+  // out), so the bucket is keyed by IP via enforceLimit's default — see
+  // POLICY.search for why this endpoint in particular needed one.
+  const limited = await enforceLimit(req, "search", POLICY.search);
+  if (limited) return limited;
 
   const ql = q.toLowerCase();
   const has = (s?: string | null) => (s ?? "").toLowerCase().includes(ql);

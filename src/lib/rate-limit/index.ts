@@ -123,6 +123,13 @@ export const POLICY = {
   gymCreate: { limit: 6, windowMs: 60 * 60_000 },
   // A challenge creates a Battle row and pairs two users.
   challenge: { limit: 25, windowMs: 15 * 60_000 },
+  // Site search is ANONYMOUS and expensive: one call fans out across nine
+  // families with `contains` (LIKE '%q%') scans that no index serves, and the
+  // overlay fires it every 180ms while someone types. Unbounded, a single
+  // client can hold the connection pool open against the whole catalogue.
+  // Bounded per IP, generously — a fast human typing a long query is well
+  // inside this, a loop is not.
+  search: { limit: 90, windowMs: 60_000 },
   // ── Cheap INTERACTIONS (picks, votes, reactions, follows, helpful). One
   //    ceiling for all of them: high enough that real use never notices, low
   //    enough that a script cannot hammer the write path.

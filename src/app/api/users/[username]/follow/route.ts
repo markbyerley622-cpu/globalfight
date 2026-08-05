@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { setFollow, getFollowCounts } from "@/lib/geo/people";
+import { enforceLimit } from "@/lib/rate-limit/guard";
+import { POLICY } from "@/lib/rate-limit";
 
 /**
  * Follow / unfollow a person.
@@ -14,6 +16,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ usernam
   const { username } = await params;
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Sign in to follow people." }, { status: 401 });
+
+  // A follow writes a row AND fires a FOLLOW notification into someone else's
+  // inbox, so an unbounded loop is a notification-spam vector aimed at a person
+  // rather than a page. Keyed to the account: rotating IPs must not buy more.
+  const limited = await enforceLimit(req, "user-follow", POLICY.interaction, me.id);
+  if (limited) return limited;
 
   const target = await prisma.user.findUnique({ where: { username }, select: { id: true } });
   if (!target) return NextResponse.json({ error: "No such user." }, { status: 404 });

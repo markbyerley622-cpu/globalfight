@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "My Predictions",
   description: "Every fight you've called — your record, what's still open, and how each pick landed.",
+  // Personal and signed-in only. The PUBLIC record lives on /u/<handle>, which is
+  // the page built to be indexed; this one is a private working view of it.
+  robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";
