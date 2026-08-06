@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { COMMIT_SHA, COMMIT_SHORT, APP_ENV, uptimeSeconds } from "@/lib/observability/version";
 import { errorReportingEnabled } from "@/lib/observability/report";
+import { scannerHealth } from "@/lib/media/scan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,15 @@ export async function GET() {
   // production without these set.
   const storage: Check = process.env.EVIDENCE_R2_BUCKET ? { state: "up", ms: null } : { state: "skipped", ms: null };
 
+  // The malware scanner. Reported but NOT required for `healthy`: with no
+  // scanner the app is fully functional and simply refuses media uploads, which
+  // is a degraded feature rather than a down service. Making it required would
+  // take the whole site out of the load balancer over an image upload path.
+  //
+  // Neither the URL nor the token is ever exposed — only whether it is
+  // configured, which provider, and whether it answers.
+  const scanner = await scannerHealth();
+
   // REQUIRED = the database. Everything else degrades rather than fails.
   const healthy = database.state === "up";
 
@@ -74,6 +84,7 @@ export async function GET() {
       version: { commit: COMMIT_SHA, short: COMMIT_SHORT, env: APP_ENV },
       uptimeSeconds: uptimeSeconds(),
       checks: { database, cache, storage },
+      mediaScanner: scanner,
       // Whether telemetry is actually wired. A silently-unconfigured reporter is
       // the exact failure this sprint exists to prevent, so it is visible here
       // rather than discovered during an incident.

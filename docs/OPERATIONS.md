@@ -32,6 +32,27 @@ rather than serving in an unsafe configuration.
 | `ERROR_REPORT_TOKEN` | No `Authorization` header on reports. |
 | `APP_COMMIT_SHA` | `/api/health` reports `commit: "unknown"`. Render sets `RENDER_GIT_COMMIT` automatically, so this is only needed elsewhere. |
 
+### Media scanning
+
+Public media uploads **fail closed**. With no scanner configured, every upload is
+refused with `UNKNOWN` — that is the designed default, so forgetting to configure
+one is a visible outage on the upload path rather than a silent hole.
+
+| Variable | Effect |
+|---|---|
+| `MEDIA_SCAN_URL` | The scanning endpoint. POSTs raw bytes, expects JSON — both `{"infected":bool}` and `{"status":"clean"\|"infected"}` are understood, so a ClamAV REST sidecar or a cloud API drop in without a code change. **Unset → all media uploads refused.** |
+| `MEDIA_SCAN_TOKEN` | Optional bearer for the scanner. |
+| `MEDIA_SCAN_TIMEOUT_MS` | Default 20000. A timeout is a REFUSAL, never a pass. |
+| `MEDIA_SCAN_ATTEMPTS` | Default 2. Only `FAILED`/`TIMEOUT` are retried; `UNKNOWN` is a config fault and is not. |
+| `MEDIA_MAX_UPLOAD_BYTES` | Default 12MB. |
+
+Deliberately separate from `EVIDENCE_SCAN_URL`: identity documents are private
+and human-reviewed and may justifiably go to a stricter or differently-located
+scanner. Sharing one variable would make that impossible to express later.
+
+Check it after deploying: `/api/health` reports `mediaScanner`
+(`configured` / `provider` / `reachable`) without exposing the URL or token.
+
 ### Behavioural
 
 | Variable | Effect |
