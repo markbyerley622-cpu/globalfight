@@ -10,7 +10,6 @@ import { MovementIndicator } from "@/components/ui/badge";
 import { Flag } from "@/components/flag";
 import { getRankingDivisionsSafe, getPoundForPoundPage, getRankingOrganisationsSafe, getSportsWithRankingsSafe } from "@/lib/repo";
 import { OrganisationFilter } from "@/components/organisation-filter";
-import { SampleDataNote } from "@/components/sample-data-note";
 import { SPORT_BY_SLUG, SPORT_LABEL, SPORTS } from "@/lib/sports";
 import { getServerT } from "@/lib/i18n-server";
 import { formatRecord } from "@/lib/utils";
@@ -55,11 +54,14 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
   const ranked = await getSportsWithRankingsSafe();
   const rankedSportSlugs = SPORTS.filter((s) => ranked.includes(s.value)).map((s) => s.slug);
 
-  const { data: allDivisions, usedFallback: divFallback } = await getRankingDivisionsSafe(sportValue, org);
+  // No `usedFallback` any more, and no sample-data note. There is no fallback to
+  // report: the hardcoded ranking fixtures this page could once serve have been
+  // deleted outright. An empty result now renders as "no rankings", which is the
+  // truth, rather than as invented rows behind a small disclaimer.
+  const { data: allDivisions } = await getRankingDivisionsSafe(sportValue, org);
   const t = await getServerT();
   const divisions = allDivisions.slice(page * DIV_PER_PAGE, page * DIV_PER_PAGE + DIV_PER_PAGE);
   const list = allDivisions.length === 0 ? await getPoundForPoundPage(sportValue, page, LIMIT, org) : null;
-  const showSampleNote = (divFallback && allDivisions.length > 0) || (!!list?.usedFallback && list.items.length > 0);
 
   return (
     <>
@@ -73,7 +75,6 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
         <SportFilter availableSlugs={rankedSportSlugs} />
         <OrganisationFilter organisations={organisations} />
 
-        {showSampleNote && <SampleDataNote className="mt-6" />}
 
         {/* Rankings body */}
         <section className="mt-8">

@@ -5,24 +5,30 @@ import type { RankingConnector, RankingEntry } from "./connector";
 import { ingestConnectors, INGEST_BLOCKLIST } from "./connectors";
 import type { Sport } from "@prisma/client";
 import { resolveOrCreateFighter } from "@/lib/registry/identity";
-import {
-  weightClassSlug, divisionOrder, shouldWriteRanking, movementFor,
-} from "./ingest-rules";
-import { notifyRankingChange } from "@/lib/social/fighter-triggers";
+import { log } from "@/lib/scraper/logger";
+import { weightClassSlug, divisionOrder } from "./ingest-rules";
+import { recordObservations, recordFailure, projectRankings } from "./pipeline";
+import { recordChampionObservation, projectChampions } from "./champions";
 
 // ════════════════════════════════════════════════════════════════════════
-//  Ranking ingest — Layer 3+4. Takes a connector's normalized RankingEntry[]
-//  and persists it with provenance and precedence:
+//  Ranking ingest — the OBSERVE half of the pipeline.
 //
-//    identity resolve → WeightClass resolve → precedence check → Ranking upsert
-//    → RankSnapshot (history)
+//    connector ──► RankingObservation ──► (projectRankings) ──► Ranking
 //
-//  Guarantees:
+//  This module no longer decides anything. It resolves identity, records what
+//  the provider published, and stops. What gets PUBLISHED is decided by
+//  projectRankings() over every provider's evidence at once — see pipeline.ts.
+//
+//  ── Why the split ────────────────────────────────────────────────────────
+//  The old shape resolved provider conflicts by overwriting a single Ranking row
+//  (`shouldWriteRanking` + upsert), so the losing value never landed. A conflict
+//  could not be detected, a published rank could not explain itself, and the
+//  outcome depended on which connector ran first whenever trust tiers tied.
+//
+//  Guarantees kept from before:
 //    • Never ingests a blocklisted source (BoxRec) — checked here in code.
-//    • Never overwrites a manual/curated row, or a higher-trust source.
-//    • Idempotent: every write is an upsert keyed by natural identity, so a
-//      re-run (or a partial run that failed midway) converges — no duplicates,
-//      no half-state.
+//    • Idempotent: an identical payload writes NOTHING, and re-recording the
+//      same publication is a no-op rather than a duplicate row.
 //    • A connector that throws records the failure and never blocks the others.
 // ════════════════════════════════════════════════════════════════════════
 
@@ -30,6 +36,10 @@ export interface IngestStat {
   source: string;
   fetched: number;
   imported: number;
+  /** Observations recorded this run. */
+  observed: number;
+  /** True when the provider's payload was byte-identical to the last run. */
+  unchanged: boolean;
   /** Titleholders (rank 0) written to the Champion table. */
   championsImported: number;
   skippedByPrecedence: number;
@@ -138,78 +148,53 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
   // Defence in depth: a blocklisted source must never reach persistence even if
   // the registry were mis-edited to license it.
   if (INGEST_BLOCKLIST.has(connector.id)) {
-    return { source: connector.id, fetched: 0, imported: 0, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: "blocklisted source" };
+    return { source: connector.id, fetched: 0, imported: 0, observed: 0, unchanged: false, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: "blocklisted source" };
   }
 
-  const stat: IngestStat = { source: connector.id, fetched: 0, imported: 0, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: true };
+  const stat: IngestStat = { source: connector.id, fetched: 0, imported: 0, observed: 0, unchanged: false, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: true };
   const entries = await connector.fetch();
   stat.fetched = entries.length;
 
+  // ── EVIDENCE FIRST ──────────────────────────────────────────────────────
+  // Record what this provider published before deciding anything. The
+  // observation table is append-only, so a source that disagrees with a
+  // higher-tier one is preserved rather than discarded — which is what makes a
+  // conflict visible at all. Projection into the published board happens
+  // separately, over ALL providers' evidence, in projectRankings().
+  //
+  // An identical payload short-circuits here: no observations, no projection,
+  // no snapshots. The old pipeline rewrote every row on every run.
+  const observed = await recordObservations(connector, entries, async (entry) => {
+    const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
+    const { id: fighterId, created } = await resolveFighterFor(entry);
+    if (created) stat.fightersCreated++;
+    return { fighterId, weightClassId };
+  });
+  stat.observed = observed.written;
+  stat.unchanged = observed.unchanged;
+
+  // ── TITLEHOLDERS ────────────────────────────────────────────────────────
+  // rank 0 is the champion a source lists above its contenders. Contender rows
+  // are now handled entirely by the observation + projection path above; only
+  // titles are still written from here, and only until the champion pipeline
+  // takes them over the same way (see lib/rankings/champions).
+  if (observed.unchanged) return stat;
+
   for (const entry of entries) {
+    if (entry.rank >= 1) continue;
     try {
       const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
       const { id: fighterId, created } = await resolveFighterFor(entry);
       if (created) stat.fightersCreated++;
 
-      // rank 0 = the titleholder the source lists above its contenders. These
-      // used to be `continue`d, and the consequence was measurable: the Champion
-      // table held ZERO rows for every sport, so /champions and every "current
-      // champion" surface rendered empty while the connectors were parsing the
-      // champion's name on every run and throwing it away.
-      if (entry.rank < 1) {
-        // Counts only what actually CHANGED — an unmapped organisation and an
-        // unchanged champion both return false, and reporting either as an
-        // import would make a no-op run look like it did work.
-        if (await upsertChampion({ fighterId, weightClassId, organisation: entry.organisation })) {
-          stat.championsImported++;
-        }
-        continue;
+      await recordChampionObservation(connector, entry, fighterId, weightClassId);
+
+      // Counts only what actually CHANGED — an unmapped organisation and an
+      // unchanged champion both return false, and reporting either as an
+      // import would make a no-op run look like it did work.
+      if (await upsertChampion({ fighterId, weightClassId, organisation: entry.organisation })) {
+        stat.championsImported++;
       }
-
-      const isPoundForPound = entry.isPoundForPound === true;
-      const organisation = entry.organisation ?? "";
-      const key = {
-        weightClassId_isPoundForPound_fighterId_organisation: {
-          weightClassId, isPoundForPound, fighterId, organisation,
-        },
-      };
-
-      const existing = await prisma.ranking.findUnique({
-        where: key,
-        select: { rank: true, source: true },
-      });
-
-      if (!shouldWriteRanking(existing?.source, connector.id)) {
-        stat.skippedByPrecedence++;
-        continue;
-      }
-
-      const previousRank = existing?.rank ?? null;
-      const movement = movementFor(previousRank, entry.rank);
-
-      await prisma.ranking.upsert({
-        where: key,
-        create: { weightClassId, fighterId, isPoundForPound, organisation, rank: entry.rank, previousRank, movement, source: connector.id },
-        update: { rank: entry.rank, previousRank, movement, source: connector.id },
-      });
-
-      // Append-only history point (movement graphs, "highest ranking", weekly deltas).
-      await prisma.rankSnapshot.create({
-        data: { fighterId, weightClass: entry.weightClass, isPoundForPound, rank: entry.rank },
-      });
-
-      // FOLLOWERS. Gated inside the trigger on movement being MEANINGFUL — entering
-      // the list, or two places or more. This runs on cron and a one-place shuffle
-      // caused by somebody else's fight is not news about this fighter, so notifying
-      // on every delta would make the rankings the noisiest producer in the app.
-      await notifyRankingChange({
-        fighterId,
-        weightClass: entry.weightClass,
-        rank: entry.rank,
-        previousRank,
-      });
-
-      stat.imported++;
     } catch (e) {
       // One bad row must not abort the source; record and continue.
       stat.error = (e as Error).message;
@@ -231,8 +216,23 @@ export async function ingestAllRankings(): Promise<IngestStat[]> {
     try {
       stats.push(await ingestConnector(c));
     } catch (e) {
-      stats.push({ source: c.id, fetched: 0, imported: 0, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error: (e as Error).message });
+      const error = (e as Error).message;
+      // A failure streak is a fact worth holding. One failure is noise; eleven
+      // in a row is an outage, and nobody should have to read logs to find that
+      // out — the admin dashboard reads this.
+      await recordFailure(c.id, "rankings", error);
+      stats.push({ source: c.id, fetched: 0, imported: 0, observed: 0, unchanged: false, championsImported: 0, skippedByPrecedence: 0, fightersCreated: 0, ok: false, error });
     }
   }
+
+  // ── PROJECT ─────────────────────────────────────────────────────────────
+  // Once, after every provider has been observed — not per connector. The whole
+  // point of reconciliation is that it sees ALL the evidence at the same time;
+  // projecting inside the loop would decide each list against whichever sources
+  // happened to have run already, which is the ordering dependence this
+  // architecture exists to remove.
+  const [ranked, champions] = await Promise.all([projectRankings(), projectChampions()]);
+  log.info({ ranked, champions }, "rankings:projected");
+
   return stats;
 }

@@ -97,6 +97,39 @@ export const EXPECTED_JOBS: ExpectedJob[] = [
     everyMinutes: 5040,
     matters: "Events exist with no bouts on them.",
   },
+  // ── The registry jobs ────────────────────────────────────────────────────
+  // Added by the data-integrity sprint. This list covered 8 of the 22 cron
+  // routes, and the three that decide what the RANKINGS and CHAMPIONS pages
+  // publish were not among them — so "champions are out of date" was invisible
+  // to the one tool built to answer exactly that question.
+  //
+  // Expect these to report `never-run` on first deploy. That is the point: a job
+  // that has never run should say so loudly rather than be absent from the list
+  // that claims to be complete.
+  {
+    route: "refresh-rankings",
+    label: "Rankings (official connectors)",
+    targets: ["rankings:ingest"],
+    // Weekly, per render.yaml. Sanctioning bodies republish roughly that often;
+    // the payload hash means asking more frequently costs nothing but also
+    // gains nothing.
+    everyMinutes: 10_080,
+    matters: "Divisional boards freeze at whatever the last successful run published.",
+  },
+  {
+    route: "refresh-p4p",
+    label: "Pound-for-pound",
+    targets: ["p4p:records", "p4p:curated", "p4p:generate"],
+    everyMinutes: 1440,
+    matters: "P4P boards and the derived records behind them go stale.",
+  },
+  {
+    route: "refresh-champions",
+    label: "Champions",
+    targets: ["champions:project"],
+    everyMinutes: 1440,
+    matters: "Title changes are not picked up — the belt shows the previous holder.",
+  },
 ];
 
 /** Multiple of the cadence we tolerate before calling a job overdue. */

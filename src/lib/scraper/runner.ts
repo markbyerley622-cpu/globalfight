@@ -20,6 +20,7 @@ import { syncBKFC } from "@/lib/scraper/bkfc";
 import { generateAllP4P } from "@/lib/rankings/generate";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
+import { projectChampions } from "@/lib/rankings/champions";
 import { applyDerivedRecords } from "@/lib/fighters/derive-records";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
@@ -324,9 +325,27 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
       });
       break;
     case "champions":
+      // ── THIS WAS A NO-OP ────────────────────────────────────────────────
+      // It logged `refresh:noop` and returned, every day, while the reported
+      // symptom was "UFC champions occasionally outdated". Champions were only
+      // ever written as a SIDE EFFECT of rank-0 rows inside the WEEKLY ranking
+      // connector run, so a belt that changed hands on a Saturday could sit
+      // wrong until the following Monday — and a division whose connector
+      // publishes no titleholder had no champion at all, ever.
+      //
+      // Now it projects reigns from champion observations: the same evidence the
+      // connectors already record, reconciled by tier, opening and closing
+      // TitleReign rows so the history survives. Cheap when nothing changed —
+      // a reign that already agrees with the evidence writes nothing.
+      await safe("champions:project", async () => {
+        const r = await projectChampions();
+        return `titles=${r.titles} opened=${r.reignsOpened} closed=${r.reignsClosed} contested=${r.contested}`;
+      });
+      break;
     case "people":
-      // Champions/people still need per-fighter data (most imported fighters lack
-      // it) — no-op until that lands.
+      // Still needs per-fighter data (most imported fighters lack it) — no-op
+      // until that lands. Unlike `champions` above, nothing in the product is
+      // currently waiting on it.
       log.info({ kind }, "refresh:noop (curated — served by API providers)");
       break;
     case "events":

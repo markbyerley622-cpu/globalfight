@@ -6,6 +6,7 @@ import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { SPORTS } from "@/lib/sports";
 import type { EventFacet } from "@/lib/events-query";
 import { cn } from "@/lib/utils";
+import { useScrollDirection } from "@/lib/use-scroll-direction";
 import { preserveScrollOnNextNavigation } from "@/components/layout/scroll-restoration";
 
 // Every filter lives in the URL and nothing is filtered on the client — this
@@ -64,6 +65,13 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  // Hide the "More filters" toggle while the reader is scrolling DOWN a list,
+  // bring it back the moment they scroll up. Kept visible whenever the panel is
+  // actually open — collapsing the control that closes it would strand the
+  // reader with an expanded panel and no way to fold it away.
+  const scrollDirection = useScrollDirection();
+  const showToggle = open || scrollDirection === "up";
 
   const get = (k: string) => params.get(k) ?? "";
 
@@ -255,22 +263,48 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
 
       {/* The toggle, only while pinned. It carries the active count so a
           collapsed bar can never hide that filters are on — the one thing a
-          reader must not lose when the controls fold away. */}
-      {stuck && (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="tap flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-ink-800 bg-ink-900/60 px-3 py-1 text-2xs font-bold uppercase tracking-wider text-fog transition-colors hover:border-ink-700 hover:text-mist"
-        >
-          <SlidersHorizontal className="size-3" aria-hidden />
-          {open ? "Fewer filters" : "More filters"}
-          {activeCount > 0 && (
-            <span className="rounded-full bg-blood-500 px-1.5 text-3xs font-black text-white tabular-nums">{activeCount}</span>
-          )}
-          <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
-        </button>
-      )}
+          reader must not lose when the controls fold away.
+
+          ── Hide on scroll DOWN, reveal on scroll UP ─────────────────────────
+          Reading a list is scrolling down, and while you are doing that this
+          control is only taking screen. Scrolling back up is the gesture that
+          means "I want the controls again", so that is when it returns.
+
+          It collapses its HEIGHT, not just its opacity: fading it out would
+          leave the gap it occupies, which is the specific complaint. The
+          grid-rows 1fr→0fr idiom is the same one the filter rows above use, and
+          it animates height smoothly without needing a measured pixel value.
+
+          `overflow-hidden` on the grid child is what makes that work, and
+          `pointer-events-none` while hidden stops a collapsed-but-not-yet-gone
+          button from swallowing a tap. */}
+      <div
+        className={cn(
+          "grid transition-all duration-200 ease-out motion-reduce:transition-none",
+          stuck ? "" : "hidden",
+          showToggle
+            ? "grid-rows-[1fr] pt-0 opacity-100"
+            : "pointer-events-none grid-rows-[0fr] opacity-0",
+        )}
+        aria-hidden={!showToggle}
+      >
+        <div className="overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            tabIndex={showToggle ? undefined : -1}
+            className="tap flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-ink-800 bg-ink-900/60 px-3 py-1 text-2xs font-bold uppercase tracking-wider text-fog transition-colors hover:border-ink-700 hover:text-mist"
+          >
+            <SlidersHorizontal className="size-3" aria-hidden />
+            {open ? "Fewer filters" : "More filters"}
+            {activeCount > 0 && (
+              <span className="rounded-full bg-blood-500 px-1.5 text-3xs font-black text-white tabular-nums">{activeCount}</span>
+            )}
+            <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+        </div>
+      </div>
     </div>
     </>
   );

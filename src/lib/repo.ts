@@ -22,9 +22,10 @@ export interface ResultsPage {
 }
 import { cached, CACHE_TTL } from "@/lib/cache";
 import { maybeRefreshNews } from "@/lib/news/lazy-refresh";
-// Weight-class taxonomy (reference config — the divisions themselves, not mock
-// fight data). Everything else comes live from Postgres.
-import { WEIGHT_CLASSES } from "@/lib/data/rankings";
+// Weight-class taxonomy (reference config — the divisions themselves, not data
+// about anybody). Everything else comes live from Postgres. The module this used
+// to come from also held three hardcoded FAKE ranking exports; they are gone.
+import { WEIGHT_CLASSES } from "@/lib/data/weight-classes";
 import * as pg from "@/lib/repo.prisma";
 
 export const WEIGHT_CLASS_LIST = WEIGHT_CLASSES;

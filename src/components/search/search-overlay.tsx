@@ -90,23 +90,51 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   const head = (label: string) => <p className="px-3 pb-1 pt-3 font-display text-3xs font-bold uppercase tracking-widest text-fog">{label}</p>;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[12vh]" role="dialog" aria-modal="true">
+    // ── Layout ──────────────────────────────────────────────────────────────
+    // MOBILE is a full-height sheet, DESKTOP is a floating panel.
+    //
+    // It used to be one layout for both: `pt-[12vh]` with a `max-h-[60vh]` result
+    // list. On a phone that adds up to more than the screen — and the moment the
+    // keyboard opens, the visual viewport shrinks by roughly half while the 12vh
+    // offset stays measured against the FULL viewport, so the search field itself
+    // slid up under the status bar. That is the "top is cut off".
+    //
+    // `100dvh` rather than `100vh` for the same reason: dvh tracks the *dynamic*
+    // viewport, so the sheet resizes with the keyboard instead of being sized
+    // against a viewport the user cannot see all of.
+    <div
+      className="fixed inset-0 z-[100] flex items-start justify-center sm:px-4 sm:pt-[12vh]"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="absolute inset-0 bg-ink-950/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl card-surface overflow-hidden shadow-2xl">
-        <div className="flex items-center gap-3 border-b border-ink-700 px-4">
-          <Search className="size-5 text-mist" />
+      <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden shadow-2xl sm:h-auto sm:max-w-2xl sm:rounded-card sm:border sm:border-ink-700 bg-ink-900 sm:card-surface">
+        {/* Safe-area padding so the field clears a notch / status bar. */}
+        <div className="flex shrink-0 items-center gap-3 border-b border-ink-700 px-4 pt-[env(safe-area-inset-top)] sm:pt-0">
+          <Search className="size-5 shrink-0 text-mist" />
           <input
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search the whole site — fighters, events, news, communities…"
-            className="h-14 flex-1 bg-transparent text-base text-chalk outline-none placeholder:text-fog"
+            className="h-14 min-w-0 flex-1 bg-transparent text-base text-chalk outline-none placeholder:text-fog"
           />
-          {loading && <Loader2 className="size-4 animate-spin text-mist" />}
-          <button onClick={onClose} className="cr-touch-target rounded-md p-1.5 text-mist hover:bg-ink-700 hover:text-chalk" aria-label="Close search"><X className="size-5" /></button>
+          {loading && <Loader2 className="size-4 shrink-0 animate-spin text-mist" />}
+          {/* The only way out on a phone: there is no Escape key, and tapping the
+              backdrop is invisible as an affordance. Bordered and full tap-height
+              on mobile so it reads as a button rather than a faint glyph. */}
+          <button
+            onClick={onClose}
+            aria-label="Close search"
+            className="cr-touch-target -mr-1.5 grid size-11 shrink-0 place-items-center rounded-lg border border-ink-700 text-mist hover:bg-ink-700 hover:text-chalk sm:size-auto sm:border-0 sm:p-1.5"
+          >
+            <X className="size-5" />
+          </button>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto p-2">
+        {/* Flexes to fill the sheet on mobile; capped on desktop. `overscroll` stops
+            a flick past the end from scrolling the page behind the overlay. */}
+        <div className="cr-overscroll-contain min-h-0 flex-1 overflow-y-auto p-2 sm:max-h-[60vh] sm:flex-none">
           {!q && <p className="px-4 py-8 text-center text-sm text-fog">Start typing to search across the whole site.</p>}
           {q && !loading && total === 0 && <p className="px-4 py-8 text-center text-sm text-fog">No results for “{q}”.</p>}
 
@@ -227,14 +255,16 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           {res.pages.length > 0 && head("Pages")}
           {res.pages.map((p) => row(`p-${p.href}-${p.label}`, p.href, <Compass className="size-4" />, p.label))}
         </div>
-        <div className="flex items-center justify-between border-t border-ink-700 px-4 py-2 text-2xs text-fog">
-          {/* The shortcut is worth ADVERTISING here — this footer is the only
-              place a reader ever learns it exists, and a shortcut nobody knows
-              about is the same as no shortcut. */}
-          <span className="hidden sm:inline">
+        {/* Keyboard hints are DESKTOP ONLY. A phone has no Escape key and no "/"
+            shortcut, so both lines were instructions the reader could not follow —
+            and the ESC one was actively misleading, since the X button beside the
+            field is the actual way out there. The whole footer is hidden on mobile
+            rather than reworded: it exists to teach shortcuts, and there are none
+            to teach on a touch device. */}
+        <div className="hidden shrink-0 items-center justify-between border-t border-ink-700 px-4 py-2 text-2xs text-fog sm:flex">
+          <span>
             {t("Press")} <kbd className="rounded border border-ink-600 px-1.5 py-0.5">/</kbd> {t("anywhere to search")}
           </span>
-          <span className="sm:hidden">Search across Combat Reviews</span>
           <span><kbd className="rounded border border-ink-600 px-1.5 py-0.5">ESC</kbd> to close</span>
         </div>
       </div>

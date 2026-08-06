@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1093,
+    "queries": 1116,
     "high": 0,
     "medium": 95,
-    "low": 190,
-    "info": 808,
-    "public": 745,
+    "low": 197,
+    "info": 824,
+    "public": 768,
     "userOwned": 253,
     "shared": 95,
     "admin": 0
@@ -366,6 +366,36 @@
     },
     {
       "name": "FighterAlias",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "RankingObservation",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "ChampionObservation",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "TitleReign",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "FighterIdentityCandidate",
+      "klass": "PUBLIC",
+      "auto": true,
+      "ownerFields": []
+    },
+    {
+      "name": "ProviderCheckpoint",
       "klass": "PUBLIC",
       "auto": true,
       "ownerFields": []
@@ -2933,20 +2963,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 35,
-      "fn": "f",
-      "model": "Fighter",
-      "method": "upsert",
-      "klass": "PUBLIC",
-      "kind": "write",
-      "ownership": "unscoped",
-      "severity": "LOW",
-      "confidence": "high",
-      "why": "Public model write — relies on app-layer auth (expected)."
-    },
-    {
-      "file": "src/lib/events/ingest.ts",
-      "line": 47,
+      "line": 60,
       "fn": "upsertBout",
       "model": "Fight",
       "method": "upsert",
@@ -2959,7 +2976,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 75,
+      "line": 88,
       "fn": "event",
       "model": "Event",
       "method": "upsert",
@@ -3778,20 +3795,7 @@
     },
     {
       "file": "src/lib/odds/ingest.ts",
-      "line": 30,
-      "fn": "f",
-      "model": "Fighter",
-      "method": "upsert",
-      "klass": "PUBLIC",
-      "kind": "write",
-      "ownership": "unscoped",
-      "severity": "LOW",
-      "confidence": "high",
-      "why": "Public model write — relies on app-layer auth (expected)."
-    },
-    {
-      "file": "src/lib/odds/ingest.ts",
-      "line": 44,
+      "line": 50,
       "fn": "e",
       "model": "Event",
       "method": "upsert",
@@ -3804,7 +3808,7 @@
     },
     {
       "file": "src/lib/odds/ingest.ts",
-      "line": 87,
+      "line": 93,
       "fn": "fight",
       "model": "Fight",
       "method": "upsert",
@@ -3868,8 +3872,34 @@
       "why": "Auth-internal table — accessed by credential/endpoint server-side, not by viewer id. A userId filter would be incorrect here; confirm it isn't returned to clients."
     },
     {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 159,
+      "fn": "projectChampions",
+      "model": "TitleReign",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 227,
+      "fn": "syncLegacyChampion",
+      "model": "Champion",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 33,
+      "line": 35,
       "fn": "wc",
       "model": "WeightClass",
       "method": "upsert",
@@ -3947,7 +3977,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 80,
+      "line": 92,
       "fn": "upsertChampion",
       "model": "Champion",
       "method": "update",
@@ -3959,11 +3989,102 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 156,
+      "fn": "touchCheckpoint",
+      "model": "ProviderCheckpoint",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 313,
+      "fn": "projectRankings",
+      "model": "Ranking",
+      "method": "deleteMany",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 301,
+      "fn": "recordProvenance",
+      "model": "FighterExternalId",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 317,
+      "fn": "recordProvenance",
+      "model": "FighterAlias",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 360,
+      "fn": "queueCandidates",
+      "model": "FighterIdentityCandidate",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
       "file": "src/lib/repo.prisma.ts",
-      "line": 203,
+      "line": 204,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/repo.prisma.ts",
+      "line": 243,
+      "fn": "upsertFighterProfile",
+      "model": "Fighter",
+      "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/repo.prisma.ts",
+      "line": 265,
+      "fn": "upsertFighterProfile",
+      "model": "FighterIdentityCandidate",
+      "method": "upsert",
       "klass": "PUBLIC",
       "kind": "write",
       "ownership": "unscoped",
@@ -4077,10 +4198,10 @@
     },
     {
       "file": "src/lib/scraper/ingest.ts",
-      "line": 24,
+      "line": 47,
       "fn": "persistMmaRoster",
       "model": "Fighter",
-      "method": "upsert",
+      "method": "update",
       "klass": "PUBLIC",
       "kind": "write",
       "ownership": "unscoped",
@@ -4090,7 +4211,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 178,
+      "line": 179,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -4103,7 +4224,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 181,
+      "line": 182,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -4246,7 +4367,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 377,
+      "line": 392,
       "fn": "recordFightImport",
       "model": "FightImport",
       "method": "upsert",
@@ -4259,7 +4380,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 394,
+      "line": 409,
       "fn": "linkCornerExternalId",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -4272,7 +4393,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 436,
+      "line": 451,
       "fn": "redId",
       "model": "Fighter",
       "method": "upsert",
@@ -4285,7 +4406,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 439,
+      "line": 454,
       "fn": "blueId",
       "model": "Fighter",
       "method": "upsert",
@@ -4298,7 +4419,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 581,
+      "line": 596,
       "fn": "outcome",
       "model": "Fight",
       "method": "update",
@@ -4311,7 +4432,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 601,
+      "line": 616,
       "fn": "created",
       "model": "Fight",
       "method": "upsert",
@@ -5949,7 +6070,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 140,
+      "line": 173,
       "fn": "rows",
       "model": "ScrapeJob",
       "method": "findMany",
@@ -12514,7 +12635,7 @@
     },
     {
       "file": "src/lib/odds/ingest.ts",
-      "line": 100,
+      "line": 106,
       "fn": "ingestOdds",
       "model": "OddsSnapshot",
       "method": "create",
@@ -13059,11 +13180,24 @@
       "why": "Public model read — world-readable by design."
     },
     {
-      "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 44,
-      "fn": "existing",
-      "model": "Fighter",
-      "method": "findUnique",
+      "file": "src/lib/rankings/champions.ts",
+      "line": 56,
+      "fn": "recordChampionObservation",
+      "model": "ChampionObservation",
+      "method": "createMany",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 103,
+      "fn": "titles",
+      "model": "ChampionObservation",
+      "method": "groupBy",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",
@@ -13072,10 +13206,62 @@
       "why": "Public model read — world-readable by design."
     },
     {
-      "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 46,
-      "fn": "created",
-      "model": "Fighter",
+      "file": "src/lib/rankings/champions.ts",
+      "line": 110,
+      "fn": "rows",
+      "model": "ChampionObservation",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 145,
+      "fn": "open",
+      "model": "TitleReign",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 169,
+      "fn": "projectChampions",
+      "model": "TitleReign",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 217,
+      "fn": "existing",
+      "model": "Champion",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 232,
+      "fn": "syncLegacyChampion",
+      "model": "Champion",
       "method": "create",
       "klass": "PUBLIC",
       "kind": "write",
@@ -13242,7 +13428,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 74,
+      "line": 86,
       "fn": "existing",
       "model": "Champion",
       "method": "findFirst",
@@ -13255,7 +13441,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 83,
+      "line": 95,
       "fn": "upsertChampion",
       "model": "Champion",
       "method": "create",
@@ -13268,33 +13454,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 90,
-      "fn": "existing",
-      "model": "Fighter",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/rankings/ingest.ts",
-      "line": 92,
-      "fn": "created",
-      "model": "Fighter",
-      "method": "create",
-      "klass": "PUBLIC",
-      "kind": "write",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model write — relies on app-layer auth (expected)."
-    },
-    {
-      "file": "src/lib/rankings/ingest.ts",
-      "line": 107,
+      "line": 129,
       "fn": "found",
       "model": "WeightClass",
       "method": "findFirst",
@@ -13307,7 +13467,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 112,
+      "line": 134,
       "fn": "created",
       "model": "WeightClass",
       "method": "create",
@@ -13319,8 +13479,73 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
-      "file": "src/lib/rankings/ingest.ts",
-      "line": 165,
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 84,
+      "fn": "checkpoint",
+      "model": "ProviderCheckpoint",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 116,
+      "fn": "recordObservations",
+      "model": "RankingObservation",
+      "method": "createMany",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 169,
+      "fn": "existing",
+      "model": "ProviderCheckpoint",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 200,
+      "fn": "lists",
+      "model": "RankingObservation",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 209,
+      "fn": "rows",
+      "model": "RankingObservation",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 250,
       "fn": "existing",
       "model": "Ranking",
       "method": "findUnique",
@@ -13332,9 +13557,9 @@
       "why": "Public model read — world-readable by design."
     },
     {
-      "file": "src/lib/rankings/ingest.ts",
-      "line": 178,
-      "fn": "ingestConnector",
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 257,
+      "fn": "projectRankings",
       "model": "Ranking",
       "method": "upsert",
       "klass": "PUBLIC",
@@ -13345,9 +13570,9 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
-      "file": "src/lib/rankings/ingest.ts",
-      "line": 185,
-      "fn": "ingestConnector",
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 295,
+      "fn": "projectRankings",
       "model": "RankSnapshot",
       "method": "create",
       "klass": "PUBLIC",
@@ -13358,8 +13583,125 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
+      "file": "src/lib/rankings/pipeline.ts",
+      "line": 302,
+      "fn": "removable",
+      "model": "Ranking",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 98,
+      "fn": "link",
+      "model": "FighterExternalId",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 197,
+      "fn": "gatherCandidates",
+      "model": "FighterAlias",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 204,
+      "fn": "gatherCandidates",
+      "model": "Fighter",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 213,
+      "fn": "extra",
+      "model": "Fighter",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 224,
+      "fn": "rows",
+      "model": "FighterAlias",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 311,
+      "fn": "canonical",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 332,
+      "fn": "createProvisional",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/registry/identity.ts",
+      "line": 335,
+      "fn": "row",
+      "model": "Fighter",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
       "file": "src/lib/repo.prisma.ts",
-      "line": 71,
+      "line": 72,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -13372,7 +13714,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 105,
+      "line": 106,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -13385,7 +13727,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 170,
+      "line": 171,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -13398,7 +13740,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 201,
+      "line": 202,
       "fn": "existing",
       "model": "Fighter",
       "method": "findUnique",
@@ -13411,7 +13753,20 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 208,
+      "line": 236,
+      "fn": "target",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/repo.prisma.ts",
+      "line": 258,
       "fn": "upsertFighterProfile",
       "model": "Fighter",
       "method": "findUnique",
@@ -13424,8 +13779,8 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 209,
-      "fn": "upsertFighterProfile",
+      "line": 259,
+      "fn": "created",
       "model": "Fighter",
       "method": "create",
       "klass": "PUBLIC",
@@ -13437,7 +13792,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 215,
+      "line": 283,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -13450,7 +13805,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 249,
+      "line": 317,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -13463,7 +13818,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 266,
+      "line": 334,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -13476,7 +13831,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 300,
+      "line": 368,
       "fn": "wcs",
       "model": "WeightClass",
       "method": "findMany",
@@ -13489,7 +13844,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 317,
+      "line": 385,
       "fn": "curatedCount",
       "model": "Ranking",
       "method": "count",
@@ -13502,7 +13857,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 321,
+      "line": 389,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -13515,7 +13870,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 412,
+      "line": 480,
       "fn": "total",
       "model": "Ranking",
       "method": "count",
@@ -13528,7 +13883,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 415,
+      "line": 483,
       "fn": "genTotal",
       "model": "Ranking",
       "method": "count",
@@ -13541,7 +13896,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 417,
+      "line": 485,
       "fn": "genRows",
       "model": "Ranking",
       "method": "findMany",
@@ -13554,7 +13909,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 434,
+      "line": 502,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -13567,7 +13922,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 478,
+      "line": 546,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "findMany",
@@ -13580,7 +13935,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 479,
+      "line": 547,
       "fn": "getPredictionsPage",
       "model": "Fight",
       "method": "count",
@@ -13593,7 +13948,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 485,
+      "line": 553,
       "fn": "f",
       "model": "Fighter",
       "method": "findUnique",
@@ -13606,7 +13961,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 499,
+      "line": 567,
       "fn": "rows",
       "model": "Fighter",
       "method": "findMany",
@@ -13619,7 +13974,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 514,
+      "line": 582,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findUnique",
@@ -13632,7 +13987,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 515,
+      "line": 583,
       "fn": "rows",
       "model": "Ranking",
       "method": "findMany",
@@ -13645,7 +14000,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 548,
+      "line": 616,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -13658,7 +14013,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 550,
+      "line": 618,
       "fn": "rows",
       "model": "OddsSnapshot",
       "method": "findMany",
@@ -13671,7 +14026,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 573,
+      "line": 641,
       "fn": "rows",
       "model": "Champion",
       "method": "findMany",
@@ -13684,7 +14039,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 658,
+      "line": 726,
       "fn": "rows",
       "model": "Event",
       "method": "findMany",
@@ -13697,7 +14052,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 720,
+      "line": 788,
       "fn": "getResults",
       "model": "Event",
       "method": "findMany",
@@ -13710,7 +14065,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 727,
+      "line": 795,
       "fn": "getResults",
       "model": "Event",
       "method": "count",
@@ -13723,7 +14078,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 742,
+      "line": 810,
       "fn": "e",
       "model": "Event",
       "method": "findFirst",
@@ -13736,7 +14091,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 754,
+      "line": 822,
       "fn": "f",
       "model": "Fight",
       "method": "findFirst",
@@ -13749,7 +14104,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 762,
+      "line": 830,
       "fn": "fighter",
       "model": "Fighter",
       "method": "findUnique",
@@ -13762,7 +14117,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 764,
+      "line": 832,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -13775,7 +14130,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 773,
+      "line": 841,
       "fn": "rows",
       "model": "Fight",
       "method": "findMany",
@@ -13788,7 +14143,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 800,
+      "line": 868,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -13801,7 +14156,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 814,
+      "line": 882,
       "fn": "rows",
       "model": "Article",
       "method": "findMany",
@@ -13814,7 +14169,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 825,
+      "line": 893,
       "fn": "a",
       "model": "Article",
       "method": "findFirst",
@@ -13827,7 +14182,7 @@
     },
     {
       "file": "src/lib/repo.prisma.ts",
-      "line": 829,
+      "line": 897,
       "fn": "a",
       "model": "Article",
       "method": "findUnique",
@@ -14048,7 +14403,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 175,
+      "line": 176,
       "fn": "job",
       "model": "ScrapeJob",
       "method": "create",
@@ -14645,45 +15000,6 @@
       "why": "Public model read — world-readable by design."
     },
     {
-      "file": "src/services/dedupe/fighters.ts",
-      "line": 34,
-      "fn": "link",
-      "model": "FighterExternalId",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/services/dedupe/fighters.ts",
-      "line": 45,
-      "fn": "aliasHit",
-      "model": "FighterAlias",
-      "method": "findFirst",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/services/dedupe/fighters.ts",
-      "line": 55,
-      "fn": "candidates",
-      "model": "Fighter",
-      "method": "findMany",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
       "file": "src/services/sync/enrich-boxing-fighters.ts",
       "line": 73,
       "fn": "targets",
@@ -14789,7 +15105,20 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 417,
+      "line": 371,
+      "fn": "planCorner",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/services/sync/persist.ts",
+      "line": 432,
       "fn": "wc",
       "model": "WeightClass",
       "method": "findFirst",
@@ -14802,7 +15131,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 455,
+      "line": 470,
       "fn": "existing",
       "model": "Fight",
       "method": "findFirst",
@@ -14815,7 +15144,7 @@
     },
     {
       "file": "src/services/sync/persist.ts",
-      "line": 468,
+      "line": 483,
       "fn": "existing",
       "model": "Fight",
       "method": "findUnique",

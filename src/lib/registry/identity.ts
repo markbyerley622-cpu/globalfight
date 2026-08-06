@@ -186,10 +186,9 @@ export async function resolveFighterIdentity(
  * Disagreement is handled by demoteAcrossSports, not by refusing to see it.
  */
 async function gatherCandidates(key: string, input: FighterIdentityInput): Promise<CandidateRow[]> {
-  const tokens = key.split(" ").filter(Boolean);
-  const surname = tokens[tokens.length - 1];
-  // A one-token or very short name cannot narrow a 10,000-row table safely.
-  if (!surname || surname.length < 3) return [];
+  const term = narrowingTerm(key);
+  // Nothing usable to narrow a 10,000-row table with.
+  if (!term) return [];
 
   const [aliasRows, byName] = await Promise.all([
     // The alias table, including any alternate spellings the PROVIDER supplied —
@@ -202,7 +201,7 @@ async function gatherCandidates(key: string, input: FighterIdentityInput): Promi
       })
       .catch(() => [] as { fighterId: string }[]),
     prisma.fighter.findMany({
-      where: { name: { contains: surname, mode: "insensitive" } },
+      where: { name: { contains: term, mode: "insensitive" } },
       select: CANDIDATE_SELECT,
       take: 50,
     }),
@@ -216,6 +215,32 @@ async function gatherCandidates(key: string, input: FighterIdentityInput): Promi
   const merged = new Map<string, CandidateRow>();
   for (const row of [...byName, ...extra]) merged.set(row.id, row);
   return [...merged.values()];
+}
+
+/**
+ * The string to narrow the candidate scan on.
+ *
+ * The LONGEST token, not the last one. Two reasons, and the first is a real bug
+ * I introduced and the integration suite caught:
+ *
+ *   • A last-token rule fails on any name ending in something short —
+ *     "Bruno Silva Jr", "Marcus Silva Sr", and every name whose final token is a
+ *     suffix rather than a surname. Requiring the LAST token to be ≥3 characters
+ *     made those unresolvable, so every ingest created a duplicate for them.
+ *   • The longest token is also more SELECTIVE. "Jr" matches thousands of rows;
+ *     "Silva" matches hundreds. Narrowing on the more distinctive token is
+ *     strictly better for the same query cost.
+ *
+ * Falls back to the whole key when no single token is long enough (a name like
+ * "Li Na"), because scanning on a two-character token would return most of the
+ * table and the ladder would then be comparing against a truncated `take: 50`.
+ */
+function narrowingTerm(key: string): string | null {
+  const tokens = key.split(" ").filter(Boolean);
+  if (tokens.length === 0) return null;
+  const longest = tokens.reduce((best, t) => (t.length > best.length ? t : best), "");
+  if (longest.length >= 3) return longest;
+  return key.length >= 3 ? key : null;
 }
 
 async function aliasesFor(ids: string[]): Promise<Map<string, string[]>> {

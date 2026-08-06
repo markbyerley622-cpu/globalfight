@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1093 across 868 files
-- **By class:** 745 public · 253 user-owned · 95 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 190 low · ⚪ 808 info
+- **Queries analysed:** 1116 across 872 files
+- **By class:** 768 public · 253 user-owned · 95 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 197 low · ⚪ 824 info
 
 ## 🔴 High risk
 
@@ -121,6 +121,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | ArticleView | PUBLIC | auto (heuristic) |
 | AuditLog | PUBLIC | auto (heuristic) |
 | Champion | PUBLIC | auto (heuristic) |
+| ChampionObservation | PUBLIC | auto (heuristic) |
 | CommunityMarket | PUBLIC | auto (heuristic) |
 | Conversation | PUBLIC | auto (heuristic) |
 | DataSource | PUBLIC | auto (heuristic) |
@@ -139,6 +140,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | FighterAchievement | PUBLIC | auto (heuristic) |
 | FighterAlias | PUBLIC | auto (heuristic) |
 | FighterExternalId | PUBLIC | auto (heuristic) |
+| FighterIdentityCandidate | PUBLIC | auto (heuristic) |
 | FighterMedia | PUBLIC | auto (heuristic) |
 | FighterSocial | PUBLIC | auto (heuristic) |
 | FighterSponsor | PUBLIC | auto (heuristic) |
@@ -164,9 +166,11 @@ _None._ No private-model read/write was found without an ownership filter.
 | OddsSnapshot | PUBLIC | curated |
 | Promotion | PUBLIC | curated |
 | PromotionSource | PUBLIC | auto (heuristic) |
+| ProviderCheckpoint | PUBLIC | auto (heuristic) |
 | ProviderHealth | PUBLIC | auto (heuristic) |
 | ProviderSync | PUBLIC | auto (heuristic) |
 | Ranking | PUBLIC | curated |
+| RankingObservation | PUBLIC | auto (heuristic) |
 | RankingSnapshot | PUBLIC | auto (heuristic) |
 | RankSnapshot | PUBLIC | auto (heuristic) |
 | ResultCandidate | PUBLIC | auto (heuristic) |
@@ -174,6 +178,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | ScrapeJob | PUBLIC | auto (heuristic) |
 | Tag | PUBLIC | auto (heuristic) |
 | Title | PUBLIC | auto (heuristic) |
+| TitleReign | PUBLIC | auto (heuristic) |
 | User | PUBLIC | auto (heuristic) |
 | WeightClass | PUBLIC | curated |
 | Battle | SHARED | curated |
