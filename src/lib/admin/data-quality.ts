@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -38,6 +39,21 @@ export interface PromotionCoverage {
   missingResults: number;
   /** Past events with at least one bout carrying a result. */
   withResults: number;
+  /**
+   * Gap events the EXISTING Wikipedia backfill would already pick up.
+   *
+   * The most important column in this report, and the reason it exists: it
+   * separates "we have no source for this" from "we have a source and it has not
+   * run". Those look identical in a gap count and lead to completely different
+   * sprints — one is eight new connectors, the other is a cron service.
+   *
+   * Matches findWikiTargets' own predicate (a past, non-cancelled event with
+   * `resultsCompleteAt: null` that either has no bouts or has an undecided one),
+   * so this is what that job would actually queue, not an estimate of it.
+   */
+  reachableByBackfill: number;
+  /** FUTURE events with no card yet — a different problem to a historical gap. */
+  upcomingMissingCard: number;
   /** Does this promotion have a current titleholder on record? */
   hasChampions: boolean;
   /** Does it publish a ranking we ingest? */
@@ -47,16 +63,41 @@ export interface PromotionCoverage {
   note: string;
 }
 
+/** Freshness of the machinery, as opposed to completeness of the data. */
+export interface PipelineHealth {
+  /** Ranking rows whose reconciliation is older than the staleness ceiling. */
+  staleRankings: number;
+  /** Most recent open-reign update, i.e. how fresh champion data is. */
+  championsUpdatedAt: string | null;
+  /** Open "is this the same person?" questions awaiting review. */
+  duplicateCandidates: number;
+  /** Per-provider sync state, worst first. */
+  providers: ProviderFreshness[];
+}
+
+export interface ProviderFreshness {
+  provider: string;
+  lastCheckedAt: string | null;
+  lastChangedAt: string | null;
+  failureStreak: number;
+  lastError: string | null;
+}
+
 export interface DataQualityReport {
   generatedAt: string;
   promotions: PromotionCoverage[];
+  health: PipelineHealth;
   totals: {
     events: number;
     missingBouts: number;
     missingResults: number;
+    reachableByBackfill: number;
     promotionsWithGaps: number;
   };
 }
+
+/** A ranking not reconciled within this many days is stale. */
+const RANKING_STALE_DAYS = 14;
 
 /**
  * A gap is only a gap once a card has had time to be reported.
@@ -76,7 +117,20 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
   // Four grouped queries for the whole report, whatever the number of
   // promotions. The naive version is a query per promotion per metric, which is
   // how a "quick report" becomes a two-minute page load.
-  const [byPromotion, boutless, pastWithBouts, resolved, championOrgs, rankingOrgs] = await Promise.all([
+  // The EXISTING Wikipedia backfill's own eligibility predicate, mirrored so the
+  // "reachable" column reports what that job would actually queue rather than an
+  // approximation of it. See lib/scraper/wikicard/targets::findWikiTargets.
+  const backfillEligible: Prisma.EventWhereInput = {
+    date: { lt: now },
+    status: { notIn: ["DRAFT", "CANCELLED", "POSTPONED"] },
+    resultsCompleteAt: null,
+    OR: [{ fights: { none: {} } }, { fights: { some: { result: "SCHEDULED" } } }],
+  };
+
+  const [
+    byPromotion, boutless, pastWithBouts, resolved, championOrgs, rankingOrgs,
+    reachable, upcomingBoutless,
+  ] = await Promise.all([
     prisma.event.groupBy({ by: ["promotion"], _count: { _all: true } }),
     // No bouts at all — the card itself never landed.
     prisma.event.groupBy({
@@ -105,10 +159,17 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
     prisma.ranking
       .findMany({ where: { organisation: { not: "" } }, select: { organisation: true }, distinct: ["organisation"] })
       .catch(() => [] as { organisation: string }[]),
+    prisma.event.groupBy({ by: ["promotion"], where: backfillEligible, _count: { _all: true } }),
+    prisma.event.groupBy({
+      by: ["promotion"],
+      where: { date: { gte: now }, fights: { none: {} } },
+      _count: { _all: true },
+    }),
   ]);
 
-  const count = (rows: { promotion: string | null; _count: { _all: number } }[], key: string | null) =>
-    rows.find((r) => r.promotion === key)?._count._all ?? 0;
+  type Grouped = { promotion: string | null; _count: { _all: number } };
+  const count = (rows: readonly unknown[], key: string | null) =>
+    (rows as Grouped[]).find((r) => r.promotion === key)?._count._all ?? 0;
 
   // Case-insensitive, because Event.promotion is free text written by several
   // pipelines: "ONE Championship" and "ONE" must not be two rows in a report
@@ -145,22 +206,70 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
         missingBouts,
         missingResults,
         withResults,
+        reachableByBackfill: count(reachable, p.promotion),
+        upcomingMissingCard: count(upcomingBoutless, p.promotion),
         hasChampions,
         hasRankings,
         ...verdict({ events, missingBouts, missingResults, pastCards }),
       };
     })
-    .sort((a, b) => b.events - a.events);
+    // WORST FIRST, not biggest first. A report sorted by size puts the healthy
+    // giants at the top and buries the broken small promotion at the bottom,
+    // which is the opposite of what someone opens it to find out.
+    .sort((a, b) => SEVERITY[a.status] - SEVERITY[b.status] || b.missingBouts + b.missingResults - (a.missingBouts + a.missingResults));
 
   return {
     generatedAt: now.toISOString(),
     promotions,
+    health: await auditPipelineHealth(now),
     totals: {
       events: promotions.reduce((n, p) => n + p.events, 0),
       missingBouts: promotions.reduce((n, p) => n + p.missingBouts, 0),
       missingResults: promotions.reduce((n, p) => n + p.missingResults, 0),
+      reachableByBackfill: promotions.reduce((n, p) => n + p.reachableByBackfill, 0),
       promotionsWithGaps: promotions.filter((p) => p.status === "warning" || p.status === "critical").length,
     },
+  };
+}
+
+const SEVERITY: Record<CoverageStatus, number> = { critical: 0, warning: 1, empty: 2, healthy: 3 };
+
+/**
+ * Freshness of the machinery.
+ *
+ * Separate from coverage because they fail independently and are fixed by
+ * different people: a promotion can have complete data while its provider has
+ * been dark for a month (nothing new has happened), and it can have a perfectly
+ * healthy provider while its data is full of holes (the source does not publish
+ * them). Merging the two into one "health" number loses both.
+ */
+async function auditPipelineHealth(now: Date): Promise<PipelineHealth> {
+  const staleBefore = new Date(now.getTime() - RANKING_STALE_DAYS * 86_400_000);
+
+  const [staleRankings, freshestReign, duplicateCandidates, checkpoints] = await Promise.all([
+    prisma.ranking
+      .count({ where: { OR: [{ reconciledAt: null }, { reconciledAt: { lt: staleBefore } }] } })
+      .catch(() => 0),
+    prisma.titleReign
+      .findFirst({ where: { endedAt: null }, orderBy: { updatedAt: "desc" }, select: { updatedAt: true } })
+      .catch(() => null),
+    prisma.fighterIdentityCandidate.count({ where: { status: "PENDING" } }).catch(() => 0),
+    prisma.providerCheckpoint
+      .findMany({ orderBy: [{ failureStreak: "desc" }, { lastCheckedAt: "asc" }], take: 30 })
+      .catch(() => []),
+  ]);
+
+  return {
+    staleRankings,
+    championsUpdatedAt: freshestReign?.updatedAt.toISOString() ?? null,
+    duplicateCandidates,
+    providers: checkpoints.map((c) => ({
+      provider: c.scope ? `${c.provider}/${c.scope}` : c.provider,
+      lastCheckedAt: c.lastCheckedAt?.toISOString() ?? null,
+      lastChangedAt: c.lastChangedAt?.toISOString() ?? null,
+      failureStreak: c.failureStreak,
+      lastError: c.lastError,
+    })),
   };
 }
 

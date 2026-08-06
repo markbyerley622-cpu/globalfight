@@ -40,26 +40,68 @@ async function main() {
   const rows = gapsOnly ? report.promotions.filter((p) => p.status !== "healthy") : report.promotions;
 
   console.log(`\nDATA QUALITY · ${report.promotions.length} promotions · ${report.totals.events} events`);
-  console.log("═".repeat(92));
+  console.log("═".repeat(100));
   console.log(
-    `  ${pad("Promotion", 26)} ${num(0, 6).replace("0", "Events".padStart(6))} ${"NoBouts".padStart(8)} ${"NoResult".padStart(9)} ${"Champs".padStart(7)} ${"Ranks".padStart(6)}  Status`,
+    `  ${pad("Promotion", 24)} ${"Events".padStart(6)} ${"NoBouts".padStart(8)} ${"NoResult".padStart(9)} ` +
+      `${"Reach".padStart(6)} ${"Upcom".padStart(6)} ${"Champs".padStart(7)} ${"Ranks".padStart(6)}  Status`,
   );
-  console.log("─".repeat(92));
+  console.log("─".repeat(100));
 
   for (const p of rows) {
     console.log(
-      `${ICON[p.status]} ${pad(p.promotion, 26)} ${num(p.events, 6)} ${num(p.missingBouts, 8)} ${num(p.missingResults, 9)} ` +
+      `${ICON[p.status]} ${pad(p.promotion, 24)} ${num(p.events, 6)} ${num(p.missingBouts, 8)} ${num(p.missingResults, 9)} ` +
+        `${num(p.reachableByBackfill, 6)} ${num(p.upcomingMissingCard, 6)} ` +
         `${(p.hasChampions ? "yes" : "—").padStart(7)} ${(p.hasRankings ? "yes" : "—").padStart(6)}  ${p.status}`,
     );
-    if (p.status !== "healthy") console.log(`  ${" ".repeat(26)} └─ ${p.note}`);
+    if (p.status !== "healthy") console.log(`  ${" ".repeat(24)} └─ ${p.note}`);
   }
 
-  console.log("═".repeat(92));
+  console.log("═".repeat(100));
   console.log(
     `TOTALS  ${report.totals.missingBouts} events with no bouts · ` +
       `${report.totals.missingResults} finished cards with no result · ` +
       `${report.totals.promotionsWithGaps} promotion(s) need work`,
   );
+
+  // ── The column that decides the next sprint ─────────────────────────────
+  // "Reach" is how many gap events the EXISTING Wikipedia backfill would already
+  // queue. A large number here means the gaps are a BACKLOG, not a missing
+  // source — and building new connectors before draining it would be writing a
+  // second solution to a problem whose first solution is already merged.
+  const reach = report.totals.reachableByBackfill;
+  if (reach > 0) {
+    // Deliberately NOT expressed as a percentage of the gap columns. "Reach"
+    // counts events with ANY undecided bout, while NoResult counts events where
+    // NOTHING is decided — so Reach legitimately exceeds the gap total (a
+    // half-resolved card is reachable but is not a gap by that definition). An
+    // earlier draft printed the ratio and reported 172%, which is exactly the
+    // kind of number that makes a reader stop trusting the whole report.
+    console.log(
+      `\n${reach} events are ALREADY queue-eligible for the existing Wikipedia backfill\n` +
+        `(/api/cron/refresh-wikicards) — every event with no card, plus every one with a\n` +
+        `bout still undecided. Confirm that job is running before building new connectors.\n` +
+        `See docs/CRON.md.`,
+    );
+  }
+
+  const h = report.health;
+  console.log("\nPIPELINE HEALTH");
+  console.log("─".repeat(100));
+  console.log(`  stale rankings (>14d unreconciled) : ${h.staleRankings}`);
+  console.log(`  champions last updated             : ${h.championsUpdatedAt?.slice(0, 16).replace("T", " ") ?? "never"}`);
+  console.log(`  identity questions awaiting review : ${h.duplicateCandidates}`);
+  if (h.providers.length) {
+    console.log("\n  provider                     last checked      last changed      fails");
+    for (const p of h.providers) {
+      console.log(
+        `  ${pad(p.provider, 28)} ${(p.lastCheckedAt?.slice(0, 16).replace("T", " ") ?? "never").padEnd(17)} ` +
+          `${(p.lastChangedAt?.slice(0, 16).replace("T", " ") ?? "never").padEnd(17)} ${num(p.failureStreak, 5)}`,
+      );
+      if (p.lastError) console.log(`  ${" ".repeat(28)} └─ ${p.lastError.slice(0, 60)}`);
+    }
+  } else {
+    console.log("  providers                          : no checkpoints yet — nothing has ingested since the evidence layer landed");
+  }
 
   if (gapsOnly && rows.length === 0) console.log("\nEvery promotion is complete.\n");
   else console.log();
