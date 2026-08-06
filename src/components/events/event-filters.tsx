@@ -6,7 +6,6 @@ import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { SPORTS } from "@/lib/sports";
 import type { EventFacet } from "@/lib/events-query";
 import { cn } from "@/lib/utils";
-import { useScrollDirection } from "@/lib/use-scroll-direction";
 import { preserveScrollOnNextNavigation } from "@/components/layout/scroll-restoration";
 
 // Every filter lives in the URL and nothing is filtered on the client — this
@@ -34,44 +33,68 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
   const params = useSearchParams();
 
   /**
-   * COLLAPSE ONCE PINNED.
+   * ONE SHAPE, ALWAYS. The bar's layout box never changes.
    *
-   * All four rows pinned to the top is roughly 150px of chrome — on a 780px
-   * phone that is a fifth of the screen permanently occupied by controls,
-   * following the reader down a list they are trying to look at.
+   * ── The bug this replaces, and its actual cause ──────────────────────────
+   * The bar used to have TWO shapes and three scroll-driven state changes, all
+   * of them mutating the height of the same in-flow element:
    *
-   * So the bar has two shapes. At the top of the page it is fully open, because
-   * that is when someone is deciding what to look at. Once it sticks it drops to
-   * the Sport row plus a toggle: sport is the filter people actually change
-   * mid-scroll, and the rest are set once and left. Tapping the toggle brings
-   * them back at any time, and the active-count on it means a collapsed bar
-   * never hides the fact that filters are on.
+   *   `stuck`       IntersectionObserver → collapsed ~90–150px of filter rows
+   *   `showToggle`  scroll direction     → collapsed the toggle row
+   *   `open`        the reader           → expanded it again
+   *
+   * `position: sticky` keeps an element IN FLOW. So every one of those height
+   * changes reflowed the entire list below it — while the reader was scrolling
+   * through that list. That is the compressing and jumping, and it is a layout
+   * problem, not a CSS-value problem: no amount of tuning durations or easings
+   * fixes a box that changes size under a moving reader.
+   *
+   * It could also oscillate. Collapsing removes height from ABOVE the viewport,
+   * so the content below shifts up and the scroll container's height shrinks;
+   * near the bottom of a short list the browser clamps scrollTop, which can move
+   * the sentinel back across the observer's threshold and flip `stuck` straight
+   * back. The observed element's visibility depended on the height the
+   * observation controlled — a control loop with no damping.
+   *
+   * `showToggle` was mine, added last sprint, and it was the worst of the three:
+   * it guaranteed a height change on EVERY change of scroll direction.
+   *
+   * ── The fix ──────────────────────────────────────────────────────────────
+   * The sticky bar is now exactly one row plus a toggle, at a constant height,
+   * with NO scroll-driven state whatsoever. The extended filters moved OUT OF
+   * FLOW into an absolutely-positioned panel that overlays the list, so opening
+   * and closing them cannot reflow anything. Only the contents animate; the
+   * container's contribution to layout is a constant.
+   *
+   * ── What that costs, stated ──────────────────────────────────────────────
+   * The page no longer opens with every filter row visible — promotion, location
+   * and when are one tap away instead of zero. That is the trade for a bar that
+   * never moves, and it is the shape ESPN, F1 and the UFC's own apps use. The
+   * active-count on the toggle means a folded bar still cannot hide that filters
+   * are on.
    */
-  const sentinel = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState(false);
   const [open, setOpen] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
+  // ── Close the overlay on Escape or an outside tap ───────────────────────
+  // An out-of-flow panel that can only be dismissed by finding its own button
+  // again is a trap on a phone.
   useEffect(() => {
-    const el = sentinel.current;
-    if (!el) return;
-    // A zero-height marker directly ABOVE the sticky bar: while it is on screen
-    // the bar is in its resting place; the moment it scrolls out, the bar is
-    // pinned. Cheaper and steadier than reading scrollTop on every frame, and it
-    // observes inside #main because the document itself never scrolls here.
-    const io = new IntersectionObserver(
-      ([e]) => setStuck(!e.isIntersecting),
-      { root: document.getElementById("main"), threshold: 0 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  // Hide the "More filters" toggle while the reader is scrolling DOWN a list,
-  // bring it back the moment they scroll up. Kept visible whenever the panel is
-  // actually open — collapsing the control that closes it would strand the
-  // reader with an expanded panel and no way to fold it away.
-  const scrollDirection = useScrollDirection();
-  const showToggle = open || scrollDirection === "up";
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (panel.current?.contains(t) || toggleRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown, true);
+    };
+  }, [open]);
 
   const get = (k: string) => params.get(k) ?? "";
 
@@ -163,9 +186,10 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
      * the other three are how a fan describes the card they are looking for.
      */
     <>
-    {/* The stuck-detector. Zero height, no paint. */}
-    <div ref={sentinel} aria-hidden className="h-px" />
-    <div className="sticky top-0 z-20 -mx-4 space-y-3 border-b border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur-xl">
+    {/* CONSTANT HEIGHT. One row, one toggle, no scroll-driven state. Nothing in
+        here may change the height of this element — see the header. `relative`
+        is what the out-of-flow panel below positions against. */}
+    <div className="sticky top-0 z-20 -mx-4 border-b border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur-xl">
       <Row label="Sport">
         <Pill onClick={() => set("sport", "")} active={many("sport").length === 0}>All</Pill>
         {FILTER_SPORTS.map((s) => (
@@ -173,40 +197,42 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
         ))}
       </Row>
 
-      {/* Everything below the sport row collapses once the bar is pinned.
-          Open whenever the bar is resting, so the page still opens with every
-          filter visible.
-
-          ── Why a GRID and not a height ──────────────────────────────────
-          This used to mount and unmount, which snapped: 90px of controls
-          appeared and vanished between frames, and on a phone that reads as the
-          page jolting rather than a panel closing.
-          `grid-template-rows: 0fr -> 1fr` is the one way to transition to
-          CONTENT height without measuring it in JavaScript — `height: auto` is
-          not animatable, and a hardcoded max-height either clips a long
-          promotion row or leaves dead space when the list is short. The child
-          needs `min-h-0` and `overflow-hidden` or it refuses to compress below
-          its intrinsic height and nothing moves.
-          Both properties are compositor-friendly here, and the reduced-motion
-          backstop in globals.css neutralises the whole thing for anyone who
-          asked for that. */}
-      <div
-        className={cn(
-          // `ease-out`, deliberately NOT the `ease-out-back` used on the pick
-          // buttons: back-easing overshoots past its end value, which on a
-          // press reads as a satisfying pop and on a HEIGHT reads as the panel
-          // bouncing. 260ms is long enough to read as motion, short enough not
-          // to be waited on mid-scroll.
-          "grid transition-[grid-template-rows,opacity] duration-[260ms] ease-out",
-          !stuck || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-        )}
-        // Hidden from assistive tech AND from tab order when collapsed —
-        // an animated-to-zero panel is still focusable otherwise, so a keyboard
-        // user would tab into filters they cannot see.
-        aria-hidden={stuck && !open}
-        inert={stuck && !open ? true : undefined}
+      {/* The toggle. ALWAYS present, so its row is part of the constant box. */}
+      <button
+        ref={toggleRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="tap mt-2 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-ink-800 bg-ink-900/60 px-3 py-1 text-2xs font-bold uppercase tracking-wider text-fog transition-colors hover:border-ink-700 hover:text-mist"
       >
-      <div className="min-h-0 space-y-3 overflow-hidden">
+        <SlidersHorizontal className="size-3" aria-hidden />
+        {open ? "Fewer filters" : "More filters"}
+        {activeCount > 0 && (
+          <span className="rounded-full bg-blood-500 px-1.5 text-3xs font-black text-white tabular-nums">{activeCount}</span>
+        )}
+        <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+
+      {/* ── OUT OF FLOW ──────────────────────────────────────────────────────
+          `absolute`, so expanding and collapsing this panel cannot reflow the
+          list behind it. This is the whole fix: the sticky bar's layout box is
+          a constant, and only the panel's own opacity and transform animate.
+
+          Scrolls internally rather than growing without bound — a promotion row
+          on a busy month is long, and a panel taller than the screen would put
+          its own Clear button out of reach. `overscroll-contain` stops a flick
+          past its end from scrolling the list underneath. */}
+      <div
+        ref={panel}
+        className={cn(
+          "cr-overscroll-contain absolute inset-x-0 top-full max-h-[60vh] origin-top space-y-3 overflow-y-auto border-b border-ink-800 bg-ink-950/98 px-4 pb-3 pt-1 backdrop-blur-xl",
+          "transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+          open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
+        )}
+        aria-hidden={!open}
+        inert={open ? undefined : true}
+      >
+
       {facets.promotions.length > 0 && (
         <Row label="Promotion">
           <Pill onClick={() => set("promotion", "")} active={many("promotion").length === 0}>All</Pill>
@@ -258,52 +284,6 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
           <X className="size-3.5" /> Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
         </button>
       )}
-      </div>
-      </div>
-
-      {/* The toggle, only while pinned. It carries the active count so a
-          collapsed bar can never hide that filters are on — the one thing a
-          reader must not lose when the controls fold away.
-
-          ── Hide on scroll DOWN, reveal on scroll UP ─────────────────────────
-          Reading a list is scrolling down, and while you are doing that this
-          control is only taking screen. Scrolling back up is the gesture that
-          means "I want the controls again", so that is when it returns.
-
-          It collapses its HEIGHT, not just its opacity: fading it out would
-          leave the gap it occupies, which is the specific complaint. The
-          grid-rows 1fr→0fr idiom is the same one the filter rows above use, and
-          it animates height smoothly without needing a measured pixel value.
-
-          `overflow-hidden` on the grid child is what makes that work, and
-          `pointer-events-none` while hidden stops a collapsed-but-not-yet-gone
-          button from swallowing a tap. */}
-      <div
-        className={cn(
-          "grid transition-all duration-200 ease-out motion-reduce:transition-none",
-          stuck ? "" : "hidden",
-          showToggle
-            ? "grid-rows-[1fr] pt-0 opacity-100"
-            : "pointer-events-none grid-rows-[0fr] opacity-0",
-        )}
-        aria-hidden={!showToggle}
-      >
-        <div className="overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            tabIndex={showToggle ? undefined : -1}
-            className="tap flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-ink-800 bg-ink-900/60 px-3 py-1 text-2xs font-bold uppercase tracking-wider text-fog transition-colors hover:border-ink-700 hover:text-mist"
-          >
-            <SlidersHorizontal className="size-3" aria-hidden />
-            {open ? "Fewer filters" : "More filters"}
-            {activeCount > 0 && (
-              <span className="rounded-full bg-blood-500 px-1.5 text-3xs font-black text-white tabular-nums">{activeCount}</span>
-            )}
-            <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
-          </button>
-        </div>
       </div>
     </div>
     </>
