@@ -53,6 +53,41 @@ scanner. Sharing one variable would make that impossible to express later.
 Check it after deploying: `/api/health` reports `mediaScanner`
 (`configured` / `provider` / `reachable`) without exposing the URL or token.
 
+### Media storage — a SECOND requirement, easy to miss
+
+A scanner is necessary but **not sufficient**. Publishing an asset also needs
+public object storage, and these are separate credentials from the evidence
+bucket:
+
+| Variable | Effect when unset |
+|---|---|
+| `R2_ENDPOINT` / `_BUCKET` / `_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` / `_PUBLIC_BASE_URL` (or the `S3_*` equivalents) | Image processing throws, so every upload ends in `FAILED`. |
+
+`EVIDENCE_R2_*` does **not** satisfy this. That bucket is deliberately private —
+it holds identity documents — and public media must never be written there.
+
+The failure mode is worth knowing before you meet it: uploads are refused with
+*"We couldn't process that image"* and the asset lands in `FAILED`, not
+`REJECTED`. That distinction is the diagnosis. `REJECTED` means the pipeline is
+working and rejected a file; a run of `FAILED` means **we** are broken — the
+scanner is down or storage is unconfigured. Query it directly:
+
+```sql
+SELECT status, count(*) FROM "MediaAsset"
+ WHERE "createdAt" > now() - interval '1 hour' GROUP BY status;
+```
+
+### Media cleanup — needs a scheduled job
+
+`cleanupMedia()` sweeps abandoned uploads (`PENDING`/`SCANNING` past a 6-hour
+TTL), unreferenced published assets, and quarantined material older than 30
+days. It is idempotent, so a duplicate or retried run is harmless.
+
+⚠️ **Not yet scheduled.** No cron route calls it, so nothing sweeps today.
+Storage grows without bound until it is wired to `/api/cron/*`. It only marks
+rows `DELETED` — it never removes bytes — so the worst outcome of running it is
+a reversible state change, and byte reclamation is a deliberate second step.
+
 ### Behavioural
 
 | Variable | Effect |
@@ -151,3 +186,5 @@ are not mistaken for done.
 - [ ] **Instance count.** More than one without `REDIS_URL` means rate limits are per-instance.
 - [ ] **Alerting.** Whether anything watches `/api/health` and tells a human.
 - [ ] **Incident ownership.** Who responds, and how they are reached.
+- [ ] **Public media storage (`R2_*`/`S3_*`) is configured.** Without it every media upload ends in `FAILED`. Not covered by the startup guard, which only checks the evidence bucket.
+- [ ] **`cleanupMedia()` is scheduled.** Nothing calls it today; abandoned uploads accumulate until it is wired to a cron route.
