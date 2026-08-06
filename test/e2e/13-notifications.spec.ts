@@ -182,11 +182,26 @@ test("following from search survives a reload — it is persisted, not just opti
 });
 
 test("the notifications API pages with a cursor and refuses cross-user writes", async ({ page }) => {
-  // Driven through the browser's own session, so this exercises the real auth path
-  // rather than a hand-made cookie.
-  const first = await page.request.get("/api/me/notifications?limit=1");
-  expect(first.ok()).toBe(true);
-  const body = await first.json();
+  // Driven through the PAGE's own fetch, not `page.request`.
+  //
+  // The session cookie is `Secure` — correct, because `next start` runs with
+  // NODE_ENV=production. Chromium treats 127.0.0.1 as a trustworthy origin and
+  // sends Secure cookies to it over plain HTTP, which is why every in-page
+  // request here is authenticated. Playwright's APIRequestContext
+  // (`page.request`) does NOT apply that localhost exemption, so it sent no
+  // cookie and this test silently ran signed out: the GET still returns 200
+  // with empty arrays for an anonymous caller, so every assertion above the
+  // DELETE passed by accident and only the DELETE (401) failed.
+  //
+  // Fetching from inside the page is both the fix and the more faithful test —
+  // it is exactly the channel the application itself uses.
+  await page.goto("/notifications");
+  const first = await page.evaluate(async () => {
+    const r = await fetch("/api/me/notifications?limit=1");
+    return { ok: r.ok, body: await r.json() };
+  });
+  expect(first.ok).toBe(true);
+  const body = first.body;
 
   expect(body).toHaveProperty("groups");
   expect(body).toHaveProperty("unread");
@@ -196,11 +211,16 @@ test("the notifications API pages with a cursor and refuses cross-user writes", 
 
   // Deleting an id that is not ours must report zero deleted, never an error and
   // never a deletion.
-  const del = await page.request.delete("/api/me/notifications", {
-    data: { ids: ["definitely-not-a-real-notification-id"] },
+  const del = await page.evaluate(async () => {
+    const r = await fetch("/api/me/notifications", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ids: ["definitely-not-a-real-notification-id"] }),
+    });
+    return { ok: r.ok, body: await r.json() };
   });
-  expect(del.ok()).toBe(true);
-  expect((await del.json()).deleted).toBe(0);
+  expect(del.ok, "an authenticated DELETE must be accepted").toBe(true);
+  expect(del.body.deleted, "someone else's id must delete nothing").toBe(0);
 });
 
 // Its own block, because the anonymous case has to UNDO this file's signed-in

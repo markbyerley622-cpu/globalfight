@@ -28,7 +28,13 @@ test("a signed-in member picks a corner, chooses the finish, and it persists", a
 
   const red = page.locator('[data-testid="corner-pick"][data-corner="RED"]').first();
   await expect(red, "bout page should show the pick control").toBeVisible({ timeout: 15_000 });
-  await expect(red).toHaveAttribute("data-picked", "false");
+
+  // NO assertion on the starting state, deliberately. This test WRITES a pick,
+  // so on a second run against the same database the bout is already called —
+  // and a test that only passes against a freshly seeded row is a test that
+  // will fail the first time someone runs the suite twice. CI re-seeds before
+  // every run; this stays correct either way. What is verified below is the
+  // TRANSITION, which holds from either starting state.
 
   // STEP 1 — tapping the corner must NOT write. It opens the finish chooser.
   let wrote = false;

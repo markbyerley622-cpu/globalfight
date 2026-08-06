@@ -166,10 +166,39 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
       </Row>
 
       {/* Everything below the sport row collapses once the bar is pinned.
-          `showSecondary` is true whenever the bar is resting, so the page still
-          opens with every filter visible. */}
-      {(!stuck || open) && (
-      <>
+          Open whenever the bar is resting, so the page still opens with every
+          filter visible.
+
+          ── Why a GRID and not a height ──────────────────────────────────
+          This used to mount and unmount, which snapped: 90px of controls
+          appeared and vanished between frames, and on a phone that reads as the
+          page jolting rather than a panel closing.
+          `grid-template-rows: 0fr -> 1fr` is the one way to transition to
+          CONTENT height without measuring it in JavaScript — `height: auto` is
+          not animatable, and a hardcoded max-height either clips a long
+          promotion row or leaves dead space when the list is short. The child
+          needs `min-h-0` and `overflow-hidden` or it refuses to compress below
+          its intrinsic height and nothing moves.
+          Both properties are compositor-friendly here, and the reduced-motion
+          backstop in globals.css neutralises the whole thing for anyone who
+          asked for that. */}
+      <div
+        className={cn(
+          // `ease-out`, deliberately NOT the `ease-out-back` used on the pick
+          // buttons: back-easing overshoots past its end value, which on a
+          // press reads as a satisfying pop and on a HEIGHT reads as the panel
+          // bouncing. 260ms is long enough to read as motion, short enough not
+          // to be waited on mid-scroll.
+          "grid transition-[grid-template-rows,opacity] duration-[260ms] ease-out",
+          !stuck || open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+        // Hidden from assistive tech AND from tab order when collapsed —
+        // an animated-to-zero panel is still focusable otherwise, so a keyboard
+        // user would tab into filters they cannot see.
+        aria-hidden={stuck && !open}
+        inert={stuck && !open ? true : undefined}
+      >
+      <div className="min-h-0 space-y-3 overflow-hidden">
       {facets.promotions.length > 0 && (
         <Row label="Promotion">
           <Pill onClick={() => set("promotion", "")} active={many("promotion").length === 0}>All</Pill>
@@ -221,8 +250,8 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
           <X className="size-3.5" /> Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
         </button>
       )}
-      </>
-      )}
+      </div>
+      </div>
 
       {/* The toggle, only while pinned. It carries the active count so a
           collapsed bar can never hide that filters are on — the one thing a
