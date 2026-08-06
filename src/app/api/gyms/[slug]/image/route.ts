@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { processAndStoreContentImage, deleteStored } from "@/lib/images/store";
 import { readImageUpload, isDecodeError } from "@/lib/images/upload-policy";
-import { authoriseGymEdit } from "@/lib/geo/gym-auth";
+import { authoriseGymCapability } from "@/lib/gyms/authorise";
 import { refuseIfUgcMediaDisabled } from "@/lib/ugc-guard";
 import { log } from "@/lib/scraper/logger";
 
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const disabled = refuseIfUgcMediaDisabled();
   if (disabled) return disabled;
 
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageMedia");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 
@@ -78,7 +78,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 export async function DELETE(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageMedia");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 

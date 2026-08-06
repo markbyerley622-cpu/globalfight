@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { authoriseGymEdit } from "@/lib/geo/gym-auth";
+import { authoriseGymCapability } from "@/lib/gyms/authorise";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ const Body = z.object({
 /** The full roster, for the dashboard. Owner-only: it carries join dates. */
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageRoster");
   if (!auth.ok) return auth.response;
 
   const members = await prisma.gymMember.findMany({
@@ -70,7 +70,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageRoster");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 

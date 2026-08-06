@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1024,
+    "queries": 1026,
     "high": 0,
     "medium": 82,
     "low": 178,
-    "info": 764,
-    "public": 692,
+    "info": 766,
+    "public": 694,
     "userOwned": 239,
     "shared": 93,
     "admin": 0
@@ -9192,7 +9192,7 @@
     },
     {
       "file": "src/lib/geo/gym-auth.ts",
-      "line": 32,
+      "line": 44,
       "fn": "gym",
       "model": "Gym",
       "method": "findUnique",
@@ -9800,6 +9800,32 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/gyms/authorise.ts",
+      "line": 73,
+      "fn": "gym",
+      "model": "Gym",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/gyms/authorise.ts",
+      "line": 120,
+      "fn": "gym",
+      "model": "Gym",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/lib/home/recommendations.ts",

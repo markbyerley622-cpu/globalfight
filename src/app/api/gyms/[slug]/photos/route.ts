@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { processAndStoreContentImage, deleteStored } from "@/lib/images/store";
 import { readImageUpload, isDecodeError } from "@/lib/images/upload-policy";
-import { authoriseGymEdit } from "@/lib/geo/gym-auth";
+import { authoriseGymCapability } from "@/lib/gyms/authorise";
 import { refuseIfUgcMediaDisabled } from "@/lib/ugc-guard";
 import { log } from "@/lib/scraper/logger";
 
@@ -41,7 +41,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const disabled = refuseIfUgcMediaDisabled();
   if (disabled) return disabled;
 
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageMedia");
   if (!auth.ok) return auth.response;
   const { gym, userId } = auth.value;
 
@@ -112,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 export async function DELETE(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageMedia");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 
@@ -151,7 +151,7 @@ const Meta = z.object({
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageMedia");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 
@@ -208,7 +208,7 @@ const Reorder = z.object({ order: z.array(z.string().min(1)).min(1).max(MAX_PHOT
  */
 export async function PUT(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "manageMedia");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 

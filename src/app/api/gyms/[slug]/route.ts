@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { countryCodeFor } from "@/lib/geo/gazetteer";
-import { authoriseGymEdit } from "@/lib/geo/gym-auth";
+import { authoriseGymCapability } from "@/lib/gyms/authorise";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Gym page management — the capability an approved claim grants.
@@ -43,7 +43,7 @@ const Body = z.object({
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const auth = await authoriseGymEdit(slug);
+  const auth = await authoriseGymCapability(slug, "editProfile");
   if (!auth.ok) return auth.response;
   const { gym } = auth.value;
 

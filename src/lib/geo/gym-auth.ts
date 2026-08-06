@@ -5,6 +5,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { isAdminRole } from "@/lib/admin/guard";
 
 // ════════════════════════════════════════════════════════════════════════════
+//  ⚠️ SUPERSEDED by lib/gyms/authorise::authoriseGymCapability.
+//
+//  This answered only the IDENTITY half ("is this the owner?"). It had no idea
+//  whether the gym had ever been REVIEWED, so `ownerId` alone gated publishing —
+//  and ownerId can be set outside the claim flow (an import, an admin repairing
+//  data), which meant such a row could publish with no human ever having looked
+//  at a claim.
+//
+//  Kept only because deleting an exported function is a wider change than this
+//  sprint should make. It has NO call sites. Do not add one: use
+//  authoriseGymCapability, which checks identity AND verification state.
+//
 //  "May this request change this gym?" — asked once, in one place.
 //
 //  Three routes now mutate a gym (details, images, photos). Three copies of the
