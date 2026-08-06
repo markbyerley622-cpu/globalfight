@@ -121,6 +121,21 @@ export const POLICY = {
   // Creating a gym GEOCODES against an external provider — a cost + a spam
   // vector, so it is bounded tighter than an ordinary write.
   gymCreate: { limit: 6, windowMs: 60 * 60_000 },
+  // ── Gym posts ──────────────────────────────────────────────────────────
+  // A post publishes to a gym's public page and can carry ten images, so it is
+  // bounded tighter than a forum reply. Comments sit at the forum's pace
+  // because they are the same act.
+  gymPost: { limit: 20, windowMs: 60 * 60_000 },
+  gymPostComment: { limit: 40, windowMs: 15 * 60_000 },
+  // Sharing a post is ANONYMOUS by design, and shareCount is the heaviest input
+  // to the feed ranker — so unbounded it is a one-line script for putting any
+  // post at the top of the feed. Bounded per IP+post, exactly like threadShare
+  // and for exactly the same reason.
+  gymPostShare: { limit: 10, windowMs: 60 * 60_000 },
+  // An upload runs sharp AND calls the malware scanner, so every request costs
+  // CPU and (with a hosted scanner) money. This is the only door to the media
+  // lifecycle, which makes it the only place that cost can be bounded.
+  mediaUpload: { limit: 40, windowMs: 60 * 60_000 },
   // A challenge creates a Battle row and pairs two users.
   challenge: { limit: 25, windowMs: 15 * 60_000 },
   // Site search is ANONYMOUS and expensive: one call fans out across nine
