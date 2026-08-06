@@ -69,6 +69,20 @@ async function main() {
 
   console.log(`\n${report.jobs.length} expected jobs · ${problems.length} need attention\n`);
 
+  // ── Orphan targets ──────────────────────────────────────────────────────
+  // Printed BEFORE the job list, because it changes how the list should be
+  // read. A job reporting `never-run` next to an orphan target with hundreds of
+  // runs is not a dead cron — it is a renamed target, and the fix is one line in
+  // EXPECTED_JOBS rather than an afternoon in the Render dashboard.
+  if (report.unknownTargets.length) {
+    console.log("Run history exists for targets no expected job declares:\n");
+    for (const u of report.unknownTargets) {
+      console.log(`  ?  ${u.target}  ·  ${u.runs} run(s)  ·  last ${u.lastRunAt.slice(0, 16).replace("T", " ")}`);
+    }
+    console.log("\n  If one of these looks like a job reported below as never-run, the target");
+    console.log("  was renamed — fix EXPECTED_JOBS in lib/admin/cron-health.ts, not Render.\n");
+  }
+
   if (!shown.length) {
     console.log("Every scheduled job has run recently and succeeded.\n");
     return;

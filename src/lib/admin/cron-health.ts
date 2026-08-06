@@ -153,6 +153,25 @@ export interface JobHealth {
   sampled: number;
 }
 
+/**
+ * A target the DATABASE has run history for that no expected job claims.
+ *
+ * This is the diagnostic that separates the two failure modes a `never-run`
+ * report cannot distinguish on its own:
+ *
+ *   the job never fired            → a scheduling problem (fix Render)
+ *   the job fired under another name → a BOOKKEEPING problem (fix this list)
+ *
+ * Without it, renaming a `safe("…")` target silently turns a healthy job into a
+ * permanent "never run", and the obvious response — go hunting through Render —
+ * is a waste of an afternoon.
+ */
+export interface UnknownTarget {
+  target: string;
+  runs: number;
+  lastRunAt: string;
+}
+
 export interface CronHealthReport {
   generatedAt: string;
   /** True when nothing at all is wrong. */
@@ -160,6 +179,8 @@ export interface CronHealthReport {
   /** The master ingestion gate, because it silently disables most of these. */
   scraperGate: { value: string | null; enabled: boolean; note: string | null };
   jobs: JobHealth[];
+  /** Targets with history that no expected job declares. See UnknownTarget. */
+  unknownTargets: UnknownTarget[];
 }
 
 /** How many recent rows per target to consider when scoring failures. */
@@ -219,11 +240,34 @@ export async function auditCronHealth(): Promise<CronHealthReport> {
     };
   });
 
+  // ── Bookkeeping check ───────────────────────────────────────────────────
+  // Which targets does the database have history for that nothing above claims?
+  // A `never-run` job with an orphan target sitting beside it is almost always a
+  // renamed target, not a dead cron — and those two diagnoses send an operator
+  // to completely different places.
+  //
+  // groupBy over the whole table rather than the `in` filter used above: the
+  // point is precisely to see the targets that filter would exclude.
+  const seen = new Set(allTargets);
+  const grouped = await prisma.scrapeJob
+    .groupBy({ by: ["target"], _count: { _all: true }, _max: { createdAt: true } })
+    .catch(() => [] as { target: string; _count: { _all: number }; _max: { createdAt: Date | null } }[]);
+
+  const unknownTargets: UnknownTarget[] = grouped
+    .filter((g) => !seen.has(g.target))
+    .map((g) => ({
+      target: g.target,
+      runs: g._count._all,
+      lastRunAt: (g._max.createdAt ?? new Date(0)).toISOString(),
+    }))
+    .sort((a, b) => b.lastRunAt.localeCompare(a.lastRunAt));
+
   return {
     generatedAt: new Date().toISOString(),
     healthy: jobs.every((j) => j.state === "ok"),
     scraperGate: describeScraperGate(),
     jobs,
+    unknownTargets,
   };
 }
 
