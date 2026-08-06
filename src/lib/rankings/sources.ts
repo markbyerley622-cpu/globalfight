@@ -49,6 +49,24 @@ export const RANKING_SOURCES: RankingSource[] = [
   // men's boxing and are never presented as unqualified "Boxing" rankings.
   // A men's boxing source is still missing; see the WBC/WBO/IBF entries below.
   { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: true, connectorReady: true, notes: "Server-rendered HTML tables, verified end-to-end (193 entries/16 divisions). Live." },
+  // ── Men's boxing ─────────────────────────────────────────────────────────
+  // Every boxing source in this registry was a FEMALE list, which is the entire
+  // reason the product showed only women's champions. Not a renderer bug and not
+  // a mapping bug — there was no men's source to show.
+  //
+  // The connector is implemented (same parser, same site, different page) and is
+  // deliberately shipped `licensed: false`. Two reasons, and both are honest:
+  // clearing a source is the owner's call, and nobody here has read the men's
+  // page markup — it is inferred from the female page's structure. The parser
+  // now validates before publishing, so a different layout throws and records a
+  // failure instead of publishing a four-man world ranking.
+  //
+  // To enable: confirm the URL serves server-rendered ratings, flip `licensed`,
+  // and watch `npm run audit:rankings` for the first run.
+  { id: "wba-male", label: "WBA Men's", organisation: "WBA", url: "https://www.wbaboxing.com/wba-rankings", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: true, notes: "Same parser as wba-female, fail-closed validator. URL unverified — owner must clear + confirm before enabling." },
+  { id: "wbc-male", label: "WBC Men's", organisation: "WBC", url: "https://wbcboxing.com/en/main-ratings/", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: false },
+  { id: "wbo-male", label: "WBO Men's", organisation: "WBO", url: "https://wboboxing.com/wborankings/", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: false },
+  { id: "ibf-male", label: "IBF/USBA Men's", organisation: "IBF", url: "https://www.ibf-usba-boxing.com/ratings/", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: false },
   { id: "wbc-female", label: "WBC Female", organisation: "WBC", url: "https://wbcboxing.com/en/main-ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "wbo-female", label: "WBO Female", organisation: "WBO", url: "https://wboboxing.com/wborankings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },
   { id: "ibf-female", label: "IBF/USBA Female", organisation: "IBF", url: "https://www.ibf-usba-boxing.com/ratings/", tier: 1, trust: "official", scope: "boxing/female/world", licensed: false, connectorReady: false },

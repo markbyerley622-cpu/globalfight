@@ -18,7 +18,22 @@ import { BOT_HEADERS } from "@/lib/http-identity";
 //  this file NEVER touches Prisma.
 // ════════════════════════════════════════════════════════════════════════
 
-const SOURCE_URL = "https://www.wbaboxing.com/wba-female-ranking";
+// ── One parser, two ratings pages ───────────────────────────────────────────
+// The WBA publishes men's and women's world ratings on the same site, in the
+// same server-rendered shape: a <span>DIVISION</span> header followed by a
+// ratings <table>. The parser below was written for the female page and is
+// structurally general, so the men's connector is the same function with a
+// different URL and gender rather than a second copy to keep in step.
+//
+// Boxing has no single champion per division — the WBA, WBC, WBO and IBF each
+// sanction their own belt — so each body is its own source with its own
+// `organisation`, and nothing here ever merges them.
+const PAGES = {
+  female: "https://www.wbaboxing.com/wba-female-ranking",
+  male: "https://www.wbaboxing.com/wba-rankings",
+} as const;
+
+const SOURCE_URL = PAGES.female;
 
 const WEIGHT_RE =
   /^(minimum|light fly|fly|super fly|bantam|super bantam|feather|super feather|light|super light|welter|super welter|middle|super middle|light heavy|cruiser|bridger|heavy)weight$/i;
@@ -58,34 +73,34 @@ const isNoise = (name: string) =>
  * `now` is injected so tests are deterministic and the workflow sandbox (which
  * forbids Date.now) never reaches this indirectly.
  */
-export function parseWbaFemale(html: string, now: Date = new Date()): RankingEntry[] {
+export function parseWba(
+  html: string,
+  gender: "male" | "female" = "female",
+  now: Date = new Date(),
+): RankingEntry[] {
   const $ = cheerio.load(html);
   const effectiveDate = now.toISOString().slice(0, 10);
+  const sourceUrl = PAGES[gender];
   const entries: RankingEntry[] = [];
   let division: string | null = null;
 
-  // ── Every division on this page is a WOMEN'S division ────────────────────
+  // ── The division label carries the gender ────────────────────────────────
   //
-  // The source is the WBA's FEMALE ratings, and the connector emitted its
-  // divisions as bare "Heavyweight", "Lightweight" and so on. Downstream that is
-  // wrong twice over, because ingest resolves a WeightClass by (sport, name):
+  // ingest resolves a WeightClass by (sport, name), so an unprefixed women's
+  // division would land on the SAME WeightClass row the men's ratings use — and
+  // this connector now feeds both. Two unrelated ladders in one division is the
+  // "adding any men's source later would merge them" hazard, and it stopped
+  // being hypothetical the moment the men's page was wired.
   //
-  //   • These rows landed on the SAME WeightClass records that men's boxing
-  //     rankings would use, so adding any men's source later would have merged
-  //     two unrelated ladders into one division.
-  //   • The rankings page therefore presented WBA women's ratings under a plain
-  //     "Boxing → Heavyweight" heading, with nothing anywhere on the screen
-  //     saying they were women's rankings.
-  //
-  // Prefixing here — the same thing the UFC connector already does for its
-  // women's divisions — makes the division name carry the fact, so it survives
-  // into the WeightClass row, the URL slug and the heading without any screen
-  // needing to know where the rows came from.
-  const womens = (weightClass: string) =>
-    /^women'?s\b/i.test(weightClass) ? weightClass : `Women's ${weightClass}`;
+  // Men's divisions keep the bare name (they are the unmarked case, exactly as
+  // the sport writes them); women's are prefixed, which is also what the UFC
+  // connector does. The gender is ALSO stored on its own column now — the label
+  // is for humans and URLs, the column is what audits read.
+  const label = (weightClass: string) =>
+    gender === "male" || /^women'?s\b/i.test(weightClass) ? weightClass : `Women's ${weightClass}`;
 
   const parseTable = (el: Element, rawWeightClass: string) => {
-    const weightClass = womens(rawWeightClass);
+    const weightClass = label(rawWeightClass);
     $(el).find("tr").each((_, tr) => {
       const cells = $(tr).find("td, th").map((__, c) => $(c).text().trim().replace(/\s+/g, " ")).get();
       if (cells.length === 0) return;
@@ -98,9 +113,9 @@ export function parseWbaFemale(html: string, now: Date = new Date()): RankingEnt
           const { name, country } = splitNameCountry(champCell);
           if (!isNoise(name)) {
             entries.push({
-              name, weightClass, rank: 0, gender: "female", kind: "professional",
+              name, weightClass, rank: 0, gender, kind: "professional",
               countryCode: toAlpha2(country), organisation: "WBA", sport: "boxing",
-              effectiveDate, sourceUrl: SOURCE_URL,
+              effectiveDate, sourceUrl,
             });
           }
         }
@@ -117,9 +132,9 @@ export function parseWbaFemale(html: string, now: Date = new Date()): RankingEnt
       const { name, country } = splitNameCountry(rawName);
       if (isNoise(name)) return;
       entries.push({
-        name, weightClass, rank, gender: "female", kind: "professional",
+        name, weightClass, rank, gender, kind: "professional",
         countryCode: toAlpha2(a3 ?? country), organisation: "WBA", sport: "boxing",
-        effectiveDate, sourceUrl: SOURCE_URL,
+        effectiveDate, sourceUrl,
       });
     });
   };
@@ -145,18 +160,65 @@ export function parseWbaFemale(html: string, now: Date = new Date()): RankingEnt
   return entries;
 }
 
-export const wbaFemaleConnector: RankingConnector = {
-  id: "wba-female",
-  label: "WBA Female World Ratings",
-  trust: "official",
-  licensed: true, // registry (sources.ts) remains the source of truth for this
-  async fetch(): Promise<RankingEntry[]> {
-    const res = await fetch(SOURCE_URL, {
-      // BOT_HEADERS — see the identical note in connectors/ufc.ts.
-      headers: { ...BOT_HEADERS },
-      signal: AbortSignal.timeout(25_000),
-    });
-    if (!res.ok) throw new Error(`WBA fetch ${res.status}`);
-    return parseWbaFemale(await res.text());
-  },
-};
+/** Back-compat alias — the female parser by its original name. */
+export const parseWbaFemale = (html: string, now?: Date) => parseWba(html, "female", now);
+
+/**
+ * Refuse a broken parse, the same way the UFC connector does.
+ *
+ * The WBA connector had NO validator, which was survivable while it read one
+ * page whose shape was verified end-to-end. It is not survivable now: the men's
+ * page is the same site but its markup has not been read by anyone here, and a
+ * parser that silently returns four rows from a redesigned page would publish a
+ * four-man world ranking as fact.
+ *
+ * So the men's connector is written to FAIL CLOSED. If the page differs, this
+ * throws, the runner records the failure against the provider's checkpoint, and
+ * nothing is published — which is the correct outcome for a source we have not
+ * been able to verify by hand.
+ */
+export function validateWba(entries: RankingEntry[], minDivisions = 8): void {
+  const divisions = new Set(entries.filter((e) => e.rank >= 1).map((e) => e.weightClass));
+  if (divisions.size < minDivisions) {
+    throw new Error(
+      `WBA parse produced only ${divisions.size} divisions (< ${minDivisions}) — refusing to publish a partial ranking`,
+    );
+  }
+  for (const division of divisions) {
+    const ranks = entries.filter((e) => e.weightClass === division && e.rank >= 1).map((e) => e.rank);
+    if (ranks.length < 5) {
+      throw new Error(`WBA parse: ${division} has only ${ranks.length} contenders — refusing to publish`);
+    }
+    // A 2-way tie is legitimate; the same rank three or more times is drift.
+    const counts = new Map<number, number>();
+    for (const r of ranks) counts.set(r, (counts.get(r) ?? 0) + 1);
+    for (const [rank, n] of counts) {
+      if (n >= 3) throw new Error(`WBA parse: rank ${rank} appears ${n}× in ${division} — refusing to publish`);
+    }
+  }
+}
+
+function wbaConnector(gender: "male" | "female"): RankingConnector {
+  return {
+    id: `wba-${gender}`,
+    label: `WBA ${gender === "male" ? "Men's" : "Female"} World Ratings`,
+    trust: "official",
+    // The registry (sources.ts) remains the source of truth for licensing; this
+    // mirrors it so a connector cannot be run by being imported.
+    licensed: true,
+    async fetch(): Promise<RankingEntry[]> {
+      const res = await fetch(PAGES[gender], {
+        // BOT_HEADERS — see the identical note in connectors/ufc.ts.
+        headers: { ...BOT_HEADERS },
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!res.ok) throw new Error(`WBA ${gender} fetch ${res.status}`);
+      const entries = parseWba(await res.text(), gender);
+      validateWba(entries);
+      return entries;
+    },
+  };
+}
+
+export const wbaFemaleConnector = wbaConnector("female");
+export const wbaMaleConnector = wbaConnector("male");
