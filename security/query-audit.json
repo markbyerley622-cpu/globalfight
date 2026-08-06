@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1130,
+    "queries": 1135,
     "high": 0,
     "medium": 95,
     "low": 197,
-    "info": 838,
-    "public": 782,
+    "info": 843,
+    "public": 787,
     "userOwned": 253,
     "shared": 95,
     "admin": 0
@@ -3873,7 +3873,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 159,
+      "line": 165,
       "fn": "projectChampions",
       "model": "TitleReign",
       "method": "update",
@@ -3886,7 +3886,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 227,
+      "line": 234,
       "fn": "syncLegacyChampion",
       "model": "Champion",
       "method": "update",
@@ -3990,7 +3990,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 156,
+      "line": 157,
       "fn": "touchCheckpoint",
       "model": "ProviderCheckpoint",
       "method": "upsert",
@@ -4003,7 +4003,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 313,
+      "line": 314,
       "fn": "projectRankings",
       "model": "Ranking",
       "method": "deleteMany",
@@ -7205,6 +7205,71 @@
       "fn": "bouts",
       "model": "Fight",
       "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/ranking-accuracy.ts",
+      "line": 83,
+      "fn": "rows",
+      "model": "Ranking",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/ranking-accuracy.ts",
+      "line": 95,
+      "fn": "knownProviders",
+      "model": "RankingObservation",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/ranking-accuracy.ts",
+      "line": 251,
+      "fn": "auditChampionAccuracy",
+      "model": "TitleReign",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/ranking-accuracy.ts",
+      "line": 262,
+      "fn": "auditChampionAccuracy",
+      "model": "Champion",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/ranking-accuracy.ts",
+      "line": 272,
+      "fn": "auditChampionAccuracy",
+      "model": "Ranking",
+      "method": "findMany",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",
@@ -13376,7 +13441,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 103,
+      "line": 104,
       "fn": "titles",
       "model": "ChampionObservation",
       "method": "groupBy",
@@ -13389,7 +13454,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 110,
+      "line": 111,
       "fn": "rows",
       "model": "ChampionObservation",
       "method": "findMany",
@@ -13402,7 +13467,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 145,
+      "line": 151,
       "fn": "open",
       "model": "TitleReign",
       "method": "findFirst",
@@ -13415,7 +13480,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 169,
+      "line": 175,
       "fn": "projectChampions",
       "model": "TitleReign",
       "method": "create",
@@ -13428,7 +13493,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 217,
+      "line": 224,
       "fn": "existing",
       "model": "Champion",
       "method": "findFirst",
@@ -13441,7 +13506,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 232,
+      "line": 239,
       "fn": "syncLegacyChampion",
       "model": "Champion",
       "method": "create",
@@ -13688,7 +13753,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 169,
+      "line": 170,
       "fn": "existing",
       "model": "ProviderCheckpoint",
       "method": "findUnique",
@@ -13701,7 +13766,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 200,
+      "line": 201,
       "fn": "lists",
       "model": "RankingObservation",
       "method": "groupBy",
@@ -13714,7 +13779,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 209,
+      "line": 210,
       "fn": "rows",
       "model": "RankingObservation",
       "method": "findMany",
@@ -13727,7 +13792,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 250,
+      "line": 251,
       "fn": "existing",
       "model": "Ranking",
       "method": "findUnique",
@@ -13740,7 +13805,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 257,
+      "line": 258,
       "fn": "projectRankings",
       "model": "Ranking",
       "method": "upsert",
@@ -13753,7 +13818,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 295,
+      "line": 296,
       "fn": "projectRankings",
       "model": "RankSnapshot",
       "method": "create",
@@ -13766,7 +13831,7 @@
     },
     {
       "file": "src/lib/rankings/pipeline.ts",
-      "line": 302,
+      "line": 303,
       "fn": "removable",
       "model": "Ranking",
       "method": "findMany",

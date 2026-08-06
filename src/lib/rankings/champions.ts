@@ -65,6 +65,7 @@ export async function recordChampionObservation(
         // null and SKIPPED the champion in that case — evidence silently
         // dropped because our vocabulary was behind the sport's.
         organisation: entry.organisation ?? "",
+        gender: entry.gender,
         status,
         effectiveDate,
         sourceUrl: entry.sourceUrl,
@@ -117,6 +118,11 @@ export async function projectChampions(now = new Date()): Promise<ChampionProjec
       take: 100,
     });
     if (rows.length === 0) continue;
+
+    // Gender comes from the evidence, not from the division name. Taken from the
+    // newest observation that recorded one, so a belt keeps its gender even if a
+    // later provider omits the field.
+    const gender = rows.find((r) => r.gender)?.gender ?? null;
 
     const observations: Observation<TitleClaim>[] = rows.map((r) => ({
       id: r.id,
@@ -172,6 +178,7 @@ export async function projectChampions(now = new Date()): Promise<ChampionProjec
         weightClassId: title.weightClassId,
         organisation: title.organisation,
         status: title.status as TitleClaim["status"],
+        gender,
         startedAt: decision.effectiveDate,
         decidedBy: decision.reason,
         contested: decision.contested,

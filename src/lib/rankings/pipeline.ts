@@ -122,6 +122,7 @@ export async function recordObservations(
           weightClassId: resolved.weightClassId,
           isPoundForPound: entry.isPoundForPound === true,
           organisation: entry.organisation ?? "",
+          gender: entry.gender,
           rank: entry.rank,
           effectiveDate,
           sourceUrl: entry.sourceUrl,
