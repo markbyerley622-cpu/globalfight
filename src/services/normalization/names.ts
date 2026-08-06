@@ -13,7 +13,29 @@ export function normalizeName(raw: string): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // diacritics
     .toLowerCase()
-    .replace(/['’.]/g, "") // apostrophes & dots → nothing
+    // ── A dot BETWEEN letters is a separator, not punctuation to delete ─────
+    //
+    // Dots and apostrophes used to be deleted together, and for apostrophes
+    // that is right — "O'Malley" and "OMalley" are the same name and should
+    // fold to one key.
+    //
+    // For a dot it depends entirely on position, and getting it wrong cost real
+    // duplicates. The ONE backfill imported "Numsurin Chor.Ketwina" while the
+    // registry held "Numsurin Chor Ketwina"; deleting the dot produced
+    // "chorketwina" — ONE token where the other name has two — so the two never
+    // compared equal at any rung, two fighters existed, and the same bout was
+    // written twice. Thai ring names are written with these dots constantly
+    // ("Tor.Pran49", "Sor.Sommai"), so this was not one unlucky row.
+    //
+    // A dot after at least TWO characters, followed by a letter → separator.
+    //
+    // The two-character floor is what keeps initials working. "A.J. Smith" has
+    // a single letter before its dot, which is an INITIAL marker, and splitting
+    // there would give "a j smith" where the registry has "aj smith" — trading
+    // one class of duplicate for another. Caught by checking before shipping;
+    // "Chor.Ketwina" has "or" before its dot and still splits.
+    .replace(/(?<=[a-z0-9]{2})\.(?=[a-z])/g, " ")
+    .replace(/['’.]/g, "") // apostrophes & remaining dots → nothing
     .replace(/[^a-z0-9\s-]/g, " ") // other punctuation → space
     .replace(/\s+/g, " ")
     .trim();
