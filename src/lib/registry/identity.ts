@@ -7,6 +7,7 @@ import {
   corroborate, decide, demoteAcrossSports, isActionable, isReviewable,
   type IdentityFacts, type Verdict,
 } from "./identity-rules";
+import { inspectName, type ArtefactVerdict } from "./artefacts";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  THE CANONICAL FIGHTER RESOLVER. One function. Every path calls it.
@@ -66,6 +67,11 @@ export interface IdentityResolution {
   fighterId: string | null;
   /** Everything worth a reviewer's attention, best first. */
   candidates: { fighterId: string; via: ResolutionVia; confidence: number; name: string }[];
+  /**
+   * Set when the incoming string was refused as parser junk rather than searched
+   * for. The caller MUST NOT create a fighter from it — see resolveOrCreateFighter.
+   */
+  artefact?: ArtefactVerdict;
 }
 
 type CandidateRow = {
@@ -92,6 +98,27 @@ const CANDIDATE_SELECT = {
 export async function resolveFighterIdentity(
   input: FighterIdentityInput,
 ): Promise<IdentityResolution> {
+  // ── Is this even a person's name? ───────────────────────────────────────
+  // Asked BEFORE any lookup, because it is a property of the string and needs
+  // no database. audit:champions found "INT. CHAMP:" and "IVANA HABAZIN *"
+  // holding world titles: the first is a ratings-table LABEL, the second a real
+  // name with a footnote marker welded on. Both resolved to nothing — correctly,
+  // since neither exists — and were then CREATED as canonical fighters.
+  //
+  // The resolver answered its question right; nothing was asking whether the
+  // string was a person at all. Now something is.
+  const inspected = inspectName(input.name);
+  if (!inspected.ok) {
+    return {
+      verdict: { outcome: "NO_MATCH", confidence: 0, reason: `artefact: ${inspected.reason}` },
+      fighterId: null,
+      candidates: [],
+      artefact: inspected,
+    };
+  }
+  // Recoverable noise is CLEANED rather than refused — losing a real champion to
+  // a stray asterisk would be the worse error.
+  input = inspected.cleaned === input.name ? input : { ...input, name: inspected.cleaned };
   // ── 1. External id. An exact identity claim; nothing outranks it. ────────
   for (const ref of input.externalIds ?? []) {
     if (!ref.source || !ref.externalId) continue;
@@ -263,11 +290,22 @@ function sportAgrees(incoming: Sport | null | undefined, row: CandidateRow): boo
 // ─── Write path ─────────────────────────────────────────────────────────────
 
 export interface ResolveOrCreateResult {
-  fighterId: string;
+  /** Null ONLY when the input was refused as parser junk. */
+  fighterId: string | null;
   created: boolean;
   outcome: Verdict["outcome"];
   /** Set when the resolver queued a question instead of answering it. */
   reviewQueued: boolean;
+  /** Present when nothing was created because the string was not a name. */
+  artefact?: ArtefactVerdict;
+}
+
+/** Thrown by callers that cannot proceed without a fighter. */
+export class NotAFighterName extends Error {
+  constructor(readonly verdict: ArtefactVerdict) {
+    super(verdict.reason ?? "not a fighter name");
+    this.name = "NotAFighterName";
+  }
 }
 
 /**
@@ -297,6 +335,20 @@ export async function resolveOrCreateFighter(
   opts: { origin?: string; sportFallback?: Sport } = {},
 ): Promise<ResolveOrCreateResult> {
   const resolution = await resolveFighterIdentity(input);
+
+  // Parser junk. Nothing is created, nothing is queued for identity review —
+  // there is no identity question here, only a parser to fix. The caller decides
+  // whether to skip the row or fail; both are better than a world champion
+  // called "INT. CHAMP:".
+  if (resolution.artefact) {
+    return {
+      fighterId: null,
+      created: false,
+      outcome: "NO_MATCH",
+      reviewQueued: false,
+      artefact: resolution.artefact,
+    };
+  }
 
   if (resolution.fighterId) {
     await recordProvenance(resolution.fighterId, input);

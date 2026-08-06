@@ -33,11 +33,13 @@ const defaultRounds = (s: SportLabel) => (s === "Boxing" ? 12 : s === "MMA" ? 3 
  * most likely to mint a duplicate under a slug key, and the duplicate then held
  * the market prices while the real fighter's page showed none.
  */
-async function upsertFighter(name: string, sport: SportLabel): Promise<string> {
+async function upsertFighter(name: string, sport: SportLabel): Promise<string | null> {
   const result = await resolveOrCreateFighter(
     { name, sport: SPORT_ENUM[sport] },
     { origin: "odds-ingest", sportFallback: SPORT_ENUM[sport] },
   );
+  // Null = parser junk, never a person. See lib/registry/artefacts.
+  if (result.artefact) log.warn({ name, reason: result.artefact.reason }, "odds:name-artefact-skipped");
   return result.fighterId;
 }
 
@@ -88,6 +90,8 @@ export async function ingestOdds(): Promise<number> {
       const ev = bouts[i];
       const redId = await upsertFighter(ev.red, sport);
       const blueId = await upsertFighter(ev.blue, sport);
+      // Both corners must be real people — see the same guard in events/ingest.
+      if (!redId || !blueId) continue;
       const slug = `${slugify(ev.red)}-vs-${slugify(ev.blue)}`;
 
       const fight = await prisma.fight.upsert({

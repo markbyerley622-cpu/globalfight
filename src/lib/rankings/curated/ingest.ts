@@ -42,7 +42,7 @@ async function ensureP4PWeightClass(sportValue: string): Promise<string> {
 }
 
 /** Through the canonical resolver — see lib/registry/identity. */
-async function resolveFighter(name: string, sport: string, countryCode: string | null): Promise<string> {
+async function resolveFighter(name: string, sport: string, countryCode: string | null): Promise<string | null> {
   const result = await resolveOrCreateFighter(
     { name, sport: sport as Sport, countryCode },
     { origin: "curated-p4p", sportFallback: sport as Sport },
@@ -68,6 +68,8 @@ async function ingestList(list: CuratedList): Promise<CuratedIngestStat> {
 
   for (const entry of list.entries) {
     const fighterId = await resolveFighter(entry.name, list.sport, entry.countryCode);
+    // Parser junk never becomes a ranked fighter. See lib/registry/artefacts.
+    if (!fighterId) continue;
     const previousRank = priorRank.get(fighterId) ?? null;
     const movement = movementFor(previousRank, entry.rank);
     await prisma.ranking.upsert({
@@ -93,7 +95,11 @@ async function ingestList(list: CuratedList): Promise<CuratedIngestStat> {
   }
 
   // Drop anyone who fell off this sport's curated list since last run.
-  const keep = new Set(await Promise.all(list.entries.map((e) => resolveFighter(e.name, list.sport, e.countryCode))));
+  // Nulls filtered out: an unresolvable entry contributes nothing to `keep`, and
+  // leaving one in would put `null` inside a `notIn` — which in SQL matches
+  // nothing at all and would silently disable the whole cleanup.
+  const resolved = await Promise.all(list.entries.map((e) => resolveFighter(e.name, list.sport, e.countryCode)));
+  const keep = new Set(resolved.filter((id): id is string => id !== null));
   await prisma.ranking.deleteMany({
     where: { isPoundForPound: true, source: CURATED, fighter: { sport: list.sport as never }, fighterId: { notIn: [...keep] } },
   });

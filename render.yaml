@@ -456,7 +456,7 @@ services:
     schedule: "0 4 * * *"
     buildCommand: "true"
     startCommand: >-
-      for p in refresh-events sync refresh-espn refresh-odds refresh-p4p refresh-champions refresh-mma enrich-boxing; do
+      for p in refresh-events sync refresh-espn refresh-odds refresh-p4p refresh-champions refresh-rankings refresh-mma enrich-boxing; do
         curl -fsS -m 900 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/$p" || true;
       done
     envVars:
@@ -472,6 +472,20 @@ services:
   # scheduling it here cannot start ingesting anything on its own. It is wired
   # now so that flipping those switches is the only remaining step.
   - type: cron
+    # ⚠ THIS SERVICE HAS NEVER RUN. `cron:doctor` reports rankings:ingest with no
+    # run history at all, while gf-cron-weekly (adcc, same 08:00 Monday) runs
+    # fine — so the blueprint declares it and Render does not have it, or it has
+    # it and every curl fails into the `|| true` below without a trace.
+    #
+    # Rather than keep depending on a service that has never fired once,
+    # refresh-rankings was ADDED to gf-cron-daily's loop, which demonstrably
+    # works. The extra frequency is free: an unchanged provider payload hashes
+    # identically and writes nothing at all (see lib/rankings/pipeline).
+    #
+    # This service is kept because a weekly dedicated run is still the right
+    # cadence once it works, and because deleting it would erase the evidence
+    # that it is the thing that is broken. If it starts running, the daily pass
+    # is a no-op and costs nothing.
     name: gf-cron-rankings
     runtime: node
     plan: starter

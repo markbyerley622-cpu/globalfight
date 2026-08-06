@@ -33,7 +33,7 @@ export async function persistMmaRoster(rows: ScrapedMmaFighter[]): Promise<numbe
   for (const r of rows) {
     if (!slugify(r.name)) continue;
 
-    const { fighterId } = await resolveOrCreateFighter(
+    const { fighterId, artefact } = await resolveOrCreateFighter(
       {
         name: r.name,
         sport: "MMA",
@@ -43,6 +43,11 @@ export async function persistMmaRoster(rows: ScrapedMmaFighter[]): Promise<numbe
       },
       { origin: "mma-roster", sportFallback: "MMA" },
     );
+    // Parser junk never becomes a roster entry. See lib/registry/artefacts.
+    if (!fighterId) {
+      log.warn({ name: r.name, reason: artefact?.reason }, "roster:name-artefact-skipped");
+      continue;
+    }
 
     await prisma.fighter.update({
       where: { id: fighterId },

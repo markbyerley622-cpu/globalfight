@@ -45,17 +45,25 @@ const PRO_WRESTLING =
  * that variant as an ALIAS instead, which makes the next match easier rather
  * than overwriting the registry's own label.
  */
-async function upsertFighter(name: string, sport: SportEnum): Promise<string> {
+async function upsertFighter(name: string, sport: SportEnum): Promise<string | null> {
   const result = await resolveOrCreateFighter(
     { name, sport },
     { origin: "event-ingest", sportFallback: sport },
   );
+  // Null = the string was parser junk, not a person. See lib/registry/artefacts.
+  if (result.artefact) {
+    log.warn({ name, reason: result.artefact.reason }, "ingest:name-artefact-skipped");
+  }
   return result.fighterId;
 }
 
 async function upsertBout(eventId: string, sport: SportEnum, bout: AdapterBout, order: number, date: Date): Promise<void> {
   const redId = await upsertFighter(bout.red, sport);
   const blueId = await upsertFighter(bout.blue, sport);
+  // A bout needs two people. If either corner was a table label rather than a
+  // name, the row is dropped entirely — half a bout against a fighter called
+  // "CHAMPION" is worse than no bout, and the warning above says which card.
+  if (!redId || !blueId) return;
   const slug = `${slugify(bout.red)}-vs-${slugify(bout.blue)}`;
   await prisma.fight.upsert({
     where: { slug },

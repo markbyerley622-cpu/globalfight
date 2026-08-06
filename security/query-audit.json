@@ -2963,7 +2963,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 60,
+      "line": 68,
       "fn": "upsertBout",
       "model": "Fight",
       "method": "upsert",
@@ -2976,7 +2976,7 @@
     },
     {
       "file": "src/lib/events/ingest.ts",
-      "line": 88,
+      "line": 96,
       "fn": "event",
       "model": "Event",
       "method": "upsert",
@@ -3795,7 +3795,7 @@
     },
     {
       "file": "src/lib/odds/ingest.ts",
-      "line": 50,
+      "line": 52,
       "fn": "e",
       "model": "Event",
       "method": "upsert",
@@ -3808,7 +3808,7 @@
     },
     {
       "file": "src/lib/odds/ingest.ts",
-      "line": 93,
+      "line": 97,
       "fn": "fight",
       "model": "Fight",
       "method": "upsert",
@@ -3912,7 +3912,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 73,
+      "line": 75,
       "fn": "ingestList",
       "model": "Ranking",
       "method": "upsert",
@@ -3925,7 +3925,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 97,
+      "line": 103,
       "fn": "ingestList",
       "model": "Ranking",
       "method": "deleteMany",
@@ -4016,7 +4016,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 326,
+      "line": 378,
       "fn": "recordProvenance",
       "model": "FighterExternalId",
       "method": "upsert",
@@ -4029,7 +4029,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 342,
+      "line": 394,
       "fn": "recordProvenance",
       "model": "FighterAlias",
       "method": "upsert",
@@ -4042,7 +4042,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 385,
+      "line": 437,
       "fn": "queueCandidates",
       "model": "FighterIdentityCandidate",
       "method": "upsert",
@@ -4198,7 +4198,7 @@
     },
     {
       "file": "src/lib/scraper/ingest.ts",
-      "line": 47,
+      "line": 52,
       "fn": "persistMmaRoster",
       "model": "Fighter",
       "method": "update",
@@ -12882,7 +12882,7 @@
     },
     {
       "file": "src/lib/odds/ingest.ts",
-      "line": 106,
+      "line": 110,
       "fn": "ingestOdds",
       "model": "OddsSnapshot",
       "method": "create",
@@ -13545,7 +13545,7 @@
     },
     {
       "file": "src/lib/rankings/curated/ingest.ts",
-      "line": 81,
+      "line": 83,
       "fn": "ingestList",
       "model": "RankSnapshot",
       "method": "create",
@@ -13701,7 +13701,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 129,
+      "line": 139,
       "fn": "found",
       "model": "WeightClass",
       "method": "findFirst",
@@ -13714,7 +13714,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 134,
+      "line": 144,
       "fn": "created",
       "model": "WeightClass",
       "method": "create",
@@ -13844,7 +13844,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 98,
+      "line": 125,
       "fn": "link",
       "model": "FighterExternalId",
       "method": "findUnique",
@@ -13857,7 +13857,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 196,
+      "line": 223,
       "fn": "gatherCandidates",
       "model": "FighterAlias",
       "method": "findMany",
@@ -13870,7 +13870,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 203,
+      "line": 230,
       "fn": "gatherCandidates",
       "model": "Fighter",
       "method": "findMany",
@@ -13883,7 +13883,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 212,
+      "line": 239,
       "fn": "extra",
       "model": "Fighter",
       "method": "findMany",
@@ -13896,7 +13896,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 249,
+      "line": 276,
       "fn": "rows",
       "model": "FighterAlias",
       "method": "findMany",
@@ -13909,7 +13909,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 336,
+      "line": 388,
       "fn": "canonical",
       "model": "Fighter",
       "method": "findUnique",
@@ -13922,7 +13922,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 357,
+      "line": 409,
       "fn": "createProvisional",
       "model": "Fighter",
       "method": "findUnique",
@@ -13935,7 +13935,7 @@
     },
     {
       "file": "src/lib/registry/identity.ts",
-      "line": 360,
+      "line": 412,
       "fn": "row",
       "model": "Fighter",
       "method": "create",

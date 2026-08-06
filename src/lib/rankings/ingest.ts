@@ -111,7 +111,7 @@ async function upsertChampion(
  * pair for review, so the board still publishes and the ambiguity is visible
  * instead of being resolved by a coin flip.
  */
-async function resolveFighterFor(entry: RankingEntry): Promise<{ id: string; created: boolean }> {
+async function resolveFighterFor(entry: RankingEntry): Promise<{ id: string; created: boolean } | null> {
   const result = await resolveOrCreateFighter(
     {
       name: entry.name,
@@ -120,6 +120,16 @@ async function resolveFighterFor(entry: RankingEntry): Promise<{ id: string; cre
     },
     { origin: "ranking-ingest", sportFallback: entry.sport.toUpperCase() as Sport },
   );
+  // A ratings table's own labels reach here as "names" — "INT. CHAMP:" held a
+  // WBA world title because of exactly this path. Refused, and reported, rather
+  // than becoming a fighter. See lib/registry/artefacts.
+  if (result.artefact || !result.fighterId) {
+    log.warn(
+      { name: entry.name, organisation: entry.organisation, reason: result.artefact?.reason },
+      "rankings:name-artefact-skipped",
+    );
+    return null;
+  }
   return { id: result.fighterId, created: result.created };
 }
 
@@ -165,10 +175,11 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
   // An identical payload short-circuits here: no observations, no projection,
   // no snapshots. The old pipeline rewrote every row on every run.
   const observed = await recordObservations(connector, entries, async (entry) => {
+    const resolved = await resolveFighterFor(entry);
+    if (!resolved) return null;
     const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
-    const { id: fighterId, created } = await resolveFighterFor(entry);
-    if (created) stat.fightersCreated++;
-    return { fighterId, weightClassId };
+    if (resolved.created) stat.fightersCreated++;
+    return { fighterId: resolved.id, weightClassId };
   });
   stat.observed = observed.written;
   stat.unchanged = observed.unchanged;
@@ -183,9 +194,11 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
   for (const entry of entries) {
     if (entry.rank >= 1) continue;
     try {
+      const resolved = await resolveFighterFor(entry);
+      if (!resolved) continue;
       const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
-      const { id: fighterId, created } = await resolveFighterFor(entry);
-      if (created) stat.fightersCreated++;
+      if (resolved.created) stat.fightersCreated++;
+      const fighterId = resolved.id;
 
       await recordChampionObservation(connector, entry, fighterId, weightClassId);
 
