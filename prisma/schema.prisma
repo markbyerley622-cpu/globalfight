@@ -1546,6 +1546,10 @@ model User {
   resultsReviewed   ResultCandidate[]    @relation("ResultReviewer")
   notifications     Notification[]
   activities        Activity[]
+  /// Media this user UPLOADED. SetNull on delete: an asset outlives the
+  /// uploader's account (it may still be referenced by a published post), and
+  /// severing the link is the anonymisation, not deleting the bytes.
+  uploadedMedia     MediaAsset[] @relation("MediaUploader")
   cardAwards        CardAward[]
   follows           Follow[]
   battlesChallenged Battle[]             @relation("BattleChallenger")
@@ -2563,6 +2567,107 @@ model UserFollow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+// ─── Media assets ───────────────────────────────────────────────────────────
+
+/// Where an asset is in the upload lifecycle. Only READY may be served.
+enum MediaStatus {
+  /// Bytes accepted into TEMP storage. Nothing has looked at them yet.
+  PENDING
+  /// Handed to the malware scanner.
+  SCANNING
+  /// Scan passed; deriving variants and stripping metadata.
+  PROCESSING
+  /// Variants written to PUBLIC storage. The only servable state.
+  READY
+  /// Scan said INFECTED, or validation refused it. Bytes are in QUARANTINE.
+  REJECTED
+  /// The scan or the processing step failed for a reason that is not the
+  /// file's fault (scanner down, decoder error). Retryable by an operator;
+  /// distinct from REJECTED so "we could not check it" is never confused with
+  /// "it is malicious".
+  FAILED
+  /// Soft-deleted. The row survives so reference counting and audit hold; the
+  /// bytes are removed by the cleanup job.
+  DELETED
+}
+
+/// ONE reusable media asset. Deliberately knows NOTHING about gyms.
+///
+/// Every future consumer — gym posts, fighter photos, promotion banners, event
+/// posters, coach galleries, article covers — points AT this row rather than
+/// owning its own upload table. That is the whole design: one lifecycle, one
+/// scanner, one storage layout, one cleanup job. A second media table is the
+/// thing this model exists to prevent.
+///
+/// `ownerId` is WHO UPLOADED IT, not what it belongs to. Attachment is the
+/// consumer's job (a join row on their side), which is what keeps this generic
+/// and what makes reference counting meaningful.
+model MediaAsset {
+  id     String      @id @default(cuid())
+  status MediaStatus @default(PENDING)
+
+  /// SHA-256 of the ORIGINAL bytes. The dedupe key: an identical file uploaded
+  /// twice reuses this row and bumps refCount rather than storing it again.
+  /// Unique, so the database enforces it under concurrency instead of a
+  /// check-then-insert race (CLAUDE.md rule 4).
+  sha256 String @unique
+
+  /// Determined by SIGNATURE sniffing, never the client's Content-Type.
+  mime   String
+  bytes  Int
+  width  Int @default(0)
+  height Int @default(0)
+
+  /// Opaque storage keys. NEVER returned to a client — a URL is minted for the
+  /// public variants only, and temp/quarantine have no URL at all.
+  tempKey       String?
+  quarantineKey String?
+  /// Base key under the public prefix; variants hang off it.
+  publicKey     String?
+
+  /// Rendered sizes: { thumb, small, medium, large } → public URLs. JSON rather
+  /// than columns because the variant SET will change (AVIF, video posters) and
+  /// a column per size is a migration every time.
+  variants Json?
+  /// Tiny base64 LQIP so a grid has no layout shift before the image lands.
+  blurhash String?
+
+  /// Scan outcome, kept for the audit trail. Never shown to an uploader.
+  scanVerdict   String?
+  scanProvider  String?
+  scanSignature String?
+  scannedAt     DateTime?
+
+  /// WHO UPLOADED IT. Not what it belongs to.
+  ownerId String?
+  owner   User?   @relation("MediaUploader", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  /// Free-form origin tag ("gym-post", "fighter-photo"), for cleanup policy and
+  /// analytics only. NEVER an authorization input — permission is the
+  /// consumer's job, and a string on the asset must not become a capability.
+  sourceType String?
+
+  /// How many live references point at this asset. Reaches zero → the cleanup
+  /// job may remove the bytes. Never decremented below zero.
+  refCount Int @default(0)
+
+  /// Screen-reader description. Required before an asset is shown publicly;
+  /// enforced by the consumer, since only it knows the context.
+  alt String?
+
+  /// TEMP rows expire. A PENDING asset older than this is abandoned — a browser
+  /// that closed mid-upload — and the cleanup job removes it.
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Cleanup scans by state + age; the feed reads READY by recency.
+  @@index([status, createdAt])
+  @@index([status, expiresAt])
+  @@index([ownerId, createdAt])
 }
 
 /// A gallery image on a gym page. Stores BOTH the full and thumb URLs the image
