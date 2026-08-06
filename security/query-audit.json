@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1142,
+    "queries": 1144,
     "high": 0,
     "medium": 95,
-    "low": 199,
-    "info": 848,
-    "public": 794,
+    "low": 200,
+    "info": 849,
+    "public": 796,
     "userOwned": 253,
     "shared": 95,
     "admin": 0
@@ -4211,7 +4211,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 322,
+      "line": 323,
       "fn": "recordProvenance",
       "model": "FightImport",
       "method": "upsert",
@@ -4224,7 +4224,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 345,
+      "line": 346,
       "fn": "queueUnmatched",
       "model": "ImportConflict",
       "method": "upsert",
@@ -4236,8 +4236,21 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
+      "file": "src/lib/scraper/one/ingest.ts",
+      "line": 503,
+      "fn": "crawlOneArchive",
+      "model": "ProviderCheckpoint",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
       "file": "src/lib/scraper/runner.ts",
-      "line": 179,
+      "line": 180,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -4250,7 +4263,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 182,
+      "line": 183,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -14676,7 +14689,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 141,
+      "line": 142,
       "fn": "candidates",
       "model": "Event",
       "method": "findMany",
@@ -14689,7 +14702,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 154,
+      "line": 155,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -14702,7 +14715,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 201,
+      "line": 202,
       "fn": "already",
       "model": "Fight",
       "method": "findFirst",
@@ -14715,7 +14728,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 231,
+      "line": 232,
       "fn": "fight",
       "model": "Fight",
       "method": "create",
@@ -14728,7 +14741,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 314,
+      "line": 315,
       "fn": "freeFightSlug",
       "model": "Fight",
       "method": "findUnique",
@@ -14740,8 +14753,21 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/lib/scraper/one/ingest.ts",
+      "line": 489,
+      "fn": "checkpoint",
+      "model": "ProviderCheckpoint",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/lib/scraper/runner.ts",
-      "line": 176,
+      "line": 177,
       "fn": "job",
       "model": "ScrapeJob",
       "method": "create",

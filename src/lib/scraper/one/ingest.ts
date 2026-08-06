@@ -79,10 +79,11 @@ async function fetchText(url: string): Promise<string> {
  * backfill that walked it without a ceiling would hammer a third party for as
  * long as their archive is deep.
  */
-export async function discoverOneArticles(pages = 1): Promise<DiscoveredArticle[]> {
+export async function discoverOneArticles(pages = 1, fromPage = 1): Promise<DiscoveredArticle[]> {
   const out = new Map<string, DiscoveredArticle>();
+  const first = Math.max(1, fromPage);
 
-  for (let page = 1; page <= Math.max(1, pages); page++) {
+  for (let page = first; page < first + Math.max(1, pages); page++) {
     const url = page === 1 ? LISTING : `${LISTING}page/${page}/`;
     let html: string;
     try {
@@ -408,8 +409,9 @@ export interface BackfillReport {
  * and continues. `limit` bounds a single run so a cron tick stays inside its
  * budget and a backfill is many small runs rather than one long one.
  */
-export async function backfillOne(opts: { pages?: number; limit?: number } = {}): Promise<BackfillReport> {
-  const articles = await discoverOneArticles(opts.pages ?? 1);
+export async function backfillOne(opts: { pages?: number; limit?: number; fromPage?: number } = {}): Promise<BackfillReport> {
+  const startPage = Math.max(1, opts.fromPage ?? 1);
+  const articles = await discoverOneArticles(opts.pages ?? 1, startPage);
   const limit = Math.max(1, opts.limit ?? 10);
 
   const report: BackfillReport = {
@@ -445,4 +447,104 @@ export async function backfillOne(opts: { pages?: number; limit?: number } = {})
     "one:backfill:done",
   );
   return report;
+}
+
+// ─── The resumable archive crawl ────────────────────────────────────────────
+
+/** Scope under which ONE's archive position is remembered. */
+const ARCHIVE_SCOPE = "archive";
+
+export interface CrawlState {
+  /** Index page this run started at. */
+  fromPage: number;
+  /** Index page the NEXT run should start at. */
+  nextPage: number;
+  /** True once the crawl has reached the end of the archive. */
+  exhausted: boolean;
+  report: BackfillReport;
+}
+
+/**
+ * One nightly slice of the archive, continuing where the last run stopped.
+ *
+ * ── Why a stored cursor rather than a bigger `--pages` ───────────────────
+ * Without one, every run restarts at page 1 and re-reads everything shallower
+ * before reaching anything new — so "go deeper" meant passing a larger number
+ * by hand and paying for the whole prefix again, against a third party that
+ * rate-limits. With it, each run costs a fixed few pages and the archive is
+ * consumed steadily by a cron nobody has to think about.
+ *
+ * ── Two modes, one function ─────────────────────────────────────────────
+ * DEEP     — walking backwards through history. Advances the cursor.
+ * INCREMENTAL — the archive is exhausted, so only page 1 matters: new
+ *               publications appear at the front. The cursor stays put.
+ *
+ * The switch is automatic: a slice that discovers no articles is the end of the
+ * archive, and there is nothing deeper to find.
+ */
+export async function crawlOneArchive(opts: { pages?: number; limit?: number } = {}): Promise<CrawlState> {
+  const pages = Math.max(1, opts.pages ?? 3);
+  const started = Date.now();
+
+  const checkpoint = await prisma.providerCheckpoint
+    .findUnique({ where: { provider_scope: { provider: PROVIDER, scope: ARCHIVE_SCOPE } } })
+    .catch(() => null);
+
+  const exhausted = checkpoint?.exhausted ?? false;
+  // Incremental runs always look at page 1; deep runs continue from the cursor.
+  const fromPage = exhausted ? 1 : Math.max(1, Number(checkpoint?.cursor ?? "1"));
+
+  const report = await backfillOne({ pages, limit: opts.limit, fromPage });
+
+  // No articles at all in this slice means we have walked off the end.
+  const reachedEnd = !exhausted && report.articlesSeen === 0;
+  const nextPage = exhausted || reachedEnd ? 1 : fromPage + pages;
+
+  await prisma.providerCheckpoint
+    .upsert({
+      where: { provider_scope: { provider: PROVIDER, scope: ARCHIVE_SCOPE } },
+      create: {
+        provider: PROVIDER,
+        scope: ARCHIVE_SCOPE,
+        cursor: String(nextPage),
+        exhausted: exhausted || reachedEnd,
+        lastCheckedAt: new Date(),
+        // Only a run that actually WROTE something changed anything. Advancing
+        // lastChangedAt on every tick would make a dead provider look healthy —
+        // the distinction the freshness dashboard depends on.
+        ...(report.boutsAdded > 0 ? { lastChangedAt: new Date() } : {}),
+        failureStreak: report.failed > 0 && report.written === 0 ? 1 : 0,
+        stats: crawlStats(report, fromPage, Date.now() - started),
+      },
+      update: {
+        cursor: String(nextPage),
+        exhausted: exhausted || reachedEnd,
+        lastCheckedAt: new Date(),
+        ...(report.boutsAdded > 0 ? { lastChangedAt: new Date() } : {}),
+        failureStreak: report.failed > 0 && report.written === 0 ? { increment: 1 } : 0,
+        lastError: report.failed > 0 ? report.outcomes.find((o) => o.status === "failed")?.reason ?? null : null,
+        stats: crawlStats(report, fromPage, Date.now() - started),
+      },
+    })
+    .catch(() => {});
+
+  log.info(
+    { fromPage, nextPage, exhausted: exhausted || reachedEnd, bouts: report.boutsAdded },
+    "one:archive-crawl",
+  );
+
+  return { fromPage, nextPage, exhausted: exhausted || reachedEnd, report };
+}
+
+function crawlStats(report: BackfillReport, fromPage: number, durationMs: number) {
+  return {
+    fromPage,
+    durationMs,
+    articlesSeen: report.articlesSeen,
+    rowsInserted: report.boutsAdded,
+    rowsSkipped: report.skipped,
+    rowsUnchanged: report.unchanged,
+    failed: report.failed,
+    fightersCreated: report.fightersCreated,
+  };
 }

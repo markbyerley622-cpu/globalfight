@@ -2185,6 +2185,29 @@ model ProviderCheckpoint {
   /// SHA-256 of the last normalized payload. The cheap "did anything change?".
   payloadHash  String?
 
+  /// ── WHERE THE LAST RUN GOT TO ────────────────────────────────────────────
+  /// An opaque, provider-defined resume position. For an ARCHIVE crawl it is the
+  /// last index page scanned.
+  ///
+  /// Without it every backfill restarts at page 1 and re-reads what it already
+  /// has, which is why "walk deeper" meant passing a bigger `--pages` by hand
+  /// each time and re-fetching everything shallower on every run. With it a
+  /// nightly cron simply continues, and the job becomes self-maintaining instead
+  /// of a recurring manual chore.
+  ///
+  /// Null means "start from the beginning" — which is also what a completed
+  /// archive resets to, because once the deep history is in, the only thing
+  /// worth checking is the newest page.
+  cursor       String?
+  /// Whether the deep crawl has reached the end of the archive. Once true the
+  /// provider runs in INCREMENTAL mode: page 1 only, looking for new
+  /// publications rather than old ones.
+  exhausted    Boolean @default(false)
+  /// Last run's counters — rows inserted / updated / skipped, duration, whatever
+  /// the provider reports. Json because every provider counts different things,
+  /// and a column per metric would be a migration per connector.
+  stats        Json?
+
   lastCheckedAt DateTime?
   lastChangedAt DateTime?
   /// Consecutive failures. Reset on any success — a provider that fails once is

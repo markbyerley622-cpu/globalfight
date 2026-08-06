@@ -21,6 +21,7 @@ import { generateAllP4P } from "@/lib/rankings/generate";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
 import { projectChampions } from "@/lib/rankings/champions";
+import { crawlOneArchive } from "@/lib/scraper/one/ingest";
 import { applyDerivedRecords } from "@/lib/fighters/derive-records";
 import { SPORTS } from "@/lib/sports";
 import { syncONE } from "@/lib/scraper/one";
@@ -410,6 +411,27 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
         }
         log.info({ harvested: h.report.extracted, written }, "one:runner:done");
         return written;
+      });
+      // ── RESULTS, from the live-results archive ────────────────────────────
+      // syncONE above brings in EVENTS. It cannot bring in bouts: ONE renders
+      // its cards client-side, which is why 251 ONE events sat with no bouts at
+      // all — the largest measured gap in the database.
+      //
+      // This walks the editorial results archive, which IS server-rendered, and
+      // it RESUMES: the last index page reached is stored on the provider
+      // checkpoint, so each nightly tick continues rather than re-reading
+      // everything shallower. Once the archive is exhausted it flips to
+      // incremental and only watches page 1 for new publications.
+      //
+      // Deliberately small per tick. This is a sustained crawl of somebody
+      // else's server, and an unpaced run was rate-limited after a dozen fetches.
+      await safe("one:results", async () => {
+        const state = await crawlOneArchive({ pages: 3, limit: 12 });
+        return (
+          `page=${state.fromPage}→${state.nextPage} exhausted=${state.exhausted} ` +
+          `bouts=${state.report.boutsAdded} written=${state.report.written} ` +
+          `skipped=${state.report.skipped} failed=${state.report.failed}`
+        );
       });
       break;
     case "adcc":
