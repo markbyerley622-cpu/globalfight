@@ -31,6 +31,13 @@ export const CATEGORY_OF: Record<string, NotifCategory> = {
   // the replies toggle while its in-app row was gated by the gym toggle. Two
   // switches for one notification, and neither one did what it said.
   GYM_REVIEW: "gym",
+  // Gym posts ride the "gym" toggle, not "social". Someone who muted their gym
+  // expects that to cover the gym's feed; routing replies-under-a-gym-post
+  // through the replies toggle would be the same two-switches-for-one-thing bug
+  // GYM_REVIEW is sitting here to document.
+  GYM_POST_REPLY: "gym",
+  GYM_POST_REACTION: "gym",
+  GYM_POST_SHARE: "gym",
   // A streak is earned by predicting and lives in the same habit loop as rank
   // and results, so it rides the "predictions" toggle rather than adding a fifth
   // category (and a migration). A user who muted predictions muting this too is

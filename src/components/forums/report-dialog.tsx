@@ -11,14 +11,22 @@ const REASONS = [
   { value: "other", label: "Something else" },
 ];
 
+/** What a target is CALLED in the dialog's heading. Without this a gym post
+ *  would be headed "Report gym_post", which is a database value on a screen. */
+const NOUN: Record<string, string> = { thread: "thread", post: "post", gym_post: "post" };
+
 /**
- * Report a thread or post for moderation (Phase 6). Persists a ForumReport row;
- * one open report per user per target.
+ * Report a thread, forum post or gym post for moderation. Persists a
+ * ForumReport row; one open report per user per target.
+ *
+ * Gym posts reuse this button rather than getting their own: same table, same
+ * endpoint, same moderator queue, same wording. A second report dialog would be
+ * a second place for the reason list to drift.
  */
 export function ReportButton({
   targetType, targetId, compact,
 }: {
-  targetType: "thread" | "post"; targetId: string; compact?: boolean;
+  targetType: "thread" | "post" | "gym_post"; targetId: string; compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("spam");
@@ -60,7 +68,7 @@ export function ReportButton({
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-950/80 p-4" onClick={() => !busy && setOpen(false)}>
           <div className="w-full max-w-sm card-surface p-5" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Report {targetType}</h3>
+              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-chalk">Report {NOUN[targetType] ?? "content"}</h3>
               <button onClick={() => !busy && setOpen(false)} className="text-fog hover:text-chalk"><X className="size-4" /></button>
             </div>
             {done ? (

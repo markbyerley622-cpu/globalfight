@@ -23,7 +23,12 @@ export async function POST(req: Request) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
 
-  const targetType = body.targetType === "thread" || body.targetType === "post" ? body.targetType : null;
+  // "gym_post" joins the same queue as forum content — one reports table, one
+  // console, one audit trail. See createReport.
+  const targetType =
+    body.targetType === "thread" || body.targetType === "post" || body.targetType === "gym_post"
+      ? body.targetType
+      : null;
   const targetId = typeof body.targetId === "string" ? body.targetId : "";
   const reason = typeof body.reason === "string" && REASONS.includes(body.reason) ? body.reason : "other";
   const detail = typeof body.detail === "string" ? body.detail.slice(0, 1000) : undefined;

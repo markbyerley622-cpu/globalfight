@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { publicDisplayName } from "@/lib/display-name";
+import { resolveReportedPosts, setPostHidden } from "@/lib/gym-posts/repo";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  THE REPORTS QUEUE — the read + write side of moderator review.
@@ -31,7 +32,7 @@ export interface QueueItem {
   detail: string | null;
   createdAt: string;
   reporter: { name: string; username: string | null };
-  targetType: "thread" | "post";
+  targetType: "thread" | "post" | "gym_post";
   targetId: string;
   /** Null when the reported content has since been hard-deleted. */
   target: {
@@ -79,8 +80,11 @@ export async function getReportQueue(filters: QueueFilters = {}): Promise<QueueI
 
   const threadIds = reports.filter((r) => r.targetType === "thread").map((r) => r.targetId);
   const postIds = reports.filter((r) => r.targetType === "post").map((r) => r.targetId);
+  const gymPostIds = reports.filter((r) => r.targetType === "gym_post").map((r) => r.targetId);
 
-  const [threads, posts, counts] = await Promise.all([
+  // Still a CONSTANT number of queries: one per target KIND, not one per row.
+  // Adding a kind adds a query to this batch, never a query per report.
+  const [threads, posts, gymPosts, counts] = await Promise.all([
     threadIds.length
       ? prisma.forumThread.findMany({
           where: { id: { in: threadIds } },
@@ -101,24 +105,42 @@ export async function getReportQueue(filters: QueueFilters = {}): Promise<QueueI
           },
         })
       : [],
+    resolveReportedPosts(gymPostIds),
     // "Three people reported this" is the single most useful signal on the page
     // and the one a moderator would otherwise have to count by eye.
     prisma.forumReport.groupBy({
       by: ["targetType", "targetId"],
-      where: { targetId: { in: [...threadIds, ...postIds] } },
+      where: { targetId: { in: [...threadIds, ...postIds, ...gymPostIds] } },
       _count: { _all: true },
     }),
   ]);
 
   const threadById = new Map(threads.map((t) => [t.id, t]));
   const postById = new Map(posts.map((p) => [p.id, p]));
+  const gymPostById = new Map(gymPosts.map((p) => [p.id, p]));
   const countFor = new Map(counts.map((c) => [`${c.targetType}:${c.targetId}`, c._count._all]));
 
   return reports.map((r): QueueItem => {
-    const targetType = r.targetType === "thread" ? "thread" : "post";
+    const targetType: QueueItem["targetType"] =
+      r.targetType === "thread" ? "thread" : r.targetType === "gym_post" ? "gym_post" : "post";
     let target: QueueItem["target"] = null;
 
-    if (targetType === "thread") {
+    if (targetType === "gym_post") {
+      const p = gymPostById.get(r.targetId);
+      if (p) {
+        target = {
+          excerpt: p.body.slice(0, 400) || "(image only)",
+          authorName: publicDisplayName(p.author),
+          authorUsername: p.author.username,
+          // The SAME "hidden" flag the console already renders. A gym post's
+          // removal is a deletedAt timestamp rather than a boolean, so it is
+          // mapped here — one vocabulary for the moderator, whatever the
+          // underlying column happens to be.
+          hidden: p.deletedAt !== null,
+          href: `/gyms/${p.gym.slug}?post=${p.id}`,
+        };
+      }
+    } else if (targetType === "thread") {
       const t = threadById.get(r.targetId);
       if (t) {
         target = {
@@ -198,18 +220,37 @@ export async function applyModeratorAction(input: {
   if (!report) return { ok: false, error: "That report no longer exists." };
 
   if (input.action === "hide" || input.action === "restore") {
-    if (report.targetType !== "post") {
+    const hidden = input.action === "hide";
+
+    // A gym post hides through the SERVICE, not with an UPDATE here. Hiding one
+    // has to release its media references too, and reaching into the table
+    // directly would leave those assets pinned forever — the whole point of
+    // reference counting. setPostHidden owns that, and it makes the atomic
+    // claim that stops two moderators double-releasing.
+    if (report.targetType === "gym_post") {
+      const changed = await setPostHidden({
+        postId: report.targetId,
+        moderatorId: input.moderatorId,
+        hidden,
+      });
+      if (!changed) {
+        return {
+          ok: false,
+          error: hidden ? "That post is already hidden." : "That post is already visible.",
+        };
+      }
+    } else if (report.targetType === "post") {
+      // updateMany, not update: a post hard-deleted between the queue rendering
+      // and the click would throw P2025 on update() and leak the model name to
+      // the client (CLAUDE.md rule 5). This simply affects zero rows.
+      const touched = await prisma.forumPost.updateMany({
+        where: { id: report.targetId },
+        data: { deleted: hidden },
+      });
+      if (touched.count === 0) return { ok: false, error: "That post no longer exists." };
+    } else {
       return { ok: false, error: "Only posts can be hidden or restored from the queue." };
     }
-    const hidden = input.action === "hide";
-    // updateMany, not update: a post hard-deleted between the queue rendering
-    // and the click would throw P2025 on update() and leak the model name to the
-    // client (CLAUDE.md rule 5). This simply affects zero rows.
-    const touched = await prisma.forumPost.updateMany({
-      where: { id: report.targetId },
-      data: { deleted: hidden },
-    });
-    if (touched.count === 0) return { ok: false, error: "That post no longer exists." };
   }
 
   const status = RESULTING_STATUS[input.action];

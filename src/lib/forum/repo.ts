@@ -743,8 +743,17 @@ export async function listBookmarks(userId: string, opts?: { limit?: number; cur
 
 // ─── Reports (Phase 6) ───────────────────────────────────────────────────────
 
+/**
+ * File a report.
+ *
+ * `targetType` widened to carry gym posts. ForumReport is already polymorphic
+ * (targetType + targetId, no foreign key), so a gym post joins the EXISTING
+ * queue rather than getting a second reports table, a second console and a
+ * second set of moderator habits. The one table is also what makes "three
+ * people reported this" countable across content kinds.
+ */
 export async function createReport(input: {
-  reporterId: string; targetType: "thread" | "post"; targetId: string; reason: string; detail?: string;
+  reporterId: string; targetType: "thread" | "post" | "gym_post"; targetId: string; reason: string; detail?: string;
 }): Promise<void> {
   await prisma.forumReport.upsert({
     where: { targetType_targetId_reporterId: { targetType: input.targetType, targetId: input.targetId, reporterId: input.reporterId } },

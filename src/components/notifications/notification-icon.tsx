@@ -1,7 +1,7 @@
 import {
   AtSign, Award, Ban, BadgeCheck, Bell, Calendar, CalendarClock, CheckCircle2, ClipboardList,
-  Dumbbell, Flame, Handshake, Layers, Medal, Megaphone, MessageSquare, Mic, Newspaper,
-  Pencil, Play, Radio, Star, Swords, Trash2, TrendingDown, TrendingUp, Trophy, User,
+  Dumbbell, Flame, Handshake, Heart, Layers, Medal, Megaphone, MessageSquare, Mic, Newspaper,
+  Pencil, Play, Radio, Share2, Star, Swords, Trash2, TrendingDown, TrendingUp, Trophy, User,
   UserPlus, XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,8 @@ const ICONS: Record<NotificationIconKey, typeof Bell> = {
   person: User,
   follow: UserPlus,
   verified: BadgeCheck,
+  reaction: Heart,
+  share: Share2,
 
   announcement: Megaphone,
   promotion: Award,

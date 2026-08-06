@@ -36,6 +36,11 @@ export const NOTIFICATION_ICON_KEYS = [
   "ranking", "rankingUp", "rankingDown",
   "gym", "review", "edit", "removed",
   "community", "reply", "mention", "person", "follow", "verified",
+  // Gym-post interactions. "reaction" and "share" are separate keys rather than
+  // both falling back to "community" because the notification list is scanned,
+  // not read — the icon is what tells someone at a glance that three of these
+  // rows are likes and one is a reply.
+  "reaction", "share",
   "announcement", "promotion", "video", "news", "podcast",
   "streak", "card", "reputation", "milestone", "welcome",
   "bell",
@@ -123,6 +128,9 @@ const BY_TYPE: Record<string, NotificationIconKey> = {
   BATTLE_REPLY: "reply",
   STREAK_REMINDER: "streak",
   GYM_REVIEW: "review",
+  GYM_POST_REPLY: "reply",
+  GYM_POST_REACTION: "reaction",
+  GYM_POST_SHARE: "share",
   SYSTEM: "announcement",
 };
 
