@@ -12,35 +12,53 @@
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
+import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import { log } from "./logger";
 import type { ScrapedMmaFighter } from "./mma";
 
-/** Persist a scraped MMA roster (sport=MMA). Idempotent upsert keyed on slug. */
+/**
+ * Persist a scraped MMA roster (sport=MMA).
+ *
+ * Identity goes through the canonical resolver rather than `upsert({ where: {
+ * slug } })`. The nationality this source carries is real corroboration — it is
+ * exactly the fact that separates two fighters who share a name — so it is
+ * passed in rather than only being written after the fact.
+ *
+ * Bio fields are then filled with `?? undefined`, which in Prisma means "leave
+ * whatever is already there". A roster scrape adds what the registry is missing
+ * and never blanks a field a better source already filled.
+ */
 export async function persistMmaRoster(rows: ScrapedMmaFighter[]): Promise<number> {
   let written = 0;
   for (const r of rows) {
-    const slug = slugify(r.name);
-    if (!slug) continue;
-    await prisma.fighter.upsert({
-      where: { slug },
-      // sport is intentionally NOT updated — the first source to create a
-      // fighter owns its sport, so re-scrapes never flip a boxer to MMA etc.
-      update: {
+    if (!slugify(r.name)) continue;
+
+    const { fighterId } = await resolveOrCreateFighter(
+      {
         name: r.name,
+        sport: "MMA",
+        nickname: r.nickname ?? null,
+        nationality: r.nationality ?? null,
+        countryCode: r.countryCode ?? null,
+      },
+      { origin: "mma-roster", sportFallback: "MMA" },
+    );
+
+    await prisma.fighter.update({
+      where: { id: fighterId },
+      // `sport` is intentionally NOT updated — the first source to create a
+      // fighter owns its sport, so re-scrapes never flip a boxer to MMA. The
+      // display NAME is no longer updated either: the resolver has already
+      // recorded this source's spelling as an alias, and rewriting the
+      // registry's own label to whichever source ran last is how a canonical
+      // name stops being canonical.
+      data: {
         nickname: r.nickname ?? undefined,
         nationality: r.nationality ?? undefined,
         countryCode: r.countryCode ?? undefined,
         heightCm: r.heightCm ?? undefined,
         wins: r.record.wins, losses: r.record.losses, draws: r.record.draws,
         lastScrapedAt: new Date(),
-      },
-      create: {
-        slug, name: r.name, sport: "MMA",
-        nickname: r.nickname ?? null,
-        nationality: r.nationality ?? null,
-        countryCode: r.countryCode ?? null,
-        heightCm: r.heightCm ?? null,
-        wins: r.record.wins, losses: r.record.losses, draws: r.record.draws,
       },
     });
     written++;

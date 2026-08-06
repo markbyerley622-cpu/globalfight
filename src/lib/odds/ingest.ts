@@ -15,6 +15,7 @@ import { prisma } from "@/lib/db";
 import { slugify, impliedProbability } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
+import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import { fetchMarketOdds, type MarketEvent, type SportLabel } from "./provider";
 
 const SPORT_ENUM: Record<SportLabel, "BOXING" | "MMA" | "MUAY_THAI" | "KICKBOXING"> = {
@@ -24,15 +25,20 @@ const SPORT_ENUM: Record<SportLabel, "BOXING" | "MMA" | "MUAY_THAI" | "KICKBOXIN
 const dateKey = (iso: string) => iso.slice(0, 10);            // YYYY-MM-DD (UTC)
 const defaultRounds = (s: SportLabel) => (s === "Boxing" ? 12 : s === "MMA" ? 3 : 5);
 
-/** Upsert a fighter by slug; sport is set on create only (never clobbered). */
+/**
+ * Resolve a fighter named on an odds feed to the canonical registry.
+ *
+ * Odds feeds publish the loosest names in the pipeline — abbreviations, missing
+ * accents, occasionally a nickname in place of a surname — so this was the path
+ * most likely to mint a duplicate under a slug key, and the duplicate then held
+ * the market prices while the real fighter's page showed none.
+ */
 async function upsertFighter(name: string, sport: SportLabel): Promise<string> {
-  const slug = slugify(name);
-  const f = await prisma.fighter.upsert({
-    where: { slug },
-    update: { name },                                  // refresh display name only
-    create: { slug, name, sport: SPORT_ENUM[sport] },  // first source sets the sport
-  });
-  return f.id;
+  const result = await resolveOrCreateFighter(
+    { name, sport: SPORT_ENUM[sport] },
+    { origin: "odds-ingest", sportFallback: SPORT_ENUM[sport] },
+  );
+  return result.fighterId;
 }
 
 /** Upsert the synthetic daily event card for a sport+date. */

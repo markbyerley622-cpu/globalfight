@@ -354,8 +354,23 @@ async function planCorner(
   if (!name?.trim()) return null;
   const match = await resolveFighter({ source, externalId, name, sport });
   if (match.fighterId) return { id: match.fighterId, create: false };
-  const slug = slugify(name);
-  if (!slug) return null;
+
+  const base = slugify(name);
+  if (!base) return null;
+
+  // The resolver said this is NOT any fighter we already hold. If the plain slug
+  // is nonetheless taken, the `upsert({ where: { slug } })` below would silently
+  // attach this bout to whoever owns it — the exact same-name collision the slug
+  // key caused everywhere else, reintroduced at the last step.
+  //
+  // A taken slug plus a no-match verdict means one of two things, and a suffix is
+  // right for both: a genuinely different person with the same name, or a pair
+  // the resolver was not confident enough to merge (in which case it has already
+  // queued them for review, and merging here would pre-empt that decision).
+  let slug = base;
+  for (let i = 2; await prisma.fighter.findUnique({ where: { slug }, select: { id: true } }); i++) {
+    slug = `${base}-${i}`;
+  }
   return { slug, name, create: true };
 }
 

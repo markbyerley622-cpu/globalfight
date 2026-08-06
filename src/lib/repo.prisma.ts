@@ -7,6 +7,7 @@
 
 import "server-only";
 import { prisma } from "@/lib/db";
+import { resolveFighterIdentity } from "@/lib/registry/identity";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { toCountryCode } from "@/lib/countries";
 import { imageProxyUrl } from "@/lib/media-safe";
@@ -203,10 +204,77 @@ export async function upsertFighterProfile(userId: string, input: FighterProfile
     await prisma.fighter.update({ where: { id: existing.id }, data });
     return { slug: existing.slug };
   }
+
+  // ── The signup path used to CREATE A DUPLICATE ──────────────────────────
+  // It went straight from "that slug is taken" to `${base}-2` and a brand-new
+  // Fighter row. So a real fighter signing up got a second, parallel identity
+  // beside the registry entry the event pipeline had already built for them —
+  // with none of their bouts, rankings, titles or photos attached to it.
+  //
+  // Now the identity question is asked FIRST, against the whole registry, using
+  // the same resolver every ingest path uses:
+  //
+  //   MATCH_CONFIDENT  → attach the account to the canonical fighter. The
+  //                      registry stays the source of truth; the user account is
+  //                      an identity attached to it, not a copy of it.
+  //   anything else    → create their profile AND queue the possible match for
+  //                      review, so a human links it rather than the system
+  //                      guessing about a real person's identity.
+  //
+  // `claimed: true` is deliberately NOT set on the confident path here — see
+  // below. Claiming an existing registry entry is a verification flow, not a
+  // side effect of filling in a form.
+  const resolution = await resolveFighterIdentity({
+    name: input.name,
+    sport: input.sport as PFighter["sport"],
+    nickname: input.nickname ?? null,
+    countryCode: input.countryCode ?? null,
+    nationality: input.nationality ?? null,
+  });
+
+  if (resolution.fighterId) {
+    const target = await prisma.fighter.findUnique({
+      where: { id: resolution.fighterId },
+      select: { id: true, slug: true, ownerId: true },
+    });
+    // Only attach to an UNOWNED row. Someone else's verified profile is never
+    // reassigned by a signup, however well the names match.
+    if (target && !target.ownerId) {
+      await prisma.fighter.update({
+        where: { id: target.id },
+        // The registry's imported facts are not overwritten wholesale by a form:
+        // only the self-declared fields the owner is entitled to set. Their
+        // record in particular stays derived from bout history.
+        data: { ...data, ownerId: userId },
+      });
+      return { slug: target.slug };
+    }
+  }
+
   const base = fighterSlugify(input.name);
   let slug = base;
+  // Reached only once identity has answered "different person" (or "that one is
+  // already owned"), so a suffix here is a genuine second human, not a duplicate.
   for (let i = 2; await prisma.fighter.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${base}-${i}`;
-  await prisma.fighter.create({ data: { ...data, slug, ownerId: userId } });
+  const created = await prisma.fighter.create({ data: { ...data, slug, ownerId: userId }, select: { id: true } });
+
+  // Record the possible match so a reviewer can link it later. Best-effort: a
+  // failure here must never block someone creating their own profile.
+  for (const c of resolution.candidates) {
+    if (c.fighterId === created.id) continue;
+    await prisma.fighterIdentityCandidate
+      .upsert({
+        where: { fighterId_candidateId: { fighterId: created.id, candidateId: c.fighterId } },
+        create: {
+          fighterId: created.id, candidateId: c.fighterId, via: c.via,
+          confidence: resolution.verdict.confidence, origin: "signup",
+          evidence: { reason: resolution.verdict.reason, signupName: input.name, candidateName: c.name },
+        },
+        update: {},
+      })
+      .catch(() => {});
+  }
+
   return { slug };
 }
 

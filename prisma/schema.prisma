@@ -192,6 +192,10 @@ model WeightClass {
   champions Champion[]
   fights    Fight[]
 
+  rankingObservations  RankingObservation[]
+  championObservations ChampionObservation[]
+  titleReigns          TitleReign[]
+
   @@unique([sport, name]) // names repeat across sports (Heavyweight in boxing AND bare-knuckle)
   @@index([sport, order])
 }
@@ -342,6 +346,14 @@ model Fighter {
   fightsAsBlue     Fight[]              @relation("BlueCorner")
   titles           Title[]
   rankHistory      RankSnapshot[]
+  // ── The evidence layer (see the Observation models) ──────────────────────
+  rankingObservations  RankingObservation[]
+  championObservations ChampionObservation[]
+  titleReigns          TitleReign[]
+  /// Open "is this the same person?" questions where THIS row is the subject.
+  identityCandidates   FighterIdentityCandidate[] @relation("IdentityCandidateSubject")
+  /// …and where this row is the possible match.
+  identityMatches      FighterIdentityCandidate[] @relation("IdentityCandidateMatch")
   predictions      Prediction[]         @relation("PredictedWinner")
   favoritedBy      FavoriteFighter[]
   cardAwards       CardAward[]
@@ -642,10 +654,40 @@ model Ranking {
   /// limits need WeightClass keyed by organisation too; that is a follow-up.
   organisation String @default("")
 
+  // ── Reconciliation provenance ────────────────────────────────────────────
+  // Ranking is now a PROJECTION of RankingObservation, not a place providers
+  // write to. These columns are what make a published number explainable: which
+  // provider won, at what tier, from which URL, effective when, and which
+  // observations were behind it.
+  //
+  // `source` above is kept and still carries the winning provider id, so every
+  // existing reader keeps working unchanged during the migration.
+  /// Trust tier of the provider that decided this row.
+  tier            String?
+  /// The source's own publication date for the winning observation.
+  effectiveDate   DateTime?
+  sourceUrl       String?
+  /// 0..1, from the winning provider's tier.
+  confidence      Float?
+  /// How many DISTINCT providers agreed on this exact rank. 1 = a single source
+  /// said it; 3 = three independent sources did, which is a different thing to
+  /// show a reader.
+  agreementCount  Int      @default(1)
+  /// True when providers disagreed and the tier order broke the tie. Feeds the
+  /// admin conflict view — a conflict that is invisible cannot be fixed.
+  contested       Boolean  @default(false)
+  /// The RankingObservation ids this row was computed from.
+  observationIds  String[]
+  /// When the reconciler last recomputed this row (distinct from updatedAt,
+  /// which moves on any write).
+  reconciledAt    DateTime?
+
   @@unique([weightClassId, isPoundForPound, fighterId, organisation])
   @@index([weightClassId, rank])
   @@index([isPoundForPound, rank])
   @@index([organisation, isPoundForPound, rank])
+  /// The admin conflict view reads contested rows first.
+  @@index([contested, reconciledAt])
 }
 
 /// Append-only history for Ranking. `Ranking` itself is the current board —
@@ -1852,8 +1894,293 @@ model FighterAlias {
   source     String?
   createdAt  DateTime @default(now())
 
+  /// The same alias must not be recorded twice for one fighter — every ingest
+  /// pass would otherwise append another row for a name it has already seen, and
+  /// the alias table is read on the hot path of identity resolution.
+  @@unique([fighterId, normalized])
   @@index([normalized])
   @@index([fighterId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  THE EVIDENCE LAYER
+//
+//  The architectural finding in docs/DATA_AUDIT.md: rankings and champions were
+//  resolved DESTRUCTIVELY at write time. `Ranking` is unique per (division,
+//  p4p, fighter, organisation), so a second provider's opinion had nowhere to
+//  live — the higher-trust source overwrote the lower one and what it replaced
+//  was gone, unrecorded. Nothing could explain why a fighter was ranked where
+//  they were, and no conflict could even be DETECTED, because the losing value
+//  never landed.
+//
+//  So providers no longer write conclusions. They write OBSERVATIONS:
+//
+//      provider ──> Observation (append-only, immutable, what a source said)
+//                        │
+//                   reconciler (pure, deterministic, tier-ordered)
+//                        │
+//                        ▼
+//                   Projection (Ranking / TitleReign — what we BELIEVE)
+//
+//  The projection carries the observation ids behind it, so every published
+//  number can be traced to the exact source rows that produced it. Tier 2
+//  (Wikipedia/Wikidata) can never overwrite Tier 1 (official) — but it is still
+//  RECORDED, which is what makes disagreement visible instead of invisible.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Source trust tier. The ORDER is the reconciliation rule — lower wins.
+enum EvidenceTier {
+  /// Official promotion APIs, official ranking releases, official title
+  /// announcements. The organisation speaking about its own belt.
+  OFFICIAL
+  /// Structured open data: Wikidata, the Wikipedia API. Good, independent, and
+  /// never authoritative over an organisation's own publication.
+  ENCYCLOPAEDIC
+  /// Licensed third-party databases (Sherdog / Tapology / BoxRec, each only if
+  /// its terms permit — see docs/RANKINGS.md and the licence flags in code).
+  AGGREGATOR
+  /// Our own history and archived snapshots. The floor: enough to keep serving
+  /// something explainable when every live provider is dark.
+  INTERNAL
+}
+
+/// What a provider SAID about one fighter's rank, at one moment.
+///
+/// Append-only and immutable. Never updated, never deleted by normal operation.
+/// A provider re-publishing the same list produces no new row (the payload hash
+/// is unchanged, so the ingest skips the write entirely) — but a CHANGED list
+/// produces a new observation and leaves the previous one intact, which is what
+/// makes "when did this change, and according to whom?" answerable.
+model RankingObservation {
+  id String @id @default(cuid())
+
+  /// Connector id, e.g. "ufc-mma", "wikidata-boxing". Matches the provider
+  /// registry in lib/registry/providers.
+  provider String
+  tier     EvidenceTier
+
+  /// The canonical fighter this row is ABOUT. Resolved through the one identity
+  /// resolver before the observation is written — an observation whose subject
+  /// could not be resolved is not written at all; it becomes an identity
+  /// candidate for review instead, so ranks are never attached to a guess.
+  fighterId String
+  fighter   Fighter @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+
+  /// Division as the SOURCE names it, plus our resolved WeightClass. Both, so a
+  /// re-parse can be audited against what the source actually published.
+  divisionLabel   String
+  weightClassId   String?
+  weightClass     WeightClass? @relation(fields: [weightClassId], references: [id], onDelete: SetNull)
+  isPoundForPound Boolean      @default(false)
+  /// "UFC", "WBA", … Empty string = a cross-promotional list belonging to the
+  /// sport rather than to any one body. Empty rather than NULL for the same
+  /// reason Ranking.organisation is: NULLs are DISTINCT in a unique index.
+  organisation    String       @default("")
+
+  rank Int
+
+  /// When the SOURCE says this is effective — its publication date, not our
+  /// fetch time. Parsed into RankingEntry and then DROPPED at persistence in the
+  /// old pipeline; it is the single most useful column for reconciling two
+  /// providers who disagree, because the newer publication usually wins.
+  effectiveDate DateTime
+  /// When WE retrieved it. Distinct from effectiveDate on purpose.
+  retrievedAt   DateTime @default(now())
+  /// Provenance. Never returned to a client as a link to follow blindly.
+  sourceUrl     String?
+  /// 0..1, from the provider's tier. Stored so a historical observation keeps
+  /// the confidence it had when written, even if the tier is later re-rated.
+  confidence    Float
+  /// SHA-256 of the provider's normalized payload for this list. Identical hash
+  /// on the next run → nothing is written at all.
+  payloadHash   String?
+
+  /// One observation per provider per fighter per list per effective date. A
+  /// re-run of the same publication is a no-op rather than a duplicate row.
+  @@unique([provider, fighterId, weightClassId, isPoundForPound, organisation, effectiveDate])
+  /// The reconciler's read: everything currently known about one list.
+  @@index([weightClassId, isPoundForPound, organisation, effectiveDate])
+  @@index([fighterId, retrievedAt])
+  @@index([provider, retrievedAt])
+}
+
+/// Title status. A belt is not a boolean.
+enum TitleStatus {
+  /// Undisputed holder of this body's title in this division.
+  CHAMPION
+  /// Interim titleholder — a real, separate reign, not a lesser champion.
+  INTERIM
+  /// Nobody holds it. A reign with no fighter, which the old boolean could not
+  /// express at all.
+  VACANT
+  /// Taken from the holder by the body (missed weight, failed test, inactivity).
+  /// Distinct from losing it in the ring, and the distinction is the record.
+  STRIPPED
+  /// The holder retired as champion.
+  RETIRED
+  /// Recognised lineal succession rather than a body's belt. Modelled now,
+  /// populated later — see docs/RANKINGS.md.
+  LINEAL
+}
+
+/// What a provider SAID about who holds a title. Append-only, same contract as
+/// RankingObservation.
+model ChampionObservation {
+  id       String       @id @default(cuid())
+  provider String
+  tier     EvidenceTier
+
+  /// Null when the observation is that the title is VACANT — which is a fact
+  /// about the belt, not about a person, and had no representation before.
+  fighterId String?
+  fighter   Fighter? @relation(fields: [fighterId], references: [id], onDelete: Cascade)
+
+  weightClassId String
+  weightClass   WeightClass @relation(fields: [weightClassId], references: [id], onDelete: Cascade)
+  /// The sanctioning body / promotion as a STRING, not the SanctioningBody enum.
+  /// The enum cannot represent a body we have not shipped a migration for, and
+  /// refusing to record a real observation because our enum is behind is exactly
+  /// how evidence gets silently dropped (see ingest.ts::sanctioningBodyFor,
+  /// which returned null and skipped the champion).
+  organisation  String
+  status        TitleStatus @default(CHAMPION)
+
+  effectiveDate DateTime
+  retrievedAt   DateTime @default(now())
+  sourceUrl     String?
+  confidence    Float
+  payloadHash   String?
+
+  @@unique([provider, weightClassId, organisation, status, effectiveDate])
+  @@index([weightClassId, organisation, effectiveDate])
+  @@index([fighterId, effectiveDate])
+}
+
+/// A TITLE REIGN. Permanent, and the replacement for everything the old schema
+/// could not hold.
+///
+/// `Champion` is `@@unique([weightClassId, body, current])` on a BOOLEAN, which
+/// permits at most TWO rows per (division, body) for all time — one current, one
+/// not. The workaround in the old ingest updated the champion in place and reset
+/// `since: null, defenses: 0`, so every title change destroyed the previous
+/// reign's start date and defence count. There was no history, and no way to add
+/// one without removing that constraint.
+///
+/// This model has no such ceiling: a division accumulates reigns forever. The
+/// invariant "at most one OPEN reign per (division, organisation, status)" is
+/// enforced by a partial unique index in SQL rather than by a boolean column —
+/// see prisma/sql/title-reign.sql, applied by the reconciler's migration step.
+model TitleReign {
+  id String @id @default(cuid())
+
+  /// Null for a VACANT reign — the period during which nobody held the belt.
+  fighterId String?
+  fighter   Fighter? @relation(fields: [fighterId], references: [id], onDelete: SetNull)
+
+  weightClassId String
+  weightClass   WeightClass @relation(fields: [weightClassId], references: [id], onDelete: Cascade)
+  organisation  String
+  status        TitleStatus @default(CHAMPION)
+
+  /// When the reign began and ended. `endedAt` null = still open.
+  startedAt DateTime
+  endedAt   DateTime?
+  /// Successful defences during THIS reign. Never reset by a later reign,
+  /// because a later reign is a different row.
+  defenses  Int       @default(0)
+
+  /// The bouts that started and ended it, when we know them. Nullable because a
+  /// title can change hands outside a bout (stripped, vacated).
+  wonAtFightId  String?
+  lostAtFightId String?
+
+  /// How this reign was decided: the reconciler's verdict plus the observation
+  /// ids behind it. A reign that cannot explain itself is exactly what this
+  /// sprint exists to remove.
+  decidedBy       String?
+  evidence        Json?
+  /// True when providers disagreed and the tier order broke the tie. Surfaces
+  /// in the admin conflict view.
+  contested       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@index([weightClassId, organisation, startedAt])
+  @@index([fighterId, startedAt])
+  @@index([endedAt])
+}
+
+/// A possible identity match that is NOT confident enough to act on.
+///
+/// The rule this table exists to hold: NEVER MERGE AUTOMATICALLY BELOW THE
+/// THRESHOLD. When the resolver cannot be sure, it does not guess and it does
+/// not silently create a parallel fighter — it records the question here and a
+/// human answers it.
+model FighterIdentityCandidate {
+  id String @id @default(cuid())
+
+  /// The row we are unsure about (a provisional fighter, or the incoming one).
+  fighterId String
+  fighter   Fighter @relation("IdentityCandidateSubject", fields: [fighterId], references: [id], onDelete: Cascade)
+  /// The row it MIGHT be the same person as.
+  candidateId String
+  candidate   Fighter @relation("IdentityCandidateMatch", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  /// Which rung of the ladder fired, and how strongly.
+  via        String
+  confidence Float
+  /// The comparable facts, so a reviewer decides from data rather than a score:
+  /// { "name": [...], "dob": [...], "nationality": [...], "externalIds": [...] }
+  evidence   Json?
+  /// What triggered it: "ingest" | "signup" | "audit".
+  origin     String @default("ingest")
+
+  /// PENDING | MERGED | REJECTED
+  status     String    @default("PENDING")
+  reviewerId String?
+  reviewedAt DateTime?
+  note       String?
+
+  createdAt DateTime @default(now())
+
+  /// One open question per pair, whichever way round it is raised.
+  @@unique([fighterId, candidateId])
+  @@index([status, confidence])
+  @@index([candidateId])
+}
+
+/// Per-provider incremental-sync state.
+///
+/// The media pipeline already proved this shape works (ETag + If-Modified-Since
+/// + content hash, with `unchanged-304` and `unchanged-hash` as first-class
+/// outcomes). Rankings had none of it: every run re-fetched, re-parsed and
+/// re-wrote identical rows, and appended a RankSnapshot per fighter per run
+/// whether or not anything had changed.
+///
+/// `lastChangedAt` is the column that makes freshness honest. "Checked an hour
+/// ago" and "changed an hour ago" are different facts, and a dashboard that
+/// conflates them reports a dead provider as healthy.
+model ProviderCheckpoint {
+  id       String @id @default(cuid())
+  /// Connector id + an optional scope ("ufc-mma", scope "rankings").
+  provider String
+  scope    String @default("")
+
+  etag         String?
+  lastModified String?
+  /// SHA-256 of the last normalized payload. The cheap "did anything change?".
+  payloadHash  String?
+
+  lastCheckedAt DateTime?
+  lastChangedAt DateTime?
+  /// Consecutive failures. Reset on any success — a provider that fails once is
+  /// noise; one that has failed eleven times in a row is an outage.
+  failureStreak Int       @default(0)
+  lastError     String?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, scope])
+  @@index([lastCheckedAt])
 }
 
 /// Where a BOUT came from. A separate table, not columns on Fight, deliberately:

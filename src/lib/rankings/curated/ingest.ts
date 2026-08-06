@@ -1,7 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { SPORT_LABEL } from "@/lib/sports";
-import { fighterSlug, movementFor } from "@/lib/rankings/ingest-rules";
+import type { Sport } from "@prisma/client";
+import { movementFor } from "@/lib/rankings/ingest-rules";
+import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import { notifyRankingChange } from "@/lib/social/fighter-triggers";
 import { CURATED_P4P, type CuratedList } from "./lists";
 
@@ -39,15 +41,13 @@ async function ensureP4PWeightClass(sportValue: string): Promise<string> {
   return wc.id;
 }
 
+/** Through the canonical resolver — see lib/registry/identity. */
 async function resolveFighter(name: string, sport: string, countryCode: string | null): Promise<string> {
-  const slug = fighterSlug(name);
-  const existing = await prisma.fighter.findUnique({ where: { slug }, select: { id: true } });
-  if (existing) return existing.id;
-  const created = await prisma.fighter.create({
-    data: { slug, name, sport: sport as never, countryCode: countryCode ?? undefined },
-    select: { id: true },
-  });
-  return created.id;
+  const result = await resolveOrCreateFighter(
+    { name, sport: sport as Sport, countryCode },
+    { origin: "curated-p4p", sportFallback: sport as Sport },
+  );
+  return result.fighterId;
 }
 
 async function ingestList(list: CuratedList): Promise<CuratedIngestStat> {

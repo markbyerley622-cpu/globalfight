@@ -12,6 +12,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { invalidate } from "@/lib/cache";
 import { log } from "@/lib/scraper/logger";
+import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import { getEventAdapters } from "./registry";
 import { notifyEventChanges, snapshotEvent } from "@/lib/social/event-triggers";
 import { promotionFromText } from "@/lib/promotions";
@@ -30,14 +31,26 @@ function eventSlug(ev: AdapterEvent): string {
 const PRO_WRESTLING =
   /\b(wwe|aew|nxt|tna|njpw|gcw|roh|wrestlemania|summerslam|royal rumble|survivor series|money in the bank|worlds collide|night of champions|crown jewel|elimination chamber|clash at the castle|saturday night'?s main event|wrestle kingdom|g1 climax|double or nothing|all out|full gear|forbidden door|all in\b|revolution)\b/i;
 
+/**
+ * The corner of a bout, as a CANONICAL fighter.
+ *
+ * Was `upsert({ where: { slug: slugify(name) } })`. This is the highest-volume
+ * fighter-creation path in the product — every bout on every scraped card runs
+ * through it twice — so it is also where a name-keyed identity did the most
+ * damage: every spelling variant a promotion published became another fighter,
+ * and every same-named pair across two sports became one.
+ *
+ * `update: { name }` was the other half of that: a later source could rewrite an
+ * established fighter's display name to its own spelling. The resolver records
+ * that variant as an ALIAS instead, which makes the next match easier rather
+ * than overwriting the registry's own label.
+ */
 async function upsertFighter(name: string, sport: SportEnum): Promise<string> {
-  const slug = slugify(name);
-  const f = await prisma.fighter.upsert({
-    where: { slug },
-    update: { name },
-    create: { slug, name, sport },
-  });
-  return f.id;
+  const result = await resolveOrCreateFighter(
+    { name, sport },
+    { origin: "event-ingest", sportFallback: sport },
+  );
+  return result.fighterId;
 }
 
 async function upsertBout(eventId: string, sport: SportEnum, bout: AdapterBout, order: number, date: Date): Promise<void> {

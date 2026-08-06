@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { flags } from "@/lib/feature-flags";
 import type { RankingConnector, RankingEntry } from "./connector";
 import { ingestConnectors, INGEST_BLOCKLIST } from "./connectors";
+import type { Sport } from "@prisma/client";
+import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import {
-  fighterSlug, weightClassSlug, divisionOrder, shouldWriteRanking, movementFor,
+  weightClassSlug, divisionOrder, shouldWriteRanking, movementFor,
 } from "./ingest-rules";
 import { notifyRankingChange } from "@/lib/social/fighter-triggers";
 
@@ -84,21 +86,31 @@ async function upsertChampion(
   return true;
 }
 
-/** Resolve a fighter by stable slug, creating a minimal record if unknown. */
-async function resolveFighter(entry: RankingEntry): Promise<{ id: string; created: boolean }> {
-  const slug = fighterSlug(entry.name);
-  const existing = await prisma.fighter.findUnique({ where: { slug }, select: { id: true } });
-  if (existing) return { id: existing.id, created: false };
-  const created = await prisma.fighter.create({
-    data: {
-      slug,
+/**
+ * Resolve the fighter a ranking row is ABOUT, through the canonical resolver.
+ *
+ * This used to be `findUnique({ where: { slug: fighterSlug(name) } })` — a human
+ * being identified by a slug derived from their display name. On a RANKING that
+ * is the worst place for it: the board is the most visible published artefact in
+ * the product, so a mis-resolved row puts the wrong person's face at #3, and a
+ * name-variant row ("Alex" vs "Alexander") silently creates a second fighter who
+ * then holds a rank with no bouts, no record and no photo.
+ *
+ * The resolver may now answer "I am not sure", which the old code could not
+ * express. That is not a failure: it creates a provisional entry and queues the
+ * pair for review, so the board still publishes and the ambiguity is visible
+ * instead of being resolved by a coin flip.
+ */
+async function resolveFighterFor(entry: RankingEntry): Promise<{ id: string; created: boolean }> {
+  const result = await resolveOrCreateFighter(
+    {
       name: entry.name,
-      sport: entry.sport.toUpperCase() as never,
-      countryCode: entry.countryCode ?? undefined,
+      sport: entry.sport.toUpperCase() as Sport,
+      countryCode: entry.countryCode,
     },
-    select: { id: true },
-  });
-  return { id: created.id, created: true };
+    { origin: "ranking-ingest", sportFallback: entry.sport.toUpperCase() as Sport },
+  );
+  return { id: result.fighterId, created: result.created };
 }
 
 /** Resolve (or create) the WeightClass for a division within a sport. */
@@ -136,7 +148,7 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
   for (const entry of entries) {
     try {
       const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
-      const { id: fighterId, created } = await resolveFighter(entry);
+      const { id: fighterId, created } = await resolveFighterFor(entry);
       if (created) stat.fightersCreated++;
 
       // rank 0 = the titleholder the source lists above its contenders. These
