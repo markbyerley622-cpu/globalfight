@@ -220,14 +220,43 @@ export interface MediaProcessor {
 const realProcessor: MediaProcessor = {
   async process(mime, bytes) {
     const publicKey = newMediaKey("public", mime);
-    const { processAndStoreBuffer } = await import("@/lib/images/store");
-    const stored = await processAndStoreBuffer(publicKey.replace(/[^a-z0-9]/gi, "-"), bytes);
+    // ── Why processAndStoreContentImage and not processAndStoreBuffer ──────
+    // The first consumer of this lifecycle (gym posts) exposed two problems
+    // with the fighter-photo path this used to call, neither visible until
+    // something actually rendered an asset:
+    //
+    //   1. it COVER-CROPS to 160/512 squares and a 16:9 hero, which is right
+    //      for a portrait and wrong for a photograph of a room — a gym's mat
+    //      shot came out as a square with its top third;
+    //   2. it returns no dimensions, so every asset was stored 0×0 and every
+    //      grid reflowed as the images landed, which is the exact defect
+    //      GymPhoto's width/height columns exist to prevent.
+    //
+    // It also derived the object path from a MANGLED copy of the key
+    // (`replace(/[^a-z0-9]/gi,'-')`), so the bytes were written under
+    // `fighters/...` while publicKey claimed `media/public/...`. The key on the
+    // row did not describe where anything was, and assertPublicKey therefore
+    // guarded nothing. The path below is derived from the real key, so the
+    // public zone is a place rather than a promise.
+    //
+    // This is a change of PROCESSOR, not of lifecycle — exactly the seam the
+    // MediaProcessor interface was introduced for.
+    const { processAndStoreContentImage } = await import("@/lib/images/store");
+    const dot = publicKey.lastIndexOf(".");
+    const stem = dot > 0 ? publicKey.slice(0, dot) : publicKey;
+    const cut = stem.lastIndexOf("/");
+    const stored = await processAndStoreContentImage(stem.slice(0, cut), stem.slice(cut + 1), bytes);
     return {
       publicKey,
-      variants: stored as unknown as Record<string, string>,
+      // Named by ROLE, not by size. The set is allowed to grow (AVIF, a video
+      // poster) without a migration — see MediaAsset.variants.
+      variants: { full: stored.url, thumb: stored.thumbUrl },
+      // No LQIP yet. Null rather than a fabricated placeholder: a consumer can
+      // tell "we don't have one" from "it's this colour", and MediaAsset.width/
+      // height already stop the layout shift a blurhash would otherwise hide.
       blurhash: null,
-      width: 0,
-      height: 0,
+      width: stored.width,
+      height: stored.height,
     };
   },
 };
