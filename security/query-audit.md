@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1038 across 844 files
-- **By class:** 694 public · 251 user-owned · 93 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 93 medium · 🟡 178 low · ⚪ 767 info
+- **Queries analysed:** 1093 across 868 files
+- **By class:** 745 public · 253 user-owned · 95 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 190 low · ⚪ 808 info
 
 ## 🔴 High risk
 
@@ -84,6 +84,8 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/geo/presence.ts:62` | checkIn | CheckIn (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:102` | getPresence | CheckIn (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:118` | coaches | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/gym-posts/media.ts:92` | assets | MediaAsset (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/gym-posts/media.ts:298` | asset | MediaAsset (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/identity-verification.ts:191` | row | IdentityVerification (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/identity-verification.ts:206` | reviewVerification | IdentityVerification (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/identity-verification.ts:308` | listVerifications | IdentityVerification (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
@@ -104,10 +106,10 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/media/asset/lifecycle.ts:135` | ingestMedia | MediaAsset (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/media/asset/lifecycle.ts:153` | ingestMedia | MediaAsset (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/media/asset/lifecycle.ts:170` | recordRejection | MediaAsset (USER_OWNED) | upsert · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/media/asset/lifecycle.ts:252` | releaseMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/media/asset/lifecycle.ts:260` | retainMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/media/asset/lifecycle.ts:282` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/media/asset/lifecycle.ts:287` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/media/asset/lifecycle.ts:281` | releaseMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/media/asset/lifecycle.ts:289` | retainMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/media/asset/lifecycle.ts:311` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/media/asset/lifecycle.ts:316` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/metrics.ts:75` | getLaunchMetrics | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 
 ## Model classification
@@ -148,6 +150,11 @@ _None._ No private-model read/write was found without an ownership filter.
 | ForumThread | PUBLIC | curated |
 | Gym | PUBLIC | curated |
 | GymPhoto | PUBLIC | curated |
+| GymPost | PUBLIC | curated |
+| GymPostComment | PUBLIC | curated |
+| GymPostCommentReaction | PUBLIC | curated |
+| GymPostMedia | PUBLIC | curated |
+| GymPostReaction | PUBLIC | curated |
 | GymReview | PUBLIC | curated |
 | IdentityDocument | PUBLIC | auto (heuristic) |
 | ImportConflict | PUBLIC | auto (heuristic) |

@@ -36,6 +36,25 @@ const CURATED: Record<string, Klass> = {
   ArticleTag: "PUBLIC", ForumThread: "PUBLIC", ForumPost: "PUBLIC",
   ForumReaction: "PUBLIC", Ranking: "PUBLIC", WeightClass: "PUBLIC",
   Community: "PUBLIC", Video: "PUBLIC", OddsSnapshot: "PUBLIC", Podcast: "PUBLIC",
+  // Gym posts. Classified alongside ForumPost/GymReview — public read, owner-only
+  // write, enforced in the service layer (lib/gym-posts/visibility).
+  //
+  // The auto-classifier calls these USER_OWNED because they carry an authorId,
+  // which is the same false positive Fighter's ownerId would produce: an author
+  // column means "who wrote it", not "who may read it". Classifying them here is
+  // what CLAUDE.md's "when you add a table, place it in the RLS classification"
+  // step is for, and leaving them auto-classified would bury 20 expected findings
+  // in the MEDIUM list where a real one could hide.
+  //
+  // NOTE: GymPost is the first PUBLIC model with PER-ROW visibility (a MEMBERS or
+  // PRIVATE post is not world-readable). The read path is still centralised —
+  // every read goes through getFeed/getPost, which apply the visibility filter in
+  // SQL and re-apply the pure predicate to each row — so the app-layer control
+  // this classification assumes does hold. It is called out because an RLS policy
+  // for this table will need the visibility column, not just an owner match.
+  GymPost: "PUBLIC", GymPostComment: "PUBLIC",
+  GymPostReaction: "PUBLIC", GymPostCommentReaction: "PUBLIC",
+  GymPostMedia: "PUBLIC",
   // User-owned — must always be owner-scoped on read.
   Notification: "USER_OWNED", FightPick: "USER_OWNED", Session: "USER_OWNED",
   Account: "USER_OWNED", PushSubscription: "USER_OWNED", PasswordResetToken: "USER_OWNED",

@@ -49,6 +49,9 @@ Verified empirically against a production build (red-team pass, 2026-07-26).
 | `FightPick` (own picks) | ✗ (401) | ✗ own-scoped | CRUD own | — | — |
 | Crowd pick tally | read (aggregate) | read | read | read | read |
 | `GymReview` write | ✗ (401) | ✗ | **1 per gym**, edit/delete own | delete any (moderation) | delete any |
+| `GymPost` read | **read** (PUBLIC only) | PUBLIC + MEMBERS of gyms they've joined | + own PRIVATE | all live | all live |
+| `GymPost` write | ✗ (401) | ✗ (**403** — must be a member of a **verified** gym) | create; **edit own only**; delete own | delete any (**not** edit) | delete any |
+| `MediaAsset` | ✗ (401) | upload own | upload own; attach any **READY** asset | — | — |
 | `ForumPost` edit/delete | ✗ (401) | ✗ (**403**) | own only | **any** | any |
 | Profile (`PATCH /api/profile`) | ✗ (401) | ✗ | own; **cannot** set `role`/`reputation`/pick stats | own | own |
 | Follows / favourites / bookmarks | ✗ (401) | ✗ | CRUD own | own | own |
@@ -132,7 +135,22 @@ render; `userA … WHERE userId='userB'` returns **0**.
   hash).
 - **Group B — public read, owner-only write (app-layer + rate limit):**
   `ForumThread`, `ForumPost`, `GymReview`, `GymReviewVote`, `Gym`, `Article`,
-  `CommunityVote`, `Battle`, `Rivalry`.
+  `CommunityVote`, `Battle`, `Rivalry`,
+  `GymPost`, `GymPostMedia`, `GymPostComment`, `GymPostReaction`,
+  `GymPostCommentReaction`.
+  ⚠️ `GymPost` is the first Group B table with **per-row** visibility: a
+  `MEMBERS` or `PRIVATE` post is not world-readable. The app-layer control still
+  holds in the usual way — every read goes through `getFeed`/`getPost`, which
+  apply the visibility filter in SQL *and* re-apply the pure predicate
+  (`lib/gym-posts/visibility`) to each row. But an eventual RLS policy for this
+  table cannot be a plain owner match: it needs the `visibility` column plus a
+  `GymMember` lookup. Noted here so that is discovered at design time rather
+  than at apply time.
+- **Media:** `MediaAsset` is Group A-adjacent — `ownerId` is *who uploaded it*,
+  never who may see it, and it is deduplicated so that column records whoever
+  arrived first. **No authorization decision anywhere may read it.** Servability
+  is `status === READY`; permission belongs to whichever consumer holds the
+  reference.
 - **Group C — fully public (RLS optional, permissive `SELECT true` guard rail):**
   `Fighter`, `Event`, `Fight`, `Ranking`, `WeightClass`, `Promotion`, …
 

@@ -1572,6 +1572,11 @@ model User {
   pushSubscriptions PushSubscription[]
   conversations     ConversationMember[]
   sentMessages      DirectMessage[]      @relation("MessageSender")
+  gymPosts          GymPost[]            @relation("GymPostAuthor")
+  gymPostsRemoved   GymPost[]            @relation("GymPostRemover")
+  gymPostComments   GymPostComment[]     @relation("GymPostCommentAuthor")
+  gymPostReactions  GymPostReaction[]
+  gymPostCommentReactions GymPostCommentReaction[]
 
   @@index([reputation])
   // The people layer's hot path: "visible users who have a resolved point".
@@ -2119,6 +2124,14 @@ enum NotificationType {
   STREAK_REMINDER // your daily visit streak is alive but not yet extended today
   GYM_REVIEW // a gym you follow (or own) received a review
   IDENTITY_VERIFICATION // your professional identity review moved (submitted/approved/declined)
+  // ── Gym posts ────────────────────────────────────────────────────────────
+  // Three types, not one, because they answer different questions and a user
+  // mutes them as a group ("your gym") via CATEGORY_OF in lib/push/policy.
+  // A reply and a reaction collapsed into one type would make the wording
+  // generic, and generic wording is what makes a notification ignorable.
+  GYM_POST_REPLY // someone commented on, replied to, or mentioned you under a gym post
+  GYM_POST_REACTION // someone reacted to your gym post or comment
+  GYM_POST_SHARE // someone shared your gym post
   SYSTEM
 }
 
@@ -2407,6 +2420,7 @@ model Gym {
   checkIns CheckIn[]
   photos   GymPhoto[]
   reviews  GymReview[]
+  posts    GymPost[]
 
   @@index([countryCode])
   @@index([latitude, longitude])
@@ -2664,6 +2678,12 @@ model MediaAsset {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// The consumers that hold a reference. The asset does not know what a gym
+  /// post IS — this is Prisma's back-relation, not knowledge: the join row lives
+  /// on the CONSUMER's side, which is what keeps this model generic. Every
+  /// future consumer adds its own join table and its own line here.
+  gymPostAttachments GymPostMedia[]
+
   /// Cleanup scans by state + age; the feed reads READY by recency.
   @@index([status, createdAt])
   @@index([status, expiresAt])
@@ -2766,6 +2786,204 @@ model GymReviewVote {
 
   @@id([reviewId, userId])
   @@index([reviewId])
+}
+
+// ─── Gym posts ──────────────────────────────────────────────────────────────
+//
+// The social layer on top of the media lifecycle. Five models, and the shape of
+// all five is decided by one rule: a post never learns where bytes live.
+//
+// GymPost ─┬─ GymPostMedia ──→ MediaAsset   (the ONLY link to storage)
+//          ├─ GymPostReaction
+//          └─ GymPostComment ─── GymPostCommentReaction
+//
+// There is no url, key, bucket, filename, width, height, mime or variant column
+// anywhere below. Those exist exactly once, on MediaAsset. A caption and alt
+// text DO live on the join row and that is deliberate — see GymPostMedia.
+
+/// Who may read a post. Evaluated against the GymPost's own gym and author,
+/// NEVER against the attached asset's uploader (see lib/gym-posts/visibility).
+enum GymPostVisibility {
+  /// Anyone, signed in or not. The default and the one that feeds discovery.
+  PUBLIC
+  /// Members of the gym (plus its owner and staff).
+  MEMBERS
+  /// The author, the gym owner, and staff. A draft, or something raised
+  /// privately with the gym.
+  PRIVATE
+}
+
+/// A post on a gym's feed.
+///
+/// `gymId` is the SUBJECT (whose page this appears on) and `authorId` is the
+/// PRINCIPAL (who wrote it). Both are needed: permission questions are answered
+/// from the pair, and collapsing them into one column is how "the gym owner can
+/// edit a member's words" becomes indistinguishable from "the author can edit
+/// their own".
+model GymPost {
+  id       String @id @default(cuid())
+  gymId    String
+  gym      Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation("GymPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// The text. Optional in the sense that a post may be media-only, but a post
+  /// with neither text nor media is refused in the service layer.
+  body       String            @db.Text
+  visibility GymPostVisibility @default(PUBLIC)
+  /// The gym's owner can pin one post to the top of its own feed.
+  pinned     Boolean           @default(false)
+
+  // ── Denormalised engagement ──────────────────────────────────────────────
+  // Counted columns rather than _count on every read: the feed ranks on these,
+  // and a ranking function that triggers a COUNT per row per page is the query
+  // that falls over first. Recomputed (never blind-incremented) wherever a race
+  // can drift them — the same lesson ForumThread.reactionCount already learned.
+  commentCount  Int @default(0)
+  reactionCount Int @default(0)
+  shareCount    Int @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Set the first time the body or the attachments change. Distinct from
+  /// updatedAt, which moves whenever a counter does — an "edited" badge driven
+  /// by updatedAt would appear the moment somebody else liked the post.
+  editedAt  DateTime?
+
+  // ── Soft delete ──────────────────────────────────────────────────────────
+  // ONE nullable timestamp is the read filter, so no query can accidentally
+  // check the author-deleted flag and forget the moderator-hidden one. WHY it
+  // was removed is carried alongside rather than in a second timestamp: the
+  // reader treats them identically, the operator does not.
+  deletedAt     DateTime?
+  /// Who removed it. Null when the row is live, or when the actor is gone.
+  deletedById   String?
+  deletedBy     User?     @relation("GymPostRemover", fields: [deletedById], references: [id], onDelete: SetNull)
+  /// "author" | "moderation". Same outcome for a reader, completely different
+  /// operational meaning — one is a person changing their mind, the other is an
+  /// enforcement action that has to be reviewable.
+  deletedReason String?
+
+  media     GymPostMedia[]
+  comments  GymPostComment[]
+  reactions GymPostReaction[]
+
+  /// The feed's hot path: live posts for one gym, newest first. deletedAt leads
+  /// the sort keys because every single read filters on it.
+  @@index([gymId, deletedAt, createdAt])
+  /// The cross-gym feed: everything live, newest first, keyset-paginated.
+  @@index([deletedAt, createdAt])
+  /// "Posts by this member" — a profile surface, and the cleanup path when an
+  /// account is tombstoned.
+  @@index([authorId, createdAt])
+}
+
+/// One attached asset, in one position, on one post.
+///
+/// This row IS the reference that MediaAsset.refCount counts. Creating it takes
+/// a reference; deleting it releases one. That is the entire contract, and it is
+/// why attachment lives here rather than as an array column on GymPost — an
+/// array cannot be a join, and a join is what makes reference counting mean
+/// something under concurrency.
+///
+/// `alt` and `caption` are on the JOIN, not on the asset, and that is the
+/// interesting call: the same photo attached to two posts describes two
+/// different things in context, and alt text that is right for one is wrong for
+/// the other. Storing it on the asset would make the second post inherit the
+/// first post's words.
+model GymPostMedia {
+  id     String  @id @default(cuid())
+  postId String
+  post   GymPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  /// The ONLY pointer at storage in this entire domain.
+  assetId String
+  asset   MediaAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  /// Display order within the carousel. Ties break on id.
+  sortOrder Int     @default(0)
+  /// Screen-reader description, in THIS post's context.
+  alt       String?
+  /// Editorial text shown under the image. Never a substitute for alt.
+  caption   String?
+
+  createdAt DateTime @default(now())
+
+  /// The same asset twice on one post would double-count the reference and show
+  /// the picture twice. Enforced by the database, not by a check-then-insert
+  /// (CLAUDE.md rule 4).
+  @@unique([postId, assetId])
+  @@index([postId, sortOrder])
+  /// "Is this asset still referenced?" — read by cleanup and by detach.
+  @@index([assetId])
+}
+
+/// A reaction on a post. One row per (post, user, type), exactly like
+/// ForumReaction — same vocabulary, same toggle semantics, nothing new to learn.
+model GymPostReaction {
+  id     String  @id @default(cuid())
+  postId String
+  post   GymPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// like | fire | respect | laugh — see lib/gym-posts/types.
+  type   String  @default("like")
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId, type])
+  @@index([postId])
+  @@index([userId, createdAt])
+}
+
+/// A comment. One level of nesting via `parentId` — a reply to a comment, not a
+/// tree. Deeper threading is a rendering problem the forum already solved badly
+/// once; a flat list with one reply level is what a feed actually reads as.
+model GymPostComment {
+  id       String  @id @default(cuid())
+  postId   String
+  post     GymPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User    @relation("GymPostCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  body String @db.Text
+
+  /// The comment this replies to. Null for a top-level comment. Self-relation
+  /// with NoAction: deleting a parent must not cascade away its replies, which
+  /// are other people's words — the parent soft-deletes instead.
+  parentId String?
+  parent   GymPostComment?  @relation("GymPostCommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies  GymPostComment[] @relation("GymPostCommentReplies")
+
+  reactionCount Int @default(0)
+
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  /// Same soft-delete contract as GymPost, for the same reason: a hard delete
+  /// tears the reply chain and destroys the evidence for an appeal.
+  deletedAt     DateTime?
+  deletedReason String?
+
+  reactions GymPostCommentReaction[]
+
+  /// A comment thread reads oldest-first within a post, keyset-paginated.
+  @@index([postId, deletedAt, createdAt])
+  @@index([parentId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model GymPostCommentReaction {
+  id        String         @id @default(cuid())
+  commentId String
+  comment   GymPostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String         @default("like")
+
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId, type])
+  @@index([commentId])
 }
 
 /// A browser's Web Push endpoint. One row per DEVICE, not per user — a person
