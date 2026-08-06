@@ -1,6 +1,7 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "./roles";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Admin access — ONE definition.
@@ -17,10 +18,11 @@ import { getCurrentUser } from "@/lib/auth";
 
 export type AdminUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
-/** Staff = full admin, or a moderator doing day-to-day operations. */
-export function isAdminRole(role: string): boolean {
-  return role === "ADMIN" || role === "MODERATOR";
-}
+// The rule itself now lives in ./roles, which imports nothing. Re-exported here
+// so every existing caller is unchanged, while code that runs OUTSIDE a Next
+// render (tests, scripts, workers) can ask the same question without dragging
+// `next/navigation` and the React client runtime in behind it.
+export { isAdminRole };
 
 /** For PAGES. Renders 404 for anyone who isn't staff. */
 export async function requireAdminPage(): Promise<AdminUser> {
