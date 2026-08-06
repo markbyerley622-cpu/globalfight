@@ -129,13 +129,25 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
 
   const [
     byPromotion, boutless, pastWithBouts, resolved, championOrgs, rankingOrgs,
-    reachable, upcomingBoutless,
+    reachable, upcomingBoutless, pastEvents,
   ] = await Promise.all([
     prisma.event.groupBy({ by: ["promotion"], _count: { _all: true } }),
-    // No bouts at all — the card itself never landed.
+    // ── PAST events with no bouts. The card happened and never landed. ─────
+    //
+    // `date: { lt: now }` is load-bearing and was missing in the first version.
+    // Without it a promotion that had simply ANNOUNCED a season of future events
+    // was reported as critical: the IJF showed "61 of 117 events have no bouts"
+    // when all 61 were upcoming, and Real American Freestyle was reported as
+    // "every event is an empty shell — no card source is wired" when all five of
+    // its events are in the future and nobody has published a card yet.
+    //
+    // Two false criticals on a report whose entire job is to tell you where to
+    // spend a sprint. Future events with no card are a real thing to track, and
+    // they have their own column (`upcomingMissingCard`) precisely so they are
+    // not confused with a source that is broken.
     prisma.event.groupBy({
       by: ["promotion"],
-      where: { fights: { none: {} } },
+      where: { date: { lt: now }, fights: { none: {} } },
       _count: { _all: true },
     }),
     // Past cards that DO have bouts. The denominator for results coverage.
@@ -165,6 +177,10 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
       where: { date: { gte: now }, fights: { none: {} } },
       _count: { _all: true },
     }),
+    // The denominator for the bout gap. Judging "251 of 509" against ALL events
+    // understates a promotion whose back catalogue is broken and overstates one
+    // that has merely announced a lot of future cards.
+    prisma.event.groupBy({ by: ["promotion"], where: { date: { lt: now } }, _count: { _all: true } }),
   ]);
 
   type Grouped = { promotion: string | null; _count: { _all: number } };
@@ -210,7 +226,7 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
         upcomingMissingCard: count(upcomingBoutless, p.promotion),
         hasChampions,
         hasRankings,
-        ...verdict({ events, missingBouts, missingResults, pastCards }),
+        ...verdict({ events, past: count(pastEvents, p.promotion), missingBouts, missingResults, pastCards }),
       };
     })
     // WORST FIRST, not biggest first. A report sorted by size puts the healthy
@@ -283,22 +299,29 @@ async function auditPipelineHealth(now: Date): Promise<PipelineHealth> {
  */
 function verdict(input: {
   events: number;
+  /** Events that have already happened — the only ones judged for coverage. */
+  past: number;
   missingBouts: number;
   missingResults: number;
   pastCards: number;
 }): { status: CoverageStatus; note: string } {
-  const { events, missingBouts, missingResults, pastCards } = input;
+  const { events, past, missingBouts, missingResults, pastCards } = input;
 
   if (events === 0) return { status: "empty", note: "No events on record." };
+  // Everything on record is still to come. Not a gap — nobody has published a
+  // card for a fight that has not happened yet.
+  if (past === 0) {
+    return { status: "healthy", note: `${events} upcoming event(s), none past — nothing to judge yet.` };
+  }
 
-  const boutGap = missingBouts / events;
+  const boutGap = missingBouts / past;
   const resultGap = pastCards > 0 ? missingResults / pastCards : 0;
 
-  if (missingBouts === events) {
-    return { status: "critical", note: "Every event is an empty shell — no card source is wired." };
+  if (missingBouts === past) {
+    return { status: "critical", note: `All ${past} past events are empty shells — no card source is wired.` };
   }
   if (boutGap >= 0.25) {
-    return { status: "critical", note: `${missingBouts} of ${events} events have no bouts.` };
+    return { status: "critical", note: `${missingBouts} of ${past} past events have no bouts.` };
   }
   if (resultGap >= 0.25 && pastCards >= SMALL_SAMPLE) {
     return { status: "critical", note: `${missingResults} of ${pastCards} finished cards have no result.` };

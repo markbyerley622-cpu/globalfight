@@ -130,6 +130,49 @@ export const EXPECTED_JOBS: ExpectedJob[] = [
     everyMinutes: 1440,
     matters: "Title changes are not picked up — the belt shows the previous holder.",
   },
+  // ── Promotion ingests ───────────────────────────────────────────────────
+  // Found by the orphan-target check added alongside this list: all five had run
+  // history in production (mma:roster 58 runs, bkfc:sync 4, espn:sync 3,
+  // adcc:sync 1, one:sync 1) and none was declared here. They were working and
+  // unwatched — so the day one of them stopped, nothing would have said so.
+  //
+  // Cadences match render.yaml: the promotion loop is Mon/Thu, the daily loop is
+  // 04:00, and gf-cron-weekly is Monday.
+  {
+    route: "refresh-one",
+    label: "ONE Championship events",
+    targets: ["one:sync"],
+    everyMinutes: 5040,
+    matters: "ONE cards stop arriving — already the largest coverage gap in the database.",
+  },
+  {
+    route: "refresh-bkfc",
+    label: "BKFC events",
+    targets: ["bkfc:sync"],
+    everyMinutes: 5040,
+    matters: "BKFC cards stop arriving.",
+  },
+  {
+    route: "refresh-mma",
+    label: "MMA roster (Wikipedia)",
+    targets: ["mma:roster"],
+    everyMinutes: 1440,
+    matters: "New fighters stop being discovered from the roster source.",
+  },
+  {
+    route: "refresh-espn",
+    label: "ESPN scoreboard",
+    targets: ["espn:sync"],
+    everyMinutes: 1440,
+    matters: "Full MMA cards and winners for UFC/PFL/Bellator/ONE/RIZIN stop refreshing.",
+  },
+  {
+    route: "refresh-adcc",
+    label: "ADCC (BJJ)",
+    targets: ["adcc:sync"],
+    everyMinutes: 10_080,
+    matters: "The only BJJ event source stops.",
+  },
 ];
 
 /** Multiple of the cadence we tolerate before calling a job overdue. */

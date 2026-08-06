@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1129,
+    "queries": 1130,
     "high": 0,
     "medium": 95,
     "low": 197,
-    "info": 837,
-    "public": 781,
+    "info": 838,
+    "public": 782,
     "userOwned": 253,
     "shared": 95,
     "admin": 0
@@ -6070,7 +6070,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 194,
+      "line": 237,
       "fn": "rows",
       "model": "ScrapeJob",
       "method": "findMany",
@@ -6083,7 +6083,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 252,
+      "line": 295,
       "fn": "grouped",
       "model": "ScrapeJob",
       "method": "groupBy",
@@ -6265,32 +6265,6 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 136,
-      "fn": "auditDataQuality",
-      "model": "Event",
-      "method": "groupBy",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/admin/data-quality.ts",
-      "line": 142,
-      "fn": "auditDataQuality",
-      "model": "Event",
-      "method": "groupBy",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/admin/data-quality.ts",
       "line": 148,
       "fn": "auditDataQuality",
       "model": "Event",
@@ -6304,7 +6278,33 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 156,
+      "line": 154,
+      "fn": "auditDataQuality",
+      "model": "Event",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/data-quality.ts",
+      "line": 160,
+      "fn": "auditDataQuality",
+      "model": "Event",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/data-quality.ts",
+      "line": 168,
       "fn": "auditDataQuality",
       "model": "TitleReign",
       "method": "findMany",
@@ -6317,7 +6317,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 159,
+      "line": 171,
       "fn": "auditDataQuality",
       "model": "Ranking",
       "method": "findMany",
@@ -6330,7 +6330,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 162,
+      "line": 174,
       "fn": "auditDataQuality",
       "model": "Event",
       "method": "groupBy",
@@ -6343,7 +6343,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 163,
+      "line": 175,
       "fn": "auditDataQuality",
       "model": "Event",
       "method": "groupBy",
@@ -6356,7 +6356,20 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 250,
+      "line": 183,
+      "fn": "auditDataQuality",
+      "model": "Event",
+      "method": "groupBy",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/admin/data-quality.ts",
+      "line": 266,
       "fn": "auditPipelineHealth",
       "model": "Ranking",
       "method": "count",
@@ -6369,7 +6382,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 253,
+      "line": 269,
       "fn": "auditPipelineHealth",
       "model": "TitleReign",
       "method": "findFirst",
@@ -6382,7 +6395,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 256,
+      "line": 272,
       "fn": "auditPipelineHealth",
       "model": "FighterIdentityCandidate",
       "method": "count",
@@ -6395,7 +6408,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 257,
+      "line": 273,
       "fn": "auditPipelineHealth",
       "model": "ProviderCheckpoint",
       "method": "findMany",
