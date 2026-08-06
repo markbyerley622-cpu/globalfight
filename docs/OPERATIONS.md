@@ -77,16 +77,45 @@ SELECT status, count(*) FROM "MediaAsset"
  WHERE "createdAt" > now() - interval '1 hour' GROUP BY status;
 ```
 
-### Media cleanup — needs a scheduled job
+### Media cleanup — scheduled
 
 `cleanupMedia()` sweeps abandoned uploads (`PENDING`/`SCANNING` past a 6-hour
 TTL), unreferenced published assets, and quarantined material older than 30
 days. It is idempotent, so a duplicate or retried run is harmless.
 
-⚠️ **Not yet scheduled.** No cron route calls it, so nothing sweeps today.
-Storage grows without bound until it is wired to `/api/cron/*`. It only marks
-rows `DELETED` — it never removes bytes — so the worst outcome of running it is
-a reversible state change, and byte reclamation is a deliberate second step.
+✅ **Now scheduled.** It runs inside `/api/cron/evidence-cleanup` — the daily
+retention sweep (02:30, `gf-cron-retention` in `render.yaml`, and now also in
+`vercel.json`, which had never listed that job at all). It joined the existing
+job rather than getting its own because it *is* a retention job, and a second
+cron service would be a second schedule to keep in step across two deploy
+targets. The response body carries a `media` block with the three counts.
+
+It only marks rows `DELETED` — it never removes bytes — so the worst outcome of
+running it is a reversible state change, and byte reclamation is a deliberate
+second step that is still not implemented.
+
+**What it collects, and why that is safe.** An asset is collectable at
+`refCount = 0`. Gym posts are the first consumer, and they take a reference by
+creating a `GymPostMedia` row and release it by deleting one. Two things follow
+that are worth knowing before you read the counts:
+
+- **An upload holds no reference.** `POST /api/media` releases the reference
+  `ingestMedia` takes, so a file someone uploaded and never attached sits at
+  zero and is swept after the six-hour grace period. Abandoned composer drafts
+  are therefore *expected* in the `orphaned` count, not a symptom.
+- **A shared asset is not collected when one post using it is deleted.**
+  Deduplication means two members posting the same flyer share one row with
+  `refCount = 2`. This is the single most important invariant in the sweep, and
+  it has an integration test asserting exactly it.
+
+To see what the next sweep would take:
+
+```sql
+SELECT status, count(*) FROM "MediaAsset"
+ WHERE "refCount" <= 0 AND status = 'READY'
+   AND "updatedAt" < now() - interval '6 hours'
+ GROUP BY status;
+```
 
 ### Behavioural
 
@@ -187,4 +216,5 @@ are not mistaken for done.
 - [ ] **Alerting.** Whether anything watches `/api/health` and tells a human.
 - [ ] **Incident ownership.** Who responds, and how they are reached.
 - [ ] **Public media storage (`R2_*`/`S3_*`) is configured.** Without it every media upload ends in `FAILED`. Not covered by the startup guard, which only checks the evidence bucket.
-- [ ] **`cleanupMedia()` is scheduled.** Nothing calls it today; abandoned uploads accumulate until it is wired to a cron route.
+- [x] **`cleanupMedia()` is scheduled.** Runs inside the daily `/api/cron/evidence-cleanup` retention sweep. Verify the job is actually firing (`cron:doctor`) — a route with no cron does not fail, it simply never runs.
+- [ ] **`UGC_MEDIA_UPLOADS_ENABLED` is deliberately set.** It is the launch kill-switch and defaults to OFF. While it is off, `POST /api/media` returns 503 and the gym composer cannot attach anything — which is correct until a scanner and public storage are both configured, and a silent surprise if nobody decided it.

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cleanupExpiredEvidence } from "@/lib/evidence/lifecycle";
 import { cleanupExpiredIdentityDocuments } from "@/lib/identity-verification";
 import { purgeStaleResetTokens } from "@/lib/auth-password-reset";
+import { cleanupMedia } from "@/lib/media/asset/lifecycle";
 import { log } from "@/lib/scraper/logger";
 import { cronAuthorized } from "@/lib/scraper/cron-handler";
 
@@ -35,9 +36,20 @@ export async function GET(req: Request) {
     // not see them. Without this they would be retained forever.
     const identity = await cleanupExpiredIdentityDocuments();
     const resetTokensPurged = await purgeStaleResetTokens();
+    // Public media joins the retention sweep rather than getting its own cron.
+    // It IS a retention job (abandoned uploads, unreferenced assets, expired
+    // quarantine), it runs daily like the rest of this route, and a second cron
+    // service would be a second schedule to keep in step across vercel.json AND
+    // render.yaml. OPERATIONS.md flagged "cleanupMedia is not scheduled" as a
+    // ship blocker; this is that wire.
+    //
+    // Idempotent by construction, and it only MARKS rows DELETED — byte removal
+    // is a separate concern, so a bug here can never destroy a live asset's
+    // storage. That is why it is safe to bolt onto an existing job.
+    const media = await cleanupMedia();
     const durationMs = Date.now() - started;
 
-    log.info({ ...evidence, identity, resetTokensPurged, durationMs }, "cron:evidence-cleanup");
+    log.info({ ...evidence, identity, media, resetTokensPurged, durationMs }, "cron:evidence-cleanup");
 
     // A non-zero stillFailing means documents we intended to destroy are still in
     // the bucket. Surface it as a non-200 so a monitor notices rather than a
@@ -46,7 +58,10 @@ export async function GET(req: Request) {
     // so it must not report green either.
     const failing = evidence.stillFailing > 0 || identity.failed > 0;
     const status = failing ? 500 : 200;
-    return NextResponse.json({ ok: !failing, ...evidence, identity, resetTokensPurged, durationMs }, { status });
+    return NextResponse.json(
+      { ok: !failing, ...evidence, identity, media, resetTokensPurged, durationMs },
+      { status },
+    );
   } catch (e) {
     log.error({ err: (e as Error).message }, "cron:evidence-cleanup-failed");
     return NextResponse.json({ ok: false, error: "cleanup failed" }, { status: 500 });

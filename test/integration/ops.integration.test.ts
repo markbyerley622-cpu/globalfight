@@ -11,5 +11,9 @@ test("/api/health reports ok with a reachable database", async () => {
   const body = await res.json();
   assert.equal(body.status, "ok");
   assert.equal(body.db, "up");
-  assert.equal(res.headers.get("cache-control"), "no-store");
+  // The route sends "no-store, max-age=0". Asserted as a SUBSTRING rather than
+  // an exact string: what matters is that a health check is never cached, and
+  // pinning the exact header made this test fail the moment the route added the
+  // (strictly stronger) max-age=0 — a broken test reporting a fixed behaviour.
+  assert.match(res.headers.get("cache-control") ?? "", /no-store/);
 });

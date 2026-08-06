@@ -11,6 +11,7 @@
     { "path": "/api/cron/refresh-one", "schedule": "0 7 * * 1,4" },
     { "path": "/api/cron/refresh-adcc", "schedule": "0 8 * * 1" },
     { "path": "/api/cron/refresh-wikicards", "schedule": "0 10 * * 2,5" },
-    { "path": "/api/cron/refresh-enrich", "schedule": "0 * * * *" }
+    { "path": "/api/cron/refresh-enrich", "schedule": "0 * * * *" },
+    { "path": "/api/cron/evidence-cleanup", "schedule": "30 2 * * *" }
   ]
 }
