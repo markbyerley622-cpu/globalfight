@@ -16,6 +16,10 @@ import { getGymReviewData } from "@/lib/gym-reviews";
 import { isFollowing, followerCount } from "@/lib/follow-targets";
 import { FollowButton } from "@/components/follow-button";
 import { BackButton } from "@/components/back-button";
+import { getFeed } from "@/lib/gym-posts/repo";
+import { gymContext } from "@/lib/gym-posts/authorise";
+import { canCreatePost } from "@/lib/gym-posts/visibility";
+import { GymFeed } from "@/components/gym-posts/gym-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +74,7 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
   // Wave 2: presence, reviews and "nearby" all depend only on the gym/viewer we
   // now have and NOT on each other — one parallel batch instead of three
   // sequential round-trips on a public, high-traffic page.
-  const [presence, reviewData, nearby, gymFollowers, gymFollowing] = await Promise.all([
+  const [presence, reviewData, nearby, gymFollowers, gymFollowing, feed, postCtx] = await Promise.all([
     getPresence({ gymId: gym.id }, user?.id),
     getGymReviewData(gym.id, user?.id),
     // Nearby = same city first, then same country. Cheap, indexed, and honest:
@@ -94,6 +98,14 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
     // sequential round-trip to a public, high-traffic page.
     followerCount({ type: "gym", id: gym.id }),
     user ? isFollowing(user.id, { type: "gym", id: gym.id }) : Promise.resolve(false),
+    // Page one of the community feed, rendered on the SERVER. The client
+    // hydrates this and only goes to the network when the reader scrolls — a
+    // feed that mounts empty and then fetches puts a round-trip in front of
+    // content this render already had in hand.
+    getFeed({ gymSlug: slug, user, limit: 10 }),
+    // "May this viewer post here?" — decided server-side from the gym's
+    // verification state and their membership, never re-derived in the UI.
+    gymContext(slug, user),
   ]);
   const mine = user ? gym.members.find((m) => m.user.id === user.id) : undefined;
 
@@ -255,6 +267,23 @@ export default async function GymPage({ params }: { params: Promise<{ slug: stri
             </>
           )}
         </dl>
+
+        {/* The community feed. Placed ABOVE reviews on purpose: a review is
+            written once and read occasionally, while the feed is the reason to
+            come back to a gym's page at all. Hidden entirely when there is
+            nothing to show and nothing the viewer could add — an empty section
+            with a heading is worse than no section. */}
+        {(feed.items.length > 0 || (postCtx && canCreatePost(postCtx.viewer, postCtx.gymMayPublish))) && (
+          <Section title="Feed">
+            <GymFeed
+              initialPage={feed}
+              gymSlug={gym.slug}
+              gymName={gym.name}
+              signedIn={!!user}
+              canPost={!!postCtx && canCreatePost(postCtx.viewer, postCtx.gymMayPublish)}
+            />
+          </Section>
+        )}
 
         {/* Gallery */}
         <Section title="Reviews">

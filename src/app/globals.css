@@ -1008,3 +1008,30 @@
   /* Momentum scrolling inside the surface on iOS. */
   -webkit-overflow-scrolling: touch;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Feed cards — native virtualisation without removing the DOM.
+
+   A long gym feed holds hundreds of cards, most of them off screen, and each
+   one carries images and an expandable comment thread. Rendering all of that
+   on every scroll frame is what makes a feed feel heavy on a phone.
+
+   `content-visibility: auto` tells the browser to skip style, layout and paint
+   for a card that is not near the viewport, and to do the work when it comes
+   into range. `contain-intrinsic-size` supplies the height to assume while it
+   is skipped, so the scrollbar stays honest and the container's total height
+   does not jump as cards enter and leave range.
+
+   Why this rather than a windowing library: a windowed list REMOVES off-screen
+   items from the DOM, so the container never grows back to its previous height
+   after a Back navigation — and the app's scroll restoration works precisely by
+   re-applying a position while the container grows (see
+   components/layout/scroll-restoration). Windowing would break Back on every
+   long feed to save work this does natively, in two lines, with no estimates.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.feed-card {
+  content-visibility: auto;
+  /* A typical card: text plus one image. Wrong for an outlier, and being wrong
+     here costs a slightly imprecise scrollbar, never a broken layout. */
+  contain-intrinsic-size: auto 480px;
+}
