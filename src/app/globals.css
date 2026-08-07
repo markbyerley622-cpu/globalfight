@@ -891,6 +891,22 @@
 .rise { animation: rise .5s var(--ease-out-quint) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Events filter bar — "applying". An indeterminate sweep rather than a
+   percentage, because there is no progress to report: the server either has the
+   next page or it does not. Never blanks or dims the current list. */
+.cr-filter-pending { animation: crFilterPending 1s ease-in-out infinite; }
+@keyframes crFilterPending {
+  0%   { transform: scaleX(0);   transform-origin: left; }
+  50%  { transform: scaleX(1);   transform-origin: left; }
+  51%  { transform: scaleX(1);   transform-origin: right; }
+  100% { transform: scaleX(0);   transform-origin: right; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Held at full width: the fact that something is in flight is information,
+     and only the movement is the accessibility problem. */
+  .cr-filter-pending { animation: none; transform: scaleX(1); }
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    Direct messages — arrival and composing.
 

@@ -272,10 +272,25 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
       }}
-      // Lets the page dim the list while the next one streams, without this
-      // component having to know anything about the list.
-      data-pending={isPending ? "" : undefined}
     >
+      {/* ── "Your filter is being applied" ──────────────────────────────────
+          Taps update the pills INSTANTLY (they read the local draft), so
+          without this the reader gets no signal at all that the list they are
+          looking at is still the old one. A 2px line inside the bar's own
+          padding: it says something is in flight without dimming, spinning or
+          blanking the results — the previous list stays readable, which is the
+          whole reason the navigation runs in a transition.
+
+          Absolutely positioned so it cannot add height to a bar whose constant
+          height is load-bearing. */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-blood-500 transition-opacity duration-200",
+          isPending ? "cr-filter-pending opacity-100" : "opacity-0",
+        )}
+      />
+
       <Row label="Sport">
         <Pill onClick={() => set("sport", "")} active={selected.sport.size === 0}>All</Pill>
         {FILTER_SPORTS.map((s) => (

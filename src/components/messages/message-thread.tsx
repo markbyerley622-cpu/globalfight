@@ -288,12 +288,15 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
       )}
 
       {/* Composer */}
-      {/* pb-[env(safe-area-inset-bottom)]: on an iPhone in standalone/PWA the
-          composer otherwise sits under the home indicator, so the send button
-          is partly untappable — the one control the surface exists for. */}
+      {/* NO safe-area padding here, deliberately. This composer sits inside
+          #main, and BottomTabBar — which is below #main and visible at this
+          breakpoint — already carries
+          `pb-[calc(0.75rem+env(safe-area-inset-bottom))]`. Adding the inset
+          again here would double-count it and leave a gap above the home
+          indicator on exactly the devices it is meant to help. */}
       <form
         onSubmit={send}
-        className="flex items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
+        className="flex items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 backdrop-blur"
       >
         <label htmlFor="dm-body" className="sr-only">Message</label>
         {/* MentionTextarea owns Enter: it picks from the @-menu when that menu

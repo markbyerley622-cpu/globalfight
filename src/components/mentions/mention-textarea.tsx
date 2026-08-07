@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
+import { applyMention, readMentionToken, type MentionToken } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 
 interface Person { username: string; name: string; image: string | null }
@@ -31,9 +32,6 @@ interface Person { username: string; name: string; image: string | null }
  * Fed by /api/users/search, the same endpoint behind the challenge picker, so
  * the two typeaheads rank and display people identically.
  */
-
-/** Matches an in-progress handle immediately before the caret. */
-const TOKEN = /(?:^|[\s(])@([a-zA-Z0-9_.-]{0,30})$/;
 
 /** Matches the challenge picker and the site-wide search overlay. */
 const DEBOUNCE_MS = 180;
@@ -68,7 +66,7 @@ export function MentionTextarea({
    * latency-sensitive input. The change event carries both the new value and
    * the new caret, which is exactly and only what this needs.
    */
-  const [token, setToken] = useState<{ text: string; start: number; end: number } | null>(null);
+  const [token, setToken] = useState<MentionToken | null>(null);
   const query = token?.text ?? null;
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,9 +94,7 @@ export function MentionTextarea({
 
     // A selection (rather than a caret) is not a position to complete at.
     if (e.target.selectionStart !== e.target.selectionEnd) { setToken(null); return; }
-    const caret = e.target.selectionStart ?? next.length;
-    const match = TOKEN.exec(next.slice(0, caret));
-    setToken(match ? { text: match[1], start: caret - match[1].length - 1, end: caret } : null);
+    setToken(readMentionToken(next, e.target.selectionStart ?? next.length));
     setActive(0);
   };
 
@@ -125,10 +121,7 @@ export function MentionTextarea({
     const el = ref.current;
     if (!el || !token) return;
 
-    // The trailing space is what closes the menu: the token regex is anchored to
-    // the caret, so a space after the handle means it no longer matches.
-    const insert = `@${person.username} `;
-    const next = value.slice(0, token.start) + insert + value.slice(token.end);
+    const { text: next, caret } = applyMention(value, token, person.username);
     onChange(next);
     setToken(null);
     setPeople([]);
@@ -136,10 +129,9 @@ export function MentionTextarea({
     // The caret has to be restored AFTER React has written the new value, or
     // the browser puts it at the end of the whole textarea — which is wrong for
     // anyone mentioning somebody mid-sentence.
-    const at = token.start + insert.length;
     requestAnimationFrame(() => {
       el.focus();
-      el.setSelectionRange(at, at);
+      el.setSelectionRange(caret, caret);
     });
   }, [token, value, onChange]);
 
@@ -147,7 +139,15 @@ export function MentionTextarea({
     if (open) {
       if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => (i + 1) % people.length); return; }
       if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => (i - 1 + people.length) % people.length); return; }
-      if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); choose(people[active]); return; }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        // `active` can point past the end: a debounced response can replace the
+        // list with a shorter one between the keypress being aimed and being
+        // handled. Falling back to the first row beats calling choose(undefined).
+        const person = people[active] ?? people[0];
+        if (person) choose(person);
+        return;
+      }
       if (e.key === "Escape") {
         // stopPropagation, so closing the menu does not ALSO close the sheet or
         // dialog this composer is sitting in. Two dismissals from one press is
