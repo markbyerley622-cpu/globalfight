@@ -1,0 +1,1778 @@
+/* ════════════════════════════════════════════════════════════════════════════════════
+   The public landing page at "/".
+
+   Scoped under `.hl` (and `.hl-nav`, which lives in the shell above it). Every value
+   comes from a token in src/app/globals.css — there is no second design system here,
+   no new colour and no new easing curve. A landing page that invents its own palette
+   stops looking like the product it is selling.
+
+   Motion budget, applied throughout:
+     controls           160–240ms
+     product transitions 400–700ms
+     one curve           --ease-out-quint
+   Nothing loops, nothing follows the cursor, nothing moves that a reader did not
+   cause — with the single exception of the role marquee, which stops under
+   prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background: var(--color-ink-950);
+
+  /* ── One screen, as this shell defines it ────────────────────────────────
+     The app shell scrolls an inner <main>, not the document, so `100vh` is NOT
+     one screen here — it is one screen plus the header. Measured at 1350×940 the
+     scroller is 879px, and the header accounts for the 61px difference.
+
+     JavaScript overwrites this with the exact measurement on mount. The CSS
+     value exists so the SERVER's first paint is already the right height: the
+     story's two renderings (stacked, then sticky) reserve their space from the
+     same variable, so hydration swaps one for the other without moving anything
+     below them. Getting this wrong was worth 0.15 of cumulative layout shift —
+     the whole page under the story slid up by ~360px one second after load. */
+  --hl-vh: calc(100dvh - 61px);
+}
+
+/* ── Legible on a phone ──────────────────────────────────────────────────────
+   The app's micro-type ramp (9 / 10 / 11px) is right for a dense product
+   surface read at laptop distance: chips, counts, table cells, stat captions.
+   On the landing page the same steps carry actual SENTENCES — what a followed
+   event does for you, what a result says, what the timeline means — and at 11px
+   on a 412px screen those are not metadata, they are body copy set too small to
+   read. Lighthouse agreed: "Document doesn't use legible font sizes", naming
+   .hl-panel-value, .hl-timeline-value, .hl-panel-proof and .hl-sports.
+
+   Raising the TOKENS inside `.hl` fixes every one of them at once, and only on
+   phones — the desktop composition, which was designed at these sizes, is
+   untouched. The 9px step is left alone: it is only ever short uppercase labels
+   ("RED CORNER", "FOLLOWED"), which is what that step is for. */
+@media (max-width: 640px) {
+  .hl {
+    --text-2xs: 0.75rem;   /* 11px → 12px */
+    --text-3xs: 0.6875rem; /* 10px → 11px */
+  }
+}
+
+/* Screen-reader-only, local to this page so it cannot collide with a utility. */
+.hl-sr {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Zero-size probe for the "section seen" observers. */
+.hl-probe {
+  display: block;
+  inline-size: 1px;
+  block-size: 1px;
+}
+
+/* ── Shared type ───────────────────────────────────────────────────────────────────── */
+
+.hl-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-display);
+  font-size: var(--fluid-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-eyebrow::before {
+  content: "";
+  inline-size: 1.75rem;
+  block-size: 2px;
+  background: var(--color-blood-500);
+}
+
+.hl-h2 {
+  font-family: var(--font-display);
+  font-size: var(--fluid-h2);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--color-chalk);
+}
+
+.hl-section-lead {
+  margin-block-start: 0.85rem;
+  max-inline-size: 46ch;
+  font-size: var(--fluid-body);
+  line-height: 1.6;
+  color: var(--color-mist);
+}
+
+.hl-mini-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+
+.hl-section {
+  position: relative;
+  padding-block: var(--space-2xl);
+  border-block-start: 1px solid rgba(255, 255, 255, 0.06);
+}
+.hl-section-head {
+  max-inline-size: 60ch;
+  margin-block-end: var(--space-l);
+}
+
+.hl-quiet-link {
+  /* A standalone link in a row of links is not "inline text", so WCAG 2.2's
+     target-size exception does not cover it. 44px of hit area, delivered by the
+     line box rather than by padding, so the underline still hugs the words. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  /* "Terms" is 40px wide. Both axes have to clear the floor, not just the one
+     the line box happens to fix. */
+  min-inline-size: 44px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-mist);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(255, 255, 255, 0.2);
+}
+.hl-quiet-link:hover {
+  color: var(--color-chalk);
+  text-decoration-color: var(--color-blood-500);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────────────
+   48px minimum block size everywhere, which clears the 44px target floor with room
+   for the focus ring to sit outside the control rather than on top of it. */
+
+.hl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-block-size: 48px;
+  padding-inline: 1.4rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.hl-btn-lg {
+  min-block-size: 52px;
+  padding-inline: 1.75rem;
+  font-size: 0.95rem;
+}
+.hl-btn-primary {
+  background: var(--color-blood-500);
+  color: #fff;
+  box-shadow: 0 12px 34px -16px rgba(225, 29, 42, 0.95);
+}
+.hl-btn-primary:hover {
+  background: var(--color-blood-400);
+}
+.hl-btn-ghost {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--color-chalk);
+}
+.hl-btn-ghost:hover {
+  border-color: rgba(225, 29, 42, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block-start: 1.9rem;
+}
+.hl-actions-center {
+  justify-content: center;
+}
+
+/* One focus treatment for the whole page. */
+.hl a:focus-visible,
+.hl button:focus-visible,
+.hl-nav a:focus-visible {
+  outline: 2px solid var(--color-blood-400);
+  outline-offset: 3px;
+  border-radius: 0.4rem;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   1. Navigation
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-nav {
+  position: relative;
+  z-index: 500;
+  flex-shrink: 0;
+  border-block-end: 1px solid transparent;
+  background: transparent;
+  transition:
+    background-color 220ms var(--ease-standard),
+    border-color 220ms var(--ease-standard),
+    backdrop-filter 220ms var(--ease-standard);
+}
+.hl-nav[data-scrolled="true"] {
+  border-block-end-color: var(--color-ink-800);
+  background: rgba(5, 7, 10, 0.92);
+  backdrop-filter: blur(16px);
+}
+
+/* The logo is a link, so it needs a real target too — the image alone measured
+   52×36. `align-self: stretch` is wrong here (it would make it as tall as the
+   bar); an explicit floor is exact. */
+.hl-nav-inner > a:first-child {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+}
+
+.hl-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  inline-size: 100%;
+  max-inline-size: 1440px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  padding-block: 0.5rem;
+  padding-block-start: calc(0.5rem + env(safe-area-inset-top));
+}
+@media (min-width: 1920px) {
+  .hl-nav-inner { max-inline-size: 1680px; }
+}
+
+.hl-nav-links {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 1rem;
+}
+@media (min-width: 1024px) {
+  .hl-nav-links { display: flex; }
+}
+.hl-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 0.85rem;
+  border-radius: 0.5rem;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-mist);
+  transition: color 180ms var(--ease-standard), background-color 180ms var(--ease-standard);
+}
+.hl-nav-link:hover {
+  background: var(--color-ink-850);
+  color: var(--color-chalk);
+}
+
+.hl-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-inline-start: auto;
+}
+.hl-nav-signin {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 0.85rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-mist);
+  transition: color 180ms var(--ease-standard);
+}
+.hl-nav-signin:hover {
+  color: var(--color-chalk);
+}
+.hl-nav-cta {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-blood-500);
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  transition: background-color 180ms var(--ease-standard);
+}
+.hl-nav-cta:hover {
+  background: var(--color-blood-400);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   2. Hero
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-hero {
+  position: relative;
+  padding-block: clamp(2rem, 1rem + 4vw, 4rem) var(--space-2xl);
+}
+
+/* Arena lighting: one still wash, painted once, never animated. A moving
+   background on the first screen competes with the headline and costs a
+   compositor layer for the whole session. */
+.hl-hero-wash {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: -6rem;
+  block-size: 120%;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(52% 38% at 22% 0%, rgba(225, 29, 42, 0.18), transparent 70%),
+    radial-gradient(46% 34% at 88% 6%, rgba(255, 255, 255, 0.045), transparent 72%);
+}
+
+.hl-hero-grid {
+  display: grid;
+  /* Never the implicit `auto` track: it refuses to shrink below its content's
+     min-content width, which is how a fighter's name clips a phone column. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-xl);
+  align-items: center;
+}
+@media (min-width: 1100px) {
+  .hl-hero-grid {
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+    gap: var(--space-2xl);
+  }
+}
+
+.hl-display {
+  margin-block-start: 1.1rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.7rem, 1.1rem + 6.2vw, 5.4rem);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.032em;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+}
+.hl-display-line {
+  display: block;
+}
+.hl-display-line[data-accent="true"] {
+  color: var(--color-blood-500);
+}
+
+.hl-lead {
+  margin-block-start: 1.35rem;
+  max-inline-size: 46ch;
+  font-size: var(--fluid-body);
+  line-height: 1.6;
+  color: var(--color-mist);
+}
+
+.hl-micro {
+  margin-block-start: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--color-fog);
+}
+
+.hl-sports {
+  margin-block-start: 1.6rem;
+  padding-block-start: 1.4rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.9;
+  color: var(--color-fog);
+}
+
+/* ── Hero product visual ───────────────────────────────────────────────────────────── */
+
+.hl-stage {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.hl-card {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
+    linear-gradient(162deg, var(--color-ink-850), var(--color-ink-950));
+  box-shadow: 0 44px 100px -60px rgba(0, 0, 0, 0.95);
+  padding: 1.15rem;
+}
+
+.hl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.hl-card-org {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+.hl-promo {
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+}
+.hl-sport {
+  padding: 0.15rem 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-mist);
+}
+.hl-title-badge {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(224, 169, 27, 0.14);
+  color: var(--color-gold-300);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hl-card-name {
+  margin-block-start: 0.6rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 0.9rem + 0.9vw, 1.55rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--color-chalk);
+}
+.hl-card-name a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+}
+.hl-card-name a:hover {
+  color: var(--color-blood-300);
+}
+
+.hl-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin-block-start: 0.6rem;
+  font-size: var(--text-2xs);
+  color: var(--color-fog);
+}
+.hl-card-meta li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hl-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-block-start: 0.95rem;
+}
+.hl-corner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.015);
+  min-inline-size: 0;
+  transition: border-color 200ms var(--ease-standard);
+}
+.hl-corner[data-side="red"] {
+  border-inline-start: 3px solid var(--color-blood-500);
+}
+.hl-corner[data-side="blue"] {
+  border-inline-start: 3px solid var(--color-volt-500);
+}
+a.hl-corner:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.hl-corner-tag {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-corner-name {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-chalk);
+  overflow-wrap: anywhere;
+}
+.hl-corner-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-mist);
+}
+.hl-rank {
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  color: var(--color-chalk);
+}
+.hl-vs {
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+
+.hl-split {
+  margin-block-start: 0.95rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.015);
+}
+.hl-split-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: var(--text-2xs);
+  color: var(--color-mist);
+}
+.hl-split-count {
+  color: var(--color-fog);
+  font-variant-numeric: tabular-nums;
+}
+.hl-split-bar {
+  display: flex;
+  block-size: 8px;
+  margin-block-start: 0.45rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-ink-800);
+}
+.hl-split-red { background: var(--color-blood-500); }
+.hl-split-blue { background: var(--color-volt-500); }
+.hl-split-legend {
+  display: flex;
+  justify-content: space-between;
+  margin-block-start: 0.35rem;
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-mist);
+}
+.hl-split-empty {
+  margin-block-start: 0.45rem;
+  font-size: var(--text-2xs);
+  color: var(--color-fog);
+}
+
+.hl-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block-start: 0.95rem;
+  padding-block-start: 0.85rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hl-card-cta {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.5rem;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+  transition: border-color 180ms var(--ease-standard), background-color 180ms var(--ease-standard);
+}
+a.hl-card-cta:hover {
+  border-color: rgba(225, 29, 42, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+}
+/* The placeholder card's action is a label, not a link — dimmed so it reads as
+   inactive rather than as a control somebody failed to wire up. */
+.hl-card-cta[aria-disabled="true"] {
+  opacity: 0.45;
+}
+/* The slot keeps its height before the clock mounts, so the card does not shift
+   when the countdown appears one frame after paint. */
+.hl-countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-block-size: 1.25rem;
+}
+.hl-countdown-label {
+  font-size: var(--text-3xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+
+/* Ecosystem satellites — desktop only. */
+.hl-satellites {
+  display: none;
+  gap: 0.5rem;
+}
+@media (min-width: 1100px) {
+  .hl-satellites {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.hl-sat {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.012);
+  min-inline-size: 0;
+}
+.hl-sat-label {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-sat-value {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-chalk);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hl-sat-note {
+  font-size: var(--text-3xs);
+  color: var(--color-fog);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-upnext {
+  display: grid;
+  gap: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.hl-upnext a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-block-size: 44px;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-ink-950);
+  transition: background-color 180ms var(--ease-standard);
+}
+.hl-upnext a:hover {
+  background: var(--color-ink-900);
+}
+.hl-upnext-sport {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-upnext-name {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-chalk);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hl-upnext-when {
+  font-family: var(--font-display);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-mist);
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   3. The story
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-stage-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-stage-headline {
+  margin-block-start: 0.7rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.1rem + 2.1vw, 2.65rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--color-chalk);
+}
+.hl-stage-support {
+  margin-block-start: 0.8rem;
+  max-inline-size: 44ch;
+  font-size: var(--fluid-body);
+  line-height: 1.6;
+  color: var(--color-mist);
+}
+.hl-stage-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  margin-block-start: 1rem;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-color: rgba(225, 29, 42, 0.4);
+}
+.hl-stage-link:hover {
+  color: var(--color-blood-300);
+  text-decoration-color: currentColor;
+}
+
+/* Stacked: four ordinary sections. */
+.hl-story-stacked {
+  display: grid;
+  gap: var(--space-2xl);
+}
+.hl-beat {
+  display: grid;
+  gap: var(--space-m);
+  align-items: center;
+}
+@media (min-width: 700px) {
+  .hl-beat {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .hl-beat:nth-child(even) .hl-beat-copy { order: 2; }
+}
+
+/* At the width where the sticky rendering takes over, a stacked beat occupies
+   exactly the travel one sticky stage will consume. Two things fall out of that:
+   the swap at hydration is height-neutral (no layout shift), and a reader whose
+   JavaScript never arrives — or who has asked for no motion — gets four
+   full-height beats rather than four cramped ones followed by dead space. */
+@media (min-width: 1024px) {
+  .hl-beat {
+    min-block-size: calc(var(--hl-vh) * 0.9);
+    align-content: center;
+  }
+  .hl-story-stacked { gap: 0; }
+}
+
+/* Sticky: a pinned stage over a measured track. */
+.hl-track {
+  position: relative;
+}
+.hl-pin {
+  position: sticky;
+  inset-block-start: 0;
+  block-size: var(--hl-vh, 100vh);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.hl-pin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: var(--space-2xl);
+  align-items: center;
+  inline-size: 100%;
+}
+
+.hl-pin-subject {
+  display: grid;
+  gap: 0.2rem;
+  padding-block-end: 1.1rem;
+  margin-block-end: 1.4rem;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hl-pin-subject-label {
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-pin-subject-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-chalk);
+}
+
+.hl-progress {
+  display: flex;
+  gap: 0.4rem;
+  margin-block-end: 1.6rem;
+}
+.hl-progress li {
+  position: relative;
+  block-size: 2px;
+  inline-size: 2.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  overflow: hidden;
+}
+.hl-progress li[data-state="done"] {
+  background: var(--color-blood-500);
+}
+.hl-progress-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-blood-500);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+/* All four copy blocks are stacked in one grid cell, so a crossfade never
+   changes the height of the pinned stage — which is what stops the visual
+   beside it jumping a stage boundary. */
+.hl-pin-stack {
+  display: grid;
+}
+.hl-pin-beat {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  pointer-events: none;
+  transition:
+    opacity 520ms var(--ease-out-quint),
+    transform 520ms var(--ease-out-quint);
+}
+.hl-pin-beat[data-active="true"] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.hl-pin-visual {
+  display: grid;
+  min-inline-size: 0;
+}
+.hl-pin-vis {
+  grid-area: 1 / 1;
+  min-inline-size: 0;
+  opacity: 0;
+  transform: scale(0.985);
+  pointer-events: none;
+  transition:
+    opacity 560ms var(--ease-out-quint),
+    transform 560ms var(--ease-out-quint);
+}
+.hl-pin-vis[data-active="true"] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ── Stage visuals ─────────────────────────────────────────────────────────────────── */
+
+.hl-vis {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: var(--radius-card);
+  background: linear-gradient(162deg, var(--color-ink-850), var(--color-ink-950));
+  box-shadow: 0 36px 90px -60px rgba(0, 0, 0, 0.9);
+  padding: 1rem;
+  min-inline-size: 0;
+}
+.hl-vis > * { flex: 1; }
+
+/* A floor, so the four stages are the same size and the pinned area is filled.
+   Without it a two-bout card produced a 300px panel floating in an 840px pin,
+   and the section read as unfinished rather than spacious. The value is the
+   height of the LARGEST stage, so nothing is ever scrolled inside it. */
+@media (min-width: 1024px) {
+  .hl-pin-vis .hl-vis { min-block-size: 30rem; }
+}
+
+.hl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-block-end: 0.8rem;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.07);
+}
+.hl-chip {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-mist);
+}
+.hl-chip[data-active="true"] {
+  border-color: transparent;
+  background: var(--color-blood-500);
+  color: #fff;
+}
+
+.hl-scatter {
+  display: grid;
+  gap: 0.5rem;
+  margin-block-start: 0.8rem;
+}
+.hl-scatter-item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.015);
+  /* The "fragmented announcements" idea, done with restraint: each row is
+     nudged a little further out of alignment than the one above it, so the set
+     reads as scattered without anything actually moving. The first — the one
+     that has resolved — sits square. */
+  transform: translateX(calc(var(--i, 0) * 0.55rem));
+}
+.hl-scatter-item[data-i="0"] { --i: 0; border-color: rgba(225, 29, 42, 0.35); }
+.hl-scatter-item[data-i="1"] { --i: 1; opacity: 0.85; }
+.hl-scatter-item[data-i="2"] { --i: 2; opacity: 0.7; }
+.hl-scatter-item[data-i="3"] { --i: 3; opacity: 0.55; }
+.hl-scatter-promo {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-scatter-name {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-chalk);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hl-scatter-meta {
+  font-size: var(--text-3xs);
+  color: var(--color-fog);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-fc-head {
+  display: grid;
+  gap: 0.15rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.07);
+}
+.hl-fc-promo {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-fc-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-chalk);
+}
+.hl-fc-where {
+  font-size: var(--text-3xs);
+  color: var(--color-fog);
+}
+.hl-fc-segment {
+  margin-block-start: 0.75rem;
+}
+.hl-fc-seg-label {
+  display: block;
+  margin-block-end: 0.35rem;
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-fc-bout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  margin-block-start: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.45rem;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-chalk);
+}
+.hl-fc-bout > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-fc-bout > span:last-child { text-align: end; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The two names sit either side of "vs" rather than at opposite ends of the
+   panel — at 700px wide the 1fr/auto/1fr split pushed them so far apart the row
+   stopped reading as one matchup. */
+.hl-fc-bout,
+.hl-fc-records {
+  max-inline-size: 34rem;
+  margin-inline: auto;
+}
+.hl-fc-bout[data-main="true"] {
+  border-color: rgba(225, 29, 42, 0.4);
+  background: rgba(225, 29, 42, 0.06);
+}
+.hl-fc-vs {
+  font-size: var(--text-4xs);
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-fc-skeleton {
+  block-size: 2.1rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+.hl-fc-records {
+  display: flex;
+  justify-content: space-between;
+  margin-block-start: 0.25rem;
+  font-size: var(--text-3xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-mist);
+}
+.hl-fc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin-block-start: 0.85rem;
+  padding-block-start: 0.7rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: var(--text-3xs);
+  color: var(--color-fog);
+}
+
+.hl-pick-corners {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+.hl-pick-corner {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.55rem;
+  min-inline-size: 0;
+}
+.hl-pick-corner[data-side="red"] { border-inline-start: 3px solid var(--color-blood-500); }
+.hl-pick-corner[data-side="blue"] { border-inline-start: 3px solid var(--color-volt-500); }
+.hl-pick-corner[data-picked="true"] {
+  background: rgba(225, 29, 42, 0.08);
+  border-color: rgba(225, 29, 42, 0.4);
+}
+.hl-pick-tag {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-pick-name {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-chalk);
+  overflow-wrap: anywhere;
+}
+/* "Your call" is a WORD, not a coloured border. The picked corner must be
+   identifiable without seeing the difference between red and blue. */
+.hl-pick-chosen {
+  justify-self: start;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: var(--color-blood-500);
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.hl-pick-crowd {
+  margin-block-start: 0.8rem;
+}
+.hl-pick-crowd-label {
+  display: block;
+  margin-block-end: 0.3rem;
+  font-size: var(--text-3xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-pick-rows {
+  display: grid;
+  gap: 1px;
+  margin-block-start: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.hl-pick-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--color-ink-950);
+}
+.hl-pick-row-label {
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-pick-row-value {
+  font-size: var(--text-2xs);
+  color: var(--color-chalk);
+  text-align: end;
+}
+.hl-pick-note {
+  margin-block-start: 0.75rem;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+
+.hl-timeline {
+  display: grid;
+  gap: 0;
+}
+.hl-timeline-step {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  padding-inline-start: 1.5rem;
+  padding-block: 0.55rem;
+}
+.hl-timeline-step::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0.3rem;
+  inline-size: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.hl-timeline-step:first-child::before { inset-block-start: 50%; }
+.hl-timeline-step:last-child::before { inset-block-end: 50%; }
+.hl-timeline-dot {
+  position: absolute;
+  inset-block-start: calc(0.55rem + 0.35rem);
+  inset-inline-start: 0;
+  inline-size: 0.65rem;
+  block-size: 0.65rem;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink-950);
+  background: var(--color-blood-500);
+}
+.hl-timeline-step:last-child .hl-timeline-dot { background: var(--color-up); }
+.hl-timeline-label {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-timeline-value {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-chalk);
+  overflow-wrap: anywhere;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   4. Ecosystem
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-window-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-s);
+}
+@media (min-width: 760px) {
+  .hl-window-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1180px) {
+  /* Asymmetric on purpose: two tall windows lead, two wide ones close. A 2×2 of
+     identical boxes reads as a feature matrix, which is the one thing this
+     section must not look like. */
+  .hl-window-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .hl-window[data-window="fighters"] { grid-column: span 3; }
+  .hl-window[data-window="results"] { grid-column: span 2; }
+  .hl-window[data-window="location"] { grid-column: span 2; }
+  .hl-window[data-window="coverage"] { grid-column: span 3; }
+}
+
+.hl-window {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-card);
+  background: linear-gradient(162deg, var(--color-ink-850), var(--color-ink-950));
+  transition: border-color 220ms var(--ease-standard);
+  min-inline-size: 0;
+}
+.hl-window:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.hl-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  flex: 1;
+  min-inline-size: 0;
+}
+/* The demo fills whatever height its row-mate imposes. A grid row is as tall as
+   its tallest cell, so without this the shorter window showed its panel at
+   content height and then 200px of bare card underneath — which reads as a
+   missing element rather than as breathing room. */
+.hl-window-demo { flex: 1; }
+.hl-window-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 0.95rem + 0.6vw, 1.4rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--color-chalk);
+}
+.hl-window-demo {
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.015);
+  min-inline-size: 0;
+}
+.hl-window-empty {
+  font-size: var(--text-2xs);
+  line-height: 1.6;
+  color: var(--color-fog);
+}
+.hl-window-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: start;
+  min-block-size: 44px;
+  font-family: var(--font-display);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-window-link:hover { color: var(--color-blood-300); }
+
+.hl-fighter { display: grid; gap: 0.6rem; }
+.hl-fighter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.hl-fighter-name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-chalk);
+}
+.hl-fighter-nick {
+  display: block;
+  font-size: var(--text-2xs);
+  font-style: italic;
+  color: var(--color-mist);
+}
+.hl-fighter-record {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-blood-400);
+  white-space: nowrap;
+}
+.hl-fighter-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  font-size: var(--text-2xs);
+  color: var(--color-mist);
+}
+.hl-inline-flag { display: inline-flex; align-items: center; gap: 0.35rem; }
+.hl-fighter-next {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(225, 29, 42, 0.28);
+  border-radius: 0.45rem;
+  background: rgba(225, 29, 42, 0.05);
+  font-size: var(--text-2xs);
+  color: var(--color-chalk);
+}
+.hl-fighter-history { display: grid; gap: 0.3rem; }
+.hl-fighter-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: var(--text-2xs);
+  color: var(--color-mist);
+}
+.hl-history-op { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl-history-out { color: var(--color-fog); white-space: nowrap; }
+
+.hl-result { display: grid; gap: 0.4rem; }
+.hl-result-line {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-mist);
+}
+.hl-result-line strong { color: var(--color-up); font-weight: 700; }
+.hl-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  font-size: var(--text-2xs);
+  color: var(--color-fog);
+}
+.hl-result-method {
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  background: var(--color-ink-800);
+  font-weight: 700;
+  color: var(--color-mist);
+}
+.hl-result-status {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-mist);
+}
+
+.hl-location { display: grid; gap: 0.6rem; }
+.hl-location-count { font-size: var(--text-2xs); color: var(--color-mist); }
+.hl-location-count strong { color: var(--color-chalk); font-variant-numeric: tabular-nums; }
+.hl-pins { display: grid; gap: 0.4rem; }
+.hl-pins li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+}
+.hl-pin-dot {
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 999px;
+  align-self: center;
+}
+.hl-pin-dot[data-kind="event"] { background: var(--color-blood-500); }
+.hl-pin-dot[data-kind="gym"] { background: var(--color-volt-500); }
+.hl-pin-name {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--color-chalk);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hl-pin-where {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-3xs);
+  color: var(--color-fog);
+}
+.hl-pin-key {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: var(--text-3xs);
+  color: var(--color-fog);
+}
+.hl-pin-key .hl-pin-dot:nth-of-type(2) { margin-inline-start: 0.75rem; }
+
+.hl-coverage { display: grid; gap: 0.6rem; }
+.hl-coverage li { display: grid; gap: 0.1rem; }
+.hl-coverage-cat {
+  font-size: var(--text-4xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-coverage-title {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-chalk);
+}
+.hl-coverage-date { font-size: var(--text-3xs); color: var(--color-fog); }
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   5. Personalisation
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-personal {
+  background:
+    radial-gradient(70% 45% at 50% 0%, rgba(255, 255, 255, 0.028), transparent 70%),
+    var(--color-ink-950);
+}
+.hl-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-s);
+}
+@media (min-width: 860px) {
+  .hl-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.hl-panel {
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+  padding: 1.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-card);
+  background: linear-gradient(162deg, var(--color-ink-850), var(--color-ink-950));
+  min-inline-size: 0;
+}
+.hl-panel-kicker {
+  font-family: var(--font-display);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+.hl-panel-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 1rem + 1vw, 1.7rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--color-chalk);
+}
+.hl-panel-proof,
+.hl-panel-roles {
+  font-size: var(--text-2xs);
+  color: var(--color-mist);
+}
+.hl-panel-proof strong { color: var(--color-chalk); }
+/* The two panels are a grid row, so they are equally tall; the demo inside the
+   shorter one stretches to match rather than leaving bare card beneath it. */
+.hl-panel-demo { align-self: stretch; }
+.hl-panel-demo ul {
+  display: grid;
+  block-size: 100%;
+  align-content: start;
+  gap: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.hl-panel-demo li {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--color-ink-950);
+}
+.hl-panel-demo svg { color: var(--color-blood-400); }
+.hl-panel-label {
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+}
+.hl-panel-value {
+  font-size: var(--text-2xs);
+  color: var(--color-chalk);
+  text-align: end;
+}
+
+.hl-roles {
+  display: inline-flex;
+  align-items: baseline;
+  min-inline-size: 8ch;
+}
+.hl-roles-slot {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-blood-400);
+}
+
+.hl-personal-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-block-start: var(--space-l);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   6. Trust
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-principles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-s);
+}
+@media (min-width: 760px) {
+  .hl-principles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.hl-principle {
+  padding-block-start: 1.1rem;
+  border-block-start: 2px solid var(--color-blood-500);
+}
+.hl-principle-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-chalk);
+}
+.hl-principle-copy {
+  margin-block-start: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-mist);
+}
+.hl-trust-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-block-start: var(--space-l);
+  padding-block-start: 1.2rem;
+  border-block-start: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   7. Final
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+.hl-final {
+  position: relative;
+  overflow: hidden;
+  /* Asymmetric: the ghosted wordmark occupies the bottom of the section, so
+     matching the top padding at the bottom left a band of nothing under it. */
+  padding-block: var(--space-3xl) var(--space-2xl);
+  text-align: center;
+  background:
+    radial-gradient(60% 60% at 50% 100%, rgba(225, 29, 42, 0.16), transparent 72%),
+    var(--color-ink-950);
+}
+/* The wordmark, oversized and nearly invisible behind the copy. Decorative:
+   the name is already in the nav, the footer and the <title>. */
+.hl-final-mark {
+  position: absolute;
+  inset-block-end: -0.12em;
+  inset-inline: 0;
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 14vw, 13rem);
+  font-weight: 700;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.032);
+  pointer-events: none;
+  user-select: none;
+}
+.hl-final-inner { position: relative; }
+.hl-final-headline {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 1.2rem + 4vw, 4.2rem);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--color-chalk);
+}
+.hl-final-support {
+  margin-block-start: 1.1rem;
+  margin-inline: auto;
+  max-inline-size: 46ch;
+  font-size: var(--fluid-body);
+  line-height: 1.6;
+  color: var(--color-mist);
+}
+.hl-final-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 0.35rem;
+  margin-block-start: var(--space-l);
+}
+.hl-final-step {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fog);
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hl-final-step + .hl-final-step::before {
+  content: "";
+  inline-size: 0.75rem;
+  block-size: 1px;
+  margin-inline-end: 0.5rem;
+  background: rgba(255, 255, 255, 0.18);
+}
+.hl-final-step:last-child {
+  border-color: rgba(34, 197, 94, 0.4);
+  color: var(--color-up);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════
+   Motion
+   ────────────────────────────────────────────────────────────────────────────────────
+   The reveal only ever DIMS an element the client has explicitly marked as not
+   yet seen. Server HTML carries data-revealed="true", so with JavaScript off,
+   broken, or still downloading, nothing on this page is hidden.
+   ════════════════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hl-reveal[data-revealed="false"] {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  .hl-reveal {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 640ms var(--ease-out-quint),
+      transform 640ms var(--ease-out-quint);
+    transition-delay: var(--hl-delay, 0ms);
+  }
+  .hl-roles-slot {
+    animation: hl-role-in 320ms var(--ease-out-quint) both;
+  }
+}
+
+@keyframes hl-role-in {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Stillness, requested. Every stage is shown at once, nothing crossfades and the
+   sticky track is never mounted (see story.tsx — the mode check reads the same
+   media query), so no information is behind a transition that will not run. */
+@media (prefers-reduced-motion: reduce) {
+  .hl-reveal,
+  .hl-pin-beat,
+  .hl-pin-vis {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+  .hl-scatter-item { transform: none; }
+}

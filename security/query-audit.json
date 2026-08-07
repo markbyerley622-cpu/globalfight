@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1135,
+    "queries": 1140,
     "high": 0,
     "medium": 95,
     "low": 197,
-    "info": 843,
-    "public": 787,
+    "info": 848,
+    "public": 792,
     "userOwned": 253,
     "shared": 95,
     "admin": 0
@@ -2833,7 +2833,7 @@
     },
     {
       "file": "src/lib/auth.ts",
-      "line": 158,
+      "line": 162,
       "fn": "user",
       "model": "User",
       "method": "update",
@@ -5835,6 +5835,71 @@
       "why": "Public model read — world-readable by design."
     },
     {
+      "file": "src/components/home-landing/data.ts",
+      "line": 205,
+      "fn": "f",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/components/home-landing/data.ts",
+      "line": 214,
+      "fn": "bouts",
+      "model": "Fight",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/components/home-landing/data.ts",
+      "line": 283,
+      "fn": "loadLocation",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/components/home-landing/data.ts",
+      "line": 289,
+      "fn": "loadLocation",
+      "model": "Gym",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/components/home-landing/data.ts",
+      "line": 295,
+      "fn": "loadLocation",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
       "file": "src/features/predictions/community/service.ts",
       "line": 54,
       "fn": "count",
@@ -7370,7 +7435,7 @@
     },
     {
       "file": "src/lib/analytics.ts",
-      "line": 46,
+      "line": 65,
       "fn": "recordEvent",
       "model": "AnalyticsEvent",
       "method": "create",
@@ -7526,7 +7591,7 @@
     },
     {
       "file": "src/lib/auth.ts",
-      "line": 129,
+      "line": 133,
       "fn": "user",
       "model": "User",
       "method": "findUnique",

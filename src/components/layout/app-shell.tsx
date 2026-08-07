@@ -18,6 +18,7 @@ import { NotificationBell } from "./notification-bell";
 import { MessagesButton } from "./messages-button";
 import { ScrollRestoration } from "./scroll-restoration";
 import { SearchOverlay } from "@/components/search/search-overlay";
+import { LandingNav } from "@/components/home-landing/landing-nav";
 import { useAuth } from "@/lib/auth-client";
 import { useT } from "@/lib/i18n";
 import { useTrackNavigation } from "@/lib/navigation-history";
@@ -150,6 +151,24 @@ export function AppShell({
   // the events home only — everywhere else they were repeated clutter (RC-2 UX).
   const onEventsIndex = pathname === "/events";
 
+  /**
+   * `/` is the public landing page and carries its OWN chrome.
+   *
+   * It reaches this decision here rather than by rendering a second header
+   * inside the page, because the alternative is two navigation bars stacked on
+   * a marketing route. The product header is built for a member — search,
+   * messages, the bell, an account menu, five pillars — and every one of those
+   * is either signed-in-only (so it renders as nothing for this visitor) or a
+   * competing call to action in front of somebody who has not yet decided
+   * whether to join. The bottom pillar bar has the same problem on a phone.
+   *
+   * This costs the product routes nothing: the branch is one pathname equality,
+   * and `/` is the only route in the app that is not a product surface. A member
+   * never sees it either — page.tsx redirects them to /events before this
+   * renders.
+   */
+  const onLanding = pathname === "/";
+
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden bg-ink-950">
       <AnalyticsPageviews />
@@ -169,6 +188,7 @@ export function AppShell({
             layers are direct siblings of this header within the shell's
             stacking context once they escape <main>'s non-positioned box, so a
             merely-higher-looking z-40 still lost to them. */}
+        {onLanding ? <LandingNav /> : (
         <header className="z-[500] shrink-0 border-b border-ink-800 bg-ink-950/90 backdrop-blur-xl">
           <div className="flex items-center gap-3 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
             {/* Logo always returns to a clean /events (event-centric home), with
@@ -214,9 +234,10 @@ export function AppShell({
           {/* Breaking ticker — events home only (between the top bar and tabs). */}
           {onEventsIndex && <div className="border-t border-ink-800/60">{ticker}</div>}
         </header>
+        )}
 
         {/* Section tabs — swipeable on mobile. */}
-        {inSection && (
+        {inSection && !onLanding && (
           <div className="z-30 shrink-0 border-b border-ink-800 bg-ink-950/90 backdrop-blur-xl">
             <SectionTabs />
           </div>
@@ -228,12 +249,40 @@ export function AppShell({
             bounce, dragging the whole app shell (header/bottom bar) with it —
             the "whole page moves" bug on iOS Safari/PWA standalone. */}
         <main ref={mainRef} id="main" className="cr-overscroll-contain hide-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          {children}
+          {/* ── One screen reserved for the page, always ─────────────────────
+              Every route is dynamic, so Next streams: the shell paints first and
+              the page's content arrives after. Without a reservation the footer
+              — which is part of the shell — lands NEAR THE TOP OF THE VIEWPORT
+              on that first paint, and is then pushed thousands of pixels down
+              when the content shows up. That is a large in-viewport layout
+              shift, and it was happening on every desktop page in the app:
+              measured CLS 0.36 on /news, 0.36 on /, 0.22 on /events, 0.20 on
+              /results, 0.14 on /leaderboard — all attributed by Lighthouse to
+              the same footer node, all in Core Web Vitals' "needs improvement"
+              or "poor" band.
+
+              `min-height: 100%` resolves because <main> is a flex item with a
+              definite height. One screen of reservation puts the footer below
+              the fold before the content exists, so the content arriving moves
+              nothing the reader can see. Nothing else changes: it is a MINIMUM,
+              so every page taller than a screen — which is almost all of them —
+              lays out exactly as before. */}
+          <div className="min-h-full">{children}</div>
+          {/* Desktop-only, on every route including the landing page. Showing the
+              full footer on a phone was tried and reverted: it is a 60-link
+              sitemap that added roughly three screens to the landing page and
+              exposed 20-odd 19px tap targets that no phone surface in this app
+              exposes today. The landing page's own Trust section carries the
+              legal links a mobile reader actually needs. */}
           <div className="hidden lg:block">{footer}</div>
         </main>
 
         {onEventsIndex && <SponsorsStrip />}
-        <BottomTabBar className="lg:hidden" />
+        {/* The five product pillars are navigation for someone who is already
+            inside the product. On the landing page they compete with the one
+            action the page exists for, so the landing carries its own always-
+            visible Create-account button instead. */}
+        {!onLanding && <BottomTabBar className="lg:hidden" />}
       </div>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />

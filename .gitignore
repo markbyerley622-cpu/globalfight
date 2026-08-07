@@ -38,3 +38,6 @@ wikicard-cleanup-backup-*.json
 # Private evidence / identity documents stored on local disk in dev.
 # NEVER tracked: in local development this directory holds real uploads.
 .private/
+
+# Local landing-page visual-review artefacts (screenshots, audits). Never shipped.
+.review/

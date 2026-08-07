@@ -3,7 +3,16 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // Primary Combat Register brandmark. `sizeClass` controls the rendered height
-// responsively (Tailwind h-* + w-auto); intrinsic ratio ~3:2.
+// responsively (Tailwind h-* + w-auto).
+//
+// The width/height below are the file's TRUE intrinsic dimensions (507×350,
+// ratio 1.4486). They used to read 150×100 (1.50) — a 3% mismatch, which is
+// small enough to look fine and large enough that the browser reserved the wrong
+// box and then squashed the mark by a pixel or two once it decoded. Lighthouse
+// flags it as "Displays images with incorrect aspect ratio" on every page,
+// because this component is in the header and the footer of all of them. These
+// two numbers must match the file; they do not control the rendered size, which
+// comes from `sizeClass`.
 export function Logo({
   className, sizeClass = "h-10 sm:h-12", href = "/", showWordmark = true, priority = false,
 }: {
@@ -18,8 +27,8 @@ export function Logo({
       <Image
         src="/cr-logo.png"
         alt="Combat Reviews"
-        width={150}
-        height={100}
+        width={507}
+        height={350}
         priority={priority}
         className={cn("w-auto drop-shadow-[0_2px_10px_rgba(225,29,42,0.25)]", sizeClass)}
       />

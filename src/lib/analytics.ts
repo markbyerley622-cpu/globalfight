@@ -28,6 +28,25 @@ export const EVENTS = [
   "signup",
   // Partner-mark clicks, attributed by sponsor id + the surface it was on.
   "sponsor_click",
+
+  // ── The public landing page at "/" ────────────────────────────────────────
+  // Anonymous by definition: `/` redirects a signed-in member straight to
+  // /events, so every one of these arrives with userId null. They exist to
+  // answer one question — does the page turn a visitor into an account — so
+  // they are deliberately coarse: one view, the two CTAs, how far down the
+  // story a reader got, which product preview pulled them in, and the moment
+  // they left for the signup form.
+  //
+  // There is no `home_signup_completed`. Completion is already `signup`, emitted
+  // by the account form itself with the chosen role; adding a second name for the
+  // same act would double-count every conversion in the table. The landing's job
+  // ends at `home_signup_started`, and the two join on the session.
+  "home_landing_view",
+  "home_primary_cta_clicked",
+  "home_secondary_cta_clicked",
+  "home_story_stage_viewed",
+  "home_product_preview_clicked",
+  "home_signup_started",
 ] as const;
 export type EventName = (typeof EVENTS)[number];
 

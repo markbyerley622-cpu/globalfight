@@ -25,7 +25,11 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { resolveAuthSecret } from "@/lib/auth-secret";
 
-export const SESSION_COOKIE = "cr_session";
+// Defined in lib/auth-cookie so `middleware.ts` — which runs on the edge and
+// cannot import this module — reads the same constant. Re-exported here so every
+// existing importer is unchanged.
+export { SESSION_COOKIE } from "@/lib/auth-cookie";
+import { SESSION_COOKIE } from "@/lib/auth-cookie";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 // Fails closed in production: throws at startup if AUTH_SECRET is missing,
