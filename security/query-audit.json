@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1183,
+    "queries": 1184,
     "high": 0,
     "medium": 103,
-    "low": 203,
+    "low": 204,
     "info": 877,
-    "public": 814,
+    "public": 815,
     "userOwned": 267,
     "shared": 102,
     "admin": 0
@@ -4032,7 +4032,20 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 234,
+      "line": 237,
+      "fn": "syncLegacyChampion",
+      "model": "Champion",
+      "method": "deleteMany",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/rankings/champions.ts",
+      "line": 253,
       "fn": "syncLegacyChampion",
       "model": "Champion",
       "method": "update",
@@ -4123,7 +4136,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 92,
+      "line": 82,
       "fn": "upsertChampion",
       "model": "Champion",
       "method": "update",
@@ -7490,7 +7503,7 @@
     },
     {
       "file": "src/lib/admin/ranking-accuracy.ts",
-      "line": 251,
+      "line": 262,
       "fn": "auditChampionAccuracy",
       "model": "TitleReign",
       "method": "findMany",
@@ -7503,7 +7516,7 @@
     },
     {
       "file": "src/lib/admin/ranking-accuracy.ts",
-      "line": 262,
+      "line": 273,
       "fn": "auditChampionAccuracy",
       "model": "Champion",
       "method": "findMany",
@@ -7516,7 +7529,7 @@
     },
     {
       "file": "src/lib/admin/ranking-accuracy.ts",
-      "line": 272,
+      "line": 283,
       "fn": "auditChampionAccuracy",
       "model": "Ranking",
       "method": "findMany",
@@ -14055,7 +14068,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 224,
+      "line": 243,
       "fn": "existing",
       "model": "Champion",
       "method": "findFirst",
@@ -14068,7 +14081,7 @@
     },
     {
       "file": "src/lib/rankings/champions.ts",
-      "line": 239,
+      "line": 258,
       "fn": "syncLegacyChampion",
       "model": "Champion",
       "method": "create",
@@ -14237,7 +14250,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 86,
+      "line": 76,
       "fn": "existing",
       "model": "Champion",
       "method": "findFirst",
@@ -14250,7 +14263,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 95,
+      "line": 85,
       "fn": "upsertChampion",
       "model": "Champion",
       "method": "create",
@@ -14263,7 +14276,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 139,
+      "line": 129,
       "fn": "found",
       "model": "WeightClass",
       "method": "findFirst",
@@ -14276,7 +14289,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 144,
+      "line": 134,
       "fn": "created",
       "model": "WeightClass",
       "method": "create",

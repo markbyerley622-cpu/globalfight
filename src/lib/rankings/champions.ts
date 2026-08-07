@@ -216,10 +216,29 @@ async function syncLegacyChampion(
   claim: TitleClaim,
   status: string,
 ): Promise<void> {
-  if (status !== "CHAMPION" || !claim.fighterId) return;
-
   const body = sanctioningBodyFor(organisation);
   if (!body) return;
+
+  // ── A VACATED belt must lose its champion row ───────────────────────────
+  //
+  // This returned early for every non-CHAMPION status, which was safe only
+  // while VACANT reigns could not exist — no connector could express one. Now
+  // that a source can say "this belt is vacant", returning early leaves the
+  // previous holder in `Champion`, and `Champion` is what the site reads. The
+  // reign would correctly say VACANT while every page still displayed a
+  // champion, which is a worse failure than showing nothing: it is confidently
+  // wrong, and it is exactly the state a source publishes a vacancy to correct.
+  //
+  // Deleted rather than flipped to `current: false`, because the constraint is
+  // `@@unique([weightClassId, body, current])` on a BOOLEAN — flipping succeeds
+  // once per division and then collides forever. The reign holds the history,
+  // so nothing is lost by removing the projection row.
+  if (status === "VACANT" || status === "STRIPPED" || status === "RETIRED") {
+    await prisma.champion.deleteMany({ where: { weightClassId, body, current: true } }).catch(() => {});
+    return;
+  }
+
+  if (status !== "CHAMPION" || !claim.fighterId) return;
 
   const existing = await prisma.champion.findFirst({
     where: { weightClassId, body, current: true },
@@ -241,9 +260,21 @@ async function syncLegacyChampion(
     .catch(() => {});
 }
 
-/** Organisation string → the SanctioningBody enum, or null when unmapped. */
-function sanctioningBodyFor(organisation: string) {
+/**
+ * Organisation string → the SanctioningBody enum, or null when unmapped.
+ *
+ * THE ONE DEFINITION. `ingest.ts` carried a byte-identical copy of this, and the
+ * two drifted the moment either was extended: adding THE_RING here fixed the
+ * reign but not the `Champion` projection, because upsertChampion asked the
+ * other copy and got null. Every Ring champion was recorded and then dropped on
+ * the way to the table the site reads. Import this; do not re-declare it.
+ */
+export function sanctioningBodyFor(organisation: string) {
   const key = organisation.trim().toUpperCase().replace(/[^A-Z]/g, "");
+  // "The Ring" collapses to THERING here, which matched nothing — so every Ring
+  // champion was recorded as an observation and then silently dropped on the way
+  // to `Champion`. The enum has had THE_RING all along.
+  if (key === "THERING" || key === "RING") return "THE_RING" as const;
   const known = ["WBA", "WBC", "IBF", "WBO", "IBO", "BKFC", "ONE", "PFL", "UFC", "BELLATOR", "GLORY", "RIZIN", "KSW"] as const;
   return (known as readonly string[]).includes(key) ? (key as (typeof known)[number]) : null;
 }
