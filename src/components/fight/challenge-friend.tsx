@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Swords } from "lucide-react";
+import { Check, Swords, MessageSquare } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { PeoplePicker, type Person } from "@/components/people/people-picker";
 import { useAuthGate } from "@/lib/auth-client";
@@ -63,6 +63,8 @@ export function ChallengeFriend({
   const [sent, setSent] = useState<Person | null>(null);
   /** True when the challenge is an unanswered INVITE rather than a live battle. */
   const [pending, setPending] = useState(false);
+  /** Where the challenge actually lives — see lib/messages/challenge-card. */
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function launch() {
@@ -96,6 +98,7 @@ export function ChallengeFriend({
         return;
       }
       setPending(data.pending === true);
+      setConversationId(typeof data.conversationId === "string" ? data.conversationId : null);
       setSent(person);
       onSent?.();
     } catch {
@@ -144,6 +147,18 @@ export function ChallengeFriend({
                 </>
               )}
             </p>
+            {/* The conversation FIRST when there is one: the challenge is a
+                message now, so "where did that go?" has one answer and it is a
+                place you can also talk. The profile stays as the secondary
+                route rather than the only one. */}
+            {conversationId ? (
+              <Link
+                href={`/messages/${conversationId}`}
+                className="tap inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blood-500 px-4 font-display text-2xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blood-400"
+              >
+                <MessageSquare className="size-3.5" aria-hidden /> Open the conversation
+              </Link>
+            ) : null}
             <Link
               href={`/u/${sent.username}`}
               className="text-xs font-semibold text-blood-300 underline-offset-2 hover:underline"

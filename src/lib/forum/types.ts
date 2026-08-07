@@ -1,3 +1,4 @@
+import type { PresenceDto } from "@/lib/presence/policy";
 // Shared forum DTOs (client + server safe — no server-only imports here).
 // The Prisma repo returns these plain shapes so client components can consume
 // them directly over fetch/SSE.
@@ -75,6 +76,15 @@ export interface ForumPostDTO {
   authorAppRole: string;     // app role: USER | MODERATOR | ADMIN (for staff crown)
   authorSport: string | null; // sport value when the author has a fighter profile
   authorReputation: number;
+  /**
+   * Presence of the post's author, filtered for the viewer.
+   *
+   * On POSTS only, not on thread cards. A reply is a live conversation — "the
+   * person I am answering is here" changes whether you wait for them. A thread
+   * CARD in an index is a historical artefact, and a green dot there says
+   * nothing about the thread while inviting "why aren't they replying".
+   */
+  authorPresence: PresenceDto | null;
   parentId: string | null;
   attachments: ForumAttachment[];
   // Quoted reply (Phase 4): snapshot of the post this one quotes.

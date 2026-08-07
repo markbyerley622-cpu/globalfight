@@ -328,7 +328,29 @@ export async function getConversation(
     where: { conversationId },
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: { id: true, body: true, createdAt: true, senderId: true },
+    select: {
+      id: true, body: true, createdAt: true, senderId: true, kind: true,
+      // ── The card's state is read LIVE with the thread ──────────────────
+      // Joined here rather than snapshotted onto the message when it was sent:
+      // a card that still says "waiting for your call" after the recipient has
+      // picked is worse than no card at all. The message is immutable history;
+      // this join is a live view of the battle it points at.
+      //
+      // One join for the whole page, not one query per card.
+      battle: {
+        select: {
+          id: true, state: true, challengerCorner: true, opponentCorner: true,
+          fight: {
+            select: {
+              slug: true, result: true,
+              red: { select: { name: true } },
+              blue: { select: { name: true } },
+              event: { select: { slug: true, name: true, date: true, posterUrl: true } },
+            },
+          },
+        },
+      },
+    },
   });
 
   return {
@@ -340,13 +362,41 @@ export async function getConversation(
     receiptsHidden: member.receiptsHidden,
     // Oldest-first for rendering; the query is newest-first so `take` keeps the
     // most RECENT window rather than the first 100 messages ever sent.
-    messages: rows.reverse().map((m) => ({
-      id: m.id,
-      body: m.body,
-      at: m.createdAt.toISOString(),
-      senderId: m.senderId,
-      fromMe: m.senderId === viewerId,
-    })),
+    messages: rows.reverse().map((m) => {
+      const fromMe = m.senderId === viewerId;
+      const b = m.battle;
+      const open = b?.fight.result === "SCHEDULED"
+        && (!b.fight.event?.date || b.fight.event.date.getTime() > Date.now());
+      return {
+        id: m.id,
+        body: m.body,
+        at: m.createdAt.toISOString(),
+        senderId: m.senderId,
+        fromMe,
+        kind: m.kind,
+        // A CHALLENGE whose battle was removed degrades to its `body` sentence
+        // rather than rendering an empty card — see the SetNull on the column.
+        challenge: b
+          ? {
+              battleId: b.id,
+              state: b.state,
+              fightSlug: b.fight.slug,
+              eventSlug: b.fight.event?.slug ?? null,
+              eventName: b.fight.event?.name ?? null,
+              eventDate: b.fight.event?.date.toISOString() ?? null,
+              posterUrl: b.fight.event?.posterUrl ?? null,
+              red: b.fight.red.name,
+              blue: b.fight.blue.name,
+              challengerCorner: b.challengerCorner,
+              opponentCorner: b.opponentCorner,
+              // The viewer owes an answer only when they did NOT send it and
+              // the invite is still unanswered.
+              awaitingViewer: !fromMe && b.state === "WAITING" && b.opponentCorner === null,
+              open: Boolean(open),
+            }
+          : null,
+      };
+    }),
   };
 }
 
@@ -394,6 +444,11 @@ export async function sendMessage(
     at: message.createdAt.toISOString(),
     senderId: message.senderId,
     fromMe: true,
+    // sendMessage only ever writes plain text. Rich messages are inserted by
+    // the subsystem that owns them (a challenge by lib/messages/challenge-card),
+    // so this path cannot accidentally mint one.
+    kind: "TEXT",
+    challenge: null,
   };
 }
 

@@ -13,6 +13,7 @@ import {
   type ConversationView,
   type DmMessage,
 } from "@/lib/messages/types";
+import { ChallengeCard } from "@/components/messages/challenge-card";
 import { deliveryOf, type DeliveryState } from "@/lib/presence/derive";
 import { useHeartbeat } from "@/lib/presence/use-presence";
 import { PresenceDot, PresenceLabel } from "@/components/presence/presence-dot";
@@ -86,6 +87,35 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
 
   useEffect(() => { scrollToEnd(true); }, [scrollToEnd]);
 
+  /**
+   * Read the thread once and apply it.
+   *
+   * Hoisted out of the poll effect because it now has a SECOND caller: the
+   * challenge card, which needs the conversation re-read the instant somebody
+   * takes a corner rather than up to three seconds later. One fetch-and-apply
+   * definition means the card and the poller cannot end up merging server state
+   * two different ways.
+   */
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/messages/${initial.id}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as ConversationView;
+      setOtherTyping(data.otherTyping);
+      setOtherReadAt(data.otherReadAt);
+      setOtherDeliveredAt(data.otherDeliveredAt);
+      setOtherPresence(data.withUser?.presence ?? null);
+      setReceiptsHidden(data.receiptsHidden);
+      setMessages((prev) => {
+        const server = new Map(data.messages.map((m) => [m.id, m]));
+        // Keep any optimistic message the server has not acknowledged yet.
+        const pending = prev.filter((m) => m.id.startsWith("tmp-") && !server.has(m.id));
+        return [...data.messages, ...pending];
+      });
+      scrollToEnd(false);
+    } catch { /* a dropped poll is not an error the reader needs to see */ }
+  }, [initial.id, scrollToEnd]);
+
   // Poll for the other side's replies and their typing state. Merges by id so
   // an optimistic message is replaced rather than duplicated when the server's
   // copy arrives.
@@ -95,28 +125,9 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   // open in another tab used to keep a phone awake to record that a message
   // nobody was looking at had been read.
   useEffect(() => {
-    let alive = true;
     let timer: ReturnType<typeof setInterval> | null = null;
 
-    const tick = async () => {
-      try {
-        const res = await fetch(`/api/messages/${initial.id}`, { cache: "no-store" });
-        if (!res.ok || !alive) return;
-        const data = (await res.json()) as ConversationView;
-        setOtherTyping(data.otherTyping);
-        setOtherReadAt(data.otherReadAt);
-        setOtherDeliveredAt(data.otherDeliveredAt);
-        setOtherPresence(data.withUser?.presence ?? null);
-        setReceiptsHidden(data.receiptsHidden);
-        setMessages((prev) => {
-          const server = new Map(data.messages.map((m) => [m.id, m]));
-          // Keep any optimistic message the server has not acknowledged yet.
-          const pending = prev.filter((m) => m.id.startsWith("tmp-") && !server.has(m.id));
-          return [...data.messages, ...pending];
-        });
-        scrollToEnd(false);
-      } catch { /* a dropped poll is not an error the reader needs to see */ }
-    };
+    const tick = () => void refresh();
 
     const start = () => { if (!timer) timer = setInterval(tick, POLL_MS); };
     const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
@@ -126,7 +137,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         // Catch up IMMEDIATELY on return rather than waiting out a full
         // interval — otherwise the first thing someone sees coming back to the
         // tab is a conversation that is up to three seconds out of date.
-        void tick();
+        tick();
         start();
       } else {
         stop();
@@ -138,11 +149,10 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
     if (document.visibilityState === "visible") start();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      alive = false;
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [initial.id, scrollToEnd]);
+  }, [refresh]);
 
   /**
    * Tell the other side we are composing — at most once every TYPING_PING_MS.
@@ -179,7 +189,10 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
 
     // Optimistic: the message appears instantly and is reconciled by id.
     const tempId = `tmp-${Date.now()}`;
-    setMessages((prev) => [...prev, { id: tempId, body, at: new Date().toISOString(), senderId: "me", fromMe: true }]);
+    setMessages((prev) => [...prev, {
+      id: tempId, body, at: new Date().toISOString(), senderId: "me", fromMe: true,
+      kind: "TEXT" as const, challenge: null,
+    }]);
     setDraft("");
     setError(null);
     setSending(true);
@@ -292,6 +305,30 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
             body="This is the start of your conversation. Messages here are private to the two of you."
             compact
           />
+        ) : messages.length === 1 && messages[0].kind === "CHALLENGE" ? (
+          // ── A conversation that STARTED with a challenge ──────────────────
+          // Dropping somebody into a thread containing one card and nothing else
+          // reads as a broken screen. This says why the thread exists and what
+          // to do with it, then renders the card underneath — so the first
+          // impression of a brand-new conversation is an invitation to talk
+          // rather than an empty room.
+          <>
+            <p className="px-1 pt-2 text-center text-2xs leading-relaxed text-fog">
+              {messages[0].fromMe
+                ? `You challenged ${who?.name ?? "them"}. Talk it out here — the battle settles at the bell.`
+                : `${who?.name ?? "They"} challenged you. Take the other corner, then tell them why they're wrong.`}
+            </p>
+            <div className={cn("mt-2.5 flex", messages[0].fromMe ? "justify-end" : "justify-start")}>
+              {messages[0].challenge && (
+                <ChallengeCard
+                  challenge={messages[0].challenge}
+                  body={messages[0].body}
+                  fromMe={messages[0].fromMe}
+                  onAnswered={() => void refresh()}
+                />
+              )}
+            </div>
+          </>
         ) : (
           messages.map((m, i) => {
             const prev = messages[i - 1];
@@ -307,6 +344,19 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                   </p>
                 )}
                 <div className={cn("flex", m.fromMe ? "justify-end" : "justify-start", grouped ? "mt-0.5" : "mt-2.5")}>
+                  {/* A rich message renders as ITSELF, not inside a chat bubble
+                      — a card in a rounded blood-red speech bubble reads as a
+                      quoted image rather than as a thing you can act on. The
+                      body sentence is still the card's accessible name, so the
+                      message says the same thing either way. */}
+                  {m.kind === "CHALLENGE" && m.challenge ? (
+                    <ChallengeCard
+                      challenge={m.challenge}
+                      body={m.body}
+                      fromMe={m.fromMe}
+                      onAnswered={() => void refresh()}
+                    />
+                  ) : (
                   <div
                     className={cn(
                       // cr-msg-in: a short rise+fade so a message ARRIVES rather
@@ -326,6 +376,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                       {timeLabel(m.at)}
                     </p>
                   </div>
+                  )}
                 </div>
 
                 {/* Read receipt — on the last message I sent, and only there. */}

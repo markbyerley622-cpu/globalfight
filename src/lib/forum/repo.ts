@@ -12,6 +12,8 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { PRESENCE_SELECT, type PresenceRow } from "@/lib/presence/select";
+import { presenceDtoFor } from "@/lib/presence/policy";
 import {
   FORUM_CATEGORY_SEED, REACTION_TYPES,
   type ForumCategoryDTO, type ForumThreadDTO, type ForumPostDTO, type Paginated,
@@ -66,8 +68,10 @@ const THREAD_AUTHOR = {
 } as const;
 const POST_AUTHOR = {
   select: {
-    id: true, name: true, username: true, image: true, reputation: true, registryRole: true, role: true,
+    // `id` arrives with PRESENCE_SELECT.
+    name: true, username: true, image: true, reputation: true, registryRole: true, role: true,
     fighterProfile: { select: { sport: true } },
+    ...PRESENCE_SELECT,
   },
 } as const;
 
@@ -99,9 +103,10 @@ type PostRow = {
   attachments: unknown; quotedId: string | null; quotedAuthor: string | null; quotedExcerpt: string | null;
   edited: boolean; deleted: boolean; likeCount: number; createdAt: Date;
   author: {
-    id: string; name: string | null; username: string | null; image: string | null;
+    name: string | null; username: string | null; image: string | null;
     reputation: number; registryRole: string; role: string; fighterProfile: { sport: string } | null;
-  };
+    // Intersected rather than restated — see PresenceRow.
+  } & PresenceRow;
   reactions?: { type: string; userId: string }[];
 };
 
@@ -149,6 +154,7 @@ function mapPost(p: PostRow, viewerId?: string): ForumPostDTO {
     authorRole: p.author.registryRole, authorAppRole: p.author.role,
     authorSport: p.author.fighterProfile?.sport ?? null,
     authorReputation: p.author.reputation,
+    authorPresence: presenceDtoFor(p.author, viewerId ?? null),
     parentId: p.parentId,
     attachments: p.deleted ? [] : asAttachments(p.attachments),
     quote: p.quotedExcerpt

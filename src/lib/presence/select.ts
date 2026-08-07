@@ -29,6 +29,21 @@ export const PRESENCE_SELECT = {
   showLastSeen: true,
 } as const;
 
+/**
+ * The row shape `PRESENCE_SELECT` produces.
+ *
+ * Exported so a repo that hand-writes a row TYPE can intersect this instead of
+ * restating the column names. Restating them compiles fine and is exactly what
+ * the no-raw-presence guard flags — correctly, because a hand-written list is
+ * the thing that goes stale when a fifth switch is added.
+ */
+export type PresenceRow = {
+  id: string;
+  lastSeenAt: Date | null;
+  showOnlineStatus: boolean;
+  showLastSeen: boolean;
+};
+
 /** The two MUTUAL switches, for surfaces that gate typing or read receipts. */
 export const PRESENCE_MUTUAL_SELECT = {
   allowTypingIndicator: true,

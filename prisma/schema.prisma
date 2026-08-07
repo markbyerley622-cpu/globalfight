@@ -2776,6 +2776,9 @@ model Battle {
   messageCount   Int          @default(0)
   /// The battle's PRIVATE room (visibility="battle"), provisioned on first open.
   room           ForumThread?
+  /// The DM cards that reference this battle. A challenge is delivered as a
+  /// message, so this is how the card finds its live state.
+  messages       DirectMessage[]
 
   createdAt  DateTime  @default(now())
   matchedAt  DateTime?
@@ -3072,6 +3075,24 @@ model ConversationMember {
   @@index([userId])
 }
 
+/// What a message IS. A discriminator, not a content column.
+///
+/// Added so a challenge can live INSIDE a conversation rather than in a
+/// parallel feature. A challenge that exists on its own screen makes the user
+/// jump between unrelated parts of the app; a challenge that is a message makes
+/// the flow challenge -> discussion -> predictions -> event -> result one
+/// continuous thread with the person it concerns.
+///
+/// This is also the seam every future rich message rides on — an image, a voice
+/// note, a shared event — so none of those needs a schema rewrite. Each one is
+/// a member here plus a nullable reference, never a JSON blob: a blob cannot be
+/// joined, cannot be constrained, and cannot cascade when the thing it points at
+/// is removed.
+enum DirectMessageKind {
+  TEXT
+  CHALLENGE
+}
+
 model DirectMessage {
   id             String       @id @default(cuid())
   conversationId String
@@ -3079,7 +3100,23 @@ model DirectMessage {
   senderId       String
   sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
 
+  /// ALWAYS a readable sentence, even for a rich message.
+  ///
+  /// The card is an ENRICHMENT layered on top, never the only copy of what was
+  /// said. So a message still reads in the inbox preview, in a push
+  /// notification, to a screen reader, and on the day the battle it referenced
+  /// is gone — see the SetNull below.
   body String @db.Text
+
+  kind DirectMessageKind @default(TEXT)
+
+  /// Set when kind = CHALLENGE.
+  ///
+  /// SetNull, not Cascade: deleting a battle must not delete a message somebody
+  /// sent. The row degrades to its `body` sentence and the conversation stays
+  /// intact, which is the whole reason `body` is always populated.
+  battleId String?
+  battle   Battle? @relation(fields: [battleId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 

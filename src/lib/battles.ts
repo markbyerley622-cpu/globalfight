@@ -6,6 +6,7 @@ import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
 import { recordActivity } from "@/lib/activity";
 import { publicDisplayName } from "@/lib/display-name";
+import { deliverChallengeToDm } from "@/lib/messages/challenge-card";
 
 /** Same exposure as the settlement fan-out: several writes plus notifications per
  *  battle, against a database that may be a continent away. Prisma's 5s default
@@ -226,6 +227,15 @@ async function announceInvite(
   fightId: string,
   challengerId: string,
   targetId: string,
+  /**
+   * The thread the challenge card was delivered into.
+   *
+   * When present the notification opens THAT conversation, where the card and
+   * its Accept controls are. Falling back to the fight page is a real fallback,
+   * not a shrug: if the card could not be delivered, the fight page is the only
+   * place the recipient can still act.
+   */
+  conversationId: string | null,
 ): Promise<void> {
   try {
     const [f, challenger] = await Promise.all([
@@ -248,7 +258,11 @@ async function announceInvite(
       // The body has to state the PRICE, because the invite is not yet a
       // battle: nothing happens until the recipient takes the other corner.
       body: `${bout} — make your call on the other corner to accept.`,
-      url: f?.event ? `/events/${f.event.slug}#fight-${f.slug}` : "/",
+      // Deep link, never a generic inbox: the notification lands the recipient
+      // exactly where the thing it is about lives.
+      url: conversationId
+        ? `/messages/${conversationId}`
+        : f?.event ? `/events/${f.event.slug}#fight-${f.slug}` : "/",
       icon: "fight",
       // One pending call-out per person per bout. Without this, an inviter who
       // cancels and re-sends buzzes the same phone again for the same question.
@@ -303,7 +317,7 @@ export async function challengeUser(
   challengerId: string,
   fightId: string,
   targetId: string,
-): Promise<{ battleId: string; pending?: boolean } | { error: string }> {
+): Promise<{ battleId: string; pending?: boolean; conversationId?: string } | { error: string }> {
   if (challengerId === targetId) return { error: "You can't battle yourself." };
   const [mine, theirs] = await Promise.all([
     prisma.fightPick.findUnique({ where: { userId_fightId: { userId: challengerId, fightId } }, select: { corner: true, method: true, confidence: true } }),
@@ -322,11 +336,18 @@ export async function challengeUser(
   if (!theirs || !isCorner(theirs.corner)) {
     const invited = await inviteUser(challengerId, fightId, targetId, mine);
     if ("error" in invited) return invited;
-    await announceInvite(fightId, challengerId, targetId);
+    // The card goes into a CONVERSATION first, so the notification below has a
+    // real destination to point at rather than a generic inbox.
+    const delivered = await deliverChallengeToDm(challengerId, targetId, invited.battleId, fightId);
+    await announceInvite(fightId, challengerId, targetId, delivered?.conversationId ?? null);
     // `pending` is what lets the UI tell the truth. An invite is NOT a rival
     // yet, and reporting "they're your rival, settle it in the room" for a
     // call-out nobody has answered would send the user to an empty room.
-    return { ...invited, pending: true };
+    //
+    // `conversationId` closes the loop from the CHALLENGER's side: they get the
+    // same destination the recipient's notification points at, so both people
+    // end up in the one place the challenge actually lives.
+    return { ...invited, pending: true, conversationId: delivered?.conversationId };
   }
 
   if (mine.corner === theirs.corner) return { error: "You both picked the same corner — nothing to settle." };
