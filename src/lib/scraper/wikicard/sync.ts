@@ -30,6 +30,7 @@ import PQueue from "p-queue";
 import { log } from "../logger";
 import { searchPages, fetchPageHtml } from "./client";
 import { parseWikiCard, type WikiBout } from "./extract";
+import { findEventWindow } from "./sections";
 import { toNormalizedWikiEvent } from "./map";
 import { verifyCard, verifyTitle, isAcceptable } from "./verify";
 import { parseRecordTable, findRecordRow, recordRowToBout, DATE_TOLERANCE_DAYS, type RecordRow } from "./record-table";
@@ -68,6 +69,14 @@ interface ParsedPage {
   records: RecordRow[];
   /** The title this fetch RESOLVED to, after following redirects. */
   resolvedTitle: string;
+  /**
+   * The raw HTML, kept so a multi-event article can be SECTION-SCOPED without a
+   * second fetch. Only the parsed bouts were retained before, which is all a
+   * single-event page needs; a season page has to be re-read with a window
+   * around one event's heading. Bounded by the number of distinct pages in a
+   * run (tens), and the alternative is re-downloading 1.18 MB per event.
+   */
+  html: string;
 }
 
 class PageCache {
@@ -89,6 +98,7 @@ class PageCache {
     const parsed = {
       bouts: parseWikiCard(fetched.html),
       records: parseRecordTable(fetched.html),
+      html: fetched.html,
       // Where the fetch actually LANDED. Redirects are followed now, and a
       // redirect can change what kind of page this is — an individual
       // "ONE Friday Fights 35" resolves to the series article carrying 414
@@ -272,13 +282,53 @@ async function harvestTarget(
       // it belongs to. For a MISSING_CARD target there are no expected bouts to
       // verify against, so a season page cannot be filtered down to this card's
       // rows and must be refused outright rather than guessed at.
-      if (redirected) {
-        const landedKind = classifyCandidate(page.resolvedTitle, ctx);
-        if (landedKind === "season_page" && gap === "missing_card") {
-          step("verify", false,
-            `"${cand.title}" redirects to season page "${page.resolvedTitle}" (${page.bouts.length} bouts) — ` +
-              `refused: with no expected bouts there is nothing to filter it down to this card`);
-          continue;
+      // A multi-event article is not read whole. It is WINDOWED to the section
+      // documenting this event, or refused.
+      //
+      // Measured on the live "2025 in ONE Championship": 1.18 MB, 209 sections,
+      // and 553 bouts if parsed as one document — the whole year attached to a
+      // single card. Windowed to the "ONE Friday Fights 96" heading it is 12
+      // bouts, which is a real card. That is the entire difference between this
+      // page being the answer and being a catastrophe.
+      //
+      // Classified on the RESOLVED title, so a redirect that lands on a season
+      // page is caught the same as one requested directly.
+      // Set when a section heading — not the page title — is what identifies
+      // this event. It is the STRONGER evidence of the two: the page title of a
+      // yearly article names a year, while the heading names the card.
+      let identifiedByHeading: string | null = null;
+      const landedKind = classifyCandidate(page.resolvedTitle, ctx);
+      if (landedKind === "season_page") {
+        const win = findEventWindow(page.html, eventIdentity.name);
+        if (!win.ok) {
+          // No window. What that means depends ENTIRELY on whether we have
+          // expected bouts to check against, and conflating the two cases broke
+          // a path that was already safe:
+          //
+          //   missing_result — the card exists, so verifyCard filters the page
+          //     down to OUR corner pairs and nothing else is ever persisted.
+          //     That is the long-standing design, and a season page is a
+          //     legitimate source for it. Fall through.
+          //
+          //   missing_card — there are no expected bouts. Nothing can filter
+          //     this document, so accepting it attaches a whole year to one
+          //     event. Refuse, and say why.
+          if (gap === "missing_card") {
+            step("verify", false,
+              `"${page.resolvedTitle}" is a multi-event article and ${win.reason}: ${win.detail} — ` +
+                `refused: with no expected bouts there is nothing to filter it down to this card`);
+            continue;
+          }
+          step("parse", true,
+            `"${page.resolvedTitle}" is a multi-event article (${win.reason}); ` +
+              `keeping the whole page — verification filters it to our bouts`);
+        } else {
+          const scoped = parseWikiCard(win.window.html);
+          step("parse", scoped.length > 0,
+            `windowed to "${win.window.section.heading}" (score ${win.window.score.toFixed(2)}): ` +
+              `${page.bouts.length} bouts on the page → ${scoped.length} in this section`);
+          page = { ...page, bouts: scoped };
+          identifiedByHeading = win.window.section.heading;
         }
       }
 
@@ -332,7 +382,15 @@ async function harvestTarget(
       let matched = 0;
 
       if (gap === "missing_card") {
-        accept = verifyTitle(eventIdentity.name, cand.title);
+        // The page title is the proof — EXCEPT on a multi-event article, where
+        // the title names a year and could never match an event name. There the
+        // section heading is the proof, and it is a stronger claim: "2026 in ONE
+        // Championship" says nothing about which card these bouts belong to,
+        // while the heading "ONE Friday Fights 96" says exactly that, and the
+        // window guarantees no other section's rows are in hand.
+        accept = identifiedByHeading
+          ? verifyTitle(eventIdentity.name, identifiedByHeading)
+          : verifyTitle(eventIdentity.name, cand.title);
         persist = bouts;
         matched = bouts.length;
       } else {
