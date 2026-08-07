@@ -384,7 +384,18 @@ export function isBiographyTitle(title: string, ctx: CandidateContext): boolean 
   // reason in the retrieval report — and that report's whole value is being accurate
   // about why a page was refused.
   if (NOT_AN_EVENT.some((re) => re.test(title))) return false;
+  // A SEASON page is not a biography either, and for exactly the reason above.
+  // "2026 in ONE Championship" is four tokens, shares only "one" with the event
+  // name, and matches no event shape — so every biography test passed and it was
+  // penalised as somebody's life story. Measured: it scored 1 against a
+  // threshold of 20, i.e. refused before any fetch, while classifyCandidate was
+  // simultaneously calling it a season_page. Two classifiers disagreeing, with
+  // the penalty applied anyway.
+  //
+  // That is what made the yearly articles unreachable, and they are the only
+  // source for the 2020-21 ONE events that never got an article of their own.
   const bare = title.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (SEASON_SHAPE.test(bare)) return false;
   const tokens = normalizeName(bare).split(" ").filter(Boolean);
   if (tokens.length < 2 || tokens.length > 4) return false;
   // A promotion or event-shaped title of the same length is not a biography.

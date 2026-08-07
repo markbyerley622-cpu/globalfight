@@ -127,6 +127,19 @@ async function targets(): Promise<string[]> {
 const names = await targets();
 console.log(`\ntriaging ${names.length} event(s)${promotion ? ` · promotion~"${promotion}"` : ""}\n`);
 
+// Page cache. The production run refetched "2025 in ONE Championship" — 1.18 MB —
+// thirty times in one triage, because thirty events all resolve to it. That is
+// ~35 MB of identical downloads pointed at Wikipedia to answer the same question
+// thirty times, and a diagnostic tool has no business being the rudest client in
+// the codebase.
+const pageCache = new Map<string, { title: string; html: string } | null>();
+async function cachedPage(title: string) {
+  if (pageCache.has(title)) return pageCache.get(title)!;
+  const got = await fetchPageHtml(title);
+  pageCache.set(title, got);
+  return got;
+}
+
 const results: Diagnosis[] = [];
 for (const name of names) {
   let page: string | null = null;
@@ -137,7 +150,7 @@ for (const name of names) {
       results.push({ event: name, page: null, cause: "NO_SOURCE_PAGE", bouts: 0, detail: "search returned nothing" });
       continue;
     }
-    const fetched = await fetchPageHtml(page);
+    const fetched = await cachedPage(page);
     if (!fetched) {
       results.push({ event: name, page, cause: "NO_SOURCE_PAGE", bouts: 0, detail: "page fetch returned null" });
       continue;

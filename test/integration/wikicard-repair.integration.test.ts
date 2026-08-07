@@ -654,3 +654,43 @@ test("a redirect into a SEASON page is refused, not attached wholesale", () => {
     assert.equal(fresh.fights.length, 0, "a whole season's bouts must not land on one card");
   })();
 });
+
+test("a season page with headings gives a CARD-GAP event exactly its own section", () => {
+  // The 2020-21 ONE events have no article of their own; their cards live inside
+  // "YYYY in ONE Championship". Before windowing this whole document was refused
+  // — correctly, because attaching it would have put every card of the year on
+  // one event. Measured on the live 2025 page: 553 bouts whole, 12 windowed.
+  return (async () => {
+    const date = DAYS_AGO(8);
+    const event = await prisma.event.create({
+      data: {
+        slug: "one-ff-96", name: "ONE Friday Fights 96",
+        sport: "MUAY_THAI", promotion: "ONE Championship", date, status: "SCHEDULED",
+      },
+    });
+    const year = new Date(date).getUTCFullYear();
+    // The season page must name the EVENT'S year: a season page for the wrong
+    // year is disqualified before any fetch, on purpose (seasonYearMismatch).
+    index("ONE Friday Fights 96", [`${year} in ONE Championship`]);
+    const heading = (n: number, t: string) =>
+      `<div class="mw-heading mw-heading${n}"><h${n}>${t}</h${n}></div>`;
+    pages.set(`${year} in ONE Championship`,
+      `<div class="mw-parser-output">` +
+      heading(2, "ONE Friday Fights 95") + cardHtml([{ red: "Wrong One", blue: "Wrong Two" }]) +
+      heading(2, "ONE Friday Fights 96") +
+      heading(3, "Results") +
+      cardHtml([{ red: "Komawut FA.Group", blue: "Panrit Lukjaomaesaiwaree" }, { red: "Right Three", blue: "Right Four" }]) +
+      heading(2, "ONE Friday Fights 97") + cardHtml([{ red: "Also Wrong", blue: "Still Wrong" }]) +
+      `</div>`);
+
+    await harvestWikiTargets({ gap: "missing_card", limit: 10, mode: "historical" });
+
+    const fights = await prisma.fight.findMany({
+      where: { eventId: event.id },
+      include: { red: true, blue: true },
+    });
+    assert.equal(fights.length, 2, `only section 96's bouts may land, got ${fights.length}`);
+    const names = fights.flatMap((f) => [f.red.name, f.blue.name]);
+    assert.ok(!names.some((n) => /Wrong/.test(n)), `neighbouring sections leaked: ${names.join(", ")}`);
+  })();
+});
