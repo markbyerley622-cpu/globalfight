@@ -891,6 +891,37 @@
 .rise { animation: rise .5s var(--ease-out-quint) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   Promoter hosting flow.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* The poster is being read. A sweep ACROSS the poster rather than a spinner
+   beside it — the thing being worked on should look like it is being worked
+   on, and it keeps the promoter's eyes on their own artwork while they wait. */
+.cr-scan { animation: crScan 1.4s ease-in-out infinite; }
+@keyframes crScan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(300%); opacity: 0; }
+}
+
+/* Published. One beat of arrival — earned, not confetti. */
+.cr-pop { animation: crPop .5s var(--ease-out-quint) both; }
+@keyframes crPop {
+  0%   { transform: scale(.6); opacity: 0; }
+  60%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The scan line is pure decoration and goes entirely. The success mark still
+     appears — it is the confirmation, not the flourish — it just does not
+     bounce. */
+  .cr-scan { animation: none; opacity: 0; }
+  .cr-pop { animation: none; }
+}
+
 /* Events filter bar — "applying". An indeterminate sweep rather than a
    percentage, because there is no progress to report: the server either has the
    next page or it does not. Never blanks or dims the current list. */

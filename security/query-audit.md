@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1144 across 887 files
-- **By class:** 797 public · 252 user-owned · 95 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 200 low · ⚪ 849 info
+- **Queries analysed:** 1158 across 900 files
+- **By class:** 808 public · 255 user-owned · 95 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 201 low · ⚪ 862 info
 
 ## 🔴 High risk
 
@@ -209,6 +209,8 @@ _None._ No private-model read/write was found without an ownership filter.
 | MediaAsset | USER_OWNED | auto (heuristic) |
 | Notification | USER_OWNED | curated |
 | PasswordResetToken | USER_OWNED | curated |
+| PromoterClaim | USER_OWNED | auto (heuristic) |
+| PromoterOrg | USER_OWNED | auto (heuristic) |
 | PushSubscription | USER_OWNED | curated |
 | ReputationEvent | USER_OWNED | curated |
 | Session | USER_OWNED | curated |

@@ -1,13 +1,13 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1144,
+    "queries": 1158,
     "high": 0,
     "medium": 95,
-    "low": 200,
-    "info": 849,
-    "public": 797,
-    "userOwned": 252,
+    "low": 201,
+    "info": 862,
+    "public": 808,
+    "userOwned": 255,
     "shared": 95,
     "admin": 0
   },
@@ -484,6 +484,22 @@
       "name": "Notification",
       "klass": "USER_OWNED",
       "auto": false,
+      "ownerFields": [
+        "userId"
+      ]
+    },
+    {
+      "name": "PromoterOrg",
+      "klass": "USER_OWNED",
+      "auto": true,
+      "ownerFields": [
+        "ownerId"
+      ]
+    },
+    {
+      "name": "PromoterClaim",
+      "klass": "USER_OWNED",
+      "auto": true,
       "ownerFields": [
         "userId"
       ]
@@ -3846,6 +3862,19 @@
       "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 129,
+      "fn": "recordPromoterResult",
+      "model": "Fight",
+      "method": "updateMany",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
       "file": "src/lib/push/send.ts",
       "line": 110,
       "fn": "pushToUsers",
@@ -5794,6 +5823,58 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/app/promoter/events/[id]/page.tsx",
+      "line": 46,
+      "fn": "event",
+      "model": "Event",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/promoter/events/[id]/page.tsx",
+      "line": 66,
+      "fn": "PromoterEventPage",
+      "model": "FavoriteEvent",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/app/promoter/events/[id]/page.tsx",
+      "line": 67,
+      "fn": "PromoterEventPage",
+      "model": "FightPick",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/app/promoter/page.tsx",
+      "line": 44,
+      "fn": "events",
+      "model": "Event",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/app/sitemap.ts",
@@ -13451,6 +13532,123 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 37,
+      "fn": "org",
+      "model": "PromoterOrg",
+      "method": "findFirst",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 81,
+      "fn": "taken",
+      "model": "Event",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 115,
+      "fn": "fight",
+      "model": "Fight",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 172,
+      "fn": "existing",
+      "model": "Fighter",
+      "method": "findFirst",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 182,
+      "fn": "slug",
+      "model": "Fighter",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 184,
+      "fn": "created",
+      "model": "Fighter",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 191,
+      "fn": "uniqueFightSlug",
+      "model": "Fight",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 228,
+      "fn": "created",
+      "model": "Event",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/promoter/repo.ts",
+      "line": 260,
+      "fn": "event",
+      "model": "Fight",
+      "method": "create",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
     },
     {
       "file": "src/lib/push/send.ts",
