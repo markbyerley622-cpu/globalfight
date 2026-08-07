@@ -77,6 +77,7 @@
     "backfill:records": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/records-backfill.mts",
     "seed:e2e": "node --conditions=react-server --env-file-if-exists=.env --import tsx prisma/seed/e2e.mts",
     "audit:quality": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/data-quality.mts",
+    "triage:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/wikicard-triage.mts",
     "audit:rankings": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/ranking-audit.mts",
     "audit:champions": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/champion-audit.mts",
     "backfill:one": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/one-backfill.mts"

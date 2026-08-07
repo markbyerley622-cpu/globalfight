@@ -349,9 +349,9 @@ export function validateWikipediaBoxingChampions(entries: RankingEntry[]): void 
 
 async function fetchFor(gender: "male" | "female"): Promise<RankingEntry[]> {
   const pageTitle = PAGES[gender];
-  const html = await fetchPageHtml(pageTitle);
-  if (!html) throw new Error(`wikipedia-boxing: "${pageTitle}" could not be fetched`);
-  const entries = parseWikipediaBoxingChampions(html, { gender, pageTitle });
+  const fetched = await fetchPageHtml(pageTitle);
+  if (!fetched) throw new Error(`wikipedia-boxing: "${pageTitle}" could not be fetched`);
+  const entries = parseWikipediaBoxingChampions(fetched.html, { gender, pageTitle });
   validateWikipediaBoxingChampions(entries);
   return entries;
 }

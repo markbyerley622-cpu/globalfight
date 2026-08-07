@@ -6333,7 +6333,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 237,
+      "line": 245,
       "fn": "rows",
       "model": "ScrapeJob",
       "method": "findMany",
@@ -6346,7 +6346,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 295,
+      "line": 303,
       "fn": "grouped",
       "model": "ScrapeJob",
       "method": "groupBy",

@@ -35,7 +35,7 @@ import { verifyCard, verifyTitle, isAcceptable } from "./verify";
 import { parseRecordTable, findRecordRow, recordRowToBout, DATE_TOLERANCE_DAYS, type RecordRow } from "./record-table";
 import { resolveName } from "@/lib/entities/resolve";
 import {
-  rankCandidates, PARSE_BUDGET, COVERAGE_THRESHOLD,
+  rankCandidates, classifyCandidate, PARSE_BUDGET, COVERAGE_THRESHOLD,
   type CandidateContext, type CandidateKind,
 } from "./candidates";
 import type { NormalizedEvent } from "@/services/providers/types";
@@ -66,6 +66,8 @@ interface ParsedPage {
   bouts: WikiBout[];
   /** Rows from a FIGHTER's career-record table ("Loss | Anthony Joshua | KO | 2 …"). */
   records: RecordRow[];
+  /** The title this fetch RESOLVED to, after following redirects. */
+  resolvedTitle: string;
 }
 
 class PageCache {
@@ -78,14 +80,28 @@ class PageCache {
     const cached = this.pages.get(title);
     if (cached !== undefined) { this.hits += 1; return cached; }
     this.fetches += 1;
-    const html = await fetchPageHtml(title);
-    if (!html) { this.pages.set(title, null); return null; }
+    const fetched = await fetchPageHtml(title);
+    if (!fetched) { this.pages.set(title, null); return null; }
     this.parses += 1;
     // BOTH shapes, from one fetch. A page is either an event card or a fighter's
     // record; parsing for both costs nothing extra and means the pipeline never has
     // to fetch the same page twice to try the other reader.
-    const parsed = { bouts: parseWikiCard(html), records: parseRecordTable(html) };
+    const parsed = {
+      bouts: parseWikiCard(fetched.html),
+      records: parseRecordTable(fetched.html),
+      // Where the fetch actually LANDED. Redirects are followed now, and a
+      // redirect can change what kind of page this is — an individual
+      // "ONE Friday Fights 35" resolves to the series article carrying 414
+      // bouts. The caller re-classifies on this so the season-page guard rails
+      // apply to the page in hand, not the one we asked for.
+      resolvedTitle: fetched.title,
+    };
     this.pages.set(title, parsed);
+    // Cache under the resolved title too: the next alias that redirects here is
+    // a cache hit instead of a second fetch of the same article.
+    if (fetched.title !== title && !this.pages.has(fetched.title)) {
+      this.pages.set(fetched.title, parsed);
+    }
     return parsed;
   }
 }
@@ -240,7 +256,31 @@ async function harvestTarget(
         continue;
       }
       if (!page) { step("fetch", false, `"${cand.title}" — page not found`); continue; }
-      step("fetch", true, `"${cand.title}" fetched`);
+      const redirected = page.resolvedTitle !== cand.title;
+      step("fetch", true, `"${cand.title}" fetched${redirected ? ` → redirected to "${page.resolvedTitle}"` : ""}`);
+
+      // ── Re-score on where we LANDED, not where we aimed ──────────────────
+      //
+      // Redirects are followed now, and that changes what kind of page can come
+      // back. "ONE Friday Fights 35" is a redirect to the SERIES article, which
+      // carries 414 bouts — every Friday Fights card ever held. Scored on the
+      // requested title it looks like a clean event page, and attaching its
+      // contents would put 414 bouts on one event: exactly the season-page
+      // contamination the oversized-card check exists to catch after the fact.
+      //
+      // Re-classifying on the resolved title puts it back under the guard rails
+      // it belongs to. For a MISSING_CARD target there are no expected bouts to
+      // verify against, so a season page cannot be filtered down to this card's
+      // rows and must be refused outright rather than guessed at.
+      if (redirected) {
+        const landedKind = classifyCandidate(page.resolvedTitle, ctx);
+        if (landedKind === "season_page" && gap === "missing_card") {
+          step("verify", false,
+            `"${cand.title}" redirects to season page "${page.resolvedTitle}" (${page.bouts.length} bouts) — ` +
+              `refused: with no expected bouts there is nothing to filter it down to this card`);
+          continue;
+        }
+      }
 
       // An event page yields a card; a fighter's page yields their record. Try the
       // card first, then fall back to the record — which is the ONLY source for the

@@ -93,7 +93,15 @@ export const EXPECTED_JOBS: ExpectedJob[] = [
   {
     route: "refresh-wikicards",
     label: "Fight cards (Wikipedia)",
-    targets: ["wikicards"],
+    // Two targets, because the route now makes two calls. It used to emit a
+    // single "wikicards" target covering both gaps in one budget, which is
+    // exactly the bug that starved the card queue to zero. Splitting the call
+    // renamed the targets, and cron:doctor immediately reported the truth —
+    // "run history exists for targets no expected job declares: wikicards:cards,
+    // wikicards:results" — while this entry still waited for a name nothing
+    // emits any more. Left alone, the job would have aged into a false
+    // "never run" alert with the real runs sitting right next to it, unclaimed.
+    targets: ["wikicards:results", "wikicards:cards"],
     everyMinutes: 5040,
     matters: "Events exist with no bouts on them.",
   },
