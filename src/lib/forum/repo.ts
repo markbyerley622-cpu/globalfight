@@ -21,6 +21,8 @@ import {
 } from "@/lib/forum/types";
 import { publish } from "@/lib/forum/realtime";
 import { extractMentions } from "@/lib/mentions";
+import { resolveDraftEntities, hydrateEntities } from "@/lib/rich-text/resolve";
+import { mentionedUserIds, type RichEntity } from "@/lib/rich-text/types";
 import { notify } from "@/lib/notifications-store";
 import { publicDisplayName } from "@/lib/display-name";
 import { assertPublishable } from "@/lib/moderation/text";
@@ -102,6 +104,7 @@ type PostRow = {
   id: string; threadId: string; content: string; authorId: string; parentId: string | null;
   attachments: unknown; quotedId: string | null; quotedAuthor: string | null; quotedExcerpt: string | null;
   edited: boolean; deleted: boolean; likeCount: number; createdAt: Date;
+  entities?: unknown;
   author: {
     name: string | null; username: string | null; image: string | null;
     reputation: number; registryRole: string; role: string; fighterProfile: { sport: string } | null;
@@ -155,6 +158,10 @@ function mapPost(p: PostRow, viewerId?: string): ForumPostDTO {
     authorSport: p.author.fighterProfile?.sport ?? null,
     authorReputation: p.author.reputation,
     authorPresence: presenceDtoFor(p.author, viewerId ?? null),
+    // Raw here; hydrated (handles refreshed) by the caller for a whole page at
+    // once — see hydratePostEntities. Absent means legacy content, which the
+    // renderer falls back to parsing.
+    entities: p.entities ?? null,
     parentId: p.parentId,
     attachments: p.deleted ? [] : asAttachments(p.attachments),
     quote: p.quotedExcerpt
@@ -347,8 +354,17 @@ export async function getPosts(threadSlug: string, opts: {
   });
   const hasMore = rows.length > limit;
   const page = rows.slice(0, limit);
+  // ── Hydrate the whole PAGE in one query ─────────────────────────────────
+  // Mention handles are refreshed against the user table here, which is what
+  // makes a rename apply to every historical post at once with no backfill.
+  // Batched deliberately: per-post hydration would be one query per row.
+  const items = page.map((p) => mapPost(p as PostRow, opts.viewerId));
+  const hydrated = await hydrateEntities(
+    items.map((i) => ({ text: i.content, entities: i.entities })),
+  );
+  items.forEach((i, idx) => { i.entities = hydrated[idx].length ? hydrated[idx] : null; });
   return {
-    items: page.map((p) => mapPost(p as PostRow, opts.viewerId)),
+    items,
     nextCursor: hasMore ? page[page.length - 1].id : null,
   };
 }
@@ -441,6 +457,11 @@ export async function deleteThread(input: {
 export async function createPost(input: {
   authorId: string; threadSlug: string; content: string; parentId?: string | null;
   attachments?: ForumAttachment[]; quotePostId?: string | null;
+  /**
+   * Draft mention spans from the composer. Resolved to USER IDS here, once,
+   * and stored — so nothing downstream ever parses a handle again.
+   */
+  entities?: unknown;
 }): Promise<ForumPostDTO> {
   const thread = await prisma.forumThread.findUnique({
     where: { slug: input.threadSlug },
@@ -476,11 +497,17 @@ export async function createPost(input: {
     }
   }
 
+  // Resolve BEFORE the write: entities are verified against the final text and
+  // against the user table, so what is stored is already known-good.
+  const content = input.content.trim();
+  const entities = await resolveDraftEntities(content, input.entities);
+
   const post = await prisma.forumPost.create({
     data: {
       threadId: thread.id, authorId: input.authorId,
-      content: input.content.trim(), parentId: input.parentId ?? null,
+      content, parentId: input.parentId ?? null,
       attachments: input.attachments ?? undefined,
+      entities: entities.length ? (entities as unknown as Prisma.InputJsonValue) : undefined,
       ...quote,
     },
     include: { author: POST_AUTHOR, reactions: { select: { type: true, userId: true } } },
@@ -493,7 +520,7 @@ export async function createPost(input: {
     await notifyReplyTargets(
       { id: thread.id, title: thread.title, authorId: thread.authorId, categorySlug: thread.category.slug },
       post.author,
-      input.threadSlug, post.id, post.content, quote?.quotedId,
+      input.threadSlug, post.id, post.content, entities, quote?.quotedId,
     );
   }
   // Replies too — but only in a PUBLIC thread. `thread.battle` being set is the
@@ -528,6 +555,8 @@ async function notifyReplyTargets(
   threadSlug: string,
   postId: string,
   content: string,
+  /** Structured mentions. Empty means legacy content — see the fallback below. */
+  entities: RichEntity[],
   quotedId?: string,
 ): Promise<void> {
   try {
@@ -546,17 +575,29 @@ async function notifyReplyTargets(
     // pings for one post is how a category gets muted.
     const targets = new Map<string, { title: string; icon: string }>();
 
-    // @mentions. Usernames are stored lower-case but people type them however
-    // they like, so match on the lowered form; `in` on the raw list would
-    // silently drop "@KaylaBrooks".
-    const named = extractMentions(content);
-    if (named.length) {
-      const mentioned = await prisma.user.findMany({
-        where: { username: { in: named } },
-        select: { id: true, username: true },
-      });
-      for (const u of mentioned) {
-        if (u.id !== author.id) targets.set(u.id, { title: `${who} mentioned you`, icon: "mention" });
+    // ── @mentions, from IDS ────────────────────────────────────────────────
+    // Structured entities are read straight off the post. No regex, no
+    // username lookup, and no chance of the notifier disagreeing with what was
+    // rendered — both now read the same stored list.
+    const mentionIds = mentionedUserIds(entities);
+    if (mentionIds.length > 0) {
+      for (const id of mentionIds) {
+        if (id !== author.id) targets.set(id, { title: `${who} mentioned you`, icon: "mention" });
+      }
+    } else {
+      // LEGACY fallback, and only when there are no entities at all: content
+      // written before this existed, or by a client that did not send them.
+      // Usernames are stored lower-case but people type them however they like,
+      // so match on the lowered form.
+      const named = extractMentions(content);
+      if (named.length) {
+        const mentioned = await prisma.user.findMany({
+          where: { username: { in: named } },
+          select: { id: true, username: true },
+        });
+        for (const u of mentioned) {
+          if (u.id !== author.id) targets.set(u.id, { title: `${who} mentioned you`, icon: "mention" });
+        }
       }
     }
 

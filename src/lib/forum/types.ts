@@ -85,6 +85,13 @@ export interface ForumPostDTO {
    * nothing about the thread while inviting "why aren't they replying".
    */
   authorPresence: PresenceDto | null;
+  /**
+   * Structured mentions, with display hints refreshed on read.
+   *
+   * Null on legacy content — the renderer falls back to the @handle parser, so
+   * everything written before this existed keeps working with no backfill.
+   */
+  entities: unknown;
   parentId: string | null;
   attachments: ForumAttachment[];
   // Quoted reply (Phase 4): snapshot of the post this one quotes.

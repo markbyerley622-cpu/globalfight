@@ -198,15 +198,21 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
   );
 
   /**
-   * The pin the DESKTOP floating card is showing, or null.
+   * The pin the floating card is showing, or null.
+   *
+   * ── Phones get this too ───────────────────────────────────────────────────
+   * It used to be desktop-only, and on a phone tapping a pin opened the bottom
+   * sheet instead — which meant the card you had just asked for was behind a
+   * drag gesture. The card now pops over the map on both, and the layout
+   * adapts (see FloatingPreview: above the pin and full-width when narrow).
    *
    * Events only. A gym or a person still opens in the sheet, because their
-   * detail card is a different shape and shrinking it into a 340px anchored box
+   * detail card is a different shape and shrinking it into an anchored box
    * would be a worse version of what already works.
    */
   const floatingPin = useMemo(
-    () => (isDesktop && pin?.event ? pin : null),
-    [isDesktop, pin],
+    () => (pin?.event ? pin : null),
+    [pin],
   );
 
   /**
@@ -262,13 +268,14 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
 
   const flyTo = useCallback((lat: number, lon: number, z: number) => {
     nonce.current += 1;
-    // `offset` lifts the target above the SHEET so a selected pin is never
-    // hidden underneath the card describing it. Desktop has no sheet — the
-    // panel is beside the map — so the same offset there would shove every
-    // selection into the top third of the screen for no reason.
-    setFocus({ lat, lon, zoom: z, nonce: nonce.current, offset: !isDesktop });
+    // No offset any more. It existed to lift a pin clear of the bottom sheet,
+    // and the sheet is no longer where an event opens on either breakpoint —
+    // the card floats over the map and flips above or below the pin by itself.
+    // Keeping the offset would shove every selection into the top third and
+    // leave the card no room above it.
+    setFocus({ lat, lon, zoom: z, nonce: nonce.current, offset: false });
     setZoom(z);
-  }, [isDesktop]);
+  }, []);
 
   // Deep link: /map?lat=..&lon=..&z=.. flies straight to a location — this is how
   // an event's venue opens INSIDE the app map (event-header) instead of bouncing

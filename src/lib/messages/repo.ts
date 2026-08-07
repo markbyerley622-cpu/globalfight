@@ -4,6 +4,8 @@ import { publicDisplayName } from "@/lib/display-name";
 import { notify } from "@/lib/notifications-store";
 import { PRESENCE_SELECT, PRESENCE_MUTUAL_SELECT } from "@/lib/presence/select";
 import { presenceDtoFor, typingAllowed, readReceiptsAllowed } from "@/lib/presence/policy";
+import { resolveDraftEntities, hydrateEntities } from "@/lib/rich-text/resolve";
+import type { Prisma } from "@prisma/client";
 import {
   MAX_MESSAGE_LENGTH,
   TYPING_TTL_MS,
@@ -190,6 +192,19 @@ export async function setTyping(conversationId: string, viewerId: string): Promi
   });
 }
 
+/**
+ * Attach hydrated entities to a page of messages in ONE query.
+ *
+ * Batched deliberately: per-message hydration would be one round trip per
+ * bubble, and a thread loads a hundred of them.
+ */
+async function withHydratedEntities<T extends { body: string; entities: unknown }>(
+  rows: T[],
+): Promise<(T & { hydrated: Awaited<ReturnType<typeof hydrateEntities>>[number] })[]> {
+  const hydrated = await hydrateEntities(rows.map((r) => ({ text: r.body, entities: r.entities })));
+  return rows.map((r, i) => ({ ...r, hydrated: hydrated[i] }));
+}
+
 /** Is this timestamp recent enough to still mean "typing"? */
 const isTyping = (at: Date | null): boolean =>
   at !== null && Date.now() - at.getTime() < TYPING_TTL_MS;
@@ -329,7 +344,7 @@ export async function getConversation(
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
-      id: true, body: true, createdAt: true, senderId: true, kind: true,
+      id: true, body: true, createdAt: true, senderId: true, kind: true, entities: true,
       // ── The card's state is read LIVE with the thread ──────────────────
       // Joined here rather than snapshotted onto the message when it was sent:
       // a card that still says "waiting for your call" after the recipient has
@@ -362,7 +377,7 @@ export async function getConversation(
     receiptsHidden: member.receiptsHidden,
     // Oldest-first for rendering; the query is newest-first so `take` keeps the
     // most RECENT window rather than the first 100 messages ever sent.
-    messages: rows.reverse().map((m) => {
+    messages: (await withHydratedEntities(rows.reverse())).map((m) => {
       const fromMe = m.senderId === viewerId;
       const b = m.battle;
       const open = b?.fight.result === "SCHEDULED"
@@ -374,6 +389,7 @@ export async function getConversation(
         senderId: m.senderId,
         fromMe,
         kind: m.kind,
+        entities: m.hydrated.length ? m.hydrated : null,
         // A CHALLENGE whose battle was removed degrades to its `body` sentence
         // rather than rendering an empty card — see the SetNull on the column.
         challenge: b
@@ -405,6 +421,8 @@ export async function sendMessage(
   conversationId: string,
   senderId: string,
   body: string,
+  /** Draft mention spans from the composer. Resolved to ids before storage. */
+  draftEntities?: unknown,
 ): Promise<DmMessage> {
   const text = body.trim();
   if (!text) throw new Error("Write something first.");
@@ -415,11 +433,22 @@ export async function sendMessage(
   const member = await requireMember(conversationId, senderId);
   if (!member) throw new Error("This conversation is not available.");
 
+  // ── Mentions in a DM are RENDERING ONLY ─────────────────────────────────
+  // They are stored and they link, but they NEVER notify. A conversation is
+  // private to two people: naming a third party inside one must not tell that
+  // person they were talked about, and it must certainly not hand them a link
+  // into a thread they are not a member of. The only notification a DM
+  // produces is the one to its recipient, below.
+  const entities = await resolveDraftEntities(text, draftEntities);
+
   // The message and the thread's ordering key move together, so an inbox can
   // never sort by a timestamp that disagrees with the message it is showing.
   const [message] = await prisma.$transaction([
     prisma.directMessage.create({
-      data: { conversationId, senderId, body: text },
+      data: {
+        conversationId, senderId, body: text,
+        entities: entities.length ? (entities as unknown as Prisma.InputJsonValue) : undefined,
+      },
       select: { id: true, body: true, createdAt: true, senderId: true },
     }),
     prisma.conversation.update({
@@ -449,6 +478,7 @@ export async function sendMessage(
     // so this path cannot accidentally mint one.
     kind: "TEXT",
     challenge: null,
+    entities: entities.length ? entities : null,
   };
 }
 

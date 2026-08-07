@@ -35,10 +35,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (limited) return limited;
 
   const { id } = await params;
-  const body = (await req.json().catch(() => ({}))) as { body?: string };
+  const body = (await req.json().catch(() => ({}))) as { body?: string; entities?: unknown };
 
   try {
-    const message = await sendMessage(id, user.id, body.body ?? "");
+    // `entities` is passed through unvalidated: resolveDraftEntities in the
+    // service layer is the ONE place that checks spans against the text and
+    // handles against the user table (CLAUDE.md rule 2).
+    const message = await sendMessage(id, user.id, body.body ?? "", body.entities);
     return NextResponse.json({ message });
   } catch (err) {
     return NextResponse.json(

@@ -14,6 +14,8 @@ import {
   type DmMessage,
 } from "@/lib/messages/types";
 import { ChallengeCard } from "@/components/messages/challenge-card";
+import { EntityText } from "@/components/rich-text/entity-text";
+import { useMentionRegistry } from "@/lib/composer/entities";
 import { deliveryOf, type DeliveryState } from "@/lib/presence/derive";
 import { useHeartbeat } from "@/lib/presence/use-presence";
 import { PresenceDot, PresenceLabel } from "@/components/presence/presence-dot";
@@ -69,6 +71,9 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   // is what makes the OTHER side's presence dot mean anything — presence only
   // works if both ends beat.
   useHeartbeat();
+  // Records who was picked from the mention menu; spans are computed from the
+  // final text at submit. See lib/composer/entities.
+  const mentions = useMentionRegistry();
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** When we last told the server we are composing. Throttles the ping. */
@@ -202,11 +207,12 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
       const res = await fetch(`/api/messages/${initial.id}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body, entities: mentions.build(body) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Could not send that message.");
       setMessages((prev) => prev.map((m) => (m.id === tempId ? (data.message as DmMessage) : m)));
+      mentions.reset();
     } catch (err) {
       // Roll the optimistic message back and put the text back in the box —
       // silently dropping what someone typed is the worst outcome here.
@@ -371,7 +377,11 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                       m.id.startsWith("tmp-") && "opacity-60",
                     )}
                   >
-                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.body}</p>
+                    <EntityText
+                      text={m.body}
+                      entities={m.entities}
+                      className="whitespace-pre-wrap break-words text-sm leading-relaxed"
+                    />
                     <p className={cn("mt-0.5 text-right text-3xs tabular-nums", m.fromMe ? "text-white/70" : "text-fog")}>
                       {timeLabel(m.at)}
                     </p>
@@ -471,6 +481,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
           // One draft slot per conversation, so a half-typed reply survives a
           // tab close and does not leak into the next thread.
           draftKey={`dm:${initial.id}`}
+          mentions={mentions}
           placeholder={`Message ${who?.name ?? ""}…`}
           className="max-h-32 min-h-[2.75rem] w-full resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none lg:min-h-[2.5rem] lg:py-2"
         />

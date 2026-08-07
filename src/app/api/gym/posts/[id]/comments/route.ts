@@ -58,6 +58,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       authorId: user.id,
       authorRole: user.role,
       body: typeof body.body === "string" ? body.body : "",
+      // Unvalidated by design — resolveDraftEntities in the service layer is
+      // the one place that checks them (CLAUDE.md rule 2).
+      entities: (body as { entities?: unknown }).entities,
       parentId: typeof body.parentId === "string" ? body.parentId : null,
     });
     return NextResponse.json({ ok: true, comment }, { status: 201 });

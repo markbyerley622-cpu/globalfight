@@ -1285,6 +1285,20 @@ model ForumPost {
 
   @@index([threadId, createdAt])
   @@index([authorId])
+
+  /// Structured entities for `content` — see lib/entities.
+  ///
+  /// NULL means legacy content written before this existed, and it stays
+  /// readable: the renderer falls back to the @handle parser. There is no
+  /// backfill and there does not need to be one.
+  ///
+  /// Json rather than a join table on purpose. Entities are read on EVERY
+  /// render of the row they annotate and are never queried independently — a
+  /// table would add a join to every feed page to answer a question nobody
+  /// asks. The trade is that the database cannot enforce the shape, which is
+  /// why sanitizeEntities treats this column as untrusted input on the way out.
+  entities Json?
+
 }
 
 model ForumReaction {
@@ -3122,6 +3136,20 @@ model DirectMessage {
 
   /// The inbox and the thread both read newest-first within a conversation.
   @@index([conversationId, createdAt])
+
+  /// Structured entities for `body` — see lib/entities.
+  ///
+  /// NULL means legacy content written before this existed, and it stays
+  /// readable: the renderer falls back to the @handle parser. There is no
+  /// backfill and there does not need to be one.
+  ///
+  /// Json rather than a join table on purpose. Entities are read on EVERY
+  /// render of the row they annotate and are never queried independently — a
+  /// table would add a join to every feed page to answer a question nobody
+  /// asks. The trade is that the database cannot enforce the shape, which is
+  /// why sanitizeEntities treats this column as untrusted input on the way out.
+  entities Json?
+
 }
 
 model UserFollow {
@@ -3430,6 +3458,20 @@ model GymPost {
   /// "Posts by this member" — a profile surface, and the cleanup path when an
   /// account is tombstoned.
   @@index([authorId, createdAt])
+
+  /// Structured entities for `body` — see lib/entities.
+  ///
+  /// NULL means legacy content written before this existed, and it stays
+  /// readable: the renderer falls back to the @handle parser. There is no
+  /// backfill and there does not need to be one.
+  ///
+  /// Json rather than a join table on purpose. Entities are read on EVERY
+  /// render of the row they annotate and are never queried independently — a
+  /// table would add a join to every feed page to answer a question nobody
+  /// asks. The trade is that the database cannot enforce the shape, which is
+  /// why sanitizeEntities treats this column as untrusted input on the way out.
+  entities Json?
+
 }
 
 /// One attached asset, in one position, on one post.
@@ -3524,6 +3566,20 @@ model GymPostComment {
   @@index([postId, deletedAt, createdAt])
   @@index([parentId, createdAt])
   @@index([authorId, createdAt])
+
+  /// Structured entities for `body` — see lib/entities.
+  ///
+  /// NULL means legacy content written before this existed, and it stays
+  /// readable: the renderer falls back to the @handle parser. There is no
+  /// backfill and there does not need to be one.
+  ///
+  /// Json rather than a join table on purpose. Entities are read on EVERY
+  /// render of the row they annotate and are never queried independently — a
+  /// table would add a join to every feed page to answer a question nobody
+  /// asks. The trade is that the database cannot enforce the shape, which is
+  /// why sanitizeEntities treats this column as untrusted input on the way out.
+  entities Json?
+
 }
 
 model GymPostCommentReaction {

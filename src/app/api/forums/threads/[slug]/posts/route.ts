@@ -37,7 +37,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   }
 
   try {
-    const post = await createPost({ authorId: user.id, threadSlug: slug, content, parentId, attachments, quotePostId });
+    // `entities` is passed through UNVALIDATED on purpose — resolveDraftEntities
+    // in the service layer is the one place that checks spans against the text
+    // and handles against the user table, so it holds for every caller rather
+    // than for the one route somebody remembered to guard (CLAUDE.md rule 2).
+    const post = await createPost({
+      authorId: user.id, threadSlug: slug, content, parentId, attachments, quotePostId,
+      entities: body.entities,
+    });
     return NextResponse.json({ post }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Could not post reply." }, { status: 400 });

@@ -40,6 +40,13 @@ const CARD_W = 340;
 const GAP = 18;
 const EDGE = 12;
 
+/**
+ * Below this container width there is no room BESIDE a pin for a 340px card,
+ * so the layout changes: the card sits ABOVE the pin, centred, and shrinks to
+ * fit. That is the phone case.
+ */
+const NARROW = CARD_W + GAP + EDGE * 2;
+
 /** What the parent calls to re-place the card without re-rendering anything. */
 export interface PreviewHandle {
   reposition: () => void;
@@ -100,16 +107,37 @@ export function FloatingPreview({
 
     const { clientWidth: W, clientHeight: H } = host;
     const h = el.offsetHeight || 340;
+    const narrow = W < NARROW;
+    const w = narrow ? Math.max(200, W - EDGE * 2) : CARD_W;
+    el.style.width = `${w}px`;
 
-    // Prefer the right of the pin; flip left when the card would overhang.
-    const right = anchor.x + GAP;
-    const left = anchor.x - GAP - CARD_W;
-    const x = right + CARD_W + EDGE <= W ? right : left >= EDGE ? left : Math.max(EDGE, W - CARD_W - EDGE);
+    let x: number;
+    let y: number;
 
-    // Vertically centred on the pin, then clamped inside the container so a
-    // card never hangs off the top or bottom.
-    const y = Math.min(Math.max(anchor.y - h / 2, EDGE), Math.max(EDGE, H - h - EDGE));
+    if (narrow) {
+      // ── Phone: ABOVE the pin, centred ────────────────────────────────────
+      // There is no room to either side, and the alternative — a bottom sheet
+      // the reader has to drag open — buries the card they just asked for
+      // behind a gesture. Popping it over the map is the same interaction the
+      // desktop gets, which is the point.
+      x = Math.min(Math.max(anchor.x - w / 2, EDGE), Math.max(EDGE, W - w - EDGE));
+      const above = anchor.y - GAP - h;
+      // Flip BELOW only when there is genuinely no room above — a card over the
+      // pin would hide the thing it describes.
+      y = above >= EDGE ? above : Math.min(anchor.y + GAP, Math.max(EDGE, H - h - EDGE));
+    } else {
+      // Prefer the right of the pin; flip left when the card would overhang.
+      const right = anchor.x + GAP;
+      const left = anchor.x - GAP - w;
+      x = right + w + EDGE <= W ? right : left >= EDGE ? left : Math.max(EDGE, W - w - EDGE);
+      // Vertically centred on the pin, then clamped inside the container so a
+      // card never hangs off the top or bottom.
+      y = Math.min(Math.max(anchor.y - h / 2, EDGE), Math.max(EDGE, H - h - EDGE));
+    }
 
+    // The tail points at the pin only when the card is BESIDE it. Above/below,
+    // a side-notch would point at nothing.
+    el.dataset.narrow = narrow ? "1" : "";
     el.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
   }, []);
 
@@ -148,7 +176,8 @@ export function FloatingPreview({
       ref={ref}
       // `left/top: 0` + a transform: the position is one composited property, so
       // following a pan costs no layout.
-      style={{ left: 0, top: 0, width: CARD_W }}
+      // Width is set imperatively in `place` — it depends on the container.
+      style={{ left: 0, top: 0 }}
       className={cn(
         "absolute z-[440] will-change-transform",
         "motion-safe:animate-[crPreviewIn_0.22s_cubic-bezier(0.22,1,0.36,1)_both]",
@@ -185,10 +214,12 @@ export function FloatingPreview({
       </div>
 
       {/* The tail: a small notch pointing back at the pin, so the card reads as
-          belonging to that marker rather than floating near it. */}
+          belonging to that marker rather than floating near it. Hidden on the
+          narrow layout, where the card is above the pin and a side-notch would
+          point at nothing. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute size-2.5 rotate-45 rounded-[2px] border-b border-l border-ink-700 bg-ink-950"
+        className="pointer-events-none absolute size-2.5 rotate-45 rounded-[2px] border-b border-l border-ink-700 bg-ink-950 [[data-narrow='1']_&]:hidden"
         style={{ left: -5, top: "50%", marginTop: -5 }}
       />
     </div>

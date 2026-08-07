@@ -102,6 +102,50 @@ describe("every communication surface uses the Composer", () => {
   });
 });
 
+describe("uploads have one implementation", () => {
+  // The failure this catches is the one that just got fixed: two upload engines
+  // that behaved nothing alike, one with progress and retry and one without,
+  // because the second was written inside a component file where nobody could
+  // see the first.
+
+  test("no surface builds its own upload with XMLHttpRequest or /api/media", () => {
+    const stripComments = (src: string) =>
+      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+    const ALLOWED_UPLOADERS = new Set([
+      // THE engine. Everything else configures it.
+      "lib/composer/attachments.ts",
+      // Single-image REPLACE controls — an avatar, a gym hero, an event
+      // poster. Deliberately not folded into the composer engine: they hold one
+      // image rather than a list, they replace rather than append, they support
+      // cancel and delete, and none of them lives beside a text input. Forcing
+      // them through a multi-attachment message engine would be a worse fit in
+      // both directions.
+      "components/ui/image-upload.tsx",
+      "components/fighters/avatar-uploader.tsx",
+      "components/profile/profile-editor.tsx",
+      "components/gyms/gym-media-manager.tsx",
+      "components/map/gym-gallery-manager.tsx",
+      "components/promoter/new-event-flow.tsx",
+    ]);
+
+    const all = walk(join(SRC, "components")).concat(walk(join(SRC, "lib")));
+    const offenders = all
+      .map((f) => relative(SRC, f).replace(/\\/g, "/"))
+      .filter((rel) => !ALLOWED_UPLOADERS.has(rel))
+      .filter((rel) => stripComments(readFileSync(join(SRC, rel), "utf8")).includes("new XMLHttpRequest"));
+
+    assert.deepEqual(
+      offenders,
+      [],
+      "These build their own upload transport instead of useComposerUploads:\n" +
+        offenders.map((f) => `  - ${f}`).join("\n") +
+        "\n\nA second engine means a second progress model, a second retry " +
+        "rule and a second set of leaked object URLs.",
+    );
+  });
+});
+
 describe("mention autocomplete has one implementation", () => {
   test("only the Composer queries the people typeahead", () => {
     // A second caller of this endpoint means a second menu, a second keyboard

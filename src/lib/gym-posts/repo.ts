@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { resolveDraftEntities, hydrateEntities } from "@/lib/rich-text/resolve";
 import { isAdminRole } from "@/lib/admin/roles";
 import { publicDisplayName } from "@/lib/display-name";
 import { assertPublishable } from "@/lib/moderation/text";
@@ -566,6 +567,10 @@ function mapComment(row: CommentRow, viewer: Viewer, tallies: Tallies): GymPostC
     // A removed comment renders as a tombstone rather than vanishing: dropping
     // it would tear the reply chain and leave replies answering nothing.
     body: deleted ? "" : row.body,
+    // Raw here; hydrated for the whole page by the list query. A deleted
+    // comment carries none — its body is gone, so a span over it would point
+    // at characters that no longer exist.
+    entities: deleted ? null : (row.entities ?? null),
     reactionCount: row.reactionCount,
     myReactions: tallies.mine.get(row.id) ?? [],
     createdAt: row.createdAt.toISOString(),
@@ -624,7 +629,14 @@ export async function listComments(input: {
 
   const { items, nextCursor } = takePage(rows, limit);
   const tallies = await commentTallies(items.map((c) => c.id), input.user?.id ?? null);
-  return { items: items.map((c) => mapComment(c, access.viewer, tallies)), nextCursor };
+  // ── Hydrate the whole PAGE in one query ─────────────────────────────────
+  // Mention handles are refreshed against the user table here, which is what
+  // makes a rename apply to every historical comment at once. Batched: per-row
+  // hydration would be one round trip per comment.
+  const mapped = items.map((c) => mapComment(c, access.viewer, tallies));
+  const hydrated = await hydrateEntities(mapped.map((m) => ({ text: m.body, entities: m.entities })));
+  mapped.forEach((m, i) => { m.entities = hydrated[i].length ? hydrated[i] : null; });
+  return { items: mapped, nextCursor };
 }
 
 export async function addComment(input: {
@@ -632,6 +644,8 @@ export async function addComment(input: {
   authorId: string;
   authorRole: string;
   body: string;
+  /** Draft mention spans from the composer. Resolved to ids before storage. */
+  entities?: unknown;
   parentId?: string | null;
 }): Promise<GymPostCommentDTO> {
   const user = { id: input.authorId, role: input.authorRole };
@@ -662,14 +676,22 @@ export async function addComment(input: {
     }
   }
 
+  // Resolved BEFORE the write: verified against the final text and the user
+  // table, so what is stored is already known-good and the notifier below can
+  // read ids straight off it.
+  const entities = await resolveDraftEntities(body, input.entities);
+
   const comment = await prisma.gymPostComment.create({
-    data: { postId: input.postId, authorId: input.authorId, body, parentId },
+    data: {
+      postId: input.postId, authorId: input.authorId, body, parentId,
+      entities: entities.length ? (entities as unknown as Prisma.InputJsonValue) : undefined,
+    },
     include: COMMENT_INCLUDE,
   });
   await recountComments(input.postId);
 
   await notifyPostComment({
-    post: access.ref, actorId: input.authorId, body, parentAuthorId,
+    post: access.ref, actorId: input.authorId, body, entities, parentAuthorId,
   });
 
   return mapComment(comment, access.viewer, { counts: new Map(), mine: new Map() });

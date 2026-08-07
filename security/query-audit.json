@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1193,
+    "queries": 1195,
     "high": 0,
     "medium": 103,
     "low": 205,
-    "info": 885,
-    "public": 821,
+    "info": 887,
+    "public": 823,
     "userOwned": 270,
     "shared": 102,
     "admin": 0
@@ -1497,7 +1497,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 598,
+      "line": 639,
       "fn": "onBattleRoomMessage",
       "model": "Battle",
       "method": "update",
@@ -1510,7 +1510,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 717,
+      "line": 758,
       "fn": "toggleBookmark",
       "model": "ForumBookmark",
       "method": "delete",
@@ -1523,7 +1523,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 725,
+      "line": 766,
       "fn": "toggleSubscription",
       "model": "ForumSubscription",
       "method": "delete",
@@ -3330,7 +3330,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 183,
+      "line": 190,
       "fn": "ensureForumSeed",
       "model": "ForumCategory",
       "method": "upsert",
@@ -3343,7 +3343,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 189,
+      "line": 196,
       "fn": "ensureForumSeed",
       "model": "ForumCategory",
       "method": "deleteMany",
@@ -3356,7 +3356,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 327,
+      "line": 334,
       "fn": "getThread",
       "model": "ForumThread",
       "method": "update",
@@ -3369,7 +3369,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 434,
+      "line": 450,
       "fn": "deleteThread",
       "model": "ForumThread",
       "method": "delete",
@@ -3382,7 +3382,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 488,
+      "line": 515,
       "fn": "createPost",
       "model": "ForumThread",
       "method": "update",
@@ -3395,7 +3395,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 625,
+      "line": 666,
       "fn": "updated",
       "model": "ForumPost",
       "method": "update",
@@ -3408,7 +3408,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 642,
+      "line": 683,
       "fn": "deletePost",
       "model": "ForumPost",
       "method": "update",
@@ -3421,7 +3421,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 645,
+      "line": 686,
       "fn": "deletePost",
       "model": "ForumThread",
       "method": "update",
@@ -3434,7 +3434,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 687,
+      "line": 728,
       "fn": "addReaction",
       "model": "ForumThread",
       "method": "update",
@@ -3447,7 +3447,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 699,
+      "line": 740,
       "fn": "addReaction",
       "model": "ForumPost",
       "method": "update",
@@ -3460,7 +3460,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 731,
+      "line": 772,
       "fn": "t",
       "model": "ForumThread",
       "method": "update",
@@ -3473,7 +3473,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 764,
+      "line": 805,
       "fn": "createReport",
       "model": "ForumReport",
       "method": "upsert",
@@ -3525,7 +3525,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 489,
+      "line": 490,
       "fn": "updatePost",
       "model": "GymPost",
       "method": "update",
@@ -3538,7 +3538,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 535,
+      "line": 536,
       "fn": "deletePost",
       "model": "GymPost",
       "method": "updateMany",
@@ -3551,7 +3551,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 700,
+      "line": 722,
       "fn": "updated",
       "model": "GymPostComment",
       "method": "update",
@@ -3564,7 +3564,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 727,
+      "line": 749,
       "fn": "deleteComment",
       "model": "GymPostComment",
       "method": "updateMany",
@@ -3577,7 +3577,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 745,
+      "line": 767,
       "fn": "recountComments",
       "model": "GymPost",
       "method": "update",
@@ -3590,7 +3590,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 799,
+      "line": 821,
       "fn": "reactToPost",
       "model": "GymPost",
       "method": "update",
@@ -3603,7 +3603,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 854,
+      "line": 876,
       "fn": "reactToComment",
       "model": "GymPostComment",
       "method": "update",
@@ -3616,7 +3616,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 888,
+      "line": 910,
       "fn": "updated",
       "model": "GymPost",
       "method": "update",
@@ -3629,7 +3629,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 925,
+      "line": 947,
       "fn": "setPostHidden",
       "model": "GymPost",
       "method": "updateMany",
@@ -3642,7 +3642,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 938,
+      "line": 960,
       "fn": "setPostHidden",
       "model": "GymPost",
       "method": "updateMany",
@@ -3798,7 +3798,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 103,
+      "line": 105,
       "fn": "convo",
       "model": "Conversation",
       "method": "upsert",
@@ -3811,7 +3811,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 425,
+      "line": 454,
       "fn": "sendMessage",
       "model": "Conversation",
       "method": "update",
@@ -9830,7 +9830,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 202,
+      "line": 209,
       "fn": "cats",
       "model": "ForumCategory",
       "method": "findMany",
@@ -9843,7 +9843,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 217,
+      "line": 224,
       "fn": "viewerFlags",
       "model": "ForumBookmark",
       "method": "findMany",
@@ -9856,7 +9856,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 218,
+      "line": 225,
       "fn": "viewerFlags",
       "model": "ForumSubscription",
       "method": "findMany",
@@ -9869,7 +9869,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 230,
+      "line": 237,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -9882,7 +9882,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 271,
+      "line": 278,
       "fn": "subs",
       "model": "ForumSubscription",
       "method": "findMany",
@@ -9895,7 +9895,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 286,
+      "line": 293,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -9908,7 +9908,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 303,
+      "line": 310,
       "fn": "rows",
       "model": "ForumThread",
       "method": "findMany",
@@ -9921,7 +9921,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 318,
+      "line": 325,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -9934,7 +9934,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 336,
+      "line": 343,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -9947,7 +9947,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 341,
+      "line": 348,
       "fn": "rows",
       "model": "ForumPost",
       "method": "findMany",
@@ -9960,7 +9960,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 376,
+      "line": 392,
       "fn": "category",
       "model": "ForumCategory",
       "method": "findUnique",
@@ -9973,7 +9973,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 380,
+      "line": 396,
       "fn": "author",
       "model": "User",
       "method": "findUnique",
@@ -9986,7 +9986,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 390,
+      "line": 406,
       "fn": "createThread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -9999,7 +9999,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 393,
+      "line": 409,
       "fn": "thread",
       "model": "ForumThread",
       "method": "create",
@@ -10012,20 +10012,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 428,
-      "fn": "thread",
-      "model": "ForumThread",
-      "method": "findUnique",
-      "klass": "PUBLIC",
-      "kind": "read",
-      "ownership": "unscoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Public model read — world-readable by design."
-    },
-    {
-      "file": "src/lib/forum/repo.ts",
-      "line": 445,
+      "line": 444,
       "fn": "thread",
       "model": "ForumThread",
       "method": "findUnique",
@@ -10039,6 +10026,19 @@
     {
       "file": "src/lib/forum/repo.ts",
       "line": 466,
+      "fn": "thread",
+      "model": "ForumThread",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/forum/repo.ts",
+      "line": 487,
       "fn": "q",
       "model": "ForumPost",
       "method": "findFirst",
@@ -10051,7 +10051,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 479,
+      "line": 505,
       "fn": "post",
       "model": "ForumPost",
       "method": "create",
@@ -10064,7 +10064,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 541,
+      "line": 570,
       "fn": "posts",
       "model": "ForumPost",
       "method": "findMany",
@@ -10077,7 +10077,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 554,
+      "line": 594,
       "fn": "mentioned",
       "model": "User",
       "method": "findMany",
@@ -10090,7 +10090,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 601,
+      "line": 642,
       "fn": "onBattleRoomMessage",
       "model": "Rivalry",
       "method": "updateMany",
@@ -10103,7 +10103,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 602,
+      "line": 643,
       "fn": "me",
       "model": "User",
       "method": "findUnique",
@@ -10116,7 +10116,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 603,
+      "line": 644,
       "fn": "fight",
       "model": "Fight",
       "method": "findUnique",
@@ -10129,7 +10129,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 617,
+      "line": 658,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -10142,7 +10142,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 636,
+      "line": 677,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -10155,7 +10155,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 657,
+      "line": 698,
       "fn": "existing",
       "model": "ForumReaction",
       "method": "findUnique",
@@ -10168,7 +10168,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 659,
+      "line": 700,
       "fn": "post",
       "model": "ForumPost",
       "method": "findUnique",
@@ -10181,7 +10181,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 670,
+      "line": 711,
       "fn": "addReaction",
       "model": "ForumReaction",
       "method": "deleteMany",
@@ -10194,7 +10194,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 674,
+      "line": 715,
       "fn": "addReaction",
       "model": "ForumReaction",
       "method": "create",
@@ -10207,7 +10207,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 684,
+      "line": 725,
       "fn": "reactionCount",
       "model": "ForumReaction",
       "method": "count",
@@ -10220,7 +10220,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 691,
+      "line": 732,
       "fn": "all",
       "model": "ForumReaction",
       "method": "findMany",
@@ -10233,7 +10233,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 701,
+      "line": 742,
       "fn": "thread",
       "model": "ForumPost",
       "method": "findUnique",
@@ -10246,7 +10246,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 709,
+      "line": 750,
       "fn": "t",
       "model": "ForumThread",
       "method": "findUnique",
@@ -10259,7 +10259,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 716,
+      "line": 757,
       "fn": "existing",
       "model": "ForumBookmark",
       "method": "findUnique",
@@ -10272,7 +10272,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 718,
+      "line": 759,
       "fn": "toggleBookmark",
       "model": "ForumBookmark",
       "method": "create",
@@ -10285,7 +10285,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 724,
+      "line": 765,
       "fn": "existing",
       "model": "ForumSubscription",
       "method": "findUnique",
@@ -10298,7 +10298,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 726,
+      "line": 767,
       "fn": "toggleSubscription",
       "model": "ForumSubscription",
       "method": "create",
@@ -10311,7 +10311,7 @@
     },
     {
       "file": "src/lib/forum/repo.ts",
-      "line": 739,
+      "line": 780,
       "fn": "rows",
       "model": "ForumBookmark",
       "method": "findMany",
@@ -10818,7 +10818,7 @@
     },
     {
       "file": "src/lib/gym-posts/notify.ts",
-      "line": 62,
+      "line": 65,
       "fn": "actor",
       "model": "User",
       "method": "findUnique",
@@ -10831,7 +10831,7 @@
     },
     {
       "file": "src/lib/gym-posts/notify.ts",
-      "line": 77,
+      "line": 89,
       "fn": "mentioned",
       "model": "User",
       "method": "findMany",
@@ -10844,7 +10844,7 @@
     },
     {
       "file": "src/lib/gym-posts/notify.ts",
-      "line": 121,
+      "line": 134,
       "fn": "actor",
       "model": "User",
       "method": "findUnique",
@@ -10857,7 +10857,7 @@
     },
     {
       "file": "src/lib/gym-posts/notify.ts",
-      "line": 153,
+      "line": 166,
       "fn": "actor",
       "model": "User",
       "method": "findUnique",
@@ -10870,7 +10870,7 @@
     },
     {
       "file": "src/lib/gym-posts/notify.ts",
-      "line": 188,
+      "line": 201,
       "fn": "actor",
       "model": "User",
       "method": "findUnique",
@@ -10883,7 +10883,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 103,
+      "line": 104,
       "fn": "buildScope",
       "model": "GymMember",
       "method": "findMany",
@@ -10896,7 +10896,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 104,
+      "line": 105,
       "fn": "buildScope",
       "model": "Gym",
       "method": "findMany",
@@ -10909,7 +10909,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 153,
+      "line": 154,
       "fn": "postTallies",
       "model": "GymPostReaction",
       "method": "groupBy",
@@ -10922,7 +10922,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 159,
+      "line": 160,
       "fn": "postTallies",
       "model": "GymPostReaction",
       "method": "findMany",
@@ -10935,7 +10935,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 174,
+      "line": 175,
       "fn": "commentTallies",
       "model": "GymPostCommentReaction",
       "method": "groupBy",
@@ -10948,7 +10948,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 180,
+      "line": 181,
       "fn": "commentTallies",
       "model": "GymPostCommentReaction",
       "method": "findMany",
@@ -10961,7 +10961,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 275,
+      "line": 276,
       "fn": "gym",
       "model": "Gym",
       "method": "findUnique",
@@ -10974,7 +10974,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 285,
+      "line": 286,
       "fn": "rows",
       "model": "GymPost",
       "method": "findMany",
@@ -10987,7 +10987,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 326,
+      "line": 327,
       "fn": "row",
       "model": "GymPost",
       "method": "findUnique",
@@ -11000,7 +11000,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 330,
+      "line": 331,
       "fn": "getPost",
       "model": "Gym",
       "method": "findUnique",
@@ -11013,7 +11013,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 391,
+      "line": 392,
       "fn": "post",
       "model": "GymPost",
       "method": "create",
@@ -11026,7 +11026,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 422,
+      "line": 423,
       "fn": "existing",
       "model": "GymPost",
       "method": "findUnique",
@@ -11039,7 +11039,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 480,
+      "line": 481,
       "fn": "stillHasMedia",
       "model": "GymPostMedia",
       "method": "count",
@@ -11052,7 +11052,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 512,
+      "line": 513,
       "fn": "existing",
       "model": "GymPost",
       "method": "findUnique",
@@ -11065,7 +11065,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 582,
+      "line": 587,
       "fn": "post",
       "model": "GymPost",
       "method": "findUnique",
@@ -11078,7 +11078,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 618,
+      "line": 623,
       "fn": "rows",
       "model": "GymPostComment",
       "method": "findMany",
@@ -11091,7 +11091,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 653,
+      "line": 667,
       "fn": "parent",
       "model": "GymPostComment",
       "method": "findFirst",
@@ -11104,7 +11104,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 665,
+      "line": 684,
       "fn": "comment",
       "model": "GymPostComment",
       "method": "create",
@@ -11117,7 +11117,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 684,
+      "line": 706,
       "fn": "existing",
       "model": "GymPostComment",
       "method": "findUnique",
@@ -11130,7 +11130,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 714,
+      "line": 736,
       "fn": "existing",
       "model": "GymPostComment",
       "method": "findUnique",
@@ -11143,7 +11143,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 744,
+      "line": 766,
       "fn": "commentCount",
       "model": "GymPostComment",
       "method": "count",
@@ -11156,7 +11156,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 777,
+      "line": 799,
       "fn": "existing",
       "model": "GymPostReaction",
       "method": "findUnique",
@@ -11169,7 +11169,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 784,
+      "line": 806,
       "fn": "reactToPost",
       "model": "GymPostReaction",
       "method": "deleteMany",
@@ -11182,7 +11182,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 790,
+      "line": 812,
       "fn": "reactToPost",
       "model": "GymPostReaction",
       "method": "create",
@@ -11195,7 +11195,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 798,
+      "line": 820,
       "fn": "reactionCount",
       "model": "GymPostReaction",
       "method": "count",
@@ -11208,7 +11208,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 817,
+      "line": 839,
       "fn": "comment",
       "model": "GymPostComment",
       "method": "findUnique",
@@ -11221,7 +11221,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 827,
+      "line": 849,
       "fn": "existing",
       "model": "GymPostCommentReaction",
       "method": "findUnique",
@@ -11234,7 +11234,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 834,
+      "line": 856,
       "fn": "reactToComment",
       "model": "GymPostCommentReaction",
       "method": "deleteMany",
@@ -11247,7 +11247,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 840,
+      "line": 862,
       "fn": "reactToComment",
       "model": "GymPostCommentReaction",
       "method": "create",
@@ -11260,7 +11260,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 853,
+      "line": 875,
       "fn": "reactionCount",
       "model": "GymPostCommentReaction",
       "method": "count",
@@ -11273,7 +11273,7 @@
     },
     {
       "file": "src/lib/gym-posts/repo.ts",
-      "line": 908,
+      "line": 930,
       "fn": "resolveReportedPosts",
       "model": "GymPost",
       "method": "findMany",
@@ -12781,7 +12781,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 96,
+      "line": 98,
       "fn": "other",
       "model": "User",
       "method": "findUnique",
@@ -12794,7 +12794,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 114,
+      "line": 116,
       "fn": "openConversation",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12807,7 +12807,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 124,
+      "line": 126,
       "fn": "convo",
       "model": "Conversation",
       "method": "findFirst",
@@ -12820,7 +12820,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 173,
+      "line": 175,
       "fn": "setTyping",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12833,7 +12833,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 199,
+      "line": 214,
       "fn": "rows",
       "model": "Conversation",
       "method": "findMany",
@@ -12846,7 +12846,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 220,
+      "line": 235,
       "fn": "counts",
       "model": "DirectMessage",
       "method": "groupBy",
@@ -12859,7 +12859,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 287,
+      "line": 302,
       "fn": "markDelivered",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12872,7 +12872,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 298,
+      "line": 313,
       "fn": "members",
       "model": "ConversationMember",
       "method": "findMany",
@@ -12885,7 +12885,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 304,
+      "line": 319,
       "fn": "unreadMessageCount",
       "model": "DirectMessage",
       "method": "count",
@@ -12898,7 +12898,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 327,
+      "line": 342,
       "fn": "rows",
       "model": "DirectMessage",
       "method": "findMany",
@@ -12911,7 +12911,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 421,
+      "line": 447,
       "fn": "sendMessage",
       "model": "DirectMessage",
       "method": "create",
@@ -12924,7 +12924,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 433,
+      "line": 462,
       "fn": "sendMessage",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12937,7 +12937,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 490,
+      "line": 520,
       "fn": "sender",
       "model": "User",
       "method": "findUnique",
@@ -12950,7 +12950,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 519,
+      "line": 549,
       "fn": "markRead",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -15333,6 +15333,32 @@
       "fn": "published",
       "model": "ResultCandidate",
       "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rich-text/resolve.ts",
+      "line": 67,
+      "fn": "users",
+      "model": "User",
+      "method": "findMany",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/rich-text/resolve.ts",
+      "line": 118,
+      "fn": "users",
+      "model": "User",
+      "method": "findMany",
       "klass": "PUBLIC",
       "kind": "read",
       "ownership": "unscoped",

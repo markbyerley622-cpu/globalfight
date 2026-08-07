@@ -50,8 +50,12 @@ export function ForumAvatar({
   showOffline?: boolean;
 }) {
   const hue = hueFromName(name || "Member");
+  // `relative` is load-bearing: <Image fill> positions against the nearest
+  // POSITIONED ancestor. Without it the image resolved against the outer box
+  // and escaped this element's circular clip entirely — avatars rendered as
+  // squares wherever a photo was set.
   const face = (
-    <div className={cn("size-full overflow-hidden rounded-full")}>
+    <div className="relative size-full overflow-hidden rounded-full">
       {image ? (
         <Image src={image} alt={name} fill className="object-cover" sizes="44px" />
       ) : (
