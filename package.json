@@ -2,6 +2,9 @@
   "name": "globalfight",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.11 <23"
+  },
   "description": "GlobalFight — a mobile-first, event-centric platform for global combat sports.",
   "scripts": {
     "dev": "next dev",

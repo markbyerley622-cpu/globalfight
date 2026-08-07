@@ -362,7 +362,19 @@ services:
     # code-review responsibility — inspect every schema diff for real column
     # drops/renames before merging, or migrate to Prisma Migrations (which apply
     # additive uniques cleanly) to restore the automatic guard.
-    buildCommand: npm ci --include=dev && npx prisma db push --skip-generate --accept-data-loss && npm run build
+    # NODE_OPTIONS raises the build heap. Render builds on its DEFAULT Node
+    # (24.14.1 at time of writing) unless pinned, and `next build` for this app
+    # blew through Node's ~2 GB default there:
+    #   FATAL ERROR: Ineffective mark-compacts near heap limit — heap out of memory
+    #
+    # The app is pinned to Node 22 (.node-version + package.json engines), which
+    # is what every gate is actually run against and which completes the SAME
+    # build inside a 2048 MB cap — verified locally. So the pin is the fix and
+    # this flag is headroom, not a workaround for an unbounded build.
+    #
+    # Build-time only. It does not affect the running service, which is on the
+    # starter instance and must not be told it has 3 GB of heap.
+    buildCommand: NODE_OPTIONS=--max-old-space-size=3072 npm ci --include=dev && npx prisma db push --skip-generate --accept-data-loss && NODE_OPTIONS=--max-old-space-size=3072 npm run build
     # boot.mts runs first, driven by the ALLOW_SEED_WORLD master switch. When it
     # is "true" the deployment is seeded ONCE if it has no seed users (idempotent).
     # When it is anything else, boot PURGES every trace of demo data from this
