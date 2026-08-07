@@ -86,6 +86,13 @@ export const RANKING_SOURCES: RankingSource[] = [
   // ── Tier 2 — strong secondary / regional aggregators ──────────────────
   { id: "british-boxers", label: "British Boxers Rankings", organisation: "British Boxing", url: "https://britishboxers.uk/rankings", tier: 2, trust: "media", scope: "boxing/uk", licensed: false, connectorReady: false, notes: "Client-rendered — rankings load via JS with no server HTML or data endpoint. Needs a headless fetch, not a plain connector. WBA (Tier 1) used as the reference source instead." },
   { id: "fightersrec-pk", label: "FightersRec — Pakistan", organisation: "FightersRec", url: "https://fightersrec.com/RankingCountries/PAKISTAN/Male/PROFESSIONAL/BOXING", tier: 2, trust: "community", scope: "boxing/pakistan", licensed: false, connectorReady: false },
+  // Wikipedia (CC BY-SA, attribution-preserving) — TITLEHOLDERS ONLY, not
+  // contender ratings. Licensed because the licence permits it and this codebase
+  // already ingests the same source for fight cards and results
+  // (lib/scraper/wikicard); it is the only cleared source carrying WBC, WBO and
+  // IBF champions, all three of which are otherwise absent entirely.
+  { id: "wikipedia-boxing-male", label: "Wikipedia — Current World Boxing Champions (Men)", organisation: "Wikipedia", url: "https://en.wikipedia.org/wiki/List_of_current_world_boxing_champions", tier: 2, trust: "media", scope: "boxing/male/titles", licensed: true, connectorReady: true, notes: "CC BY-SA. Champions for WBA/WBC/IBF/WBO/The Ring across every division, incl. interim and vacant. No contender ratings — those come from the bodies themselves." },
+  { id: "wikipedia-boxing-female", label: "Wikipedia — Current World Boxing Champions (Women)", organisation: "Wikipedia", url: "https://en.wikipedia.org/wiki/List_of_current_female_world_boxing_champions", tier: 2, trust: "media", scope: "boxing/female/titles", licensed: true, connectorReady: true, notes: "CC BY-SA. As above, women's divisions." },
 
   // ── Tier 3 — media / supplemental ─────────────────────────────────────
   { id: "boxingscene", label: "BoxingScene World Rankings", organisation: "BoxingScene", url: "https://www.boxingscene.com/rankings", tier: 3, trust: "media", scope: "boxing/world", licensed: false, connectorReady: false },

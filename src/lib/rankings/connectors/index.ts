@@ -2,6 +2,7 @@ import type { RankingConnector } from "../connector";
 import { RANKING_SOURCES } from "../sources";
 import { wbaFemaleConnector, wbaMaleConnector } from "./wba";
 import { ufcMmaConnector } from "./ufc";
+import { wikipediaBoxingFemaleConnector, wikipediaBoxingMaleConnector } from "./wikipedia-boxing";
 
 // ════════════════════════════════════════════════════════════════════════
 //  Connector registry — maps a source id to its implementation. A source can
@@ -25,6 +26,12 @@ const CONNECTORS: Record<string, RankingConnector> = {
   // listed here is what makes it runnable, not what makes it run.
   "wba-male": wbaMaleConnector,
   "ufc-mma": ufcMmaConnector,
+  // Wikipedia (CC BY-SA) — the ONLY source we are cleared to read that carries
+  // WBC, WBO and IBF titleholders. Those three bodies are `licensed: false` with
+  // no parser, and BoxRec is blocklisted below, so without these two connectors
+  // three of boxing's four major belts are absent from every division.
+  "wikipedia-boxing-male": wikipediaBoxingMaleConnector,
+  "wikipedia-boxing-female": wikipediaBoxingFemaleConnector,
   // Pending parsers (registered in sources.ts, connectorReady:false):
   //   wbc-female, wbo-female, ibf-female, ebu-* (PDF), boxing-ireland, ipba,
   //   fightersrec-pk, boxingscene.

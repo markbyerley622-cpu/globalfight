@@ -8,7 +8,7 @@ import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import { log } from "@/lib/scraper/logger";
 import { weightClassSlug, divisionOrder } from "./ingest-rules";
 import { recordObservations, recordFailure, projectRankings } from "./pipeline";
-import { recordChampionObservation, projectChampions } from "./champions";
+import { recordChampionObservation, projectChampions, sanctioningBodyFor } from "./champions";
 
 // ════════════════════════════════════════════════════════════════════════
 //  Ranking ingest — the OBSERVE half of the pipeline.
@@ -48,20 +48,10 @@ export interface IngestStat {
   error?: string;
 }
 
-/**
- * An organisation string → the SanctioningBody enum, or null when we have no
- * enum member for it.
- *
- * Returning null (and skipping the champion) rather than guessing is the point:
- * a champion row asserts "this person holds this organisation's title", and
- * filing it under the wrong body is a worse outcome than not recording it. A
- * new promotion is one enum member away from being supported.
- */
-function sanctioningBodyFor(organisation: string): "WBA" | "WBC" | "IBF" | "WBO" | "IBO" | "BKFC" | "ONE" | "PFL" | "UFC" | "BELLATOR" | "GLORY" | "RIZIN" | "KSW" | null {
-  const key = organisation.trim().toUpperCase().replace(/[^A-Z]/g, "");
-  const known = ["WBA", "WBC", "IBF", "WBO", "IBO", "BKFC", "ONE", "PFL", "UFC", "BELLATOR", "GLORY", "RIZIN", "KSW"] as const;
-  return (known as readonly string[]).includes(key) ? (key as ReturnType<typeof sanctioningBodyFor>) : null;
-}
+// The organisation → SanctioningBody mapping lives in ./champions and is
+// imported, not re-declared. This file used to carry its own identical copy;
+// they drifted (see the note on sanctioningBodyFor), and the symptom was Ring
+// champions being recorded as reigns and then silently dropped here.
 
 /**
  * Record the CURRENT titleholder of a division. Idempotent: re-ingesting the
@@ -194,13 +184,34 @@ export async function ingestConnector(connector: RankingConnector): Promise<Inge
   for (const entry of entries) {
     if (entry.rank >= 1) continue;
     try {
+      const status = entry.titleStatus ?? "CHAMPION";
+
+      // ── A VACANT belt names nobody ──────────────────────────────────────
+      // It must never reach fighter resolution. `resolveFighterFor` CREATES the
+      // fighter it cannot find, so a vacant row carried through here would
+      // manufacture a registry entry named "" (or "vacant") and then crown it.
+      // The observation itself is still recorded, with a null fighter, because
+      // "this belt is vacant" is exactly the fact that stops a stale champion
+      // being served forever.
+      if (status === "VACANT") {
+        const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
+        await recordChampionObservation(connector, entry, null, weightClassId, "VACANT");
+        continue;
+      }
+
       const resolved = await resolveFighterFor(entry);
       if (!resolved) continue;
       const weightClassId = await resolveWeightClass(entry.sport, entry.weightClass);
       if (resolved.created) stat.fightersCreated++;
       const fighterId = resolved.id;
 
-      await recordChampionObservation(connector, entry, fighterId, weightClassId);
+      await recordChampionObservation(connector, entry, fighterId, weightClassId, status);
+
+      // Only a FULL champion is projected into `Champion`. An interim titlist is
+      // not the division's champion — writing him as one displaces the real
+      // holder in every existing reader of that table. The reign is still
+      // recorded above, with its own INTERIM status, so nothing is lost.
+      if (status !== "CHAMPION") continue;
 
       // Counts only what actually CHANGED — an unmapped organisation and an
       // unchanged champion both return false, and reporting either as an

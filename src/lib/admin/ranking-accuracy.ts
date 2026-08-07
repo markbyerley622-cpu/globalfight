@@ -243,7 +243,18 @@ export interface ChampionAccuracyReport {
   champions: ChampionAudit[];
   /** Legacy Champion rows with no matching open reign — the migration gap. */
   legacyOnly: number;
-  totals: { champions: number; withIssues: number };
+  /**
+   * Organisations whose TITLES we record but whose contender ratings we do not
+   * ingest. A coverage gap worth naming once — not a defect on every reign.
+   */
+  orgsWithoutRankings: string[];
+  totals: {
+    /** Open reigns with a holder. A VACANT belt is NOT a titleholder. */
+    champions: number;
+    withIssues: number;
+    /** Open reigns recording a belt as vacant. */
+    vacant: number;
+  };
 }
 
 export async function auditChampionAccuracy(now = new Date()): Promise<ChampionAccuracyReport> {
@@ -281,7 +292,23 @@ export async function auditChampionAccuracy(now = new Date()): Promise<ChampionA
     const evidence = (r.evidence ?? null) as { provider?: string; sourceUrl?: string } | null;
     if (!evidence?.provider) issues.push("no_evidence");
     if (r.contested) issues.push("contested");
-    if (!orgsWithRankings.has(r.organisation.toUpperCase())) issues.push("no_ranking_source");
+    // ── "no_ranking_source" means UNEXPLAINED, not "we lack contender ratings"
+    //
+    // This was `!orgsWithRankings.has(org)` — the organisation has no published
+    // contender list. That was a fair smell while every champion source was also
+    // a ranking source, and it became a permanent false positive the moment a
+    // TITLEHOLDER-ONLY source landed: Wikipedia carries the WBC/WBO/IBF/Ring
+    // belts and no ratings for them, because the bodies do not publish ratings
+    // we are cleared to read. It flagged 138 of 183 reigns — an audit that is
+    // always red is an audit nobody reads, which is how the real signal
+    // (no_evidence, contested) gets lost.
+    //
+    // A reign that names the provider it came from is explained. One that has a
+    // provider AND no ranking list is a coverage gap, reported once per
+    // organisation in `orgsWithoutRankings` rather than as a defect on every row.
+    if (!orgsWithRankings.has(r.organisation.toUpperCase()) && !evidence?.provider) {
+      issues.push("no_ranking_source");
+    }
 
     return {
       organisation: r.organisation,
@@ -299,11 +326,19 @@ export async function auditChampionAccuracy(now = new Date()): Promise<ChampionA
   // Legacy rows the reign table does not yet cover. Before this sprint's
   // projection has run, that is ALL of them — which is a migration state, not a
   // fault, and the report says so rather than flagging every belt as broken.
-  const covered = new Set(champions.map((c) => `${c.organisation.toUpperCase()}|${c.division}`));
-  const legacyOnly = legacy.filter((l) => !covered.has(`${l.body}|${l.weightClass.name}`)).length;
+  // Two namespaces meet here and they spell the same body differently:
+  // `Champion.body` is the SanctioningBody enum (THE_RING) while
+  // `TitleReign.organisation` is the source's own string ("The Ring"). Comparing
+  // them raw made every Ring belt look uncovered — it reported the same
+  // organisation twice, as "THE_RING" and "The Ring", and inflated legacyOnly.
+  const orgKey = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const key = (org: string, division: string) => `${orgKey(org)}|${division}`;
+
+  const covered = new Set(champions.map((c) => key(c.organisation, c.division)));
+  const legacyOnly = legacy.filter((l) => !covered.has(key(l.body, l.weightClass.name))).length;
 
   for (const l of legacy) {
-    if (covered.has(`${l.body}|${l.weightClass.name}`)) continue;
+    if (covered.has(key(l.body, l.weightClass.name))) continue;
     champions.push({
       organisation: l.body,
       division: l.weightClass.name,
@@ -317,10 +352,32 @@ export async function auditChampionAccuracy(now = new Date()): Promise<ChampionA
     });
   }
 
+  // A VACANT belt is a fact about a title, not a person holding it. Counting it
+  // as a titleholder made "183 current titleholders" include 30 belts nobody
+  // holds, and printed rows reading `(vacant)` under a Holder column.
+  const vacant = champions.filter((c) => c.status === "VACANT").length;
+
+  // Named once, here, instead of as an issue on every reign of the organisation.
+  const rankedKeys = new Set([...orgsWithRankings].map(orgKey));
+  const orgsWithoutRankings = [
+    ...new Map(
+      champions
+        .filter((c) => !rankedKeys.has(orgKey(c.organisation)))
+        // Keyed on the normalised form so "THE_RING" and "The Ring" are one
+        // entry, displayed under whichever spelling was seen first.
+        .map((c) => [orgKey(c.organisation), c.organisation] as const),
+    ).values(),
+  ].sort();
+
   return {
     generatedAt: now.toISOString(),
     champions: champions.sort((a, b) => b.issues.length - a.issues.length || a.organisation.localeCompare(b.organisation)),
     legacyOnly,
-    totals: { champions: champions.length, withIssues: champions.filter((c) => c.issues.length > 0).length },
+    orgsWithoutRankings,
+    totals: {
+      champions: champions.length - vacant,
+      withIssues: champions.filter((c) => c.issues.length > 0).length,
+      vacant,
+    },
   };
 }

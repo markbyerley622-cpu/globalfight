@@ -19,7 +19,29 @@ import { RANKING_SOURCES, ingestibleSources, sourceTierCounts } from "../sources
 // already-cleared publisher; the men's ratings are a second page of it.
 // Verified against a captured live page before clearing (see connectors/wba.ts,
 // which had a 404 URL and two parse defects that this flip would have shipped).
-const LICENSED_SOURCE_IDS = ["ufc-mma", "wba-female", "wba-male"];
+//
+// wikipedia-boxing-male / -female added 2026-08-07 on the owner's explicit
+// instruction ("scrape wikipedia for better boxing rankings"). The clearance
+// rests on three things, all checkable:
+//   · LICENCE — the pages are CC BY-SA, which permits reuse with attribution;
+//     every emitted row carries its source URL (see connectors/wikipedia-boxing).
+//   · PRECEDENT — this codebase already ingests the same publisher through the
+//     same API for fight cards and results (lib/scraper/wikicard), so no new
+//     publisher relationship is created here.
+//   · NECESSITY — WBC, WBO and IBF are all `licensed: false` with no parser, and
+//     BoxRec (which has them) is permanently blocklisted. Before this, three of
+//     boxing's four major belts were absent from every division: the DB held 0
+//     WBC, 0 WBO and 0 IBF champions.
+// Scope is deliberately narrow: TITLEHOLDERS only, never contender ratings, and
+// trust is `media` (→ ENCYCLOPAEDIC tier) so a sanctioning body's own connector
+// always outranks it on its own belt.
+const LICENSED_SOURCE_IDS = [
+  "ufc-mma",
+  "wba-female",
+  "wba-male",
+  "wikipedia-boxing-female",
+  "wikipedia-boxing-male",
+];
 
 test("only the explicitly-cleared sources are ingestible (compliance gate)", () => {
   assert.deepEqual(ingestibleSources().map((s) => s.id).sort(), [...LICENSED_SOURCE_IDS].sort());

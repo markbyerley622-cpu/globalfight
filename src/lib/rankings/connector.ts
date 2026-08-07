@@ -16,6 +16,13 @@
 export type Gender = "male" | "female";
 export type RankingKind = "professional" | "amateur" | "youth";
 
+/**
+ * The status a titleholder row claims. Mirrors the TitleReign vocabulary in
+ * lib/rankings/champions — kept here so a connector can express it without
+ * importing the persistence layer.
+ */
+export type TitleStatus = "CHAMPION" | "INTERIM" | "VACANT" | "STRIPPED" | "RETIRED" | "LINEAL";
+
 /** Layer 2 — the one normalized shape every source is converted into. */
 export interface RankingEntry {
   /** Fighter display name as published by the source (identity resolution happens later). */
@@ -33,6 +40,20 @@ export interface RankingEntry {
   isPoundForPound?: boolean;
   /** 1-based position. 0 = champion/unranked-holder where a body lists a titlist separately. */
   rank: number;
+  /**
+   * What KIND of title claim a rank-0 row is. Ignored for rank >= 1.
+   *
+   * The champion pipeline has understood CHAMPION / INTERIM / VACANT / STRIPPED /
+   * RETIRED / LINEAL since it was written, but no connector could say which:
+   * ingest called `recordChampionObservation` with the default and every rank-0
+   * row became a full champion. That is fine while the only source lists one
+   * titlist per belt, and wrong the moment a source lists interim and vacant
+   * ones too — an interim titlist written as CHAMPION displaces the real
+   * champion in `Champion` and opens a bogus `TitleReign`.
+   *
+   * Defaults to CHAMPION when omitted, so existing connectors are unaffected.
+   */
+  titleStatus?: TitleStatus;
   gender: Gender;
   kind: RankingKind;
   /** ISO-3166 alpha-2 where the source gives a nationality, else null. */
