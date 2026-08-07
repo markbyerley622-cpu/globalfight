@@ -53,6 +53,35 @@ export interface MapPin {
   /** How many people are checked in here right now. Places only. */
   presentNow?: number;
 
+  /**
+   * Set on event pins only — everything the preview card renders, and NOTHING
+   * more.
+   *
+   * ── Why this is a deliberately small object ───────────────────────────────
+   * Up to 400 event pins ship in one map payload, so every field here is paid
+   * for 400 times. It carries exactly what the card shows and stops: the full
+   * event — undercard, odds, broadcast blocks, crowd splits — is a route away
+   * behind "View event", where it is loaded once for one event rather than
+   * eagerly for every pin on the continent.
+   *
+   * The counts are batched aggregates (two groupBy queries for the whole
+   * layer), never per-pin reads.
+   */
+  event?: {
+    slug: string;
+    /** SPORT label ("Boxing", "MMA") — the fastest thing to scan a card by. */
+    sport: string;
+    /** The headline bout, when the card has one published. */
+    mainEvent: { red: string; blue: string } | null;
+    /** People following this event. */
+    followers: number;
+    /** Predictions made across the whole card. */
+    predictions: number;
+    ticketUrl: string | null;
+    /** Hosted by a VERIFIED promoter organisation — drives the badge. */
+    verifiedPromoter: boolean;
+  };
+
   /** Set on people pins only — everything the person sheet renders. */
   person?: {
     userId: string;
