@@ -83,6 +83,7 @@ const Body = z.object({
   notifyPredictions: z.boolean().optional(),
   notifySocial: z.boolean().optional(),
   notifyGym: z.boolean().optional(),
+  notifyMessages: z.boolean().optional(),
   quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),
   quietHoursEnd: z.number().int().min(0).max(23).nullable().optional(),
   timezone: z.string().max(64).nullable().optional(),
@@ -96,6 +97,7 @@ const SELECT = {
   mapVisibility: true, mapCity: true, mapCountryCode: true, mapLat: true, mapLon: true,
   openToSpar: true, lookingForTraining: true,
   notifyFights: true, notifyPredictions: true, notifySocial: true, notifyGym: true,
+  notifyMessages: true,
   quietHoursStart: true, quietHoursEnd: true, timezone: true,
 } as const;
 
@@ -174,6 +176,7 @@ export async function PATCH(req: Request) {
       notifyPredictions: d.notifyPredictions,
       notifySocial: d.notifySocial,
       notifyGym: d.notifyGym,
+      notifyMessages: d.notifyMessages,
       quietHoursStart: d.quietHoursStart,
       quietHoursEnd: d.quietHoursEnd,
       timezone: d.timezone,

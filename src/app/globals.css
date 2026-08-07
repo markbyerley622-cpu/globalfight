@@ -891,6 +891,47 @@
 .rise { animation: rise .5s var(--ease-out-quint) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   Direct messages — arrival and composing.
+
+   Both are deliberately SHORT (180ms / 1.2s loop). A chat is the one surface a
+   person watches continuously, so motion here is felt far more than it is on a
+   page they scroll past once — anything longer stops reading as responsiveness
+   and starts reading as lag.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* A message arrives rather than appearing between two frames. */
+.cr-msg-in { animation: crMsgIn .18s var(--ease-out-quint) both; }
+@keyframes crMsgIn {
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* "Typing…" — three dots on a staggered bounce. */
+.cr-typing-dot {
+  width: .3rem;
+  height: .3rem;
+  border-radius: 9999px;
+  background: currentColor;
+  color: var(--fog, #8b8f98);
+  display: inline-block;
+  animation: crTyping 1.2s ease-in-out infinite;
+}
+.cr-typing-dot:nth-child(2) { animation-delay: .15s; }
+.cr-typing-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes crTyping {
+  0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+  30%           { opacity: 1;   transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The dots still need to READ as ongoing activity without moving, so they
+     hold at full opacity rather than being hidden — removing the indicator
+     entirely would remove the information, not just the motion. */
+  .cr-msg-in { animation: none; }
+  .cr-typing-dot { animation: none; opacity: .8; }
+}
+
 /* Scroll-reveal — sections fade-rise into place as they enter the scroll view.
    Pure CSS view() timeline: runs off the main thread (60fps), needs zero JS, and
    where unsupported (older WebKit) or under reduced-motion the content is simply

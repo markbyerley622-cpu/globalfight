@@ -46,15 +46,18 @@ export function FightModule({
 
   const battle = summary.battle;
   const battleLabel =
-    // "friend" not "rival" for the INVITE copy: this is the entry point to a
-    // social feature, and asking someone to challenge a rival reads as picking a
-    // fight with a stranger. The mid-battle fallback stays neutral — "vs your
-    // friend" is odd once the contest is under way, and it is only ever shown
-    // when the opponent's name is missing.
-    battle?.state === "ACTIVE" ? `Challenge · vs ${battle.opponentName ?? "your opponent"}`
-    : battle?.state === "RESOLVED" ? "Challenge settled"
-    : battle?.state === "WAITING" ? "Challenge sent · waiting for a friend"
-    : "Challenge a friend";
+    // Describes the STATE OF YOUR BATTLE, in the same vocabulary the room's own
+    // tabs use ("Rival" / "Everyone" — see fight-room). This row used to read
+    // "Challenge a friend", which is a call to action, on a control whose only
+    // function is to expand a discussion. Two different promises from one row.
+    //
+    // "friend" is still the word in the INVITE copy inside the picker itself:
+    // asking someone to challenge a rival reads as picking a fight with a
+    // stranger. Here, where it is reporting rather than inviting, it is neutral.
+    battle?.state === "ACTIVE" ? `Rival · ${battle.opponentName ?? "your opponent"}`
+    : battle?.state === "RESOLVED" ? "Rivalry settled"
+    : battle?.state === "WAITING" ? "Invite sent · waiting"
+    : "No rival yet";
 
   return (
     <div id={anchor} ref={ref} className="scroll-mt-16">

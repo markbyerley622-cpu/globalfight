@@ -4,8 +4,8 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1144 across 878 files
-- **By class:** 796 public · 253 user-owned · 95 shared · 0 admin
+- **Queries analysed:** 1144 across 881 files
+- **By class:** 797 public · 252 user-owned · 95 shared · 0 admin
 - **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 200 low · ⚪ 849 info
 
 ## 🔴 High risk
@@ -68,12 +68,12 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/fighters/profile.ts:300` | reviewClaim | FighterClaim (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/fighters/profile.ts:319` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/fighters/profile.ts:332` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/follow-targets.ts:115` | existing | Follow (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:126` | toggleFollow | Follow (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:212` | rows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:214` | rows | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:215` | rows | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:218` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:123` | existing | Follow (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:134` | toggleFollow | Follow (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:220` | rows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:222` | rows | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:223` | rows | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:226` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/follows.ts:29` | existing | FavoriteFighter (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:68` | existing | FavoritePromotion (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:104` | existing | FavoriteEvent (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |

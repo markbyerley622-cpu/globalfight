@@ -1544,6 +1544,14 @@ model User {
   notifyPredictions Boolean @default(true) // lock deadlines, results, rank moves
   notifySocial      Boolean @default(true) // replies, mentions, follows, battles
   notifyGym         Boolean @default(true) // check-ins, membership, verification
+  /// Direct messages get their OWN switch rather than riding notifySocial.
+  /// A DM is addressed to one person by another person; a reply-to-your-thread
+  /// is not. Someone who mutes "replies and follows" because a busy thread is
+  /// pinging them has said nothing about whether they want to know a friend
+  /// messaged them — and folding the two together is exactly the
+  /// two-switches-for-one-thing bug that lib/push/policy already documents
+  /// against GYM_REVIEW.
+  notifyMessages    Boolean @default(true) // direct messages
   /// Local hours [start, end) during which push is withheld. Null = always on.
   /// Stored as plain hours + an IANA zone rather than UTC instants: "no pings
   /// before 8am" has to survive the user travelling.
@@ -2497,6 +2505,7 @@ enum NotificationType {
   GYM_POST_REPLY // someone commented on, replied to, or mentioned you under a gym post
   GYM_POST_REACTION // someone reacted to your gym post or comment
   GYM_POST_SHARE // someone shared your gym post
+  DIRECT_MESSAGE // someone sent you a private message
   SYSTEM
 }
 
@@ -2915,6 +2924,12 @@ model ConversationMember {
   /// Leaving hides the thread without destroying the other person's copy of the
   /// conversation — a message is shared history, not one user's row.
   archivedAt DateTime?
+  /// Last moment this member was composing. A TIMESTAMP, not a boolean, so the
+  /// signal expires on its own: a reader who types a word and closes the tab
+  /// leaves no "still typing…" stuck on the other side forever, because the
+  /// consumer only believes a value a few seconds old (TYPING_TTL_MS in
+  /// lib/messages/repo). There is nothing to clean up and no sweep to schedule.
+  typingAt   DateTime?
 
   @@unique([conversationId, userId])
   @@index([userId])

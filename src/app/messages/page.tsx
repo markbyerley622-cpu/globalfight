@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MessageSquare, Users } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ForumAvatar } from "@/components/forums/user-identity";
+import { NewMessageButton } from "@/components/messages/new-message-button";
 import { getCurrentUser } from "@/lib/auth";
 import { listConversations } from "@/lib/messages/repo";
 import { timeAgo, cn } from "@/lib/utils";
@@ -33,11 +34,24 @@ export default async function MessagesPage() {
       />
 
       <div className="container-cr py-6">
+        {/* The compose control, on the surface that is FOR composing. It sits
+            above the list in both states — an inbox with fifty threads still
+            needs a way to open the fifty-first, and hunting for it inside a
+            profile page is not one. */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-xs text-fog">
+            {conversations.length > 0
+              ? `${conversations.length} conversation${conversations.length === 1 ? "" : "s"}`
+              : "Private, one-to-one."}
+          </p>
+          <NewMessageButton />
+        </div>
+
         {conversations.length === 0 ? (
           <EmptyState
             icon={<MessageSquare className="size-6" />}
             title="No conversations yet"
-            body="Messages are private, one-to-one, and start from someone's profile. Find a predictor whose calls you rate, then open the conversation from their page."
+            body="Messages here are private to the two of you. Search for anyone by name or @handle to start one — or find a predictor whose calls you rate."
             action={{ href: "/leaderboard", label: "Browse the leaderboard" }}
             secondary={
               <Link href="/following" className="text-sm font-semibold text-blood-300 hover:text-blood-200">
@@ -86,11 +100,6 @@ export default async function MessagesPage() {
           </ul>
         )}
 
-        {conversations.length > 0 && (
-          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-fog">
-            <Users className="size-3.5" /> Start a new conversation from someone&apos;s profile.
-          </p>
-        )}
       </div>
     </>
   );

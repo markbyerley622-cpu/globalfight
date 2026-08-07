@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { PREF_COLUMN, type NotifCategory } from "@/lib/push/policy";
 
 import {
   toggleFollowFighter, toggleFollowPromotion, toggleFollowEvent,
@@ -33,8 +34,15 @@ export interface FollowTarget {
   id: string;
 }
 
-/** Which notification preference governs this target's notifications. */
-export type NotifyCategory = "fights" | "predictions" | "social" | "gym";
+/**
+ * Which notification preference governs this target's notifications.
+ *
+ * Deliberately NARROWER than the full NotifCategory set: nothing is "followed"
+ * into a direct message, so a follow target can never carry that category. The
+ * preference FILTER below takes the wide type, because it also serves the
+ * return engine, which does span every category.
+ */
+export type NotifyCategory = Exclude<NotifCategory, "messages">;
 
 interface TargetSpec {
   /** Legacy targets keep their own table; new ones use the polymorphic Follow row. */
@@ -229,12 +237,9 @@ export async function followerIdsToNotify(
   return filterByPreference(ids, spec.category);
 }
 
-const PREF_COLUMN: Record<NotifyCategory, "notifyFights" | "notifyPredictions" | "notifySocial" | "notifyGym"> = {
-  fights: "notifyFights",
-  predictions: "notifyPredictions",
-  social: "notifySocial",
-  gym: "notifyGym",
-};
+// PREF_COLUMN lives in lib/push/policy — see the note there. This module used
+// to keep its own copy, which meant a new category had to be added in two
+// places or delivery here would be governed by a stale table.
 
 /**
  * Keep only the users who want this category. One query for the whole set.
@@ -243,7 +248,7 @@ const PREF_COLUMN: Record<NotifyCategory, "notifyFights" | "notifyPredictions" |
  * followerIdsToNotify, and a user who turned the category off is simply not in the
  * list it returns.
  */
-export async function filterByPreference(userIds: string[], category: NotifyCategory): Promise<string[]> {
+export async function filterByPreference(userIds: string[], category: NotifCategory): Promise<string[]> {
   if (!userIds.length) return [];
   const column = PREF_COLUMN[category];
   const rows = await prisma.user.findMany({

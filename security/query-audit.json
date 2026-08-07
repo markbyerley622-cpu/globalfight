@@ -6,8 +6,8 @@
     "medium": 95,
     "low": 200,
     "info": 849,
-    "public": 796,
-    "userOwned": 253,
+    "public": 797,
+    "userOwned": 252,
     "shared": 95,
     "admin": 0
   },
@@ -1351,7 +1351,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 115,
+      "line": 123,
       "fn": "existing",
       "model": "Follow",
       "method": "findUnique",
@@ -1364,7 +1364,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 126,
+      "line": 134,
       "fn": "toggleFollow",
       "model": "Follow",
       "method": "delete",
@@ -1377,7 +1377,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 212,
+      "line": 220,
       "fn": "rows",
       "model": "FavoriteFighter",
       "method": "findMany",
@@ -1390,7 +1390,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 214,
+      "line": 222,
       "fn": "rows",
       "model": "FavoritePromotion",
       "method": "findMany",
@@ -1403,7 +1403,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 215,
+      "line": 223,
       "fn": "rows",
       "model": "FavoriteEvent",
       "method": "findMany",
@@ -1416,7 +1416,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 218,
+      "line": 226,
       "fn": "rows",
       "model": "Follow",
       "method": "findMany",
@@ -2131,7 +2131,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 156,
+      "line": 158,
       "fn": "profile",
       "model": "User",
       "method": "update",
@@ -3665,7 +3665,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 69,
+      "line": 71,
       "fn": "convo",
       "model": "Conversation",
       "method": "upsert",
@@ -3678,7 +3678,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 229,
+      "line": 266,
       "fn": "sendMessage",
       "model": "Conversation",
       "method": "update",
@@ -3847,7 +3847,7 @@
     },
     {
       "file": "src/lib/push/send.ts",
-      "line": 109,
+      "line": 110,
       "fn": "pushToUsers",
       "model": "PushSubscription",
       "method": "update",
@@ -3860,7 +3860,7 @@
     },
     {
       "file": "src/lib/push/send.ts",
-      "line": 119,
+      "line": 120,
       "fn": "pushToUsers",
       "model": "PushSubscription",
       "method": "deleteMany",
@@ -5355,7 +5355,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 107,
+      "line": 109,
       "fn": "GET",
       "model": "User",
       "method": "findUnique",
@@ -5368,7 +5368,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 108,
+      "line": 110,
       "fn": "GET",
       "model": "GymMember",
       "method": "findFirst",
@@ -5381,7 +5381,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 112,
+      "line": 114,
       "fn": "GET",
       "model": "FavoritePromotion",
       "method": "findMany",
@@ -5394,7 +5394,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 138,
+      "line": 140,
       "fn": "current",
       "model": "User",
       "method": "findUnique",
@@ -8319,7 +8319,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 293,
+      "line": 309,
       "fn": "queryEvents",
       "model": "Event",
       "method": "count",
@@ -8332,7 +8332,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 296,
+      "line": 312,
       "fn": "queryEvents",
       "model": "Event",
       "method": "count",
@@ -8345,7 +8345,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 306,
+      "line": 322,
       "fn": "queryEvents",
       "model": "Event",
       "method": "findMany",
@@ -8358,7 +8358,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 313,
+      "line": 329,
       "fn": "queryEvents",
       "model": "Event",
       "method": "count",
@@ -8371,7 +8371,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 359,
+      "line": 375,
       "fn": "getEventFacets",
       "model": "Event",
       "method": "groupBy",
@@ -8384,7 +8384,7 @@
     },
     {
       "file": "src/lib/events-query.ts",
-      "line": 364,
+      "line": 380,
       "fn": "getEventFacets",
       "model": "Event",
       "method": "groupBy",
@@ -8865,7 +8865,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 122,
+      "line": 130,
       "fn": "toggleFollow",
       "model": "Follow",
       "method": "create",
@@ -8878,7 +8878,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 139,
+      "line": 147,
       "fn": "row",
       "model": "UserFollow",
       "method": "findUnique",
@@ -8891,7 +8891,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 150,
+      "line": 158,
       "fn": "row",
       "model": "Fighter",
       "method": "findUnique",
@@ -8904,7 +8904,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 151,
+      "line": 159,
       "fn": "row",
       "model": "Event",
       "method": "findUnique",
@@ -8917,7 +8917,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 165,
+      "line": 173,
       "fn": "row",
       "model": "Follow",
       "method": "findUnique",
@@ -8930,7 +8930,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 176,
+      "line": 184,
       "fn": "followerCount",
       "model": "UserFollow",
       "method": "count",
@@ -8943,7 +8943,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 177,
+      "line": 185,
       "fn": "followerCount",
       "model": "FavoriteFighter",
       "method": "count",
@@ -8956,7 +8956,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 178,
+      "line": 186,
       "fn": "followerCount",
       "model": "FavoritePromotion",
       "method": "count",
@@ -8969,7 +8969,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 179,
+      "line": 187,
       "fn": "followerCount",
       "model": "FavoriteEvent",
       "method": "count",
@@ -8982,7 +8982,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 181,
+      "line": 189,
       "fn": "followerCount",
       "model": "Follow",
       "method": "count",
@@ -8995,7 +8995,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 203,
+      "line": 211,
       "fn": "rows",
       "model": "UserFollow",
       "method": "findMany",
@@ -9008,7 +9008,7 @@
     },
     {
       "file": "src/lib/follow-targets.ts",
-      "line": 249,
+      "line": 254,
       "fn": "rows",
       "model": "User",
       "method": "findMany",
@@ -12297,7 +12297,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 62,
+      "line": 64,
       "fn": "other",
       "model": "User",
       "method": "findUnique",
@@ -12310,7 +12310,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 80,
+      "line": 82,
       "fn": "openConversation",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12323,7 +12323,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 90,
+      "line": 92,
       "fn": "convo",
       "model": "Conversation",
       "method": "findFirst",
@@ -12336,7 +12336,20 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 101,
+      "line": 125,
+      "fn": "setTyping",
+      "model": "ConversationMember",
+      "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 137,
       "fn": "rows",
       "model": "Conversation",
       "method": "findMany",
@@ -12349,7 +12362,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 122,
+      "line": 158,
       "fn": "counts",
       "model": "DirectMessage",
       "method": "groupBy",
@@ -12362,7 +12375,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 156,
+      "line": 192,
       "fn": "members",
       "model": "ConversationMember",
       "method": "findMany",
@@ -12375,7 +12388,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 162,
+      "line": 198,
       "fn": "unreadMessageCount",
       "model": "DirectMessage",
       "method": "count",
@@ -12388,7 +12401,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 185,
+      "line": 221,
       "fn": "rows",
       "model": "DirectMessage",
       "method": "findMany",
@@ -12401,7 +12414,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 225,
+      "line": 262,
       "fn": "sendMessage",
       "model": "DirectMessage",
       "method": "create",
@@ -12414,7 +12427,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 234,
+      "line": 274,
       "fn": "sendMessage",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12427,7 +12440,20 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 253,
+      "line": 326,
+      "fn": "sender",
+      "model": "User",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 354,
       "fn": "markRead",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -13141,32 +13167,6 @@
       "why": "Public model read — world-readable by design."
     },
     {
-      "file": "src/lib/online.ts",
-      "line": 44,
-      "fn": "getOnlineCount",
-      "model": "AnalyticsEvent",
-      "method": "groupBy",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
-    },
-    {
-      "file": "src/lib/online.ts",
-      "line": 55,
-      "fn": "getOnlineCount",
-      "model": "AnalyticsEvent",
-      "method": "count",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
-    },
-    {
       "file": "src/lib/picks.ts",
       "line": 34,
       "fn": "f",
@@ -13454,7 +13454,7 @@
     },
     {
       "file": "src/lib/push/send.ts",
-      "line": 79,
+      "line": 80,
       "fn": "users",
       "model": "User",
       "method": "findMany",

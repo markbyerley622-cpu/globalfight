@@ -7,7 +7,7 @@
 //  how "I turned that off and still got it" happens.
 // ════════════════════════════════════════════════════════════════════════════
 
-export type NotifCategory = "fights" | "predictions" | "social" | "gym";
+export type NotifCategory = "fights" | "predictions" | "social" | "gym" | "messages";
 
 /**
  * NotificationType → category.
@@ -43,6 +43,11 @@ export const CATEGORY_OF: Record<string, NotifCategory> = {
   // category (and a migration). A user who muted predictions muting this too is
   // coherent.
   STREAK_REMINDER: "predictions",
+  // A DM is addressed to YOU by a person, which is a different promise from
+  // "someone replied in a thread you are in". Its own switch, for the same
+  // reason GYM_REVIEW above has one: a user who mutes replies has not said
+  // anything about whether they want to hear from their friends.
+  DIRECT_MESSAGE: "messages",
   SYSTEM: "social",
 };
 
@@ -51,6 +56,7 @@ export const CATEGORIES: { id: NotifCategory; label: string; help: string }[] = 
   { id: "predictions", label: "Predictions", help: "Pick deadlines, results, and rank movement." },
   { id: "social", label: "Replies & follows", help: "Replies to you, battles, and new followers." },
   { id: "gym", label: "Your gym", help: "Check-ins, membership and verification." },
+  { id: "messages", label: "Direct messages", help: "Private messages sent to you." },
 ];
 
 export interface NotifPrefs {
@@ -58,17 +64,31 @@ export interface NotifPrefs {
   notifyPredictions: boolean;
   notifySocial: boolean;
   notifyGym: boolean;
+  notifyMessages: boolean;
   quietHoursStart: number | null;
   quietHoursEnd: number | null;
   timezone: string | null;
 }
 
-const ENABLED: Record<NotifCategory, keyof NotifPrefs> = {
+/**
+ * Category → the User column that switches it off.
+ *
+ * EXPORTED because lib/follow-targets kept a second copy of this map for its
+ * own preference filter, and the two had to be edited together — which is
+ * exactly the "second copy of this mapping is how 'I turned that off and still
+ * got it' happens" failure this module's header warns about. It was already
+ * happening: adding a category here left the other map a compile error away
+ * from silently governing delivery by a stale table.
+ */
+export const PREF_COLUMN: Record<NotifCategory, keyof NotifPrefs> = {
   fights: "notifyFights",
   predictions: "notifyPredictions",
   social: "notifySocial",
   gym: "notifyGym",
+  messages: "notifyMessages",
 };
+
+const ENABLED = PREF_COLUMN;
 
 /** The user's local hour, honouring their stored zone. */
 export function localHour(tz: string | null, at: Date = new Date()): number {
