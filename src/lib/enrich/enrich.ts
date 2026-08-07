@@ -105,8 +105,29 @@ export async function enrichPending(limit = 50): Promise<{ scanned: number; enri
   const priority = (await prisma.fighter.findMany({
     where: {
       photoUrl: null,
-      OR: [{ fightsAsRed: onUpcoming }, { fightsAsBlue: onUpcoming }],
+      AND: [
+        { OR: [{ fightsAsRed: onUpcoming }, { fightsAsBlue: onUpcoming }] },
+        // ── HEAD-OF-LINE BLOCKING, and it stopped the photo queue dead ────────
+        // This lane used to filter on `photoUrl: null` ALONE. But not every
+        // fighter HAS a free-licensed Commons photo, and the ones who don't stay
+        // photoUrl:null forever — so the same 50 were re-selected on every run,
+        // in perpetuity, and `backfill` below never executed because
+        // `priority.length >= limit` was always true.
+        //
+        // Observed in production: twelve consecutive rounds scanning the
+        // identical 50 fighters (Song Yadong, Waldo Cortes-Acosta, Natália
+        // Silva…) for `enriched=0 photos=0`, while 9,150 fighters with no photo
+        // sat behind them and were never once attempted.
+        //
+        // Honouring lastProfileScrapedAt makes the lane DRAIN: a fighter who
+        // yields nothing is not retried for ENRICH_STALE_DAYS, so the next batch
+        // is 50 people we have not asked about yet.
+        { OR: [{ lastProfileScrapedAt: null }, { lastProfileScrapedAt: { lt: staleBefore } }] },
+      ],
     },
+    // Oldest attempt first, never-attempted before that — so the queue rotates
+    // instead of re-reading whatever Postgres happens to return first.
+    orderBy: { lastProfileScrapedAt: { sort: "asc", nulls: "first" } },
     take: limit,
     select: FIELDS,
   })) as FighterRow[];
