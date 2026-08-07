@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Search, UserRound } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
+import type { PresenceDto } from "@/lib/presence/policy";
 import { cn } from "@/lib/utils";
 
-export interface Person { username: string; name: string; image: string | null }
+export interface Person {
+  username: string;
+  name: string;
+  image: string | null;
+  /** Filtered server-side. "Are they around?" is what decides who you pick. */
+  presence?: PresenceDto | null;
+}
 
 /**
  * FIND A PERSON — the search box, the list, and the three empty states.
@@ -132,7 +139,7 @@ export function PeoplePicker({
                 busy === p.username && "opacity-60",
               )}
             >
-              <ForumAvatar name={p.name} image={p.image} size="md" />
+              <ForumAvatar name={p.name} image={p.image} size="md" presence={p.presence ?? null} showOffline={false} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-sm font-bold text-chalk">{p.name}</span>
                 <span className="block truncate text-xs text-fog">@{p.username}</span>

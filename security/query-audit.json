@@ -925,7 +925,7 @@
     },
     {
       "file": "src/app/gyms/[slug]/followers/page.tsx",
-      "line": 50,
+      "line": 52,
       "fn": "rows",
       "model": "Follow",
       "method": "findMany",
@@ -1536,7 +1536,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 279,
+      "line": 281,
       "fn": "getMutualFollowers",
       "model": "UserFollow",
       "method": "findMany",
@@ -4266,7 +4266,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 51,
+      "line": 53,
       "fn": "after",
       "model": "User",
       "method": "update",
@@ -5579,7 +5579,7 @@
     },
     {
       "file": "src/app/api/search/route.ts",
-      "line": 74,
+      "line": 76,
       "fn": "GET",
       "model": "Gym",
       "method": "findMany",
@@ -5592,7 +5592,7 @@
     },
     {
       "file": "src/app/api/search/route.ts",
-      "line": 85,
+      "line": 87,
       "fn": "GET",
       "model": "User",
       "method": "findMany",
@@ -5644,7 +5644,7 @@
     },
     {
       "file": "src/app/api/users/search/route.ts",
-      "line": 50,
+      "line": 55,
       "fn": "rows",
       "model": "User",
       "method": "findMany",
@@ -5657,7 +5657,7 @@
     },
     {
       "file": "src/app/api/users/search/route.ts",
-      "line": 74,
+      "line": 79,
       "fn": "rows",
       "model": "UserFollow",
       "method": "findMany",
@@ -5761,7 +5761,7 @@
     },
     {
       "file": "src/app/gyms/[slug]/followers/page.tsx",
-      "line": 26,
+      "line": 28,
       "fn": "loadGym",
       "model": "Gym",
       "method": "findUnique",
@@ -10441,33 +10441,33 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 50,
-      "fn": "loadViewer",
-      "model": "UserFollow",
-      "method": "findMany",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
-    },
-    {
-      "file": "src/lib/geo/people.ts",
-      "line": 51,
-      "fn": "loadViewer",
-      "model": "UserFollow",
-      "method": "findMany",
-      "klass": "USER_OWNED",
-      "kind": "read",
-      "ownership": "scoped",
-      "severity": "INFO",
-      "confidence": "high",
-      "why": "Owner-scoped read/write on a private model."
-    },
-    {
-      "file": "src/lib/geo/people.ts",
       "line": 52,
+      "fn": "loadViewer",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 53,
+      "fn": "loadViewer",
+      "model": "UserFollow",
+      "method": "findMany",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/geo/people.ts",
+      "line": 54,
       "fn": "loadViewer",
       "model": "GymMember",
       "method": "findMany",
@@ -10480,7 +10480,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 115,
+      "line": 117,
       "fn": "rows",
       "model": "User",
       "method": "findMany",
@@ -10493,7 +10493,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 181,
+      "line": 183,
       "fn": "setFollow",
       "model": "UserFollow",
       "method": "deleteMany",
@@ -10506,7 +10506,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 185,
+      "line": 187,
       "fn": "setFollow",
       "model": "UserFollow",
       "method": "upsert",
@@ -10519,7 +10519,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 194,
+      "line": 196,
       "fn": "target",
       "model": "User",
       "method": "findUnique",
@@ -10532,7 +10532,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 213,
+      "line": 215,
       "fn": "me",
       "model": "User",
       "method": "findUnique",
@@ -10545,7 +10545,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 230,
+      "line": 232,
       "fn": "getFollowCounts",
       "model": "UserFollow",
       "method": "count",
@@ -10558,7 +10558,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 231,
+      "line": 233,
       "fn": "getFollowCounts",
       "model": "UserFollow",
       "method": "count",
@@ -10571,7 +10571,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 278,
+      "line": 280,
       "fn": "getMutualFollowers",
       "model": "UserFollow",
       "method": "count",
@@ -10584,7 +10584,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 322,
+      "line": 336,
       "fn": "rows",
       "model": "UserFollow",
       "method": "findMany",
@@ -10597,7 +10597,7 @@
     },
     {
       "file": "src/lib/geo/people.ts",
-      "line": 328,
+      "line": 342,
       "fn": "rows",
       "model": "UserFollow",
       "method": "findMany",
@@ -15017,7 +15017,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 48,
+      "line": 50,
       "fn": "awardReputation",
       "model": "ReputationEvent",
       "method": "create",
@@ -15030,7 +15030,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 103,
+      "line": 105,
       "fn": "getReputationLeaders",
       "model": "User",
       "method": "findMany",
@@ -15043,7 +15043,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 173,
+      "line": 188,
       "fn": "grouped",
       "model": "ReputationEvent",
       "method": "groupBy",
@@ -15056,7 +15056,7 @@
     },
     {
       "file": "src/lib/reputation.ts",
-      "line": 185,
+      "line": 200,
       "fn": "users",
       "model": "User",
       "method": "findMany",

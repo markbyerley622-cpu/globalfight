@@ -1,6 +1,8 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { PRESENCE_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor, type PresenceDto } from "@/lib/presence/policy";
 import { notify } from "@/lib/notifications-store";
 import { notifyCommunityMilestone } from "@/lib/social/person-triggers";
 
@@ -105,8 +107,10 @@ export async function getReputationLeaders(limit = 25) {
     orderBy: [{ reputation: "desc" }, { bestPickStreak: "desc" }],
     take: limit,
     select: {
-      id: true, name: true, username: true, image: true, reputation: true,
+      name: true, username: true, image: true, reputation: true,
       picksResolved: true, picksCorrect: true, pickStreak: true, bestPickStreak: true,
+      // `id` arrives with this fragment.
+      ...PRESENCE_SELECT,
     },
   });
 }
@@ -136,6 +140,11 @@ export interface Leader {
   bestPickStreak: number;
   /** Whole-percent accuracy, all-time (a month of picks is too thin to rank on). */
   accuracy: number;
+  /**
+   * Filtered for the VIEWER. Null when the caller did not supply one — the
+   * leaderboard is a public, cacheable page and most callers do not need it.
+   */
+  presence: PresenceDto | null;
 }
 
 /** Start of the current month / year, or null for all-time. */
@@ -156,7 +165,12 @@ const accuracyOf = (correct: number, resolved: number) =>
  * takes the top N, then fetches those users — two indexed queries whose cost is
  * set by the window, never by how many users exist.
  */
-export async function getLeaderboard(w: LeaderWindow, limit = 50): Promise<Leader[]> {
+export async function getLeaderboard(
+  w: LeaderWindow,
+  limit = 50,
+  /** Who is reading. Presence is viewer-dependent; omit on public/cached paths. */
+  viewerId: string | null = null,
+): Promise<Leader[]> {
   const since = windowStart(w);
 
   if (!since) {
@@ -167,6 +181,7 @@ export async function getLeaderboard(w: LeaderWindow, limit = 50): Promise<Leade
       picksResolved: u.picksResolved, picksCorrect: u.picksCorrect,
       bestPickStreak: u.bestPickStreak,
       accuracy: accuracyOf(u.picksCorrect, u.picksResolved),
+      presence: presenceDtoFor(u, viewerId),
     }));
   }
 
@@ -185,8 +200,9 @@ export async function getLeaderboard(w: LeaderWindow, limit = 50): Promise<Leade
   const users = await prisma.user.findMany({
     where: { id: { in: scored.map((g) => g.userId) } },
     select: {
-      id: true, name: true, username: true, image: true,
+      name: true, username: true, image: true,
       picksResolved: true, picksCorrect: true, bestPickStreak: true,
+      ...PRESENCE_SELECT,
     },
   });
   const byId = new Map(users.map((u) => [u.id, u]));
@@ -196,6 +212,7 @@ export async function getLeaderboard(w: LeaderWindow, limit = 50): Promise<Leade
     if (!u) return []; // deleted between the two reads
     return [{
       id: u.id, name: u.name, username: u.username, image: u.image,
+      presence: presenceDtoFor(u, viewerId),
       points: g._sum.delta ?? 0,
       picksResolved: u.picksResolved, picksCorrect: u.picksCorrect,
       bestPickStreak: u.bestPickStreak,

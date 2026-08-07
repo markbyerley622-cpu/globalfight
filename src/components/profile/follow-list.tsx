@@ -4,6 +4,7 @@ import { Trophy, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FollowButton } from "@/components/follow-button";
 import { initialsFor } from "@/lib/display-name";
+import { PresenceDot } from "@/components/presence/presence-dot";
 import type { FollowListPerson } from "@/lib/geo/people";
 
 /**
@@ -75,14 +76,22 @@ export function FollowList({
             href={`/u/${p.username}`}
             className="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
           >
-            <span className="size-10 shrink-0 overflow-hidden rounded-lg border border-ink-700 bg-ink-850">
-              {p.image ? (
-                <Image src={p.image} alt="" width={80} height={80} className="size-full object-cover" unoptimized />
-              ) : (
-                <span className="flex size-full items-center justify-center font-display text-sm font-bold text-mist">
-                  {initialsFor(p)}
-                </span>
-              )}
+            {/* A followers list is a discovery surface — "who here is around
+                right now" is exactly the signal that makes one person worth
+                opening over another. `showOffline={false}`: at up to 200 rows a
+                grey dot on every offline person is a wall of grey circles that
+                drains the meaning out of the green ones. */}
+            <span className="relative size-10 shrink-0 rounded-lg border border-ink-700 bg-ink-850">
+              <span className="block size-full overflow-hidden rounded-lg">
+                {p.image ? (
+                  <Image src={p.image} alt="" width={80} height={80} className="size-full object-cover" unoptimized />
+                ) : (
+                  <span className="flex size-full items-center justify-center font-display text-sm font-bold text-mist">
+                    {initialsFor(p)}
+                  </span>
+                )}
+              </span>
+              <PresenceDot presence={p.presence} showOffline={false} ringClassName="border-ink-950" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-display font-semibold text-chalk">{p.name}</span>

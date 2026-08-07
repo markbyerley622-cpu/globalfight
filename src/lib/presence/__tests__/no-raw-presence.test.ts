@@ -62,6 +62,27 @@ describe("raw presence columns stay inside the policy layer", () => {
     assert.ok(files.length > 300, `only ${files.length} files scanned — the walk is broken`);
   });
 
+  test("the detector actually detects — this guard is not vacuous", () => {
+    // Every surface wired so far uses `...PRESENCE_SELECT`, so nothing trips the
+    // pattern and the suite goes green. That is the CORRECT outcome and it is
+    // also indistinguishable from a broken regex. These assertions pin the
+    // detector itself, so a future edit that neuters it fails here rather than
+    // quietly permitting the leak it exists to catch.
+    assert.ok(RAW.test("select: { id: true, lastSeenAt: true }"), "misses a hand-written lastSeenAt");
+    assert.ok(RAW.test("if (u.showOnlineStatus) {"), "misses a showOnlineStatus read");
+    assert.ok(RAW.test("allowReadReceipts: true"), "misses allowReadReceipts");
+    assert.ok(RAW.test("allowTypingIndicator"), "misses allowTypingIndicator");
+    assert.ok(RAW.test("showLastSeen"), "misses showLastSeen");
+
+    // …and does NOT fire on the approved pattern, or every wired surface would
+    // need an exemption and the allow-list would become the whole app.
+    assert.equal(RAW.test("select: { name: true, ...PRESENCE_SELECT }"), false);
+    assert.equal(RAW.test("presence: presenceDtoFor(u, viewerId)"), false);
+
+    // Comments are stripped before matching, so prose about the rule is safe.
+    assert.equal(RAW.test(stripComments("// never select lastSeenAt by hand")), false);
+  });
+
   test("no surface reads a presence column directly", () => {
     const offenders: string[] = [];
     for (const file of files) {

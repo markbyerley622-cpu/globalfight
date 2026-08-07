@@ -2,6 +2,8 @@ import "server-only";
 import { activityFollowed } from "@/lib/activity/emit";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { PRESENCE_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor, type PresenceDto } from "@/lib/presence/policy";
 import { resolvePoint } from "./gazetteer";
 import { getTrainingNow } from "./presence";
 import type { MapPin, UnmappedPin } from "./types";
@@ -293,6 +295,8 @@ export interface FollowListPerson {
   name: string;
   image: string | null;
   reputation: number;
+  /** Filtered for the VIEWER by presenceDtoFor — never a raw timestamp. */
+  presence: PresenceDto;
 }
 
 /**
@@ -309,9 +313,19 @@ export async function listFollows(
   userId: string,
   direction: "followers" | "following",
   limit = 100,
+  /**
+   * Who is READING the list. Presence is viewer-dependent — the same person is
+   * hidden to a stranger and visible to themselves — so the list cannot be
+   * built without knowing who asked.
+   */
+  viewerId: string | null = null,
 ): Promise<FollowListPerson[]> {
   const take = Math.min(Math.max(limit, 1), 200);
-  const person = { select: { username: true, name: true, image: true, reputation: true } } as const;
+  // PRESENCE_SELECT rather than the columns by hand: a new privacy switch then
+  // reaches this query without anybody remembering it exists.
+  const person = {
+    select: { username: true, name: true, image: true, reputation: true, ...PRESENCE_SELECT },
+  } as const;
 
   // TWO explicit queries rather than one with a conditional `select`. Passing
   // `follower: undefined` inside a select is the kind of thing TypeScript accepts
@@ -340,6 +354,7 @@ export async function listFollows(
       name: publicDisplayName(p),
       image: p.image,
       reputation: p.reputation,
+      presence: presenceDtoFor(p, viewerId),
     }];
   });
 }

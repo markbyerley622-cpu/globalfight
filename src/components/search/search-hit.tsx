@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { PresenceDot } from "@/components/presence/presence-dot";
+import type { PresenceDto } from "@/lib/presence/policy";
 import { BadgeCheck } from "lucide-react";
 import { FollowButton, type FollowKind } from "@/components/follow-button";
 
@@ -45,6 +47,7 @@ export function SearchHit({
   name,
   meta,
   image,
+  presence,
   fallbackIcon,
   verified,
   following,
@@ -59,6 +62,8 @@ export function SearchHit({
   name: React.ReactNode;
   meta?: React.ReactNode;
   image?: string | null;
+  /** People rows only. Absent on gyms, events and fighters — see the audit. */
+  presence?: PresenceDto | null;
   fallbackIcon: React.ReactNode;
   verified?: boolean;
   following?: boolean;
@@ -74,13 +79,21 @@ export function SearchHit({
         onClick={onNavigate}
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400"
       >
-        <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg border border-ink-700 bg-ink-850 text-mist">
-          {image ? (
-            // 72px source for a 36px box — crisp on a 2× screen without paying for
-            // a full-size portrait in a list of six.
-            <Image src={image} alt="" width={72} height={72} className="size-full object-cover" unoptimized />
-          ) : (
-            fallbackIcon
+        <span className="relative size-9 shrink-0">
+          <span className="grid size-full place-items-center overflow-hidden rounded-lg border border-ink-700 bg-ink-850 text-mist">
+            {image ? (
+              // 72px source for a 36px box — crisp on a 2× screen without paying for
+              // a full-size portrait in a list of six.
+              <Image src={image} alt="" width={72} height={72} className="size-full object-cover" unoptimized />
+            ) : (
+              fallbackIcon
+            )}
+          </span>
+          {/* Only when the caller supplied one, and only positive presence:
+              search results are scanned, not studied, and a grey dot on every
+              row is noise that hides the green one. */}
+          {presence !== undefined && (
+            <PresenceDot presence={presence} size="sm" showOffline={false} ringClassName="border-ink-900" />
           )}
         </span>
         <span className="min-w-0 flex-1">

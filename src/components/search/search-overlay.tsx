@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, X, Loader2, Users, CalendarDays, Newspaper, MessagesSquare, Compass, Dumbbell, Shield, User, Play } from "lucide-react";
 import { Flag } from "@/components/flag";
 import { SearchHit, type SearchFollowMaps } from "@/components/search/search-hit";
+import type { PresenceDto } from "@/lib/presence/policy";
 import { publicDisplayName } from "@/lib/display-name";
 import { useT } from "@/lib/i18n";
 
@@ -17,7 +18,7 @@ type Results = {
   fighters: FighterHit[];
   events: { slug: string; name: string; city: string | null }[];
   gyms: { slug: string; name: string; place: string | null; verified: boolean; memberCount: number; disciplines: string[] }[];
-  people: { username: string; name: string | null; image: string | null; role: string; reputation: number; self?: boolean }[];
+  people: { username: string; name: string | null; image: string | null; role: string; reputation: number; self?: boolean; presence?: PresenceDto | null }[];
   promotions: { slug: string; name: string }[];
   articles: { slug: string; title: string; category: string }[];
   videos: { id: string; title: string; channel: string; promotion: string | null; reason: string }[];
@@ -228,6 +229,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
               slug={u.self ? undefined : u.username}
               name={publicDisplayName(u)}
               image={u.image}
+              presence={u.presence ?? null}
               fallbackIcon={<User className="size-4 text-gold-400" />}
               meta={`@${u.username}${u.role && u.role !== "fan" ? ` · ${u.role}` : ""}`}
               following={f?.following.people[u.username]}

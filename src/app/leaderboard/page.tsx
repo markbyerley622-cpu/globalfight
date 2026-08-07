@@ -8,6 +8,8 @@ import { getLeaderboard, LEADER_WINDOWS, type Leader, type LeaderWindow } from "
 import { flags } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 import { publicDisplayName } from "@/lib/display-name";
+import { getCurrentUser } from "@/lib/auth";
+import { PresenceDot } from "@/components/presence/presence-dot";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -43,7 +45,10 @@ export default async function LeaderboardPage({
   const board: Board = sp.board === "fighters" ? "fighters" : "predictors";
   const win = (LEADER_WINDOWS.find((w) => w.id === sp.window)?.id ?? "all") as LeaderWindow;
 
-  const leaders = board === "predictors" ? await getLeaderboard(win, 50) : [];
+  // The viewer is loaded ONLY to resolve presence — everything else on this page
+  // is public and identical for everyone.
+  const viewer = await getCurrentUser().catch(() => null);
+  const leaders = board === "predictors" ? await getLeaderboard(win, 50, viewer?.id ?? null) : [];
   const rankingsOn = flags().rankingsEnabled;
 
   return (
@@ -111,23 +116,32 @@ const MEDAL = ["text-gold-300", "text-mist", "text-gold-600"];
 
 function Avatar({ leader, size }: { leader: Leader; size: number }) {
   const letter = publicDisplayName(leader).slice(0, 1).toUpperCase();
-  return leader.image ? (
+  const face = leader.image ? (
     <Image
       src={leader.image}
       alt=""
       width={size}
       height={size}
       unoptimized
-      className="shrink-0 rounded-full object-cover"
-      style={{ width: size, height: size }}
+      className="size-full rounded-full object-cover"
     />
   ) : (
     <span
       aria-hidden
-      className="grid shrink-0 place-items-center rounded-full bg-blood-500/15 font-display font-bold text-blood-300"
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
+      className="grid size-full place-items-center rounded-full bg-blood-500/15 font-display font-bold text-blood-300"
+      style={{ fontSize: size * 0.4 }}
     >
       {letter}
+    </span>
+  );
+
+  // `showOffline={false}` on a 50-row board: a grey dot on every offline
+  // predictor is fifty grey circles, which drains the meaning out of the few
+  // green ones. Only positive presence earns ink here.
+  return (
+    <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
+      {face}
+      <PresenceDot presence={leader.presence} showOffline={false} ringClassName="border-ink-950" />
     </span>
   );
 }

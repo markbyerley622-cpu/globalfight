@@ -29,6 +29,38 @@ import { presenceOf, lastSeenLabel, type PresenceState } from "./derive";
 //  PURE. No prisma, no React, no Date.now() — testable at every boundary.
 // ════════════════════════════════════════════════════════════════════════════
 
+// ── Designed for richer ACTIVITY states, without changing this model ───────
+//
+// The intended next step is Discord-style activity — "Watching UFC Fight
+// Night", "Making predictions", "Reviewing a gym" — rather than only a green
+// dot. That is a strictly additive change to this module, and it is worth
+// writing down exactly why, so the next person does not rebuild the core.
+//
+// What already generalises:
+//   • The heartbeat is a TIMESTAMP with expiry, so an activity is the same
+//     shape: a value plus a `lastSeenAt` that decays. An activity that gets
+//     stuck is the same bug as an `isOnline` that gets stuck, and the same
+//     mechanism prevents it.
+//   • Every surface renders through `PresenceDot` / `PresenceLabel` and reads
+//     from `PresenceDto`, so a richer label reaches ~every avatar in the app
+//     the moment the DTO carries it. No surface needs editing.
+//   • `visiblePresence` / `presenceDtoFor` are already the ONE privacy gate, so
+//     an activity is filtered by the switch that already exists — nobody has to
+//     remember that "Watching UFC 320" is more revealing than "online".
+//
+// What would change, and it is small:
+//   1. Two columns on User: `activityKind` and `activityAt` (its own timestamp,
+//      because an activity expires FASTER than presence — you stop watching
+//      long before you go offline).
+//   2. One field on `PresenceDto`, populated by `presenceDtoFor` and nulled by
+//      the same `hidden` branch that already nulls `lastSeenAt`.
+//   3. A third switch, `showActivity`, secondary to `showOnlineStatus` in
+//      exactly the way `showLastSeen` already is.
+//
+// Deliberately NOT added yet: an unused column and an unpopulated field are a
+// speculative shape that the real feature would probably contradict. The point
+// here is that nothing above has to be undone to add it.
+
 /** The four switches, exactly as stored on User. */
 export interface PresencePrefs {
   showOnlineStatus: boolean;
