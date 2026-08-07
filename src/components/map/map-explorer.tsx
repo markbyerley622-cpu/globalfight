@@ -9,8 +9,11 @@ import {
 } from "lucide-react";
 import { distanceKm as haversine } from "@/lib/geo/gazetteer";
 import { MAP_LAYERS, type MapData, type MapLayer, type MapPin } from "@/lib/geo/types";
+import { useCoarseNow } from "@/lib/use-countdown";
 import { groupPins, byRelevance, describeGroup } from "./group-pins";
 import { PinDetail, PinRow } from "./pin-card";
+import { EventMapPreview } from "./event-map-preview";
+import { FloatingPreview, type Anchor, type PreviewHandle } from "./floating-preview";
 import { BottomSheet, type Detent } from "./bottom-sheet";
 import { LAYER_COLOR, type MapApi, type MapFocus } from "./map-canvas";
 import { Chip, ChipRow } from "@/components/ui/chip";
@@ -50,7 +53,75 @@ const SECTIONS: { id: Section; label: string; icon?: typeof Flame }[] = [
   { id: "trending", label: "Trending" },
 ];
 
-export function MapExplorer({ data }: { data: MapData }) {
+/**
+ * How often an OPEN map re-reads the world.
+ *
+ * A minute, not a second. Everything that moves faster than this — the
+ * countdown digits, the fight-week and live bands — is derived from the
+ * client's own clock and never waits for a request. What this actually carries
+ * is the slow stuff: an event published, a card cancelled, a venue corrected.
+ */
+const REFRESH_MS = 60_000;
+
+/**
+ * Keep the map current without a page reload.
+ *
+ * Pauses entirely while the tab is hidden and takes ONE immediate reading on
+ * return, so a map left open in a background tab costs nothing and is already
+ * correct on the first visible frame rather than up to a minute stale.
+ */
+function useLiveMapData(initial: MapData): MapData {
+  const [data, setData] = useState(initial);
+
+  // A new server render (navigating back to /map) must win over whatever the
+  // poll last wrote, or the fresher page payload would be immediately replaced
+  // by this component's older state.
+  //
+  // Adjusted DURING RENDER rather than in an effect. React documents this as the
+  // way to reset state on a prop change: it re-renders immediately with the new
+  // value and never paints the stale one, whereas an effect paints the old data
+  // for a frame first and costs a second render pass to correct it.
+  const [seenInitial, setSeenInitial] = useState(initial);
+  if (initial !== seenInitial) {
+    setSeenInitial(initial);
+    setData(initial);
+  }
+
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const tick = async () => {
+      try {
+        const res = await fetch("/api/map/pins", { cache: "no-store" });
+        if (!res.ok || !alive) return;
+        setData((await res.json()) as MapData);
+      } catch {
+        // A dropped refresh is not something the reader needs to be told about:
+        // the map they are looking at is still the map, just a minute older.
+      }
+    };
+
+    const start = () => { if (!timer) timer = setInterval(tick, REFRESH_MS); };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") { void tick(); start(); } else stop();
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      alive = false;
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  return data;
+}
+
+export function MapExplorer({ data: initialData }: { data: MapData }) {
+  const data = useLiveMapData(initialData);
   const [filter, setFilter] = useState<Filter>("all");
   const [section, setSection] = useState<Section>("nearby");
   // Selection is anchored on a PIN, never on a group: group ids come from the
@@ -67,12 +138,42 @@ export function MapExplorer({ data }: { data: MapData }) {
   const apiRef = useRef<MapApi | null>(null);
   const nonce = useRef(0);
 
+  // ── Which preview surface is in play ──
+  // Desktop gets a card anchored to the pin; phones get the bottom sheet. This
+  // is a real behavioural split, not a CSS one — rendering both and hiding one
+  // would run two previews, two countdowns and two anchor loops for one
+  // selection. matchMedia so it also tracks a window being resized across the
+  // breakpoint, which `window.innerWidth` read once would not.
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setIsDesktop(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  // Deliberately a REF, not state. See FloatingPreview's `getAnchor`: the pin's
+  // screen position changes every frame of a pan, and holding it in state meant
+  // re-rendering this whole component — groups memo, sheet list and all — sixty
+  // times a second to move one card.
+  const previewRef = useRef<PreviewHandle | null>(null);
+
   const visible = useMemo(
     () => (filter === "all" ? data.pins : data.pins.filter((p) => p.layer === filter)),
     [data.pins, filter],
   );
 
-  const groups = useMemo(() => groupPins(visible, zoom), [visible, zoom]);
+  // Marker lifecycle state is a function of the clock, and changing it rebuilds
+  // every Leaflet marker — so it runs on the MINUTE clock, not the per-second
+  // one. See useCoarseNow for why a 1Hz reading here would re-run every pin's
+  // entrance animation forever.
+  const coarseNow = useCoarseNow(60_000);
+
+  const groups = useMemo(
+    () => groupPins(visible, zoom, coarseNow),
+    [visible, zoom, coarseNow],
+  );
 
   const group = useMemo(
     () => (anchorPin ? groups.find((g) => g.pins.some((p) => p.id === anchorPin)) ?? null : null),
@@ -90,6 +191,48 @@ export function MapExplorer({ data }: { data: MapData }) {
     (p: { lat: number; lon: number }) => (me ? haversine(me, p) : null),
     [me],
   );
+
+  /**
+   * The pin the DESKTOP floating card is showing, or null.
+   *
+   * Events only. A gym or a person still opens in the sheet, because their
+   * detail card is a different shape and shrinking it into a 340px anchored box
+   * would be a worse version of what already works.
+   */
+  const floatingPin = useMemo(
+    () => (isDesktop && pin?.event ? pin : null),
+    [isDesktop, pin],
+  );
+
+  /**
+   * The sheet reverts to DISCOVERY while the floating card holds the selection.
+   *
+   * Without this the same event renders twice at once — anchored to its pin and
+   * again in the sheet below it — which reads as a duplication bug, and puts
+   * two live countdowns on screen for one card.
+   */
+  const sheetGroup = floatingPin ? null : group;
+
+  /**
+   * The selected pin's CURRENT screen position, read on demand.
+   *
+   * Called by the card itself during layout and again on every map movement —
+   * never stored, so nothing re-renders when the map pans.
+   */
+  const getAnchor = useCallback((): Anchor | null => {
+    if (!group) return null;
+    const p = apiRef.current?.project(group.lat, group.lon);
+    if (!p) return null;
+    // The marker's coordinate is its TIP; the body sits ~22px above it. Anchor
+    // on the body so the card's tail points at the pin, not at the ground
+    // shadow under it.
+    return { x: p.x, y: p.y - 22 };
+  }, [group]);
+
+  /** One method call per animation frame, and no React render. */
+  const onViewportChange = useCallback(() => {
+    previewRef.current?.reposition();
+  }, []);
 
   /** The sheet's list for the active section. */
   const listed = useMemo(() => {
@@ -254,7 +397,27 @@ export function MapExplorer({ data }: { data: MapData }) {
               if (f) { pendingFocus.current = null; flyTo(f.lat, f.lon, f.zoom); }
             }}
             onZoomChange={setZoom}
+            onViewportChange={onViewportChange}
           />
+
+          {/* ── Desktop: the anchored event preview ──
+              Rendered as a sibling of the canvas inside the same positioned
+              box, so the card's pixel coordinates and the map's projection are
+              in the same coordinate space with no offset maths. */}
+          {floatingPin && (
+            <FloatingPreview
+              getAnchor={getAnchor}
+              handleRef={previewRef}
+              contentKey={floatingPin.id}
+              onClose={clearSelection}
+            >
+              <EventMapPreview
+                pin={floatingPin}
+                distanceKm={distanceTo(floatingPin)}
+                variant="floating"
+              />
+            </FloatingPreview>
+          )}
 
           <div aria-hidden className="pointer-events-none absolute inset-0 z-[420] rounded-2xl shadow-[inset_0_0_60px_-14px_rgba(5,7,10,0.95)]" />
 
@@ -301,15 +464,19 @@ export function MapExplorer({ data }: { data: MapData }) {
           <BottomSheet
             detent={detent}
             onDetentChange={setDetent}
+            // Dismissable only while it is SHOWING a selection. In discovery
+            // mode a downward fling would otherwise clear nothing and leave a
+            // sheet stub over a map the user was already looking at.
+            onDismiss={sheetGroup ? clearSelection : undefined}
             header={
-              group ? (
+              sheetGroup ? (
                 // A single selected pin gets NO header title — the detail card
                 // below already leads with the name, and printing it twice a
                 // finger-width apart reads as a rendering fault.
                 <SheetSelectionHeader
-                  title={pin ? null : describeGroup(group)}
-                  subtitle={pin ? null : group.place}
-                  onBack={pin && group.pins.length > 1 ? () => setDetailPin(null) : undefined}
+                  title={pin ? null : describeGroup(sheetGroup)}
+                  subtitle={pin ? null : sheetGroup.place}
+                  onBack={pin && sheetGroup.pins.length > 1 ? () => setDetailPin(null) : undefined}
                   onClose={clearSelection}
                 />
               ) : (
@@ -322,15 +489,21 @@ export function MapExplorer({ data }: { data: MapData }) {
               )
             }
           >
-            {group ? (
+            {sheetGroup ? (
               pin ? (
-                <PinDetail pin={pin} distanceKm={distanceTo(pin)} signedIn={data.signedIn} />
+                // Events get the dedicated premium preview; the other three
+                // families keep the generic card that still serves them.
+                pin.event ? (
+                  <EventMapPreview pin={pin} distanceKm={distanceTo(pin)} />
+                ) : (
+                  <PinDetail pin={pin} distanceKm={distanceTo(pin)} signedIn={data.signedIn} />
+                )
               ) : (
                 <div className="flex flex-col gap-1.5">
                   <p className="mb-1 flex items-center gap-1.5 font-display text-2xs font-bold uppercase tracking-wider text-fog">
                     <Layers className="size-3.5 text-blood-400" /> Everything here
                   </p>
-                  {group.pins.map((p) => (
+                  {sheetGroup.pins.map((p) => (
                     <PinRow key={p.id} pin={p} distanceKm={distanceTo(p)} onClick={() => setDetailPin(p.id)} />
                   ))}
                 </div>

@@ -71,6 +71,19 @@ export interface MapPin {
     slug: string;
     /** SPORT label ("Boxing", "MMA") — the fastest thing to scan a card by. */
     sport: string;
+    /**
+     * Venue and city as SEPARATE fields, not the pre-joined `address`.
+     *
+     * The preview card gives the venue its own line and the city a quieter one
+     * beneath it. Recovering that split by re-parsing `address` on the client
+     * means depending on a " · " separator and on how many parts happened to be
+     * non-null — which silently mislabels a city as a venue for every event
+     * with no venue recorded. Two nullable strings cost less than that bug.
+     */
+    venue: string | null;
+    city: string | null;
+    /** Raw `Event.status`. Fed to `eventMapState` with the viewer's clock. */
+    status: string;
     /** The headline bout, when the card has one published. */
     mainEvent: { red: string; blue: string } | null;
     /** People following this event. */

@@ -24,15 +24,34 @@ const HEIGHT: Record<Detent, number> = { collapsed: 0.16, half: 0.5, expanded: 0
 
 const ORDER: Detent[] = ["collapsed", "half", "expanded"];
 
+/**
+ * How far BELOW the collapsed detent a drag must travel to dismiss.
+ *
+ * A fraction of the container rather than a pixel count, so the gesture asks
+ * for the same proportion of a small phone and a tall one. Large enough that
+ * settling onto "collapsed" does not turn into an accidental dismissal.
+ */
+const DISMISS_MARGIN = 0.06;
+
 export function BottomSheet({
   detent,
   onDetentChange,
+  onDismiss,
   header,
   children,
   className,
 }: {
   detent: Detent;
   onDetentChange: (d: Detent) => void;
+  /**
+   * Dragging DOWN past the collapsed detent, when supplied.
+   *
+   * Only meaningful when the sheet is showing something dismissable — a
+   * selection. In discovery mode there is nothing to dismiss to, so the caller
+   * omits this and the sheet keeps its old floor behaviour rather than
+   * bottoming out into an empty screen.
+   */
+  onDismiss?: () => void;
   /** Always-visible content in the grabber area (search, title, counts). */
   header?: React.ReactNode;
   children: React.ReactNode;
@@ -49,6 +68,20 @@ export function BottomSheet({
       const total = containerH();
       if (!total) return;
       const frac = px / total;
+
+      // Past the dismiss threshold the gesture was "put this away", not "make
+      // it smaller". Checked BEFORE snapping, because the nearest detent to a
+      // flung-down sheet is always `collapsed` — snapping first would make the
+      // dismissal unreachable.
+      if (onDismiss && frac < HEIGHT.collapsed - DISMISS_MARGIN) {
+        onDismiss();
+        // Leave the sheet at its smallest detent so the NEXT thing selected
+        // opens from where this one left, rather than from wherever the finger
+        // happened to stop.
+        onDetentChange("collapsed");
+        return;
+      }
+
       // Snap to whichever detent the gesture ended nearest.
       let best: Detent = "collapsed";
       let bestGap = Infinity;
@@ -58,7 +91,7 @@ export function BottomSheet({
       }
       onDetentChange(best);
     },
-    [onDetentChange],
+    [onDetentChange, onDismiss],
   );
 
   // Drag handling lives on the grabber, not the body: a drag that started on
@@ -73,8 +106,13 @@ export function BottomSheet({
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drag) return;
     const total = containerH();
+    // The floor drops below `collapsed` only when there is something to dismiss
+    // TO. Without that the sheet would rubber-band against a floor it can never
+    // pass, which reads as the gesture being ignored — the drag has to actually
+    // follow the finger into the dismiss zone for the dismissal to feel earned.
+    const floor = (onDismiss ? HEIGHT.collapsed - DISMISS_MARGIN * 1.6 : HEIGHT.collapsed) * total;
     const next = Math.max(
-      HEIGHT.collapsed * total,
+      Math.max(0, floor),
       Math.min(HEIGHT.expanded * total, drag.startH - (e.clientY - drag.startY)),
     );
     setDrag({ ...drag, h: next });

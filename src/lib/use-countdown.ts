@@ -91,6 +91,33 @@ function useNow(): number | null {
 }
 
 /**
+ * The current time, QUANTIZED — a reading that only changes every `stepMs`.
+ *
+ * ── Why this exists ────────────────────────────────────────────────────────
+ * Some consumers need the clock but must not re-render at 1Hz. The map is the
+ * case that forced it: every marker's lifecycle state (upcoming / fight week /
+ * live) is a function of now, and the markers are rebuilt from scratch whenever
+ * that input changes. On the per-second clock the map would tear down and
+ * recreate every Leaflet marker once a second — pins re-running their entrance
+ * animation forever, and a click landing on a marker that no longer exists.
+ *
+ * The quantization is done INSIDE `getSnapshot`, which is what makes it work:
+ * React compares snapshots with `Object.is` and skips the re-render entirely
+ * when the value is unchanged. So this shares the one existing interval and
+ * simply declines to wake its consumers 59 times a minute.
+ *
+ * Returns null on the server and during hydration, exactly like `useCountdown`.
+ */
+export function useCoarseNow(stepMs = 60_000): number | null {
+  const step = Math.max(1, stepMs);
+  return useSyncExternalStore(
+    subscribe,
+    () => Math.floor((current || Date.now()) / step) * step,
+    () => null,
+  );
+}
+
+/**
  * How close a countdown is, as a named band rather than a raw millisecond
  * comparison repeated at every call site.
  *

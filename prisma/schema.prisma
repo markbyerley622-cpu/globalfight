@@ -2514,6 +2514,14 @@ enum NotificationType {
   COMMUNITY_REPLY
   BATTLE_RESULT
   BATTLE_MATCHED // an opponent took the other side — the room is live
+  /// Someone challenged YOU by name, before you had picked the bout.
+  ///
+  /// Distinct from BATTLE_MATCHED because it is the only battle notification
+  /// that is a REQUEST rather than a report: it needs an action from the
+  /// recipient (make the opposite call) and it is the whole point of the
+  /// "challenge a friend" flow — the friend has usually not picked yet, which
+  /// is exactly why you are inviting them.
+  BATTLE_INVITE
   BATTLE_REPLY // your rival spoke in the battle room
   STREAK_REMINDER // your daily visit streak is alive but not yet extended today
   GYM_REVIEW // a gym you follow (or own) received a review

@@ -47,6 +47,23 @@ export interface ConversationView {
    * recent, with nothing to clean up.
    */
   otherTyping: boolean;
+
+  /**
+   * When the other person last read this thread, ISO — or null if never.
+   *
+   * ── Why a TIMESTAMP and not a per-message `read` flag ─────────────────────
+   * Reading is a watermark, not a property of each message: `lastReadAt` already
+   * exists on ConversationMember and is what the unread counts are computed
+   * from. Exposing the watermark lets the client mark every message at or before
+   * it as read with no extra column, no per-message write, and — crucially — no
+   * way for the receipt to disagree with the unread badge, because both are
+   * derived from the same instant.
+   *
+   * Only the OTHER member's watermark is exposed, and only to a member of the
+   * thread. Your own is not interesting to you, and neither is visible to
+   * anybody outside the conversation.
+   */
+  otherReadAt: string | null;
 }
 
 /**

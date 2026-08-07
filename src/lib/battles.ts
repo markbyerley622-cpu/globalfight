@@ -1,6 +1,6 @@
 import "server-only";
 import { activityChallenge } from "@/lib/activity/emit";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, FightMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { awardReputation, battleReputation, BATTLE } from "@/lib/reputation";
 import { notify } from "@/lib/notifications-store";
@@ -45,6 +45,19 @@ export async function pairBattle(userId: string, fightId: string): Promise<void>
   if (!pick || !isCorner(pick.corner)) return;
   const corner = pick.corner;
 
+  // ── An invite addressed to me is answered FIRST ─────────────────────────
+  //
+  // This has to run before the "am I already in a battle here?" guard below,
+  // because a pending invite IS a battle row with `opponentId = me` — the guard
+  // would see it, conclude I am already battling, and return. The invite would
+  // then sit unanswered forever no matter how many times I picked, which is the
+  // failure this ordering exists to prevent.
+  const accepted = await acceptPendingInvite(userId, fightId, corner, pick);
+  if (accepted) {
+    await announceMatch(fightId, accepted.challengerId, userId);
+    return;
+  }
+
   const matched = await prisma.$transaction(async (tx) => {
     const mine = await tx.battle.findFirst({
       where: { fightId, state: { in: ["WAITING", "ACTIVE"] }, OR: [{ challengerId: userId }, { opponentId: userId }] },
@@ -71,6 +84,177 @@ export async function pairBattle(userId: string, fightId: string): Promise<void>
   });
 
   if (matched) await announceMatch(fightId, matched.a, matched.b);
+}
+
+// ── Invites ──────────────────────────────────────────────────────────────────
+/**
+ * A PENDING INVITE is `state: WAITING` + `opponentId` set + `opponentCorner`
+ * null.
+ *
+ * ── Why that shape, and not a new BattleState ─────────────────────────────
+ * The three columns already say it exactly: somebody is named as the opponent
+ * (`opponentId`), they have not taken a side yet (`opponentCorner` is null),
+ * and the battle is not live (`WAITING`). An `INVITED` enum member would be a
+ * fourth way to say the same thing that every existing query would then have to
+ * be audited against.
+ *
+ * The pre-existing queries are already safe with it, which is what makes this
+ * shape usable rather than merely tidy — each one either filters
+ * `opponentId: null` (so an invite is excluded) or filters `state: "ACTIVE"`
+ * (so an invite is excluded). Both were checked before this was written; a new
+ * query on Battle must keep that property.
+ */
+const PENDING_INVITE = { state: "WAITING", opponentCorner: null } as const;
+
+/**
+ * Answer an invite addressed to me, if the corner I just picked opposes it.
+ *
+ * Returns the challenger when the battle went live, else null. A same-corner
+ * pick deliberately leaves the invite PENDING rather than cancelling it: the
+ * inviter's question is still open and the invitee may switch corners before
+ * the bell. It expires with the bout like any other unmatched battle.
+ */
+async function acceptPendingInvite(
+  userId: string,
+  fightId: string,
+  corner: Corner,
+  pick: { method: FightMethod | null; confidence: number | null },
+): Promise<{ challengerId: string } | null> {
+  const invite = await prisma.battle.findFirst({
+    where: {
+      ...PENDING_INVITE,
+      fightId,
+      opponentId: userId,
+      // Only an invite I can actually settle: their corner must be the other one.
+      challengerCorner: opposite(corner),
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, challengerId: true },
+  });
+  if (!invite) return null;
+
+  // Guarded updateMany, not update: two devices picking at once would otherwise
+  // both "accept" and the second would overwrite an already-live battle's
+  // matchedAt. The guard makes the loser a no-op.
+  const { count } = await prisma.battle.updateMany({
+    where: { id: invite.id, ...PENDING_INVITE },
+    data: {
+      opponentCorner: corner,
+      opponentMethod: pick.method,
+      opponentConfidence: pick.confidence,
+      state: "ACTIVE",
+      matchedAt: new Date(),
+    },
+  });
+  return count > 0 ? { challengerId: invite.challengerId } : null;
+}
+
+/**
+ * Open a PENDING invite from the challenger to somebody who has not picked.
+ *
+ * Concurrency-safe per CLAUDE.md rule 4: the duplicate/blocking checks and the
+ * create run in ONE transaction, and the challenger's own stale invite is
+ * retired by a guarded `updateMany` rather than a read-then-delete.
+ */
+async function inviteUser(
+  challengerId: string,
+  fightId: string,
+  targetId: string,
+  mine: { corner: string; method: FightMethod | null; confidence: number | null },
+): Promise<{ battleId: string } | { error: string }> {
+  const corner = mine.corner;
+  return prisma.$transaction(async (tx) => {
+    // Already called this person out on this bout? Reuse it — a second tap on
+    // the same name must not open a second row or re-buzz their phone.
+    const existing = await tx.battle.findFirst({
+      where: { ...PENDING_INVITE, fightId, challengerId, opponentId: targetId },
+      select: { id: true },
+    });
+    if (existing) return { battleId: existing.id };
+
+    // An ACTIVE battle on either side wins over a new invite. Checked with the
+    // same wording as the matched path so the two cannot drift apart.
+    const blocking = await tx.battle.findFirst({
+      where: {
+        fightId, state: "ACTIVE",
+        OR: [
+          { challengerId }, { opponentId: challengerId },
+          { challengerId: targetId }, { opponentId: targetId },
+        ],
+      },
+      select: { challengerId: true, opponentId: true },
+    });
+    if (blocking) {
+      const mineBlocked = blocking.challengerId === challengerId || blocking.opponentId === challengerId;
+      return { error: mineBlocked ? "You're already in a battle on this bout." : "They're already battling someone here." };
+    }
+
+    // One outstanding call-out per challenger per bout. Retiring the previous
+    // one keeps "your challenge" a single, answerable thing instead of letting
+    // one person hold invites open against half their following.
+    await tx.battle.updateMany({
+      where: { ...PENDING_INVITE, fightId, challengerId },
+      data: { state: "CANCELLED", resolvedAt: new Date() },
+    });
+    // ...and the open UNADDRESSED battle from the ordinary matchmaker, for the
+    // same reason pairBattle retires it: two slots held by one person.
+    await tx.battle.updateMany({
+      where: { fightId, challengerId, state: "WAITING", opponentId: null },
+      data: { state: "CANCELLED", resolvedAt: new Date() },
+    });
+
+    const created = await tx.battle.create({
+      data: {
+        fightId,
+        challengerId,
+        challengerCorner: corner,
+        challengerMethod: mine.method,
+        challengerConfidence: mine.confidence,
+        // Named, but with NO corner: that null is what marks this a pending
+        // invite rather than a live battle. See PENDING_INVITE.
+        opponentId: targetId,
+        state: "WAITING",
+      },
+      select: { id: true },
+    });
+    return { battleId: created.id };
+  }, BATTLE_TX);
+}
+
+/** Tell somebody they have been called out. Best-effort, like announceMatch. */
+async function announceInvite(
+  fightId: string,
+  challengerId: string,
+  targetId: string,
+): Promise<void> {
+  try {
+    const [f, challenger] = await Promise.all([
+      prisma.fight.findUnique({
+        where: { id: fightId },
+        select: {
+          slug: true,
+          red: { select: { name: true } },
+          blue: { select: { name: true } },
+          event: { select: { slug: true } },
+        },
+      }),
+      prisma.user.findUnique({ where: { id: challengerId }, select: { name: true, username: true } }),
+    ]);
+    const bout = f ? `${f.red.name} vs ${f.blue.name}` : "this bout";
+    const who = challenger ? publicDisplayName(challenger) : "Someone";
+    await notify(prisma, targetId, {
+      type: "BATTLE_INVITE",
+      title: `${who} challenged you`,
+      // The body has to state the PRICE, because the invite is not yet a
+      // battle: nothing happens until the recipient takes the other corner.
+      body: `${bout} — make your call on the other corner to accept.`,
+      url: f?.event ? `/events/${f.event.slug}#fight-${f.slug}` : "/",
+      icon: "fight",
+      // One pending call-out per person per bout. Without this, an inviter who
+      // cancels and re-sends buzzes the same phone again for the same question.
+      dedupeKey: `battle_invite:${fightId}:${challengerId}`,
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ── "Opponent joined" — the moment the room goes live ────────────────────────
@@ -102,23 +286,49 @@ async function announceMatch(fightId: string, aId: string, bId: string): Promise
 
 // ── Spectator → challenger ───────────────────────────────────────────────────
 /**
- * Convert a community-room spectator into a battle. Both sides must already have
- * OPPOSITE picks on the bout — the prediction is what creates the right to argue,
- * so there is no "challenge" without a call on the line. Joins the target's open
- * battle (or the challenger's) where one exists rather than opening a duplicate.
+ * Challenge a specific person on a bout.
+ *
+ * The CHALLENGER must have a call on the line — that is what they are
+ * defending, and it is the price of entry. The TARGET need not: if they have
+ * not picked, this opens a pending invite and notifies them, and their pick on
+ * the other corner is what accepts it (see acceptPendingInvite, driven from
+ * pairBattle). If they HAVE picked the opposite corner the battle goes live
+ * immediately, joining an existing open battle rather than duplicating one.
+ *
+ * The only remaining refusal on the target's side is a SAME-corner pick, which
+ * is not a matchmaking gap — the two of them agree, so there is nothing to
+ * settle.
  */
 export async function challengeUser(
   challengerId: string,
   fightId: string,
   targetId: string,
-): Promise<{ battleId: string } | { error: string }> {
+): Promise<{ battleId: string; pending?: boolean } | { error: string }> {
   if (challengerId === targetId) return { error: "You can't battle yourself." };
   const [mine, theirs] = await Promise.all([
     prisma.fightPick.findUnique({ where: { userId_fightId: { userId: challengerId, fightId } }, select: { corner: true, method: true, confidence: true } }),
     prisma.fightPick.findUnique({ where: { userId_fightId: { userId: targetId, fightId } }, select: { corner: true, method: true, confidence: true } }),
   ]);
   if (!mine || !isCorner(mine.corner)) return { error: "Make your pick first — that's what you'd be defending." };
-  if (!theirs || !isCorner(theirs.corner)) return { error: "They haven't picked this bout yet." };
+
+  // ── The friend has not picked yet: INVITE them ──────────────────────────
+  //
+  // This used to be a refusal ("They haven't picked this bout yet"), and that
+  // was the flow backwards. The person you want to challenge is the friend
+  // texting you about this fight, and they have almost never opened the app
+  // yet — requiring their pick first meant the feature only worked for people
+  // who did not need it. The call-out is the invitation: it lands in their
+  // notifications and their answer IS their pick.
+  if (!theirs || !isCorner(theirs.corner)) {
+    const invited = await inviteUser(challengerId, fightId, targetId, mine);
+    if ("error" in invited) return invited;
+    await announceInvite(fightId, challengerId, targetId);
+    // `pending` is what lets the UI tell the truth. An invite is NOT a rival
+    // yet, and reporting "they're your rival, settle it in the room" for a
+    // call-out nobody has answered would send the user to an empty room.
+    return { ...invited, pending: true };
+  }
+
   if (mine.corner === theirs.corner) return { error: "You both picked the same corner — nothing to settle." };
 
   type ChallengeResult = { battleId: string; matched: boolean } | { error: string };

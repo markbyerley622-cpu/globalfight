@@ -24,6 +24,11 @@ export const CATEGORY_OF: Record<string, NotifCategory> = {
   CARD_EARNED: "predictions",
   BATTLE_RESULT: "predictions",
   BATTLE_MATCHED: "social",
+  // A person called YOU out by name — the same social toggle as the rest of the
+  // battle flow, so muting "social" mutes the whole feature rather than half of
+  // it (the two-switches-for-one-thing bug GYM_REVIEW is sitting here to
+  // document).
+  BATTLE_INVITE: "social",
   BATTLE_REPLY: "social",
   COMMUNITY_REPLY: "social",
   FOLLOW: "social",

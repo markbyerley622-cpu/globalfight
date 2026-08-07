@@ -61,6 +61,8 @@ export function ChallengeFriend({
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
   const [sent, setSent] = useState<Person | null>(null);
+  /** True when the challenge is an unanswered INVITE rather than a live battle. */
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function launch() {
@@ -93,6 +95,7 @@ export function ChallengeFriend({
         setError(typeof data.error === "string" ? data.error : "Could not send that challenge.");
         return;
       }
+      setPending(data.pending === true);
       setSent(person);
       onSent?.();
     } catch {
@@ -126,8 +129,20 @@ export function ChallengeFriend({
               <Check className="size-6" strokeWidth={3} />
             </span>
             <p className="font-display text-base font-black uppercase tracking-wide text-chalk">{t("Challenge sent")}</p>
+            {/* Two different outcomes, told apart. Sending somebody to "the
+                room" for an invite nobody has answered would land them in an
+                empty one. */}
             <p className="text-sm text-fog">
-              <span className="text-mist">{sent.name}</span> is your rival on this bout. Settle it in the room.
+              {pending ? (
+                <>
+                  <span className="text-mist">{sent.name}</span> has been notified. It becomes a
+                  battle the moment they take the other corner.
+                </>
+              ) : (
+                <>
+                  <span className="text-mist">{sent.name}</span> is your rival on this bout. Settle it in the room.
+                </>
+              )}
             </p>
             <Link
               href={`/u/${sent.username}`}
@@ -145,9 +160,12 @@ export function ChallengeFriend({
               autoFocus
               action={<Swords className="size-4 shrink-0 text-blood-400" />}
             />
+            {/* They do NOT need to have picked. The invite lands in their
+                notifications and taking the other corner is how they accept —
+                that is the whole point of challenging someone by name. */}
             <p className="px-1 pb-1 text-3xs leading-relaxed text-fog">
-              They need a call on this bout too, on the other corner — that&apos;s what
-              there is to settle.
+              They&apos;ll get a notification. Taking the other corner is how they accept —
+              they don&apos;t need to have picked yet.
             </p>
           </div>
         )}

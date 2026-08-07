@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Send, Loader2, AlertCircle, Check, CheckCheck } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageSquare } from "lucide-react";
@@ -48,6 +48,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otherTyping, setOtherTyping] = useState(initial.otherTyping);
+  const [otherReadAt, setOtherReadAt] = useState<string | null>(initial.otherReadAt);
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** When we last told the server we are composing. Throttles the ping. */
@@ -84,6 +85,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         if (!res.ok || !alive) return;
         const data = (await res.json()) as ConversationView;
         setOtherTyping(data.otherTyping);
+        setOtherReadAt(data.otherReadAt);
         setMessages((prev) => {
           const server = new Map(data.messages.map((m) => [m.id, m]));
           // Keep any optimistic message the server has not acknowledged yet.
@@ -183,11 +185,45 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
 
   const over = draft.length > MAX_MESSAGE_LENGTH;
 
+  /**
+   * The receipt goes on the LAST message I sent, and nowhere else.
+   *
+   * ── Why only one ─────────────────────────────────────────────────────────
+   * Reading is a watermark, so if my most recent message has been read then
+   * every earlier one has too. Stamping "Read" on all of them says the same
+   * thing many times and turns the thread into a column of status text; one
+   * marker at the bottom carries the whole fact. It is also how every messenger
+   * people already use behaves, so it needs no explaining.
+   */
+  const lastMineIndex = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) if (messages[i].fromMe) return i;
+    return -1;
+  })();
+  const lastMine = lastMineIndex >= 0 ? messages[lastMineIndex] : null;
+  const receipt: "sending" | "sent" | "read" | null = !lastMine
+    ? null
+    : lastMine.id.startsWith("tmp-")
+      // Still in flight. Claiming "Sent" for a message that may yet fail and roll
+      // back would be a lie the user finds out about a second later.
+      ? "sending"
+      : otherReadAt && new Date(otherReadAt).getTime() >= new Date(lastMine.at).getTime()
+        ? "read"
+        : "sent";
+
   return (
-    <div className="flex h-[calc(100dvh-var(--shell-chrome,11rem))] flex-col">
+    // ── Width ──
+    // A conversation is a READING column, not a dashboard. Full-bleed, the
+    // composer's bar and its border ran the entire width of a desktop monitor
+    // while the bubbles it belonged to sat in the middle third — the bar read as
+    // page furniture rather than as part of the thread.
+    //
+    // `max-w-3xl` is wider than any phone, so this is inert on mobile: the
+    // layout there is unchanged and still edge-to-edge. The frame only appears
+    // at `lg`, where there is room around it for one to make sense.
+    <div className="mx-auto flex h-[calc(100dvh-var(--shell-chrome,11rem))] w-full max-w-3xl flex-col overflow-hidden lg:my-4 lg:h-[calc(100dvh-var(--shell-chrome,11rem)-2rem)] lg:rounded-2xl lg:border lg:border-ink-800 lg:shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)]">
       {/* Who you are talking to — and a way back. The name and avatar link to
           their profile, per the rule that every user reference is reachable. */}
-      <header className="flex items-center gap-3 border-b border-ink-800 bg-ink-950/80 px-3 py-2.5 backdrop-blur">
+      <header className="flex shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-950/80 px-3 py-2.5 backdrop-blur">
         <Link
           href="/messages"
           aria-label="Back to messages"
@@ -255,6 +291,25 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                     </p>
                   </div>
                 </div>
+
+                {/* Read receipt — on the last message I sent, and only there. */}
+                {i === lastMineIndex && receipt && (
+                  <p
+                    className="mt-1 flex items-center justify-end gap-1 pr-1 text-3xs text-fog"
+                    // Polite, not assertive: the state changing from Sent to
+                    // Read must not interrupt whatever a screen-reader user is
+                    // currently hearing.
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {receipt === "sending" && <Loader2 className="size-2.5 animate-spin" aria-hidden />}
+                    {receipt === "read" && <CheckCheck className="size-3 text-volt-400" aria-hidden />}
+                    {receipt === "sent" && <Check className="size-3" aria-hidden />}
+                    <span className={receipt === "read" ? "text-volt-400" : undefined}>
+                      {receipt === "sending" ? "Sending…" : receipt === "read" ? "Read" : "Sent"}
+                    </span>
+                  </p>
+                )}
               </div>
             );
           })
@@ -294,9 +349,11 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
           `pb-[calc(0.75rem+env(safe-area-inset-bottom))]`. Adding the inset
           again here would double-count it and leave a gap above the home
           indicator on exactly the devices it is meant to help. */}
+      {/* Tighter on desktop: the 12px ring of padding that gives a thumb room on
+          a phone just makes the bar look inflated behind a mouse pointer. */}
       <form
         onSubmit={send}
-        className="flex items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 backdrop-blur"
+        className="flex shrink-0 items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 backdrop-blur lg:px-3 lg:py-2"
       >
         <label htmlFor="dm-body" className="sr-only">Message</label>
         {/* MentionTextarea owns Enter: it picks from the @-menu when that menu
@@ -309,7 +366,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
           onSubmit={() => void send()}
           rows={1}
           placeholder={`Message ${who?.name ?? ""}…`}
-          className="max-h-32 min-h-[2.75rem] w-full resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none"
+          className="max-h-32 min-h-[2.75rem] w-full resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none lg:min-h-[2.5rem] lg:py-2"
         />
         <button
           type="submit"

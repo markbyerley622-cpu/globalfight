@@ -40,6 +40,14 @@
   --color-volt-400: #38bdf8;
   --color-volt-500: #0ea5e9;
 
+  /* ── Fight week ──
+     The map needs a third urgency step between "live" (blood) and "not yet"
+     (ink), and neither existing accent could take it: gold is already the
+     People layer's pin colour, so a gold event pin would read as a person, and
+     any blood shade would compete with the live pulse it has to sit next to.
+     Orange is unclaimed here and reads as heat without reading as NOW. */
+  --color-flame: #f97316;
+
   /* ── Text ── */
   --color-chalk: #f5f7fa;
   --color-mist: #9aa4b2;
@@ -778,10 +786,76 @@
   animation: crPinHalo 2s var(--ease-out-circ) infinite;
 }
 
+/* ── Event lifecycle states ──
+   Derived in lib/geo/event-state.ts and applied as one modifier class, so the
+   marker and the preview card it opens can never disagree about what an event
+   is doing. `--pin` is set inline per marker; these only adjust weight.
+
+   Only LIVE animates. If fight week pulsed too, then in a normal week most of
+   the map would be moving and the one card actually happening right now would
+   stop standing out — scarcity is the whole mechanism. */
+
+/* Fight week: heavier ring, no motion. Reads as "this is close". */
+.cr-pin.is-fightweek .cr-pin__body {
+  border-width: 2px;
+  box-shadow:
+    0 6px 16px -4px rgba(0, 0, 0, 0.9),
+    0 0 22px -1px color-mix(in srgb, var(--pin) 85%, transparent);
+}
+
+/* Completed and cancelled recede. They stay on the map because "cancelled" is
+   the answer somebody came looking for, but they must never out-shout a card
+   that can still be attended. */
+.cr-pin.is-completed,
+.cr-pin.is-cancelled {
+  opacity: 0.62;
+}
+.cr-pin.is-completed .cr-pin__body,
+.cr-pin.is-cancelled .cr-pin__body {
+  background: linear-gradient(150deg, var(--color-ink-600), var(--color-ink-700));
+  border-color: var(--color-ink-500);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.85);
+}
+.cr-pin.is-completed:hover,
+.cr-pin.is-cancelled:hover { opacity: 0.92; }
+
+/* A cancelled pin carries a strike so the state is legible without colour —
+   the muting alone is not distinguishable for a colour-blind reader, and
+   "completed" vs "cancelled" is a difference worth being able to see. */
+.cr-pin.is-cancelled .cr-pin__body::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 2px;
+  margin: -1px 0 0 -11px;
+  border-radius: 2px;
+  background: var(--color-chalk);
+  opacity: 0.85;
+}
+
 @keyframes crPinHalo {
   0% { opacity: 0.5; transform: scale(0.6); }
   70% { opacity: 0; transform: scale(2.1); }
   100% { opacity: 0; transform: scale(2.1); }
+}
+
+/* ── Desktop floating preview ──
+   Two separate animations on purpose. `crPreviewIn` runs once, on the shell,
+   when a preview opens from nothing. `crPreviewSwap` runs on the keyed inner
+   box every time the SELECTION changes while a preview is already open. If the
+   shell re-ran its entrance on every swap the card would jump away from its
+   anchor and slide back on each tap. Note neither animates `transform` on the
+   shell — that property is owned by the anchoring code and an animation on it
+   would fight the per-frame positioning. */
+@keyframes crPreviewIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes crPreviewSwap {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ── Viewer beacon ── */
@@ -804,7 +878,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cr-pin { transition: none; }
+  /* Live still has to be TELLABLE without motion, so the halo becomes a static
+     ring rather than vanishing — reduced motion is not reduced information. */
   .cr-pin__halo, .cr-me__ring { animation: none; opacity: 0.18; }
+  .cr-pin.is-live .cr-pin__halo { opacity: 0.34; transform: scale(1.35); }
   /* Pins still need to END visible — disabling the animation without resetting
      `both` would leave them stuck at opacity 0. */
   .cr-pin--enter { animation: none; opacity: 1; transform: none; }

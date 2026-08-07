@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import type { Map as LeafletMap, Marker, LayerGroup } from "leaflet";
 import type { MapLayer } from "@/lib/geo/types";
+import { EVENT_STATE_STYLE } from "@/lib/geo/event-state";
 import { describeGroup, type PinGroup } from "./group-pins";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -57,9 +58,13 @@ function esc(s: string): string {
 }
 
 function pinHtml(group: PinGroup, selected: boolean, index = 0): string {
-  const color = LAYER_COLOR[group.layer];
+  // An event group takes its colour from its LIFECYCLE state, not from the
+  // layer: a fight-week card is orange and a cancelled one is grey, while a gym
+  // is always blue. Non-event layers keep the layer colour.
+  const state = group.eventState ? EVENT_STATE_STYLE[group.eventState] : null;
+  const color = state && group.layer === "events" ? state.accent : LAYER_COLOR[group.layer];
   const count = group.pins.length;
-  const live = group.pins.some((p) => p.status === "LIVE");
+  const stateClass = group.layer === "events" && state ? ` ${state.pinClass}` : "";
   const here = group.presentNow;
   // Mixed groups get a second, smaller dot in the runner-up layer's colour, so
   // "there is more than one kind of thing here" is legible before you tap.
@@ -78,7 +83,7 @@ function pinHtml(group: PinGroup, selected: boolean, index = 0): string {
   // after the user has already started reading the map.
   const delay = Math.min(index, 10) * 28;
   return `
-    <span class="cr-pin cr-pin--enter${selected ? " is-selected" : ""}${live ? " is-live" : ""}${solo?.layer === "people" ? " is-face" : ""}" style="--pin:${color};--enter-delay:${delay}ms">
+    <span class="cr-pin cr-pin--enter${selected ? " is-selected" : ""}${stateClass}${solo?.layer === "people" ? " is-face" : ""}" style="--pin:${color};--enter-delay:${delay}ms">
       <span class="cr-pin__halo"></span>
       <span class="cr-pin__body">${face}</span>
       ${second ? `<span class="cr-pin__mix" style="--mix:${LAYER_COLOR[second]}"></span>` : ""}
@@ -106,6 +111,15 @@ export interface MapCanvasProps {
   onReady?: (api: MapApi) => void;
   /** Fires on zoomend so grouping granularity tracks the real viewport. */
   onZoomChange?: (zoom: number) => void;
+  /**
+   * Fires CONTINUOUSLY while the map moves (`move`, not `moveend`).
+   *
+   * The desktop preview is pinned to its marker's screen position, so it has to
+   * be repositioned on every animation frame of a pan or fly — updating only on
+   * `moveend` would leave the card parked mid-map while the pin slides away
+   * underneath it, which reads as a broken overlay rather than an anchored one.
+   */
+  onViewportChange?: () => void;
   className?: string;
 }
 
@@ -124,10 +138,20 @@ export interface MapApi {
   zoomIn: () => void;
   zoomOut: () => void;
   resetView: () => void;
+  /**
+   * Where a coordinate currently sits, in pixels within the map container.
+   *
+   * The desktop preview is a floating card ANCHORED to its pin, so it needs the
+   * pin's screen position — and needs it again on every pan, zoom and resize.
+   * Returns null before the map exists.
+   */
+  project: (lat: number, lon: number) => { x: number; y: number } | null;
+  /** Container size, so the caller can decide which side to flip the card to. */
+  size: () => { width: number; height: number } | null;
 }
 
 export default function MapCanvas({
-  groups, anchorPinId, onSelect, me, focus, onReady, onZoomChange, className,
+  groups, anchorPinId, onSelect, me, focus, onReady, onZoomChange, onViewportChange, className,
 }: MapCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -145,10 +169,12 @@ export default function MapCanvas({
   const onSelectRef = useRef(onSelect);
   const onReadyRef = useRef(onReady);
   const onZoomRef = useRef(onZoomChange);
+  const onViewportRef = useRef(onViewportChange);
   useEffect(() => {
     onSelectRef.current = onSelect;
     onReadyRef.current = onReady;
     onZoomRef.current = onZoomChange;
+    onViewportRef.current = onViewportChange;
   });
 
   // ── Create the map once ──
@@ -212,6 +238,10 @@ export default function MapCanvas({
       // Tapping bare map dismisses the detail sheet.
       map.on("click", () => onSelectRef.current(null));
       map.on("zoomend", () => onZoomRef.current?.(map!.getZoom()));
+      // `move`/`zoom` fire per frame during a pan or fly; `zoomend`/`moveend`
+      // only at rest. The anchored desktop card needs the per-frame ones or it
+      // detaches from its pin mid-animation.
+      map.on("move zoom", () => onViewportRef.current?.());
 
       mapRef.current = map;
       setReady(true);
@@ -219,6 +249,18 @@ export default function MapCanvas({
         zoomIn: () => mapRef.current?.zoomIn(),
         zoomOut: () => mapRef.current?.zoomOut(),
         resetView: () => mapRef.current?.flyTo([20, 6], mapRef.current.getMinZoom(), { duration: 0.8 }),
+        project: (lat, lon) => {
+          const m = mapRef.current;
+          if (!m) return null;
+          const p = m.latLngToContainerPoint([lat, lon]);
+          return { x: p.x, y: p.y };
+        },
+        size: () => {
+          const m = mapRef.current;
+          if (!m) return null;
+          const s = m.getSize();
+          return { width: s.x, height: s.y };
+        },
       });
       // The container is sized by flexbox; Leaflet measures on create, which can
       // land a frame early. One settle pass after paint avoids grey tile gaps.
@@ -258,8 +300,15 @@ export default function MapCanvas({
             iconSize: [38, 46],
             iconAnchor: [19, 44],
           }),
-          // Selected pin, then live pins, sit above the rest of the field.
-          zIndexOffset: selected ? 1000 : g.pins.some((p) => p.status === "LIVE") ? 500 : 0,
+          // Selected first, then by urgency: a live pin must never end up behind
+          // a cancelled one that happens to share its coordinate. Cancelled and
+          // completed sink BELOW the field so they never occlude an attendable
+          // card.
+          zIndexOffset: selected
+            ? 1000
+            : g.eventState
+              ? 500 - EVENT_STATE_STYLE[g.eventState].weight * 200
+              : 0,
           keyboard: true,
           title: g.pins.length > 1 ? `${describeGroup(g)}${g.place ? ` in ${g.place}` : ""}` : g.pins[0].name,
         });

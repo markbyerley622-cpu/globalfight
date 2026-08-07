@@ -37,7 +37,15 @@ async function eventPins(): Promise<LayerResult> {
   const rows = await prisma.event.findMany({
     where: {
       ...PUBLIC_EVENT,
-      status: { notIn: ["DRAFT", "CANCELLED"] },
+      // DRAFT only. CANCELLED and POSTPONED stay ON the map inside the window,
+      // rendered as a muted, non-pulsing pin (see lib/geo/event-state).
+      //
+      // Hiding them looked tidier and was worse: somebody who had already made
+      // plans around a card searches the map for it, finds NOTHING, and cannot
+      // tell "cancelled" from "we never had it". The pin that says Cancelled is
+      // the answer to the question they actually came with. It ages out of the
+      // window on its own like every other pin.
+      status: { notIn: ["DRAFT"] },
       date: {
         gte: new Date(now.getTime() - WINDOW_BACK_DAYS * 86_400_000),
         lte: new Date(now.getTime() + WINDOW_AHEAD_DAYS * 86_400_000),
@@ -146,6 +154,9 @@ async function eventPins(): Promise<LayerResult> {
       event: {
         slug: e.slug,
         sport: SPORT_LABEL[e.sport] ?? "Combat",
+        venue: e.venue,
+        city: [e.city, e.country].filter(Boolean).join(", ") || null,
+        status: e.status,
         mainEvent: e.fights[0]
           ? { red: e.fights[0].red.name, blue: e.fights[0].blue.name }
           : null,
