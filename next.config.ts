@@ -114,6 +114,22 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // ── Build memory ──────────────────────────────────────────────────────
+    // The Render deploy started dying with "Ineffective mark-compacts near
+    // heap limit" at ~2 GB during "Creating an optimized production build".
+    //
+    // The same build passes locally under an identical `--max-old-space-size=2048`
+    // cap, which rules out a simple "needs a bigger heap" story: the difference
+    // is CPU COUNT. Next splits compilation across workers sized to the
+    // available cores, so a many-core dev machine spreads the same work over
+    // several processes with independent heaps, while a 2-core builder does far
+    // more of it inside one. Peak memory per process is what changed, not total
+    // work.
+    //
+    // This flag makes webpack release intermediate module/chunk graphs as it
+    // goes instead of holding them for the whole compile. It costs a little
+    // build TIME and is the supported answer for exactly this failure.
+    webpackMemoryOptimizations: true,
   },
 };
 
