@@ -8,9 +8,61 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeName, nameKey, looseKey } from "../names";
+import { normalizeName, nameKey, looseKey, displayName } from "../names";
 
 const same = (a: string, b: string) => nameKey(a) === nameKey(b);
+
+describe("displayName — rescuing names the source shouted", () => {
+  it("leaves any name that already has lower-case letters completely alone", () => {
+    // Someone made a casing decision. Overriding it would flatten every
+    // deliberately-styled ring name in the registry.
+    for (const n of ["Conor McGregor", "Oscar de la Hoya", "d'Artagnan Silva", "iShowSpeed", "TJ Dillashaw"]) {
+      assert.equal(displayName(n), n);
+    }
+  });
+
+  it("title-cases an all-caps name", () => {
+    assert.equal(displayName("MURAT GASSIEV"), "Murat Gassiev");
+    assert.equal(displayName("NAOYA INOUE"), "Naoya Inoue");
+  });
+
+  it("keeps initials upper-case", () => {
+    assert.equal(displayName("ABRAHAM R PEREZ"), "Abraham R Perez");
+  });
+
+  it("capitalises both halves of a hyphenated or apostrophed surname", () => {
+    assert.equal(displayName("CHRIS BILLAM-SMITH"), "Chris Billam-Smith");
+    assert.equal(displayName("MICHAEL O'SULLIVAN"), "Michael O'Sullivan");
+  });
+
+  it("handles Mc, and deliberately does not touch Mac", () => {
+    assert.equal(displayName("CONOR MCGREGOR"), "Conor McGregor");
+    // "MacIel" would be worse than "Maciel" — Mac is also the start of ordinary
+    // names, so the rule is restricted to Mc.
+    assert.equal(displayName("DANILO MACIEL"), "Danilo Maciel");
+  });
+
+  it("keeps roman-numeral suffixes upper-case", () => {
+    assert.equal(displayName("JOHN JONES III"), "John Jones III");
+  });
+
+  it("lower-cases interior particles but not a leading one", () => {
+    assert.equal(displayName("OSCAR DE LA HOYA"), "Oscar de la Hoya");
+    assert.equal(displayName("DE LA HOYA"), "De la Hoya");
+  });
+
+  it("does not change the identity key it will be matched on", () => {
+    // The whole safety argument: display casing is invisible to matching.
+    for (const n of ["MURAT GASSIEV", "CHRIS BILLAM-SMITH", "OSCAR DE LA HOYA", "CONOR MCGREGOR"]) {
+      assert.equal(nameKey(displayName(n)), nameKey(n));
+    }
+  });
+
+  it("collapses whitespace and survives empty input", () => {
+    assert.equal(displayName("  MURAT   GASSIEV "), "Murat Gassiev");
+    assert.equal(displayName("   "), "");
+  });
+});
 
 describe("the dot bug", () => {
   it("treats a dot BETWEEN words as a separator — REGRESSION", () => {

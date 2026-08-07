@@ -28,15 +28,29 @@ import { BOT_HEADERS } from "@/lib/http-identity";
 // Boxing has no single champion per division — the WBA, WBC, WBO and IBF each
 // sanction their own belt — so each body is its own source with its own
 // `organisation`, and nothing here ever merges them.
+//
+// VERIFIED 2026-08-07 against the live pages. The men's URL was previously
+// `/wba-rankings` (plural), which answers 404 — the connector could never have
+// worked, and because it was never licensed nobody found out. It is `/wba-ranking`.
 const PAGES = {
   female: "https://www.wbaboxing.com/wba-female-ranking",
-  male: "https://www.wbaboxing.com/wba-rankings",
+  male: "https://www.wbaboxing.com/wba-ranking",
 } as const;
 
-const SOURCE_URL = PAGES.female;
-
-const WEIGHT_RE =
-  /^(minimum|light fly|fly|super fly|bantam|super bantam|feather|super feather|light|super light|welter|super welter|middle|super middle|light heavy|cruiser|bridger|heavy)weight$/i;
+// ── Division headers ────────────────────────────────────────────────────────
+// Every division prints as "<NAME>WEIGHT" except the minimum family, which the
+// WBA prints bare (`<span>MINIMUM</span>`, `<span>LIGHT MINIMUM</span>`). That
+// exception is spelled out rather than making the suffix optional everywhere:
+// a bare `<span>LIGHT</span>` anywhere on the page would otherwise be read as a
+// division header and re-label every table that follows it.
+//
+// This is not cosmetic. An unmatched header does not skip its table — the table
+// inherits the PREVIOUS division's label, so the men's page was folding
+// Minimumweight into Light Flyweight and publishing a 30-man division.
+const DIVISIONS =
+  "minimum|light minimum|light fly|fly|super fly|bantam|super bantam|feather|super feather|" +
+  "light|super light|welter|super welter|middle|super middle|light heavy|cruiser|bridger|heavy";
+const WEIGHT_RE = new RegExp(`^(?:(?:${DIVISIONS})weight|light minimum|minimum)$`, "i");
 
 // Common ISO alpha-3 → alpha-2 (the WBA prints 3-letter codes). Unknown → null;
 // identity resolution doesn't depend on this, it's display metadata only.
@@ -59,14 +73,45 @@ function toAlpha2(a3?: string | null): string | null {
 
 /** A trailing 3-letter uppercase token is a country code; split it off the name. */
 function splitNameCountry(raw: string): { name: string; country: string | null } {
-  const cleaned = raw.replace(/\s+/g, " ").trim();
+  // Strip the page's footnote markers first, wherever they sit — they appear
+  // BEFORE the country code as often as at the end ("IVANA HABAZIN * CRO"), so
+  // an end-anchored strip misses them. "IVANA HABAZIN *" and "IVANA HABAZIN"
+  // are one boxer, and identity resolution keys on the name, so leaving the
+  // marker on manufactures a second registry entry for her.
+  const cleaned = raw
+    .replace(/\(\*+\)/g, " ")
+    .replace(/(?:^|\s)\*+(?=\s|$)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   const m = cleaned.match(/^(.*?)[\s,]+([A-Z]{3})$/);
   if (m && m[1].length > 1) return { name: m[1].trim(), country: m[2] };
   return { name: cleaned, country: null };
 }
 
+// The men's page carries a BELT-ANNOTATION column between the name and the
+// country — GOLD, INT, CON, C/NA, C/USA, BALTIC, NABA… (the page's own
+// REFERENCES table at the foot enumerates them). They are regional/secondary
+// belts held by the fighter, not part of their name.
+const ANNOTATION_RE =
+  /^(?:c|gold|int|con|lac|naba|panaf|wbao|baltic|c\/[a-z]{1,4}|(?:c|gold|int|con|baltic)(?:\s+(?:c|gold|int|con|baltic))+)$/i;
+
 const isNoise = (name: string) =>
-  !name || /^(not rated|vacant|n\/a|-|—|tbd)$/i.test(name.trim());
+  !name || /^(not rated|vacant|n\/a|-|—|tbd)$/i.test(name.trim()) || ANNOTATION_RE.test(name.trim());
+
+// ── The REFERENCES legend at the foot of the page ───────────────────────────
+// It expands the annotation codes — `LAC: | WBA LATIN AMERICAN CHAMPION`. Every
+// one of those rows contains the word CHAMPION, so the champion branch below
+// read them as titleholders and the men's page yielded six extra "champions"
+// named "LAC:", "NABA:", "PANAF:", "INTER:", "INT. CHAMP:" and "(**)".
+//
+// They would have been created as Fighter rows and opened TitleReigns. Two
+// independent guards, because this is the failure that reaches the product as a
+// visibly fake champion: skip the legend table wholesale, and reject a
+// legend-shaped cell anywhere it appears.
+const isLegendTable = (firstRow: string[]) =>
+  firstRow.length <= 2 && /^references$/i.test((firstRow[0] ?? "").trim());
+
+const isLegendKey = (cell: string) => /:$/.test(cell.trim()) || /^\(\*+\)$/.test(cell.trim());
 
 /**
  * Parse WBA female ratings HTML into normalized entries. Pure — no I/O.
@@ -108,7 +153,7 @@ export function parseWba(
 
       // Champion table: a cell contains "CHAMPION"; the fighter is the cell before it.
       if (/champion/i.test(joined)) {
-        const champCell = cells.find((c) => c && !/champion/i.test(c) && !/^wb[aco]$/i.test(c));
+        const champCell = cells.find((c) => c && !/champion/i.test(c) && !/^wb[aco]$/i.test(c) && !isLegendKey(c));
         if (champCell) {
           const { name, country } = splitNameCountry(champCell);
           if (!isNoise(name)) {
@@ -128,7 +173,11 @@ export function parseWba(
       const rest = cells.slice(1).filter(Boolean);
       if (rest.length === 0) return;
       const a3 = rest.length > 1 && /^[A-Z]{3}$/.test(rest[rest.length - 1]) ? rest[rest.length - 1] : null;
-      const rawName = a3 ? rest.slice(0, -1).join(" ") : rest[0];
+      // The NAME is its own cell — take it, never a join of everything before
+      // the country. Joining swallowed the belt-annotation column on the men's
+      // page and produced fighters called "FILIP HRGOVIC C GOLD", which then
+      // resolve to nobody and get created as new registry entries.
+      const rawName = rest[0];
       const { name, country } = splitNameCountry(rawName);
       if (isNoise(name)) return;
       entries.push({
@@ -149,6 +198,12 @@ export function parseWba(
         const txt = $(child).text().trim().replace(/\s+/g, " ");
         if (WEIGHT_RE.test(txt)) division = normalizeWeightClass(txt);
       } else if (tag === "table") {
+        const firstRow = $(child).find("tr").first().find("td, th")
+          .map((__, c) => $(c).text().trim().replace(/\s+/g, " ")).get();
+        // The legend closes the ratings. Clearing the division stops it AND
+        // anything after it from inheriting the last division's label — the
+        // same inheritance that folded Minimumweight into Light Flyweight.
+        if (isLegendTable(firstRow)) { division = null; continue; }
         if (division) parseTable(child, division);
       } else {
         walk(child);

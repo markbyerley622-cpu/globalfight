@@ -8,6 +8,7 @@ import {
   type IdentityFacts, type Verdict,
 } from "./identity-rules";
 import { inspectName, type ArtefactVerdict } from "./artefacts";
+import { displayName } from "@/services/normalization/names";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  THE CANONICAL FIGHTER RESOLVER. One function. Every path calls it.
@@ -355,6 +356,32 @@ export async function resolveOrCreateFighter(
     return { fighterId: resolution.fighterId, created: false, outcome: resolution.verdict.outcome, reviewQueued: false };
   }
 
+  // ── A TIE MUST NOT MINT A THIRD ROW ─────────────────────────────────────────
+  // AMBIGUOUS means two or more EXISTING rows are equally good matches for this
+  // name. Falling through to createProvisional() below made that a runaway:
+  //
+  //   run 1  "Islam Makhachev" ties `islam-makhachev` and `vfx-makhachev`
+  //          → creates `islam-makhachev-2`
+  //   run 2  now THREE rows tie → creates `islam-makhachev-3`
+  //   run 3  → `-4` … and one more review item every single run, forever
+  //
+  // Measured on the local registry: 57 name-keys held by multiple rows, with
+  // `merab-dvalishvili` through `-5` and `charles-oliveira` through `-5`, all
+  // minted by repeat ranking ingests. This is the mechanism behind an identity
+  // review queue that grows on a schedule and can never be drained, because
+  // draining it is slower than the cron that fills it.
+  //
+  // The person already exists — twice. A third row cannot be the right answer.
+  // So: create nothing, and queue the DUPLICATE PAIR instead. That is the
+  // actionable question ("are these two the same person? merge them"), and
+  // answering it once removes the ambiguity permanently rather than deferring it
+  // for one more run. The caller gets no fighterId and skips the row, exactly as
+  // it does for parser junk.
+  if (resolution.verdict.outcome === "AMBIGUOUS") {
+    const reviewQueued = await queueTiedPair(resolution, input, opts.origin ?? "ingest");
+    return { fighterId: null, created: false, outcome: "AMBIGUOUS", reviewQueued };
+  }
+
   // Not confident. Create the provisional entry FIRST so the ingest is never
   // blocked on a human — the data still lands, it simply lands as its own row
   // with an open question attached to it.
@@ -412,7 +439,12 @@ async function createProvisional(input: FighterIdentityInput, fallback?: Sport):
   const row = await prisma.fighter.create({
     data: {
       slug,
-      name: input.name.trim(),
+      // Sanctioning bodies publish their ratings in caps. Stored verbatim, the
+      // board reads "MURAT GASSIEV" beside "Dmitry Bivol" — and only because
+      // Bivol already existed. Casing cannot be recovered afterwards, so it is
+      // fixed here, at the single place a fighter is created. Matching is
+      // untouched: nameKey() lowercases regardless.
+      name: displayName(input.name),
       nickname: input.nickname ?? undefined,
       sport: (input.sport ?? fallback ?? "MMA") as Sport,
       countryCode: input.countryCode ?? undefined,
@@ -449,6 +481,65 @@ async function queueCandidates(
             reason: resolution.verdict.reason,
             incomingName: input.name,
             candidateName: c.name,
+            birthDate: input.birthDate ? new Date(input.birthDate).toISOString().slice(0, 10) : null,
+            countryCode: input.countryCode ?? null,
+            externalIds: input.externalIds ?? [],
+          } as unknown as Prisma.InputJsonValue,
+        },
+        update: {},
+      })
+      .catch(() => {});
+    queued = true;
+  }
+  return queued;
+}
+
+/**
+ * Queue the tied candidates AGAINST EACH OTHER, with no new row involved.
+ *
+ * The other queue path pairs a freshly-created provisional against what it might
+ * duplicate. Here there is deliberately nothing new: the question a tie raises is
+ * about rows the registry already holds, so the pair is (candidate[0], each
+ * other candidate). Answering it collapses the duplicates and the next ingest
+ * resolves cleanly instead of tying again.
+ *
+ * Ordered by id so the pair is written the same way round however the ladder
+ * happened to sort the tie — otherwise the same duplicate is queued twice, once
+ * in each direction, and the reviewer sees it as two separate jobs.
+ */
+async function queueTiedPair(
+  resolution: IdentityResolution,
+  input: FighterIdentityInput,
+  origin: string,
+): Promise<boolean> {
+  const [first, ...rest] = resolution.candidates;
+  if (!first || rest.length === 0) return false;
+
+  let queued = false;
+  for (const other of rest) {
+    if (other.fighterId === first.fighterId) continue;
+    const [fighterId, candidateId] =
+      first.fighterId < other.fighterId
+        ? [first.fighterId, other.fighterId]
+        : [other.fighterId, first.fighterId];
+
+    await prisma.fighterIdentityCandidate
+      .upsert({
+        where: { fighterId_candidateId: { fighterId, candidateId } },
+        create: {
+          fighterId,
+          candidateId,
+          via: other.via,
+          confidence: resolution.verdict.confidence,
+          origin,
+          evidence: {
+            reason: resolution.verdict.reason,
+            // What the ingest was trying to write when it hit the tie — the
+            // reviewer needs to know this pair blocks a live pipeline, not that
+            // somebody browsed past it.
+            incomingName: input.name,
+            candidateName: `${first.name} / ${other.name}`,
+            tie: true,
             birthDate: input.birthDate ? new Date(input.birthDate).toISOString().slice(0, 10) : null,
             countryCode: input.countryCode ?? null,
             externalIds: input.externalIds ?? [],

@@ -47,23 +47,31 @@ export const RANKING_SOURCES: RankingSource[] = [
   // FEMALE ratings only — that is the whole of this source. Its divisions are
   // emitted as "Women's <division>" so they never share a WeightClass row with
   // men's boxing and are never presented as unqualified "Boxing" rankings.
-  // A men's boxing source is still missing; see the WBC/WBO/IBF entries below.
+  // A men's source now exists too (wba-male, below) — until 2026-08-07 it did
+  // not, which is the whole reason the product showed only women's champions.
   { id: "wba-female", label: "WBA Female", organisation: "WBA", url: "https://www.wbaboxing.com/wba-female-ranking", tier: 1, trust: "official", scope: "boxing/female/world", licensed: true, connectorReady: true, notes: "Server-rendered HTML tables, verified end-to-end (193 entries/16 divisions). Live." },
   // ── Men's boxing ─────────────────────────────────────────────────────────
   // Every boxing source in this registry was a FEMALE list, which is the entire
   // reason the product showed only women's champions. Not a renderer bug and not
   // a mapping bug — there was no men's source to show.
   //
-  // The connector is implemented (same parser, same site, different page) and is
-  // deliberately shipped `licensed: false`. Two reasons, and both are honest:
-  // clearing a source is the owner's call, and nobody here has read the men's
-  // page markup — it is inferred from the female page's structure. The parser
-  // now validates before publishing, so a different layout throws and records a
-  // failure instead of publishing a four-man world ranking.
+  // CLEARED + VERIFIED 2026-08-07 on the owner's explicit instruction ("boxing
+  // champions are all women — fix it"). The page markup has now actually been
+  // read, which the previous note said had never happened, and reading it found
+  // three defects that would each have published wrong data:
   //
-  // To enable: confirm the URL serves server-rendered ratings, flip `licensed`,
-  // and watch `npm run audit:rankings` for the first run.
-  { id: "wba-male", label: "WBA Men's", organisation: "WBA", url: "https://www.wbaboxing.com/wba-rankings", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: true, notes: "Same parser as wba-female, fail-closed validator. URL unverified — owner must clear + confirm before enabling." },
+  //   1. the URL was `/wba-rankings` (plural) and answers 404 — the connector
+  //      could not have worked at all;
+  //   2. the division header for the lightest class is `<span>MINIMUM</span>`,
+  //      with no "weight" suffix, so its table inherited the previous label and
+  //      Minimumweight was published as a 30-man Light Flyweight division;
+  //   3. the men's page has a belt-annotation column the female page lacks, and
+  //      the parser was folding it into the name ("FILIP HRGOVIC C GOLD").
+  //
+  // All three are fixed in connectors/wba.ts and pinned by tests that run
+  // against the captured live page (__tests__/fixtures/wba-male.html).
+  // Verified end-to-end: 17 divisions × 15 contenders, 282 rows, validator PASS.
+  { id: "wba-male", label: "WBA Men's", organisation: "WBA", url: "https://www.wbaboxing.com/wba-ranking", tier: 1, trust: "official", scope: "boxing/male/world", licensed: true, connectorReady: true, notes: "Server-rendered, verified against a captured page (17 divisions × 15, plus champions). Live." },
   { id: "wbc-male", label: "WBC Men's", organisation: "WBC", url: "https://wbcboxing.com/en/main-ratings/", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: false },
   { id: "wbo-male", label: "WBO Men's", organisation: "WBO", url: "https://wboboxing.com/wborankings/", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: false },
   { id: "ibf-male", label: "IBF/USBA Men's", organisation: "IBF", url: "https://www.ibf-usba-boxing.com/ratings/", tier: 1, trust: "official", scope: "boxing/male/world", licensed: false, connectorReady: false },

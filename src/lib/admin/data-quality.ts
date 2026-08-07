@@ -81,6 +81,10 @@ export interface ProviderFreshness {
   lastChangedAt: string | null;
   failureStreak: number;
   lastError: string | null;
+  /** Opaque resume position (archive crawls: the last index page scanned). */
+  cursor: string | null;
+  /** True once a deep crawl has reached the end of the archive. */
+  exhausted: boolean;
 }
 
 export interface DataQualityReport {
@@ -285,6 +289,13 @@ async function auditPipelineHealth(now: Date): Promise<PipelineHealth> {
       lastChangedAt: c.lastChangedAt?.toISOString() ?? null,
       failureStreak: c.failureStreak,
       lastError: c.lastError,
+      // The resume position, for the providers that have one. On an ARCHIVE
+      // crawl this is the only number that says how far through the backlog the
+      // job actually is — "last checked 6 hours ago" looks identical whether the
+      // crawl is on page 5 of 200 or has finished. `exhausted` is what
+      // distinguishes "still walking" from "caught up, now just watching page 1".
+      cursor: c.cursor,
+      exhausted: c.exhausted,
     })),
   };
 }

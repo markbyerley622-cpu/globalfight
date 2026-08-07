@@ -12,7 +12,14 @@ import { RANKING_SOURCES, ingestibleSources, sourceTierCounts } from "../sources
 // source is legitimately cleared, and the tempting fix is to delete the test and
 // lose the guard with it. Pinning the exact set keeps the guard: it still fails
 // on an accidental or unreviewed flip, it just no longer forbids the decision.
-const LICENSED_SOURCE_IDS = ["ufc-mma", "wba-female"];
+//
+// wba-male added 2026-08-07 on the owner's explicit instruction — the reported
+// symptom was "boxing champions are all women", and the cause was that every
+// cleared boxing source was a female list. Same sanctioning body, same site,
+// already-cleared publisher; the men's ratings are a second page of it.
+// Verified against a captured live page before clearing (see connectors/wba.ts,
+// which had a 404 URL and two parse defects that this flip would have shipped).
+const LICENSED_SOURCE_IDS = ["ufc-mma", "wba-female", "wba-male"];
 
 test("only the explicitly-cleared sources are ingestible (compliance gate)", () => {
   assert.deepEqual(ingestibleSources().map((s) => s.id).sort(), [...LICENSED_SOURCE_IDS].sort());

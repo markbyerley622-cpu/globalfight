@@ -47,6 +47,63 @@ export function nameKey(raw: string): string {
   return tokens.join(" ");
 }
 
+// ── DISPLAY casing ──────────────────────────────────────────────────────────
+// Everything above is for MATCHING and is deliberately lossy. This is the other
+// direction: what a name should look like when it is shown to somebody.
+//
+// Sanctioning bodies publish ratings tables in caps. The WBA men's connector
+// created 206 fighters in one run, every one of them stored as "MURAT GASSIEV",
+// sitting on the rankings board next to "Dmitry Bivol" — who was only spelled
+// properly because he already existed. The registry has no way to recover the
+// casing later, so it has to be done at the point of creation.
+//
+// Matching is unaffected: nameKey() lowercases anyway, so this changes the
+// display string and nothing about identity.
+
+/** Suffixes that stay upper-case, and the ones that get title-cased. */
+const ROMAN = new Set(["II", "III", "IV", "V", "VI"]);
+const LOWER_PARTICLES = new Set(["de", "del", "da", "di", "van", "von", "der", "den", "la", "le", "dos", "das", "bin", "al"]);
+
+function caseWord(word: string, index: number): string {
+  if (!word) return word;
+  const upper = word.toUpperCase();
+  if (ROMAN.has(upper)) return upper;
+  // A lone letter is an initial ("ABRAHAM R PEREZ"), not a word to title-case.
+  if (word.length === 1) return upper;
+
+  // Hyphens and apostrophes join two words that BOTH get capitalised —
+  // "BILLAM-SMITH" → "Billam-Smith", "O'SULLIVAN" → "O'Sullivan".
+  if (/[-'’]/.test(word)) {
+    return word.split(/([-'’])/).map((part, i) => (/[-'’]/.test(part) ? part : caseWord(part, i === 0 ? index : 1))).join("");
+  }
+
+  const lower = word.toLowerCase();
+  // Particles stay lower-case unless they lead the name ("Oscar de la Hoya",
+  // but "De La Hoya" if that is the whole surname at the front).
+  if (index > 0 && LOWER_PARTICLES.has(lower)) return lower;
+
+  // "MCGREGOR" → "McGregor". Restricted to Mc: Mac is a real prefix but also
+  // the start of ordinary names ("MACIEL"), and "MacIel" is worse than "Maciel".
+  if (/^mc[a-z]{2,}$/.test(lower)) return `Mc${lower[2].toUpperCase()}${lower.slice(3)}`;
+
+  return lower[0].toUpperCase() + lower.slice(1);
+}
+
+/**
+ * Format a name for display, but ONLY when the source shouted it.
+ *
+ * A string containing any lower-case letter is left exactly as it is — it was
+ * written by someone who made a casing decision, and overriding that would
+ * flatten "Conor McGregor" and every deliberately-styled ring name in the
+ * registry. This only rescues the all-caps case, where no information is lost
+ * because there was none to begin with.
+ */
+export function displayName(raw: string): string {
+  const trimmed = raw.trim().replace(/\s+/g, " ");
+  if (!trimmed || /[a-z]/.test(trimmed)) return trimmed;
+  return trimmed.split(" ").map(caseWord).join(" ");
+}
+
 /**
  * Loose key for fuzzy matching: first + last token only, middle names dropped.
  * Lets "Israel Mobolaji Adesanya" match "Israel Adesanya". Single-token names

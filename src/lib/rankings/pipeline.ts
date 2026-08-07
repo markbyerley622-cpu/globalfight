@@ -231,6 +231,14 @@ export async function projectRankings(now = new Date()): Promise<ProjectionStat>
       value: { key: r.fighterId, fighterId: r.fighterId, rank: r.rank },
     }));
 
+    // Gender lives on the observation and the schema says Ranking.gender is
+    // "carried from the winning observation" — but nothing carried it, so every
+    // published row had gender NULL. `audit:rankings` reads that column, so it
+    // reported boxing as "0 men's · 169 women's · 481 not yet recorded" on a
+    // database that had just published seventeen men's divisions: the one report
+    // built to answer "are these rankings all women?" could not see the answer.
+    const genderById = new Map(rows.map((r) => [r.id, r.gender]));
+
     const outcome = reconcileList(observations, { now });
     if (!outcome) continue;
     if (outcome.decision.contested) stat.contested++;
@@ -248,12 +256,18 @@ export async function projectRankings(now = new Date()): Promise<ProjectionStat>
           organisation: list.organisation,
         },
       };
-      const existing = await prisma.ranking.findUnique({ where: key, select: { rank: true } });
+      const gender = genderById.get(obs.id) ?? null;
+
+      const existing = await prisma.ranking.findUnique({ where: key, select: { rank: true, gender: true } });
       const previousRank = existing?.rank ?? null;
 
       // Unchanged rows are left alone entirely — no write, no snapshot. The old
       // pipeline rewrote every row on every run.
-      if (existing && existing.rank === rank) continue;
+      //
+      // `gender` is part of "unchanged": rows published before it was carried
+      // through hold NULL, and a rank that never moves would otherwise never
+      // acquire it — the backfill has to be able to reach a stable board.
+      if (existing && existing.rank === rank && existing.gender === gender) continue;
 
       await prisma.ranking.upsert({
         where: key,
@@ -263,6 +277,7 @@ export async function projectRankings(now = new Date()): Promise<ProjectionStat>
           isPoundForPound: list.isPoundForPound,
           organisation: list.organisation,
           rank,
+          gender,
           previousRank,
           movement: movementFor(previousRank, rank),
           source: outcome.decision.provider,
@@ -277,6 +292,7 @@ export async function projectRankings(now = new Date()): Promise<ProjectionStat>
         },
         update: {
           rank,
+          gender,
           previousRank,
           movement: movementFor(previousRank, rank),
           source: outcome.decision.provider,

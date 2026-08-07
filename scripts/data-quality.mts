@@ -91,16 +91,27 @@ async function main() {
   console.log(`  champions last updated             : ${h.championsUpdatedAt?.slice(0, 16).replace("T", " ") ?? "never"}`);
   console.log(`  identity questions awaiting review : ${h.duplicateCandidates}`);
   if (h.providers.length) {
-    console.log("\n  provider                     last checked      last changed      fails");
+    console.log("\n  provider                     last checked      last changed      fails  cursor");
     for (const p of h.providers) {
+      // "never changed" is the interesting state and is easy to miss beside a
+      // recent "last checked" — a provider polled hourly that has not moved in
+      // weeks is either genuinely quiet or genuinely broken, and only the two
+      // dates side by side can tell you which.
+      const cursor = p.cursor === null ? "—" : p.exhausted ? `${p.cursor} (caught up)` : `page ${p.cursor}`;
       console.log(
         `  ${pad(p.provider, 28)} ${(p.lastCheckedAt?.slice(0, 16).replace("T", " ") ?? "never").padEnd(17)} ` +
-          `${(p.lastChangedAt?.slice(0, 16).replace("T", " ") ?? "never").padEnd(17)} ${num(p.failureStreak, 5)}`,
+          `${(p.lastChangedAt?.slice(0, 16).replace("T", " ") ?? "never").padEnd(17)} ${num(p.failureStreak, 5)}  ${cursor}`,
       );
       if (p.lastError) console.log(`  ${" ".repeat(28)} └─ ${p.lastError.slice(0, 60)}`);
     }
   } else {
-    console.log("  providers                          : no checkpoints yet — nothing has ingested since the evidence layer landed");
+    // Be precise about what an empty table means. It is NOT "the checkpoint
+    // system is broken" — checkpoints are written by exactly two paths (the ONE
+    // archive crawl and the ranking connectors), so an empty table means neither
+    // has run against THIS database. Reading it as a bug sent a previous
+    // investigation looking for a writer that was working fine.
+    console.log("  providers                          : no checkpoints — neither the ranking connectors nor the ONE");
+    console.log("                                       archive crawl has run against this database yet.");
   }
 
   if (gapsOnly && rows.length === 0) console.log("\nEvery promotion is complete.\n");

@@ -65,6 +65,15 @@ const claimValue = (e: WdEntity | undefined, prop: string) =>
 // to be cleaning. normalizeText resolves entities to a fixpoint instead.
 const stripHtml = (s: string) => normalizeText(s.replace(/<[^>]+>/g, " "));
 
+/**
+ * Drop the query string / fragment from a media URL.
+ *
+ * Exported for the test: this one line is the difference between the whole
+ * registry having photos and none of it having any, so it is pinned rather than
+ * left as an inline expression.
+ */
+export const stripQuery = (url: string): string => url.split(/[?#]/)[0];
+
 // A licence string we're allowed to display with attribution. Non-free / fair-use
 // files (which exist on en.wiki but never on Commons) are rejected.
 const FREE_LICENSE = /\b(cc[\s-]?by|cc0|public domain|no restrictions|pd-|attribution)\b/i;
@@ -83,9 +92,22 @@ interface ImageInfoResp {
 async function fetchImageLicense(
   imageUrl: string,
 ): Promise<{ credit?: string; license: string; licenseUrl?: string } | null> {
+  // ── Strip the query string BEFORE taking the filename ─────────────────────
+  // PageImages now returns tracking parameters on every URL:
+  //
+  //   …/commons/c/c2/Curtis_Blaydes_at_UFC_221.png?utm_source=en.wikipedia.org
+  //     &utm_campaign=api&utm_content=original
+  //
+  // `split("/").pop()` therefore produced
+  // "Curtis_Blaydes_at_UFC_221.png?utm_source=…", the File: lookup for that
+  // title missed, extmetadata came back empty, and the licence check returned
+  // null — so EVERY photo was rejected as unlicensed and the enrich runs
+  // reported `photos=0` while looking perfectly healthy. 6 fighters out of
+  // 10,748 had a face.
+  const clean = stripQuery(imageUrl);
   // Commons files live under upload.wikimedia.org/.../commons/...
-  if (!/upload\.wikimedia\.org\/.*\/commons\//i.test(imageUrl)) return null;
-  const filename = decodeURIComponent(imageUrl.split("/").pop() ?? "");
+  if (!/upload\.wikimedia\.org\/.*\/commons\//i.test(clean)) return null;
+  const filename = decodeURIComponent(clean.split("/").pop() ?? "");
   if (!filename) return null;
 
   const url = `${WIKI_API}?action=query&format=json&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent(
@@ -119,7 +141,10 @@ export async function fetchWikipediaProfile(name: string): Promise<WikiProfile> 
   // Capture the photo licence up-front, but COMMIT it only after Wikidata
   // confirms this page is an athlete (below). Name matching alone can land on a
   // non-athlete namesake — we must not put a stranger's photo on a fighter.
-  const candidateImage = page.original?.source;
+  // Stored WITHOUT the tracking parameters: they are Wikimedia's analytics, not
+  // part of the file's address, and persisting them would put a `utm_campaign`
+  // on every fighter photo the site serves.
+  const candidateImage = page.original?.source ? stripQuery(page.original.source) : undefined;
   const imageLic = candidateImage ? await fetchImageLicense(candidateImage) : null;
 
   const wikidataId = page.pageprops?.wikibase_item;

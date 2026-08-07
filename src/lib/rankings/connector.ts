@@ -93,6 +93,18 @@ const WEIGHT_ALIASES: Record<string, string> = {
   "jr lightweight": "Super Featherweight",
   cruiser: "Cruiserweight",
   heavy: "Heavyweight",
+  // The WBA prints its two lightest divisions WITHOUT the "weight" suffix —
+  // the page header is literally `<span>MINIMUM</span>`. Left unaliased those
+  // normalize to "Minimum", which is not a division any WeightClass row is
+  // keyed on, so the whole division silently lands under the wrong label.
+  minimum: "Minimumweight",
+  "light minimum": "Light Minimumweight",
+  // NOT "strawweight" → "Minimumweight". They are synonyms in BOXING (105lb),
+  // and this normalizer is sport-agnostic: the alias renamed the UFC's Women's
+  // Strawweight (115lb, a different division in a different sport) to
+  // Minimumweight, orphaning its existing title reign. Caught by
+  // `npm run audit:champions`. A sport-specific synonym needs a sport-specific
+  // table, which nothing currently requires.
 };
 
 export function normalizeWeightClass(raw: string): string {

@@ -6,11 +6,26 @@
 // The same code path the weekly `gf-cron-rankings` job takes, so a result here
 // is a real answer about production and not an approximation of one.
 //
+// ── IT DID NOT USED TO BE ───────────────────────────────────────────────────
+// This script looped `ingestConnector` and stopped, while the cron calls
+// `ingestAllRankings`, whose whole second half is the PROJECTION — reconciling
+// every provider's observations into the published `Ranking` board and into
+// `TitleReign`. So a `--apply` run wrote observations, printed "All connectors
+// succeeded", and left the public rankings and champions pages exactly as they
+// were. The one tool an operator reaches for to answer "is the pipeline
+// working?" was structurally incapable of finishing the job it reported on.
+//
+// The projection now runs here too, and its numbers are printed, because
+// `imported=276` with `published=0` is the interesting failure and the old
+// output could not express it.
+//
 // Dry run is the DEFAULT. A ranking ingest creates fighters, rewrites divisions
 // and can retire a champion, so "I just wanted to see if it works" must not be
 // spelled the same way as "publish this".
 import { RANKING_SOURCES, ingestibleSources } from "../src/lib/rankings/sources.ts";
 import { ingestConnector } from "../src/lib/rankings/ingest.ts";
+import { projectRankings } from "../src/lib/rankings/pipeline.ts";
+import { projectChampions } from "../src/lib/rankings/champions.ts";
 import { allConnectors, INGEST_BLOCKLIST } from "../src/lib/rankings/connectors/index.ts";
 import { readFlags } from "../src/lib/feature-flags.ts";
 import { prisma } from "../src/lib/db.ts";
@@ -73,5 +88,18 @@ for (const c of connectors) {
 }
 
 process.stdout.write(`\n${failed === 0 ? "All connectors succeeded." : `${failed} connector(s) failed.`}\n`);
+
+// ── PROJECT ─────────────────────────────────────────────────────────────────
+// Once, after every connector — never inside the loop. Reconciliation decides a
+// division by looking at ALL providers' evidence at the same time; projecting
+// per connector would decide each list against whichever sources happened to
+// have run already. Mirrors ingestAllRankings().
+process.stdout.write(`\nPROJECTING\n${"─".repeat(72)}\n`);
+const [ranked, champions] = await Promise.all([projectRankings(), projectChampions()]);
+process.stdout.write(
+  `  rankings   lists=${ranked.lists} written=${ranked.rowsWritten} removed=${ranked.rowsRemoved} contested=${ranked.contested}\n` +
+  `  champions  titles=${champions.titles} opened=${champions.reignsOpened} closed=${champions.reignsClosed} contested=${champions.contested}\n`,
+);
+
 await prisma.$disconnect();
 process.exit(failed === 0 ? 0 : 1);

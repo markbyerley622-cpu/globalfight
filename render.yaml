@@ -147,17 +147,20 @@ envVarGroups:
       #                            licensed + connectorReady in
       #                            src/lib/rankings/sources.ts.
       #
-      # Turned on 2026-08-03 with ufc-mma and wba-female cleared in the registry.
-      # Nothing else is licensed, so nothing else is fetched.
+      # Turned on 2026-08-03 with ufc-mma and wba-female cleared in the registry;
+      # wba-male added 2026-08-07. Nothing else is licensed, so nothing else is
+      # fetched.
       #
       # NOTE ON WHAT THESE ACTUALLY PUBLISH:
       #   ufc-mma     UFC official divisions + the UFC pound-for-pound table.
-      #   wba-female  The WBA's FEMALE ratings — that is the entire source. Its
-      #               divisions are labelled "Women's <division>". There is still
-      #               NO men's boxing ranking source, so /rankings?sport=boxing
-      #               shows women's divisions only. That is honest, but it is not
-      #               the same thing as "boxing rankings" and should not be
-      #               described as such until a men's source is added.
+      #   wba-female  The WBA's FEMALE ratings. Divisions are labelled
+      #               "Women's <division>" so they never share a WeightClass row
+      #               with the men's ladder.
+      #   wba-male    The WBA's MEN'S ratings (17 divisions). Until this was
+      #               added, every licensed boxing source was a female list and
+      #               /rankings?sport=boxing showed women's divisions ONLY — the
+      #               reported "boxing champions are all women". Not a renderer
+      #               bug: there was no men's source to render.
       - key: RANKINGS_ENABLED
         value: "true"
       - key: RANKINGS_INGEST_ENABLED
