@@ -14,7 +14,8 @@ import { Composer } from "@/components/composer/composer";
 import { AttachmentGrid } from "@/components/forums/attachments";
 import { ReactionBar } from "@/components/forums/reaction-bar";
 import { ReportButton } from "@/components/forums/report-dialog";
-import { MediaComposer } from "@/components/forums/media-composer";
+import { useComposerUploads } from "@/lib/composer/attachments";
+import { useMediaAction, useEmbedAction } from "@/components/composer/toolbar";
 import { RichText } from "@/components/forums/rich-text";
 import { PickLine, RecordLine } from "@/components/forums/pick-identity";
 import type { ForumPostDTO, Paginated, ForumAttachment } from "@/lib/forum/types";
@@ -349,7 +350,19 @@ function ReplyComposer({
 }) {
   const t = useT();
   const [content, setContent] = useState("");
-  const [attachments, setAttachments] = useState<ForumAttachment[]>([]);
+  // The shared engine — same lifecycle as every other surface. This one GAINS
+  // progress, an instant thumbnail and retry by migrating.
+  const uploads = useComposerUploads<ForumAttachment>({
+    uploader: {
+      endpoint: "/api/forums/upload",
+      parse: (json) => (json as { attachment?: ForumAttachment })?.attachment ?? null,
+    },
+    max: 8,
+    maxBytes: 10 * 1024 * 1024,
+    accept: ["image/"],
+  });
+  const media = useMediaAction(uploads);
+  const embed = useEmbedAction(uploads);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -369,7 +382,7 @@ function ReplyComposer({
       const res = await fetch(`/api/forums/threads/${threadSlug}/posts`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          content, attachments,
+          content, attachments: uploads.ready,
           parentId: target?.parentId ?? null,
           quotePostId: target?.quotePostId ?? null,
         }),
@@ -377,7 +390,7 @@ function ReplyComposer({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not post reply.");
       setContent("");
-      setAttachments([]);
+      uploads.clear();
       onClearTarget();
       onPosted();
     } catch (err) {
@@ -414,13 +427,14 @@ function ReplyComposer({
         // Scoped to the thread AND the reply target, so a draft aimed at one
         // person does not reappear under a different one.
         draftKey={`forum-reply:${threadSlug}:${target?.parentId ?? "root"}`}
+        uploads={uploads as never}
+        actions={[media.action, embed.action]}
         className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 p-3 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
-      <div className="mt-3">
-        <MediaComposer attachments={attachments} onChange={setAttachments} />
-      </div>
+      {media.input}
+      {embed.input}
       <div className="mt-3 flex justify-end">
-        <Button type="submit" size="sm" disabled={busy || (!content.trim() && attachments.length === 0)}>
+        <Button type="submit" size="sm" disabled={busy || (!content.trim() && uploads.ready.length === 0) || uploads.busy}>
           {busy ? <><Loader2 className="size-4 animate-spin" /> {t("Posting…")}</> : t("Post reply")}
         </Button>
       </div>

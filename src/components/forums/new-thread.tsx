@@ -5,7 +5,8 @@ import { AlertCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
-import { MediaComposer } from "@/components/forums/media-composer";
+import { useComposerUploads } from "@/lib/composer/attachments";
+import { useMediaAction, useEmbedAction } from "@/components/composer/toolbar";
 import type { ForumCategoryDTO, ForumThreadDTO, ForumAttachment } from "@/lib/forum/types";
 import { Composer } from "@/components/composer/composer";
 
@@ -34,7 +35,23 @@ export function NewThreadComposer({
   const t = useT();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [attachments, setAttachments] = useState<ForumAttachment[]>([]);
+  // ── Attachments ───────────────────────────────────────────────────────
+  // The shared engine, not this surface's own. Migrating here also GAINS
+  // per-file progress, an instant local thumbnail and retry — none of which the
+  // old MediaComposer had; it awaited each file with the button disabled and a
+  // failure lost the picture.
+  const uploads = useComposerUploads<ForumAttachment>({
+    uploader: {
+      endpoint: "/api/forums/upload",
+      parse: (json) => (json as { attachment?: ForumAttachment })?.attachment ?? null,
+    },
+    max: 8,
+    maxBytes: 10 * 1024 * 1024,
+    accept: ["image/"],
+  });
+  const media = useMediaAction(uploads);
+  const embed = useEmbedAction(uploads);
+
   const [category, setCategory] = useState(fixedCategory ?? categories[0]?.slug ?? "general");
   const [kind, setKind] = useState("discussion");
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +67,7 @@ export function NewThreadComposer({
       const res = await fetch("/api/forums/threads", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, content, categorySlug: fixedCategory ?? category, attachments, kind }),
+        body: JSON.stringify({ title, content, categorySlug: fixedCategory ?? category, attachments: uploads.ready, kind }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not create thread.");
@@ -109,12 +126,15 @@ export function NewThreadComposer({
         placeholder={t("What's on your mind?")}
         rows={4}
         draftKey="forum-new-thread"
+        uploads={uploads as never}
+        actions={[media.action, embed.action]}
         className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 px-3 py-2.5 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
-      <MediaComposer attachments={attachments} onChange={setAttachments} />
+      {media.input}
+      {embed.input}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>{t("Cancel")}</Button>
-        <Button type="submit" size="sm" disabled={submitting || title.trim().length < 4 || (!content.trim() && attachments.length === 0)}>
+        <Button type="submit" size="sm" disabled={submitting || title.trim().length < 4 || (!content.trim() && uploads.ready.length === 0) || uploads.busy}>
           {submitting ? <><Loader2 className="size-4 animate-spin" /> {t("Posting…")}</> : t("Post thread")}
         </Button>
       </div>

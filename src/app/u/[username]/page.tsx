@@ -147,7 +147,11 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
 
       <div className="container-cr">
         {/* Identity */}
-        <div className="-mt-12 flex flex-col items-center gap-3 text-center sm:-mt-14 sm:flex-row sm:items-end sm:gap-5 sm:text-left">
+        {/* `relative z-10` is load-bearing, not decoration. The banner above is
+            POSITIONED, and a positioned element paints over a static one no
+            matter which comes first in the DOM — so the banner was covering the
+            top half of the avatar this row pulls up into it with -mt-12. */}
+        <div className="relative z-10 -mt-12 flex flex-col items-center gap-3 text-center sm:-mt-14 sm:flex-row sm:items-end sm:gap-5 sm:text-left">
           <div className="size-24 shrink-0 overflow-hidden rounded-full ring-4 ring-ink-950 sm:size-28">
             {u.image ? (
               <Image src={u.image} alt={displayName} width={112} height={112} className="size-full object-cover" unoptimized />

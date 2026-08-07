@@ -5,6 +5,8 @@ import { Loader2, BadgeCheck } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
 import { applyMention, readMentionToken, type MentionToken } from "@/lib/mentions";
 import { readDraft, writeDraft, clearDraft } from "@/lib/composer/drafts";
+import { ComposerToolbar, AttachmentPreviews, type ComposerAction } from "@/components/composer/toolbar";
+import type { UploadsApi } from "@/lib/composer/attachments";
 import type { PresenceDto } from "@/lib/presence/policy";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +88,25 @@ export interface ComposerProps {
   maxLength?: number;
   /** Show the remaining count once the text approaches the ceiling. */
   showCount?: boolean;
+  /**
+   * Attachments, when this surface has them.
+   *
+   * The SURFACE owns the state (it has to submit it alongside the text); the
+   * Composer owns the interaction — previews, the toolbar button, drag-and-drop
+   * and the paste path. That split is why there is no callback here: the
+   * surface already holds everything it needs.
+   */
+  uploads?: UploadsApi<unknown>;
+  /**
+   * Extra toolbar actions, contributed by features.
+   *
+   * Emoji, GIFs, polls and the rest arrive HERE as objects. The Composer never
+   * learns what any of them do, so adding one is a new file plus an array
+   * entry, not an edit to this component.
+   */
+  actions?: ComposerAction[];
+  /** Rendered to the right of the toolbar — a surface's own send button. */
+  trailing?: React.ReactNode;
   className?: string;
   disabled?: boolean;
 }
@@ -98,6 +119,9 @@ export function Composer({
   draftKey,
   maxLength,
   showCount = false,
+  uploads,
+  actions,
+  trailing,
   className,
   disabled,
   ...rest
@@ -262,6 +286,32 @@ export function Composer({
   // useId, not Math.random(): stable across renders, unique per instance, and
   // identical on server and client so it cannot trip a hydration mismatch on an
   // aria-controls attribute.
+  // ── Drag and drop ────────────────────────────────────────────────────────
+  // Counted rather than a boolean: dragenter/dragleave fire for every CHILD
+  // element crossed, so a boolean flickers off the moment the pointer moves
+  // over the textarea inside the drop zone.
+  const dragDepth = useRef(0);
+  const [dragging, setDragging] = useState(false);
+
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!uploads || !e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragging(true);
+  };
+  const onDragLeave = () => {
+    if (!uploads) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    if (!uploads) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    if (e.dataTransfer.files.length) uploads.addFiles(e.dataTransfer.files);
+  };
+
   const listId = `mentions-${useId()}`;
   const remaining = maxLength ? maxLength - value.length : null;
   // Only speak up near the ceiling. A counter present from the first character
@@ -269,7 +319,15 @@ export function Composer({
   const nearLimit = remaining !== null && maxLength !== undefined && remaining <= Math.max(20, maxLength * 0.1);
 
   return (
-    <div className="relative flex-1">
+    <div
+      className="relative flex-1"
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => { if (uploads && e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {uploads && <AttachmentPreviews uploads={uploads} />}
+
       {open && (
         /* ABOVE the input. Composers sit at the BOTTOM of their surface — a DM
            thread, a reply box — so a menu dropped downward would open into the
@@ -335,6 +393,27 @@ export function Composer({
 
       {loading && query !== null && (
         <Loader2 aria-hidden className="pointer-events-none absolute right-2.5 top-3 size-3.5 animate-spin text-fog" />
+      )}
+
+      {/* The drop target is the whole composer, so there is no small rectangle
+          to aim at. `pointer-events-none` matters: an overlay that swallowed
+          the drop would make the gesture do nothing. */}
+      {dragging && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-lg border-2 border-dashed border-blood-500/70 bg-ink-950/80"
+        >
+          <span className="font-display text-xs font-bold uppercase tracking-wider text-blood-200">
+            Drop to attach
+          </span>
+        </div>
+      )}
+
+      {(actions?.length || uploads || trailing) && (
+        <div className="mt-2 flex items-center gap-2">
+          <ComposerToolbar actions={actions ?? []} />
+          {trailing && <span className="ml-auto">{trailing}</span>}
+        </div>
       )}
 
       {showCount && nearLimit && (
