@@ -27,12 +27,46 @@ export interface DmPerson {
   presence: PresenceDto;
 }
 
+/**
+ * The live state of a challenge, as rendered inside a conversation.
+ *
+ * Read fresh with the thread, never snapshotted into the message: a card that
+ * still says "waiting for your call" after the recipient has picked is worse
+ * than no card. The MESSAGE is immutable history; the CARD is a live view of
+ * the battle it points at.
+ */
+export interface DmChallenge {
+  battleId: string;
+  /** WAITING with no opponent corner = an unanswered invite. */
+  state: string;
+  fightSlug: string;
+  eventSlug: string | null;
+  eventName: string | null;
+  /** ISO — drives the countdown on the card. */
+  eventDate: string | null;
+  posterUrl: string | null;
+  red: string;
+  blue: string;
+  /** Corner the challenger is defending: "RED" | "BLUE". */
+  challengerCorner: string;
+  /** Null until the invite is accepted. */
+  opponentCorner: string | null;
+  /** The viewer is the one being called out AND has not answered yet. */
+  awaitingViewer: boolean;
+  /** The bout is still open to picks — a locked card offers no Accept. */
+  open: boolean;
+}
+
 export interface DmMessage {
   id: string;
   body: string;
   at: string;
   senderId: string;
   fromMe: boolean;
+  /** TEXT unless this message IS something — see DirectMessageKind. */
+  kind: "TEXT" | "CHALLENGE";
+  /** Present on a CHALLENGE whose battle still exists. */
+  challenge?: DmChallenge | null;
 }
 
 export interface ConversationSummary {

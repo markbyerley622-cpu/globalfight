@@ -267,6 +267,12 @@ function PostItem({
           size={compact ? "sm" : "md"}
           op={isOp}
           subline={subline}
+          // A thread is a live conversation: whether the person you are
+          // answering is here changes whether you wait for a reply. Only
+          // positive presence earns ink — a long thread would otherwise be a
+          // column of grey dots.
+          presence={post.authorPresence}
+          showOffline={false}
         />
         {/* Same rule as the gym-review action row: no `cr-touch-target` beside a
             destructive control — grow the real box and the gap instead. */}
