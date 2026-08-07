@@ -2,6 +2,8 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { publicDisplayName } from "@/lib/display-name";
 import { notify } from "@/lib/notifications-store";
+import { PRESENCE_SELECT, PRESENCE_MUTUAL_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor, typingAllowed, readReceiptsAllowed } from "@/lib/presence/policy";
 import {
   MAX_MESSAGE_LENGTH,
   TYPING_TTL_MS,
@@ -42,15 +44,34 @@ export function pairKeyFor(a: string, b: string): string {
 
 const MEMBER_USER = {
   select: {
-    id: true, username: true, name: true, image: true,
-    professionalVerifiedAt: true, lastSeenAt: true,
+    // `id` comes from PRESENCE_SELECT — it is part of that fragment because the
+    // DTO builder needs it to recognise "the viewer looking at their own row".
+    username: true, name: true, image: true,
+    professionalVerifiedAt: true,
+    // Spread rather than spelled out, so a new privacy switch reaches every
+    // messaging query at once — see lib/presence/select.
+    ...PRESENCE_SELECT,
+    ...PRESENCE_MUTUAL_SELECT,
   },
 } as const;
 
-const toPerson = (u: {
+/** The shape MEMBER_USER produces. Named so the mappers below can take it. */
+type MemberUser = {
   id: string; username: string | null; name: string | null; image: string | null;
   professionalVerifiedAt: Date | null; lastSeenAt: Date | null;
-}): DmPerson => ({
+  showOnlineStatus: boolean; showLastSeen: boolean;
+  allowTypingIndicator: boolean; allowReadReceipts: boolean;
+};
+
+/**
+ * Map a member row to the client shape.
+ *
+ * Takes the VIEWER, because presence is viewer-dependent: the same person is
+ * `hidden` to a stranger and fully visible to themselves. Building the DTO
+ * through `presenceDtoFor` rather than copying `lastSeenAt` across is what
+ * stops a hidden user's timestamp reaching the browser at all.
+ */
+const toPerson = (u: MemberUser, viewerId: string | null): DmPerson => ({
   id: u.id,
   username: u.username,
   // Never the raw `name` — see lib/display-name.
@@ -59,8 +80,7 @@ const toPerson = (u: {
   // Derived from the timestamp, never a separate boolean that could fall out of
   // sync with it — the same rule the schema comment on the column states.
   verified: u.professionalVerifiedAt !== null,
-  // RAW, so the client decays it against its own clock between polls.
-  lastSeenAt: u.lastSeenAt?.toISOString() ?? null,
+  presence: presenceDtoFor(u, viewerId),
 });
 
 /**
@@ -112,13 +132,28 @@ async function requireMember(conversationId: string, viewerId: string) {
   });
   if (!convo) return null;
   const other = convo.members.find((m) => m.userId !== viewerId);
+  const mine = convo.members.find((m) => m.userId === viewerId);
+
+  // ── The mutual gates, applied ONCE, here ────────────────────────────────
+  // Both sides' switches are read together and the answer is symmetric, so a
+  // caller cannot accidentally enforce one direction. Anything the pair is not
+  // entitled to is nulled BEFORE it leaves this function — not hidden later by
+  // a component, which would still have shipped the fact to the browser.
+  const seeTyping = typingAllowed(mine?.user ?? null, other?.user ?? null);
+  const seeReceipts = readReceiptsAllowed(mine?.user ?? null, other?.user ?? null);
+
   return {
     id: convo.id,
-    other: other ? toPerson(other.user) : null,
+    other: other ? toPerson(other.user, viewerId) : null,
     otherId: other?.userId ?? null,
-    otherTypingAt: other?.typingAt ?? null,
-    otherLastReadAt: other?.lastReadAt ?? null,
+    otherTypingAt: seeTyping ? other?.typingAt ?? null : null,
+    // Read receipts off → the sender's ticks stop at Delivered. Delivered is
+    // still true and still useful: it says the message arrived, which is the
+    // half of the question that is not about the recipient's attention.
+    otherLastReadAt: seeReceipts ? other?.lastReadAt ?? null : null,
     otherDeliveredAt: other?.lastDeliveredAt ?? null,
+    /** Surfaced so the UI can explain the missing tick rather than look broken. */
+    receiptsHidden: !seeReceipts,
   };
 }
 
@@ -136,7 +171,21 @@ async function requireMember(conversationId: string, viewerId: string) {
  */
 export async function setTyping(conversationId: string, viewerId: string): Promise<void> {
   await prisma.conversationMember.updateMany({
-    where: { conversationId, userId: viewerId },
+    where: {
+      conversationId,
+      userId: viewerId,
+      // ── Never BROADCAST when the sender has typing off ──────────────────
+      // The privacy rule is enforced at the WRITE, not only at the read. If
+      // the timestamp were stored and merely filtered on the way out, the fact
+      // would still exist in the database, and every future query on this table
+      // would have to remember to exclude it. Not writing it means there is
+      // nothing to leak and nothing to remember.
+      //
+      // Folded into the same statement rather than a read-then-write: one
+      // indexed UPDATE, still the cheapest write in the app, and it cannot race
+      // a settings change into writing a value the user just switched off.
+      user: { allowTypingIndicator: true },
+    },
     data: { typingAt: new Date() },
   });
 }
@@ -198,14 +247,19 @@ export async function listConversations(viewerId: string, limit = 50): Promise<C
     const other = r.members.find((m) => m.userId !== viewerId);
     // A thread whose other member is gone is not renderable as a conversation.
     if (!other) return [];
+    const mineMember = r.members.find((m) => m.userId === viewerId);
+    // Same mutual gates as the thread view, from the same functions — the inbox
+    // and the open conversation cannot disagree about what may be shown.
+    const seeTyping = typingAllowed(mineMember?.user ?? null, other.user);
+    const seeReceipts = readReceiptsAllowed(mineMember?.user ?? null, other.user);
     const last = r.messages[0];
     return [{
       id: r.id,
-      withUser: toPerson(other.user),
+      withUser: toPerson(other.user, viewerId),
       lastMessageAt: r.lastMessageAt.toISOString(),
       unread: unreadBy.get(r.id) ?? 0,
-      otherTyping: isTyping(other.typingAt),
-      otherReadAt: other.lastReadAt?.toISOString() ?? null,
+      otherTyping: seeTyping && isTyping(other.typingAt),
+      otherReadAt: seeReceipts ? other.lastReadAt?.toISOString() ?? null : null,
       otherDeliveredAt: other.lastDeliveredAt?.toISOString() ?? null,
       lastMessage: last
         ? { body: last.body, at: last.createdAt.toISOString(), fromMe: last.senderId === viewerId }
@@ -283,6 +337,7 @@ export async function getConversation(
     otherTyping: isTyping(member.otherTypingAt),
     otherReadAt: member.otherLastReadAt?.toISOString() ?? null,
     otherDeliveredAt: member.otherDeliveredAt?.toISOString() ?? null,
+    receiptsHidden: member.receiptsHidden,
     // Oldest-first for rendering; the query is newest-first so `take` keeps the
     // most RECENT window rather than the first 100 messages ever sent.
     messages: rows.reverse().map((m) => ({

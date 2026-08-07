@@ -2251,7 +2251,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 158,
+      "line": 167,
       "fn": "profile",
       "model": "User",
       "method": "update",
@@ -3785,7 +3785,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 83,
+      "line": 103,
       "fn": "convo",
       "model": "Conversation",
       "method": "upsert",
@@ -3798,7 +3798,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 320,
+      "line": 375,
       "fn": "sendMessage",
       "model": "Conversation",
       "method": "update",
@@ -5527,7 +5527,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 109,
+      "line": 118,
       "fn": "GET",
       "model": "User",
       "method": "findUnique",
@@ -5540,7 +5540,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 110,
+      "line": 119,
       "fn": "GET",
       "model": "GymMember",
       "method": "findFirst",
@@ -5553,7 +5553,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 114,
+      "line": 123,
       "fn": "GET",
       "model": "FavoritePromotion",
       "method": "findMany",
@@ -5566,7 +5566,7 @@
     },
     {
       "file": "src/app/api/profile/route.ts",
-      "line": 140,
+      "line": 149,
       "fn": "current",
       "model": "User",
       "method": "findUnique",
@@ -6073,7 +6073,7 @@
     },
     {
       "file": "src/app/u/[username]/page.tsx",
-      "line": 36,
+      "line": 39,
       "fn": "loadUser",
       "model": "User",
       "method": "findUnique",
@@ -6086,7 +6086,7 @@
     },
     {
       "file": "src/app/u/[username]/page.tsx",
-      "line": 87,
+      "line": 97,
       "fn": "PublicProfile",
       "model": "User",
       "method": "count",
@@ -12664,7 +12664,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 76,
+      "line": 96,
       "fn": "other",
       "model": "User",
       "method": "findUnique",
@@ -12677,7 +12677,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 94,
+      "line": 114,
       "fn": "openConversation",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12690,7 +12690,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 104,
+      "line": 124,
       "fn": "convo",
       "model": "Conversation",
       "method": "findFirst",
@@ -12703,7 +12703,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 138,
+      "line": 173,
       "fn": "setTyping",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12716,7 +12716,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 150,
+      "line": 199,
       "fn": "rows",
       "model": "Conversation",
       "method": "findMany",
@@ -12729,7 +12729,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 171,
+      "line": 220,
       "fn": "counts",
       "model": "DirectMessage",
       "method": "groupBy",
@@ -12742,7 +12742,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 233,
+      "line": 287,
       "fn": "markDelivered",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12755,7 +12755,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 244,
+      "line": 298,
       "fn": "members",
       "model": "ConversationMember",
       "method": "findMany",
@@ -12768,7 +12768,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 250,
+      "line": 304,
       "fn": "unreadMessageCount",
       "model": "DirectMessage",
       "method": "count",
@@ -12781,7 +12781,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 273,
+      "line": 327,
       "fn": "rows",
       "model": "DirectMessage",
       "method": "findMany",
@@ -12794,7 +12794,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 316,
+      "line": 371,
       "fn": "sendMessage",
       "model": "DirectMessage",
       "method": "create",
@@ -12807,7 +12807,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 328,
+      "line": 383,
       "fn": "sendMessage",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12820,7 +12820,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 380,
+      "line": 435,
       "fn": "sender",
       "model": "User",
       "method": "findUnique",
@@ -12833,7 +12833,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 409,
+      "line": 464,
       "fn": "markRead",
       "model": "ConversationMember",
       "method": "updateMany",

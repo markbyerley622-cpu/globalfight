@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useCoarseNow } from "@/lib/use-countdown";
 import { HEARTBEAT_MS, presenceOf, lastSeenLabel, type PresenceState } from "./derive";
+import type { PresenceDto } from "./policy";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Presence — the client side.
@@ -72,20 +73,38 @@ export function useHeartbeat(enabled = true): void {
 }
 
 /**
- * Read somebody's presence from their raw heartbeat timestamp.
+ * Read somebody's presence from the DTO the server already filtered.
  *
- * Decays on the MINUTE clock, so a card whose subject went quiet visibly drops
- * to "away" without waiting for the next poll — and without re-rendering the
- * surface once a second to do it. The one shared interval means an inbox of
- * fifty rows costs one timer, not fifty.
+ * ── The privacy decision is NOT made here ─────────────────────────────────
+ * This takes a `PresenceDto`, which the server built with `presenceDtoFor` —
+ * a hidden user's timestamp is already absent from it. So there is no way for a
+ * component to accidentally render presence somebody switched off: it has
+ * nothing to render it FROM. All this hook does is decay a timestamp it was
+ * given permission to see.
+ *
+ * Decays on the MINUTE clock, so somebody who goes quiet visibly drops to
+ * "away" without waiting for the next poll — and without re-rendering the
+ * surface once a second to do it. One shared interval means an inbox of fifty
+ * rows costs one timer, not fifty.
  */
-export function usePresence(lastSeenAt: string | null | undefined): {
-  state: PresenceState;
+export function usePresence(presence: PresenceDto | null | undefined): {
+  state: PresenceState | "hidden";
   label: string | null;
+  hidden: boolean;
 } {
   const now = useCoarseNow(60_000);
-  return {
-    state: presenceOf({ lastSeenAt, now }),
-    label: lastSeenLabel({ lastSeenAt, now }),
-  };
+
+  if (!presence || presence.hidden) {
+    return { state: "hidden", label: null, hidden: true };
+  }
+
+  const state = presenceOf({ lastSeenAt: presence.lastSeenAt, now });
+  // With history withheld, the live states may still be NAMED — hiding "last
+  // seen" was never a request to hide "is online right now", which the dot is
+  // showing anyway. Anything older resolves to no words at all.
+  const label = presence.showLastSeen
+    ? lastSeenLabel({ lastSeenAt: presence.lastSeenAt, now })
+    : state === "online" ? "Active now" : null;
+
+  return { state, label, hidden: false };
 }

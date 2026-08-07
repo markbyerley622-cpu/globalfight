@@ -1584,6 +1584,33 @@ model User {
   /// two-switches-for-one-thing bug that lib/push/policy already documents
   /// against GYM_REVIEW.
   notifyMessages    Boolean @default(true) // direct messages
+
+  // ── Presence privacy ──────────────────────────────────────────────────────
+  //
+  // Four switches, not one, because they answer genuinely different questions
+  // and people want different answers: "don't show when I'm around" is not the
+  // same request as "don't tell people I've read their message". Collapsing
+  // them into a single "private mode" would force somebody who only wanted to
+  // hide read receipts to also disappear from the app.
+  //
+  // Default ON, and that is a deliberate call rather than an oversight. A
+  // presence system where nobody is visible by default is a presence system
+  // that never works — the first person to enable it sees an empty room and
+  // turns it back off. The mitigation is that every switch is one tap away in
+  // Settings, each states exactly what it does, and the two that touch the
+  // OTHER person's information (typing, read receipts) are mutual: turning
+  // yours off also stops you seeing theirs. You cannot take without giving.
+  //
+  // showOnlineStatus is the MASTER. With it off, nothing about when this user
+  // is around is derivable: no dot, no away state, and no last-seen — because
+  // "last seen 2 minutes ago" is just "online" written slowly.
+  showOnlineStatus     Boolean @default(true)
+  /// Secondary to showOnlineStatus: keep the live dot, hide the history.
+  showLastSeen         Boolean @default(true)
+  /// MUTUAL — see lib/presence/policy. Off means you neither send nor receive.
+  allowTypingIndicator Boolean @default(true)
+  /// MUTUAL — see lib/presence/policy. Off means both sides stop at Delivered.
+  allowReadReceipts    Boolean @default(true)
   /// Local hours [start, end) during which push is withheld. Null = always on.
   /// Stored as plain hours + an IANA zone rather than UTC instants: "no pings
   /// before 8am" has to survive the user travelling.

@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { ProfileEditor } from "@/components/profile/profile-editor";
 import { MyClaims } from "@/components/profile/my-claims";
 import { NotificationSettings } from "@/components/profile/notification-settings";
+import { PresenceSettings } from "@/components/profile/presence-settings";
 
 export const metadata: Metadata = {
   title: "Edit profile",
@@ -31,6 +32,13 @@ export default function EditProfilePage() {
 
       <div className="mt-5">
         <ProfileEditor />
+      </div>
+
+      {/* Presence sits directly above notifications: both answer "what does
+          this app tell other people about me", and separating them across
+          screens is how somebody ends up hunting for one of the two. */}
+      <div className="mt-4">
+        <PresenceSettings />
       </div>
 
       <div className="mt-4">
