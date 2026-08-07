@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Settings, Bookmark, TrendingUp, LogOut, CircleUserRound, Menu, Home, ShieldCheck } from "lucide-react";
+import { User, Settings, Bookmark, TrendingUp, LogOut, CircleUserRound, Menu, Home, ShieldCheck, Megaphone } from "lucide-react";
 import { useAuth } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -76,9 +76,21 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
                 <Item href="/profile" icon={<CircleUserRound className="size-4" />} onClick={() => setOpen(false)}>Profile</Item>
                 <Item href="/predictions/mine" icon={<TrendingUp className="size-4" />} onClick={() => setOpen(false)}>My Predictions</Item>
                 <Item href="/library" icon={<Bookmark className="size-4" />} onClick={() => setOpen(false)}>Saved</Item>
+                {/* Hosting lives in the account menu for EVERY signed-in user,
+                    not only those who picked "promoter" at signup.
+                    `registryRole` is a self-declared label with no privilege
+                    (CLAUDE.md), so using it to decide who can even SEE this
+                    would hide the front door from every promoter who picked
+                    "fan" — while granting nothing to anyone who picked
+                    promoter, since /promoter shows the claim step until a human
+                    has verified them. */}
+                <Item href="/promoter" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Host events</Item>
                 <Item href="/account" icon={<Settings className="size-4" />} onClick={() => setOpen(false)}>Settings</Item>
                 {isAdmin && (
-                  <Item href="/admin/claims" icon={<ShieldCheck className="size-4" />} onClick={() => setOpen(false)}>Verification</Item>
+                  <>
+                    <Item href="/admin/claims" icon={<ShieldCheck className="size-4" />} onClick={() => setOpen(false)}>Verification</Item>
+                    <Item href="/admin/promoter-claims" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Promoter applications</Item>
+                  </>
                 )}
                 <Action icon={<Menu className="size-4" />} onClick={() => { setOpen(false); onOpenNav(); }}>Browse menu</Action>
                 <div className="my-1 border-t border-ink-800" />

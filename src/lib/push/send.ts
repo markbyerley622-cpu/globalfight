@@ -57,6 +57,7 @@ async function client(): Promise<WebPush | null> {
 
 const PREF_SELECT = {
   notifyFights: true, notifyPredictions: true, notifySocial: true, notifyGym: true,
+  notifyMessages: true,
   quietHoursStart: true, quietHoursEnd: true, timezone: true,
 } as const;
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Loader2, MessagesSquare, Swords } from "lucide-react";
 import { ThreadDiscussion } from "@/components/forums/thread-discussion";
 import { BattleBanner } from "@/components/fight/battle-banner";
+import { ChallengeFriend } from "@/components/fight/challenge-friend";
 import { useAuth } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import type { FightRoomDTO, RoomIdentity } from "@/lib/community/room-types";
@@ -14,8 +15,27 @@ type Layer = "battle" | "community";
 /**
  * A fight's arena — the two conversation layers, in one place.
  *
- *   Layer 1  Battle Room     private, you and your rival, where rivalry grows
- *   Layer 2  Community        public, spectators, analysis, memes
+ *   Layer 1  Rival      private, you and one opponent
+ *   Layer 2  Everyone   public, spectators, analysis, memes
+ *
+ * ── Why the tabs are named after PEOPLE, not actions ───────────────────────
+ * These read "Challenge" and "Community", and that was the whole reason the
+ * challenge flow was confusing. There were three things wearing the word
+ * challenge, at three different levels of the hierarchy:
+ *
+ *   "Challenge a friend"  an ACTION      (a button, under the pick control)
+ *   "Challenge"           a PLACE        (this tab — a conversation)
+ *   "Community"           another PLACE  (the other tab)
+ *
+ * So one of the two tabs was named like a verb and the other like a noun, and
+ * the actual verb lived on a different surface entirely. A reader who wanted to
+ * challenge somebody tapped the tab called Challenge — reasonably — and arrived
+ * at an empty conversation whose only offer was a link to the OTHER tab.
+ *
+ * Both tabs are now nouns describing WHO IS IN THE ROOM, which is the one thing
+ * that actually distinguishes them, and the verb has been moved to the single
+ * place where somebody wants it: the rival layer, when there is no rival in it.
+ * Same two layers, same components — the labels and the placement of one button.
  *
  * Mounted only when the reader opens the bout, so ONE room is loaded at a time
  * and the event page renders no discussion queries at all. Both layers are the
@@ -87,14 +107,14 @@ export function FightRoom({ fightSlug }: { fightSlug: string }) {
           active={active === "battle"}
           onClick={() => setLayer("battle")}
           icon={<Swords className="size-3.5" />}
-          label="Challenge"
-          hint={battle?.opponent ? `vs ${battle.opponent.name.split(" ")[0]}` : battle ? "invite sent" : "invite a rival"}
+          label="Rival"
+          hint={battle?.opponent ? `vs ${battle.opponent.name.split(" ")[0]}` : battle ? "invite sent" : "none yet"}
         />
         <LayerTab
           active={active === "community"}
           onClick={() => setLayer("community")}
           icon={<MessagesSquare className="size-3.5" />}
-          label="Community"
+          label="Everyone"
           hint={room.community.replyCount ? `${room.community.replyCount}` : undefined}
         />
       </div>
@@ -106,7 +126,13 @@ export function FightRoom({ fightSlug }: { fightSlug: string }) {
       )}
 
       {active === "battle" ? (
-        <BattleLayer room={room} viewerId={user?.id} onGoToCommunity={() => setLayer("community")} />
+        <BattleLayer
+          room={room}
+          fightSlug={fightSlug}
+          viewerId={user?.id}
+          onGoToCommunity={() => setLayer("community")}
+          onChallengeSent={load}
+        />
       ) : (
         <ThreadDiscussion
           threadSlug={room.community.slug}
@@ -145,8 +171,12 @@ function LayerTab({ active, onClick, icon, label, hint }: {
 }
 
 /** Layer 1 — private, focused, fast. Everything else is a route into it. */
-function BattleLayer({ room, viewerId, onGoToCommunity }: {
-  room: FightRoomDTO; viewerId?: string; onGoToCommunity: () => void;
+function BattleLayer({ room, fightSlug, viewerId, onGoToCommunity, onChallengeSent }: {
+  room: FightRoomDTO;
+  fightSlug: string;
+  viewerId?: string;
+  onGoToCommunity: () => void;
+  onChallengeSent: () => void;
 }) {
   const battle = room.battle;
 
@@ -162,14 +192,39 @@ function BattleLayer({ room, viewerId, onGoToCommunity }: {
     return (
       <Empty>
         <Swords className="size-6 text-fog" />
-        <p className="text-sm text-mist">
-          {room.myCorner
-            ? "No rival yet on this bout."
-            : "Pick a corner above — that call is what opens a battle."}
-        </p>
-        <button onClick={onGoToCommunity} className="text-xs font-semibold text-blood-300 hover:underline">
-          Find someone who disagrees →
-        </button>
+        {/* THE ACTION IS HERE NOW.
+            This is the screen a reader reaches by tapping the tab about having a
+            rival, while not having one — so it is the exact moment the "pick a
+            person" control is wanted, and it used to offer only a link to the
+            other tab. Two routes, ordered: name someone you know, or go and find
+            someone already arguing the other corner.
+
+            Only once a corner is called: challengeUser refuses a challenge from
+            anyone without a call on the bout, so offering the button before the
+            pick would be a control whose only outcome is an error. */}
+        {room.myCorner ? (
+          <>
+            <p className="text-sm text-mist">No rival on this bout yet. Pick one.</p>
+            <div className="w-full max-w-xs">
+              <ChallengeFriend
+                fightSlug={fightSlug}
+                tone="solid"
+                label="Challenge someone"
+                onSent={onChallengeSent}
+              />
+            </div>
+            <button onClick={onGoToCommunity} className="tap min-h-9 text-xs font-semibold text-blood-300 hover:underline">
+              or find someone who disagrees →
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-mist">Pick a corner above — that call is what opens a battle.</p>
+            <button onClick={onGoToCommunity} className="tap min-h-9 text-xs font-semibold text-blood-300 hover:underline">
+              See what everyone else is saying →
+            </button>
+          </>
+        )}
       </Empty>
     );
   }
@@ -198,7 +253,17 @@ function BattleLayer({ room, viewerId, onGoToCommunity }: {
             <p className="text-sm text-mist">
               You&apos;re holding {room.myCorner === "RED" ? room.redName : room.blueName}. The first person to take {theirFighter} becomes your challenger.
             </p>
-            <button onClick={onGoToCommunity} className="text-xs font-semibold text-blood-300 hover:underline">
+            {/* An open invite is still a wait. Naming somebody is the way to
+                stop waiting, so the control belongs here too rather than only
+                on the screen before this one. */}
+            <div className="w-full max-w-xs">
+              <ChallengeFriend
+                fightSlug={fightSlug}
+                label="Name your rival"
+                onSent={onChallengeSent}
+              />
+            </div>
+            <button onClick={onGoToCommunity} className="tap min-h-9 text-xs font-semibold text-blood-300 hover:underline">
               Meanwhile, take it to the crowd →
             </button>
           </Empty>

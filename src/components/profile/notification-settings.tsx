@@ -24,6 +24,7 @@ type Prefs = {
   notifyPredictions: boolean;
   notifySocial: boolean;
   notifyGym: boolean;
+  notifyMessages: boolean;
   quietHoursStart: number | null;
   quietHoursEnd: number | null;
   timezone: string | null;
@@ -34,6 +35,7 @@ const KEY_OF: Record<NotifCategory, keyof Prefs> = {
   predictions: "notifyPredictions",
   social: "notifySocial",
   gym: "notifyGym",
+  messages: "notifyMessages",
 };
 
 /** base64url → ArrayBuffer, the format PushManager expects for the VAPID key.

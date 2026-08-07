@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { SPORTS } from "@/lib/sports";
 import type { EventFacet } from "@/lib/events-query";
 import { cn } from "@/lib/utils";
 import { preserveScrollOnNextNavigation } from "@/components/layout/scroll-restoration";
+import { useHideOnScroll } from "@/lib/use-hide-on-scroll";
 
 // Every filter lives in the URL and nothing is filtered on the client — this
 // component only WRITES query params; the server does the work and re-renders.
@@ -27,6 +28,23 @@ const WINDOWS = [
   { value: "quarter", label: "90 days" },
 ];
 
+/**
+ * Keys the user can combine. `status` and `when` stay single-valued on purpose —
+ * "upcoming AND completed" is every event, i.e. no filter at all, and two date
+ * windows at once has no meaningful answer either.
+ */
+const MULTI = ["sport", "promotion", "country"] as const;
+
+/**
+ * How long a burst of taps is allowed to coalesce into ONE navigation.
+ *
+ * Below the ~250ms at which a person perceives cause and effect, so the list
+ * still feels like it responds to the tap — but long enough that selecting four
+ * pills in a row is one server round-trip instead of four. The PILLS do not wait
+ * for it (they read the local draft), so nothing about the control feels delayed.
+ */
+const COALESCE_MS = 200;
+
 export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; countries: EventFacet[] } }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -37,45 +55,176 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
    *
    * ── The bug this replaces, and its actual cause ──────────────────────────
    * The bar used to have TWO shapes and three scroll-driven state changes, all
-   * of them mutating the height of the same in-flow element:
-   *
-   *   `stuck`       IntersectionObserver → collapsed ~90–150px of filter rows
-   *   `showToggle`  scroll direction     → collapsed the toggle row
-   *   `open`        the reader           → expanded it again
-   *
-   * `position: sticky` keeps an element IN FLOW. So every one of those height
-   * changes reflowed the entire list below it — while the reader was scrolling
-   * through that list. That is the compressing and jumping, and it is a layout
-   * problem, not a CSS-value problem: no amount of tuning durations or easings
-   * fixes a box that changes size under a moving reader.
-   *
-   * It could also oscillate. Collapsing removes height from ABOVE the viewport,
-   * so the content below shifts up and the scroll container's height shrinks;
-   * near the bottom of a short list the browser clamps scrollTop, which can move
-   * the sentinel back across the observer's threshold and flip `stuck` straight
-   * back. The observed element's visibility depended on the height the
-   * observation controlled — a control loop with no damping.
-   *
-   * `showToggle` was mine, added last sprint, and it was the worst of the three:
-   * it guaranteed a height change on EVERY change of scroll direction.
+   * of them mutating the height of the same in-flow element. `position: sticky`
+   * keeps an element IN FLOW, so every one of those height changes reflowed the
+   * entire list below it — while the reader was scrolling through that list.
+   * That is the compressing and jumping, and it is a layout problem, not a
+   * CSS-value problem: no amount of tuning durations or easings fixes a box that
+   * changes size under a moving reader.
    *
    * ── The fix ──────────────────────────────────────────────────────────────
-   * The sticky bar is now exactly one row plus a toggle, at a constant height,
-   * with NO scroll-driven state whatsoever. The extended filters moved OUT OF
-   * FLOW into an absolutely-positioned panel that overlays the list, so opening
-   * and closing them cannot reflow anything. Only the contents animate; the
-   * container's contribution to layout is a constant.
+   * The sticky bar is exactly one row plus a toggle, at a CONSTANT height. The
+   * extended filters live OUT OF FLOW in an absolutely-positioned panel that
+   * overlays the list, so opening and closing them cannot reflow anything.
    *
-   * ── What that costs, stated ──────────────────────────────────────────────
-   * The page no longer opens with every filter row visible — promotion, location
-   * and when are one tap away instead of zero. That is the trade for a bar that
-   * never moves, and it is the shape ESPN, F1 and the UFC's own apps use. The
-   * active-count on the toggle means a folded bar still cannot hide that filters
-   * are on.
+   * ── Hiding it on scroll, without reintroducing any of that ───────────────
+   * The bar now also gets out of the way when the reader scrolls down, which is
+   * what every native app does and what was asked for. It does it by
+   * TRANSLATING — `transform` is composited and contributes nothing to layout,
+   * so the list underneath does not move by a single pixel. That is the
+   * distinction that makes this safe where the previous attempt was not: the
+   * old one collapsed rows (height), this one slides the whole constant-height
+   * box out of the viewport. See lib/use-hide-on-scroll.
    */
   const [open, setOpen] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * Keyboard focus pins the bar open.
+   *
+   * A bar that is translated off-screen cannot be revealed by scrolling — the
+   * offset is a transform, not a scroll position — so a keyboard user who tabs
+   * into it would be operating a control they cannot see. Focus therefore
+   * suspends the hide entirely until focus leaves.
+   */
+  const [focused, setFocused] = useState(false);
+
+  // While the extended panel is open the bar must stay put — sliding away the
+  // thing an open panel is anchored to is how you get a floating orphan.
+  const hidden = useHideOnScroll({ disabled: open || focused });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  FILTER STATE — the local draft is the source of truth for WRITES.
+  //
+  //  ── The bug this fixes ──────────────────────────────────────────────────
+  //  Every handler used to build its next URL from `useSearchParams()`, which
+  //  returns the COMMITTED url. A navigation to /events?sport=mma does not
+  //  commit until the server has re-rendered and streamed the payload back —
+  //  tens to hundreds of milliseconds. Tap a second pill inside that window and
+  //  the handler read the OLD params, so it computed its change against a URL
+  //  that no longer reflected the first tap and pushed a URL missing it.
+  //
+  //  That is exactly the reported symptom: with several filters on, selections
+  //  drop, the bar disagrees with the list, and a refresh "resets" to whichever
+  //  truncated URL won the race. It got worse the more filters were active,
+  //  because more active filters means more taps means more overlap.
+  //
+  //  Holding the intended value locally removes the race entirely: reads and
+  //  writes both go through `draft`, which updates synchronously on tap, and the
+  //  URL is a projection of it rather than the other way round.
+  // ══════════════════════════════════════════════════════════════════════════
+  const [draft, setDraft] = useState(() => params.toString());
+  const [isPending, startTransition] = useTransition();
+
+  /** True while a local edit has not yet appeared in the URL. */
+  const dirty = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Adopt URL changes that did NOT come from us — Back/Forward, a shared link,
+   * the "Show upcoming only" link in the fallback banner.
+   *
+   * Guarded by `dirty`, so a slow server response can never roll back a tap the
+   * reader has already seen take effect.
+   */
+  useEffect(() => {
+    const url = params.toString();
+    if (url === draft) {
+      dirty.current = false; // our own navigation landed
+      return;
+    }
+    if (!dirty.current) setDraft(url);
+  }, [params, draft]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  /** Parsed once per draft change rather than on every pill's every render. */
+  const selected = useMemo(() => {
+    const p = new URLSearchParams(draft);
+    const many = (k: string) =>
+      new Set((p.get(k) ?? "").split(",").map((v) => v.trim()).filter(Boolean));
+    return {
+      sport: many("sport"),
+      promotion: many("promotion"),
+      country: many("country"),
+      status: p.get("status") ?? "",
+      when: p.get("when") ?? "",
+    };
+  }, [draft]);
+
+  // Every individual selection, so the count reflects "3 filters" rather than
+  // "3 filter groups" — picking MMA + Boxing is two choices and should say so.
+  const activeCount = useMemo(
+    () =>
+      MULTI.reduce((n, k) => n + selected[k].size, 0) +
+      (selected.when ? 1 : 0) +
+      (selected.status && selected.status !== "upcoming" ? 1 : 0),
+    [selected],
+  );
+
+  /**
+   * Commit the draft to the URL.
+   *
+   * `preserveScrollOnNextNavigation` + `scroll: false` are BOTH required, and
+   * the first is the one that actually works. `scroll: false` only tells Next
+   * not to call window.scrollTo — and the document never scrolls in this app
+   * (AppShell is a 100dvh frame; `#main` is the real scroller). So on its own it
+   * did nothing, and every pill tap threw the reader back to the top:
+   * ScrollRestoration keys on pathname+search, saw a brand-new key on a
+   * non-Back navigation, treated it as a new destination and reset `#main`.
+   *
+   * Selecting filters is not arriving somewhere new — it is narrowing the list
+   * you are already reading.
+   */
+  const commit = useCallback((next: string) => {
+    dirty.current = true;
+    setDraft(next);
+
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      preserveScrollOnNextNavigation(pathname);
+      // Inside a transition, so React keeps the CURRENT list interactive and
+      // painted while the next one streams in, instead of tearing it down for a
+      // loading state on every tap.
+      startTransition(() => {
+        router.push(next ? `${pathname}?${next}` : pathname, { scroll: false });
+      });
+    }, COALESCE_MS);
+  }, [pathname, router]);
+
+  /** Mutate the draft params. `page` always resets — any filter change invalidates it. */
+  const edit = useCallback((fn: (p: URLSearchParams) => void) => {
+    // Reads `draft`, the local source of truth, NOT `params` — that distinction
+    // is the whole point of this state (see the block comment above).
+    const p = new URLSearchParams(draft);
+    fn(p);
+    p.delete("page");
+    commit(p.toString());
+  }, [commit, draft]);
+
+  /** Single-valued keys (status, when) — set or clear. */
+  const set = useCallback((key: string, value: string) => {
+    edit((p) => { if (value) p.set(key, value); else p.delete(key); });
+  }, [edit]);
+
+  /**
+   * Multi-valued keys — toggle ONE value, leaving the rest of that group and
+   * every other group untouched.
+   */
+  const toggle = useCallback((key: (typeof MULTI)[number], value: string) => {
+    edit((p) => {
+      const current = (p.get(key) ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+      const next = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+      if (next.length) p.set(key, next.join(","));
+      else p.delete(key);
+    });
+  }, [edit]);
+
+  const clearAll = useCallback(() => commit(""), [commit]);
 
   // ── Close the overlay on Escape or an outside tap ───────────────────────
   // An out-of-flow panel that can only be dismissed by finding its own button
@@ -96,104 +245,58 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
     };
   }, [open]);
 
-  const get = (k: string) => params.get(k) ?? "";
-
-  /** The selected values for a multi-value key. Comma-encoded, matching parseMulti. */
-  const many = (k: string): string[] =>
-    get(k).split(",").map((v) => v.trim()).filter(Boolean);
-
-  const has = (k: string, v: string) => many(k).includes(v);
-
-  /**
-   * Keys the user can combine. `status` and `when` stay single-valued on
-   * purpose — "upcoming AND completed" is every event, i.e. no filter at all,
-   * and two date windows at once has no meaningful answer either.
-   */
-  const MULTI = ["sport", "promotion", "country"] as const;
-
-  // Every individual selection, so the count reflects "3 filters" rather than
-  // "3 filter groups" — picking MMA + Boxing is two choices and should say so.
-  const activeCount =
-    MULTI.reduce((n, k) => n + many(k).length, 0) +
-    (get("when") ? 1 : 0) +
-    (get("status") && get("status") !== "upcoming" ? 1 : 0);
-
-
-
-  function write(p: URLSearchParams) {
-    p.delete("page"); // any filter change invalidates the current page
-    const qs = p.toString();
-    // BOTH of these are required, and the second is the one that actually works.
-    //
-    // `scroll: false` only tells Next not to call window.scrollTo — and the
-    // document never scrolls in this app (AppShell is a 100dvh frame; `#main` is
-    // the real scroller). So on its own it did nothing, and every pill tap threw
-    // the reader back to the top: ScrollRestoration keys on pathname+search,
-    // saw a brand-new key on a non-Back navigation, treated it as a new
-    // destination and set `#main`.scrollTop = 0.
-    //
-    // Selecting filters is not arriving somewhere new — it is narrowing the list
-    // you are already reading, and with six pills active that reset happened on
-    // every single adjustment.
-    preserveScrollOnNextNavigation(pathname);
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }
-
-  /** Single-valued keys (status, when) — set or clear. */
-  function set(key: string, value: string) {
-    const p = new URLSearchParams(params.toString());
-    if (value) p.set(key, value);
-    else p.delete(key);
-    write(p);
-  }
-
-  /**
-   * Multi-valued keys — toggle ONE value, leaving the rest of that group and
-   * every other group untouched. This was `p.set(key, value)`, which made the
-   * pills behave like radio buttons: choosing Boxing silently dropped MMA.
-   */
-  function toggle(key: string, value: string) {
-    const p = new URLSearchParams(params.toString());
-    const next = has(key, value)
-      ? many(key).filter((v) => v !== value)
-      : [...many(key), value];
-    if (next.length) p.set(key, next.join(","));
-    else p.delete(key);
-    write(p);
-  }
-
-  function clearAll() {
-    // Clearing is a filter change like any other — stay put.
-    preserveScrollOnNextNavigation(pathname);
-    router.push(pathname, { scroll: false });
-  }
-
   return (
     /*
      * PINNED. The filters govern every list on the page, so they may not scroll
      * away from the lists they govern — narrowing to Boxing used to mean
      * scrolling back to the top to find the pills again, and on a phone that is
-     * most of the page.
+     * most of the page. They now slide away on the way DOWN and return the
+     * instant the reader scrolls up, which gives back the full screen for
+     * reading without ever putting the controls more than a flick away.
      *
-     * `top-0` is relative to #main, the app shell's single scroll region (the
-     * document itself never scrolls here — see app-shell). The negative inline
-     * margins let the blurred backing plate span the container's own 1rem
-     * padding, so rows slide UNDER an opaque bar instead of past a floating
-     * island with content visible either side of it.
-     *
-     * Order is the reader's: what sport → whose card → where → when. "When"
-     * comes last because it is the only group that is meaningfully optional —
-     * the other three are how a fan describes the card they are looking for.
+     * `top-0` is relative to #main, the app shell's single scroll region. The
+     * negative inline margins let the blurred backing plate span the container's
+     * own 1rem padding, so rows slide UNDER an opaque bar instead of past a
+     * floating island with content visible either side of it.
      */
-    <>
-    {/* CONSTANT HEIGHT. One row, one toggle, no scroll-driven state. Nothing in
-        here may change the height of this element — see the header. `relative`
-        is what the out-of-flow panel below positions against. */}
-    <div className="sticky top-0 z-20 -mx-4 border-b border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur-xl">
+    <div
+      className={cn(
+        "sticky top-0 z-20 -mx-4 border-b border-ink-800 bg-ink-950/95 px-4 py-2.5 backdrop-blur-xl",
+        // TRANSFORM ONLY. Never height — see lib/use-hide-on-scroll.
+        "transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none",
+        hidden ? "-translate-y-full" : "translate-y-0",
+      )}
+      onFocus={() => setFocused(true)}
+      // `relatedTarget` still inside the bar means focus is moving BETWEEN its
+      // own controls (pill to pill), which must not unpin it.
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
+      }}
+    >
+      {/* ── "Your filter is being applied" ──────────────────────────────────
+          Taps update the pills INSTANTLY (they read the local draft), so
+          without this the reader gets no signal at all that the list they are
+          looking at is still the old one. A 2px line inside the bar's own
+          padding: it says something is in flight without dimming, spinning or
+          blanking the results — the previous list stays readable, which is the
+          whole reason the navigation runs in a transition.
+
+          Absolutely positioned so it cannot add height to a bar whose constant
+          height is load-bearing. */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-blood-500 transition-opacity duration-200",
+          isPending ? "cr-filter-pending opacity-100" : "opacity-0",
+        )}
+      />
+
       <Row label="Sport">
-        <Pill onClick={() => set("sport", "")} active={many("sport").length === 0}>All</Pill>
+        <Pill onClick={() => set("sport", "")} active={selected.sport.size === 0}>All</Pill>
         {FILTER_SPORTS.map((s) => (
-          <Pill key={s.slug} onClick={() => toggle("sport", s.slug)} active={has("sport", s.slug)}>{s.label}</Pill>
+          <Pill key={s.slug} onClick={() => toggle("sport", s.slug)} active={selected.sport.has(s.slug)}>
+            {s.label}
+          </Pill>
         ))}
       </Row>
 
@@ -210,7 +313,7 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
         {activeCount > 0 && (
           <span className="rounded-full bg-blood-500 px-1.5 text-3xs font-black text-white tabular-nums">{activeCount}</span>
         )}
-        <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+        <ChevronDown className={cn("size-3 transition-transform duration-200", open && "rotate-180")} aria-hidden />
       </button>
 
       {/* ── OUT OF FLOW ──────────────────────────────────────────────────────
@@ -232,61 +335,63 @@ export function EventFilters({ facets }: { facets: { promotions: EventFacet[]; c
         aria-hidden={!open}
         inert={open ? undefined : true}
       >
+        {facets.promotions.length > 0 && (
+          <Row label="Promotion">
+            <Pill onClick={() => set("promotion", "")} active={selected.promotion.size === 0}>All</Pill>
+            {facets.promotions.map((p) => (
+              <Pill key={p.value} onClick={() => toggle("promotion", p.value)} active={selected.promotion.has(p.value)}>
+                {p.label} <Count n={p.count} />
+              </Pill>
+            ))}
+          </Row>
+        )}
 
-      {facets.promotions.length > 0 && (
-        <Row label="Promotion">
-          <Pill onClick={() => set("promotion", "")} active={many("promotion").length === 0}>All</Pill>
-          {facets.promotions.map((p) => (
-            <Pill key={p.value} onClick={() => toggle("promotion", p.value)} active={has("promotion", p.value)}>
-              {p.label} <Count n={p.count} />
+        {facets.countries.length > 0 && (
+          <Row label="Location">
+            <Pill onClick={() => set("country", "")} active={selected.country.size === 0}>Anywhere</Pill>
+            {facets.countries.map((c) => (
+              <Pill key={c.value} onClick={() => toggle("country", c.value)} active={selected.country.has(c.value)}>
+                {c.label} <Count n={c.count} />
+              </Pill>
+            ))}
+          </Row>
+        )}
+
+        <Row label="When">
+          {STATUSES.map((s) => (
+            <Pill
+              key={s.value}
+              onClick={() => set("status", s.value === "upcoming" ? "" : s.value)}
+              active={(selected.status || "upcoming") === s.value}
+            >
+              {s.label}
+            </Pill>
+          ))}
+          <span className="mx-1 w-px shrink-0 self-stretch bg-ink-700" aria-hidden />
+          {WINDOWS.map((w) => (
+            <Pill
+              key={w.value}
+              onClick={() => set("when", selected.when === w.value ? "" : w.value)}
+              active={selected.when === w.value}
+            >
+              {w.label}
             </Pill>
           ))}
         </Row>
-      )}
 
-      {facets.countries.length > 0 && (
-        <Row label="Location">
-          <Pill onClick={() => set("country", "")} active={many("country").length === 0}>Anywhere</Pill>
-          {facets.countries.map((c) => (
-            <Pill key={c.value} onClick={() => toggle("country", c.value)} active={has("country", c.value)}>
-              {c.label} <Count n={c.count} />
-            </Pill>
-          ))}
-        </Row>
-      )}
-
-      <Row label="When">
-        {STATUSES.map((s) => (
-          <Pill
-            key={s.value}
-            onClick={() => set("status", s.value === "upcoming" ? "" : s.value)}
-            active={(get("status") || "upcoming") === s.value}
+        {/* The count is the whole point once filters combine: with four groups on
+            screen it is easy to forget that MMA is still on three rows up. It
+            counts individual SELECTIONS, not groups — MMA + Boxing reads as 2. */}
+        {activeCount > 0 && (
+          <button
+            onClick={clearAll}
+            className="tap inline-flex min-h-9 items-center gap-1 rounded-full border border-ink-700 px-3 py-1.5 text-xs font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300"
           >
-            {s.label}
-          </Pill>
-        ))}
-        <span className="mx-1 w-px shrink-0 self-stretch bg-ink-700" aria-hidden />
-        {WINDOWS.map((w) => (
-          <Pill key={w.value} onClick={() => set("when", get("when") === w.value ? "" : w.value)} active={get("when") === w.value}>
-            {w.label}
-          </Pill>
-        ))}
-      </Row>
-
-      {/* The count is the whole point once filters combine: with four groups on
-          screen it is easy to forget that MMA is still on three rows up. It
-          counts individual SELECTIONS, not groups — MMA + Boxing reads as 2. */}
-      {activeCount > 0 && (
-        <button
-          onClick={clearAll}
-          className="inline-flex items-center gap-1 rounded-full border border-ink-700 px-3 py-1.5 text-xs font-semibold text-fog transition-colors hover:border-blood-500/40 hover:text-blood-300"
-        >
-          <X className="size-3.5" /> Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
-        </button>
-      )}
+            <X className="size-3.5" /> Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
+          </button>
+        )}
       </div>
     </div>
-    </>
   );
 }
 
@@ -308,7 +413,9 @@ function Pill({ onClick, active, children }: { onClick: () => void; active: bool
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
+        // min-h-9: a 36px tap target. The pills were 30px, which is under every
+        // published minimum and this is the most-tapped control on the site.
+        "tap flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400",
         active
           ? "border-blood-500 bg-blood-500 text-white"
           : "border-ink-700 bg-ink-900/60 text-mist hover:border-blood-500/50 hover:text-chalk",

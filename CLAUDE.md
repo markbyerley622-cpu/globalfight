@@ -58,6 +58,7 @@ Verified empirically against a production build (red-team pass, 2026-07-26).
 | `Notification` | ✗ (401) | ✗ own-scoped | read/mark own | own | own |
 | `CheckIn` (location) | ✗ (401) | ✗ | CRUD own | own | own |
 | `Conversation` / `DirectMessage` (DMs) | ✗ (401) | ✗ (**404**, no existence oracle) | read/send as a member | — | — |
+| DM typing signal (`POST /api/messages/<id>/typing`) | ✗ (401) | ✗ (**204**, silent no-op) | set own; reads the other member's via the thread GET | — | — |
 | Fighter/Gym **claim** evidence (identity docs) | ✗ (404) | ✗ (404, no IDOR oracle) | claimant reads own | reviewer reads | reviewer reads |
 | Gym roster roles | — | ✗ | — | — | promote/demote; **owner demotable only via admin claim resolution** |
 | `/api/admin/*` | ✗ | ✗ (**403** API / **404** page) | ✗ | subset | full |
@@ -86,7 +87,11 @@ Verified empirically against a production build (red-team pass, 2026-07-26).
    errors are prevented at the source per rule 4.)
 6. **Uniform 404 for unauthorized access to private-by-id resources** (claim
    evidence): anonymous and non-owner both get 404, so the endpoint is not an
-   existence oracle.
+   existence oracle. The DM **typing** endpoint is the same rule with a
+   different code: it answers **204 always**, whether or not the conversation
+   exists and whether or not the caller is in it, because the write underneath
+   is a membership-scoped `updateMany` that is simply a no-op for a non-member.
+   A 404 there would confirm which conversation ids are real.
 7. **Outbound fetch from user input is IP-validated, not just host-validated.**
    `/api/img` resolves the hostname and rejects any private/loopback/link-local
    address on every redirect hop (`isBlockedAddress`) — a string check alone
@@ -129,7 +134,9 @@ render; `userA … WHERE userId='userB'` returns **0**.
   `CheckIn`, `ForumBookmark`, `ForumSubscription`, `ConversationMember`,
   `Conversation`/`DirectMessage` (scoped via membership, not a `userId` column —
   a DM is shared between two people, so ownership is "is a member of", and that
-  check lives in `lib/messages/repo`),
+  check lives in `lib/messages/repo`; `ConversationMember.typingAt` is presence
+  on that same row and inherits the same scoping — it is written only by a
+  membership-scoped `updateMany` and read only through `getConversation`),
   `FavoriteFighter/Promotion/Event`, `UserFollow` (by `followerId`),
   `AnalyticsEvent`. `PasswordResetToken`: RLS on, **no** policy (server-only, by
   hash).

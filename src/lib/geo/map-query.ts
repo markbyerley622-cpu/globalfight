@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion } from "@/lib/promotions";
+import { SPORT_LABEL } from "@/lib/sports";
 import { resolvePoint } from "./gazetteer";
 import { gymPins, clubPins } from "./gyms";
 import { loadViewer, peoplePins } from "./people";
@@ -47,10 +48,62 @@ async function eventPins(): Promise<LayerResult> {
     select: {
       id: true, slug: true, name: true, date: true, status: true, promotion: true,
       venue: true, city: true, country: true, countryCode: true, posterUrl: true,
+      sport: true, ticketUrl: true,
+      // Verified-promoter badge. `select` on the relation rather than a join
+      // per pin — one query either way.
+      promoterOrg: { select: { verified: true } },
+      // The HEADLINE bout only. Pulling every fight for 400 events would be
+      // thousands of rows to render two names per card.
+      fights: {
+        where: { mainEvent: true },
+        take: 1,
+        select: { red: { select: { name: true } }, blue: { select: { name: true } } },
+      },
     },
   });
 
-  const present = await getPresenceCounts("event", rows.map((e) => e.id));
+  const eventIds = rows.map((e) => e.id);
+
+  // ── Batched aggregates ────────────────────────────────────────────────────
+  // Two groupBy queries for the WHOLE layer, not two per pin. At 400 pins the
+  // per-pin version would be 800 round-trips to render two numbers on a card
+  // most people never open.
+  const [present, followerRows, predictionRows] = await Promise.all([
+    getPresenceCounts("event", eventIds),
+    eventIds.length
+      ? prisma.favoriteEvent.groupBy({
+          by: ["eventId"],
+          where: { eventId: { in: eventIds } },
+          _count: { _all: true },
+        })
+      : Promise.resolve([] as { eventId: string; _count: { _all: number } }[]),
+    eventIds.length
+      ? prisma.fightPick.groupBy({
+          by: ["fightId"],
+          where: { fight: { eventId: { in: eventIds } } },
+          _count: { _all: true },
+        })
+      : Promise.resolve([] as { fightId: string; _count: { _all: number } }[]),
+  ]);
+
+  const followersBy = new Map(followerRows.map((r) => [r.eventId, r._count._all]));
+
+  // Picks group by FIGHT, so they have to be rolled up to the event. One extra
+  // lookup query rather than joining the event id into the groupBy, which
+  // Prisma cannot express across a relation.
+  const fightOwners = eventIds.length
+    ? await prisma.fight.findMany({
+        where: { eventId: { in: eventIds } },
+        select: { id: true, eventId: true },
+      })
+    : [];
+  const eventOfFight = new Map(fightOwners.map((f) => [f.id, f.eventId]));
+  const predictionsBy = new Map<string, number>();
+  for (const row of predictionRows) {
+    const owner = eventOfFight.get(row.fightId);
+    if (!owner) continue;
+    predictionsBy.set(owner, (predictionsBy.get(owner) ?? 0) + row._count._all);
+  }
   const pins: MapPin[] = [];
   const unmapped: UnmappedPin[] = [];
 
@@ -90,6 +143,17 @@ async function eventPins(): Promise<LayerResult> {
       searchQuery: [e.venue, e.city, e.country].filter(Boolean).join(", ") || e.name,
       badge: e.status === "LIVE" ? "Live now" : null,
       presentNow: present.get(e.id) ?? 0,
+      event: {
+        slug: e.slug,
+        sport: SPORT_LABEL[e.sport] ?? "Combat",
+        mainEvent: e.fights[0]
+          ? { red: e.fights[0].red.name, blue: e.fights[0].blue.name }
+          : null,
+        followers: followersBy.get(e.id) ?? 0,
+        predictions: predictionsBy.get(e.id) ?? 0,
+        ticketUrl: e.ticketUrl,
+        verifiedPromoter: e.promoterOrg?.verified ?? false,
+      },
     });
   }
 

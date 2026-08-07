@@ -13,7 +13,6 @@ import { FollowSync } from "./follow-sync";
 import { AccountMenu } from "./account-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { PillarNav } from "./pillar-nav";
-import { OnlineCount } from "./online-count";
 import { NotificationBell } from "./notification-bell";
 import { MessagesButton } from "./messages-button";
 import { ScrollRestoration } from "./scroll-restoration";
@@ -178,7 +177,6 @@ export function AppShell({
                 Location was only reachable from the burger on a laptop. */}
             <PillarNav className="ml-3 hidden lg:flex" />
             <div className="ml-auto flex items-center gap-2">
-              <OnlineCount />
               {/* UNIVERSAL SEARCH — the entry point to everything.
                   This was a Link to /fighters: a magnifying glass in the site
                   header that navigated to the fighter directory and searched

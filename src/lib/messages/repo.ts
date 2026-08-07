@@ -1,8 +1,10 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { publicDisplayName } from "@/lib/display-name";
+import { notify } from "@/lib/notifications-store";
 import {
   MAX_MESSAGE_LENGTH,
+  TYPING_TTL_MS,
   type ConversationSummary,
   type ConversationView,
   type DmMessage,
@@ -89,12 +91,46 @@ export async function openConversation(viewerId: string, otherUserId: string): P
 async function requireMember(conversationId: string, viewerId: string) {
   const convo = await prisma.conversation.findFirst({
     where: { id: conversationId, members: { some: { userId: viewerId } } },
-    select: { id: true, members: { select: { userId: true, user: MEMBER_USER } } },
+    select: {
+      id: true,
+      members: {
+        select: { userId: true, typingAt: true, lastReadAt: true, user: MEMBER_USER },
+      },
+    },
   });
   if (!convo) return null;
   const other = convo.members.find((m) => m.userId !== viewerId);
-  return { id: convo.id, other: other ? toPerson(other.user) : null };
+  return {
+    id: convo.id,
+    other: other ? toPerson(other.user) : null,
+    otherId: other?.userId ?? null,
+    otherTypingAt: other?.typingAt ?? null,
+    otherLastReadAt: other?.lastReadAt ?? null,
+  };
 }
+
+/**
+ * Record that the viewer is composing.
+ *
+ * `updateMany` scoped by membership, per CLAUDE.md rules 2 and 4: it is the
+ * ownership check and the write in one statement, so a non-member's ping is a
+ * silent no-op rather than a P2025 that would confirm the conversation exists
+ * (rule 6). Nothing here is returned to the caller for the same reason.
+ *
+ * This is the highest-frequency write in the app — one per composing user every
+ * few seconds — so it is deliberately a single indexed UPDATE of one column,
+ * with no transaction and no read before it.
+ */
+export async function setTyping(conversationId: string, viewerId: string): Promise<void> {
+  await prisma.conversationMember.updateMany({
+    where: { conversationId, userId: viewerId },
+    data: { typingAt: new Date() },
+  });
+}
+
+/** Is this timestamp recent enough to still mean "typing"? */
+const isTyping = (at: Date | null): boolean =>
+  at !== null && Date.now() - at.getTime() < TYPING_TTL_MS;
 
 /** The viewer's inbox, newest activity first. Owner-scoped by construction. */
 export async function listConversations(viewerId: string, limit = 50): Promise<ConversationSummary[]> {
@@ -192,6 +228,7 @@ export async function getConversation(
   return {
     id: member.id,
     withUser: member.other,
+    otherTyping: isTyping(member.otherTypingAt),
     // Oldest-first for rendering; the query is newest-first so `take` keeps the
     // most RECENT window rather than the first 100 messages ever sent.
     messages: rows.reverse().map((m) => ({
@@ -231,11 +268,16 @@ export async function sendMessage(
       data: { lastMessageAt: new Date() },
     }),
     // Sending is reading: your own message must not make your thread unread.
+    // `typingAt: null` because the message IS the end of composing — without
+    // this the sender keeps looking like they are typing for the rest of the
+    // TTL, directly underneath the message they just sent.
     prisma.conversationMember.updateMany({
       where: { conversationId, userId: senderId },
-      data: { lastReadAt: new Date(), archivedAt: null },
+      data: { lastReadAt: new Date(), archivedAt: null, typingAt: null },
     }),
   ]);
+
+  await notifyRecipient(member, senderId, text, conversationId);
 
   return {
     id: message.id,
@@ -244,6 +286,65 @@ export async function sendMessage(
     senderId: message.senderId,
     fromMe: true,
   };
+}
+
+/**
+ * How recently the recipient must have read the thread for us to treat them as
+ * "currently looking at it" and stay silent.
+ *
+ * The thread marks itself read on every poll while it is open, so a person with
+ * the conversation on screen has a `lastReadAt` that is seconds old. Notifying
+ * them would buzz a phone that is already showing the message.
+ */
+const PRESENT_MS = 45_000;
+
+/** How much of the message the notification is allowed to quote. */
+const PREVIEW_CHARS = 140;
+
+/**
+ * Tell the recipient, unless they are already reading.
+ *
+ * Deliberately NOT inside the transaction above: notify() itself fires a push,
+ * and holding a database transaction open across a third-party HTTP call is how
+ * a slow push provider turns into database lock contention.
+ *
+ * Failure is swallowed. A notification that could not be written must never
+ * fail the message that was already committed — from the sender's point of view
+ * the message HAS been sent, and throwing here would tell them otherwise.
+ */
+async function notifyRecipient(
+  member: { otherId: string | null; otherLastReadAt: Date | null },
+  senderId: string,
+  text: string,
+  conversationId: string,
+): Promise<void> {
+  const recipientId = member.otherId;
+  if (!recipientId) return;
+  if (member.otherLastReadAt && Date.now() - member.otherLastReadAt.getTime() < PRESENT_MS) return;
+
+  try {
+    const sender = await prisma.user.findUnique({
+      where: { id: senderId },
+      select: { id: true, username: true, name: true, image: true },
+    });
+    if (!sender) return;
+
+    await notify(prisma, recipientId, {
+      type: "DIRECT_MESSAGE",
+      title: publicDisplayName(sender),
+      body: text.length > PREVIEW_CHARS ? `${text.slice(0, PREVIEW_CHARS - 1)}…` : text,
+      url: `/messages/${conversationId}`,
+      icon: "message",
+      // NO dedupeKey: every message must land in the in-app list, or the list
+      // stops being a record of the conversation. Collapsing is the DEVICE's
+      // job — `tag` makes a second push replace the first on the lock screen, so
+      // a rapid exchange lights the phone once per thread instead of once per
+      // message, while all of it is still there when the app is opened.
+      tag: `dm:${conversationId}`,
+    });
+  } catch {
+    /* see above — the message is already committed */
+  }
 }
 
 /** Move the viewer's read watermark to now. Idempotent. */
