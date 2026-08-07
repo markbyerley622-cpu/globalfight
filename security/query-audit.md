@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1146 across 880 files
-- **By class:** 798 public · 253 user-owned · 95 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 202 low · ⚪ 849 info
+- **Queries analysed:** 1173 across 909 files
+- **By class:** 812 public · 266 user-owned · 95 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 102 medium · 🟡 203 low · ⚪ 868 info
 
 ## 🔴 High risk
 
@@ -68,12 +68,12 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/fighters/profile.ts:300` | reviewClaim | FighterClaim (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/fighters/profile.ts:319` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/fighters/profile.ts:332` | reviewClaim | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/follow-targets.ts:115` | existing | Follow (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:126` | toggleFollow | Follow (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:212` | rows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:214` | rows | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:215` | rows | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/follow-targets.ts:218` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:123` | existing | Follow (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:134` | toggleFollow | Follow (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:220` | rows | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:222` | rows | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:223` | rows | FavoriteEvent (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/follow-targets.ts:226` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/follows.ts:29` | existing | FavoriteFighter (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:68` | existing | FavoritePromotion (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:104` | existing | FavoriteEvent (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
@@ -111,6 +111,13 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/media/asset/lifecycle.ts:311` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/media/asset/lifecycle.ts:316` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/metrics.ts:75` | getLaunchMetrics | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:61` | taken | PromoterOrg (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:74` | exists | PromoterOrg (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:121` | claim | PromoterClaim (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:128` | decidePromoterClaim | PromoterClaim (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:139` | decidePromoterClaim | PromoterOrg (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:189` | searchPromoterOrgs | PromoterOrg (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:199` | rows | PromoterClaim (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 
 ## Model classification
 
@@ -209,6 +216,8 @@ _None._ No private-model read/write was found without an ownership filter.
 | MediaAsset | USER_OWNED | auto (heuristic) |
 | Notification | USER_OWNED | curated |
 | PasswordResetToken | USER_OWNED | curated |
+| PromoterClaim | USER_OWNED | auto (heuristic) |
+| PromoterOrg | USER_OWNED | auto (heuristic) |
 | PushSubscription | USER_OWNED | curated |
 | ReputationEvent | USER_OWNED | curated |
 | Session | USER_OWNED | curated |

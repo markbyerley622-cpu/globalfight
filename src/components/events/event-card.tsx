@@ -104,7 +104,11 @@ export function EventCard({
       {/* Meaningful visual context, in priority order: event hero → poster →
           the two fighters facing each other → owned sport photo → sport gradient.
           Never an empty box. */}
-      <div className="relative h-28 overflow-hidden sm:h-32">
+      {/* Taller than it was (h-28/h-32). The artwork is the card's only piece of
+          real visual interest and it was cropped to a letterbox strip, which
+          made every card read as a dense text block with a decorative band on
+          top. At 9rem/11rem the faceoff composition actually shows two faces. */}
+      <div className="relative h-36 overflow-hidden sm:h-44">
         <EventArtworkBackground event={event} accent={accent} sportLabel={sportLabel} hasRealPromo={hasRealPromo} />
         <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/70 to-transparent" />
 
@@ -156,7 +160,7 @@ export function EventCard({
                 record={event.mainEvent.redRecord}
                 rank={event.mainEvent.redRank}
               />
-              <span className="pb-3.5 font-display text-sm font-black uppercase text-blood-400 drop-shadow">vs</span>
+              <span className="pb-4 font-display text-sm font-black uppercase text-blood-400 drop-shadow">vs</span>
               <CornerName
                 name={event.mainEvent.blue}
                 slug={event.mainEvent.blueSlug}
@@ -179,9 +183,16 @@ export function EventCard({
         </div>
       </div>
 
-      <div className="p-3.5">
+      <div className="p-4">
+        {/* THE DATE LEADS. Every item in this row used to be the same size, the
+            same weight and the same colour, so the one fact a fan scans a grid
+            of cards for — when is it — carried no more emphasis than the bout
+            count. It is now the only chalk-weight item, with the rest reading
+            as the supporting detail it is. */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-mist">
-          <span>{formatDate(event.date, { weekday: "short", month: "short", day: "numeric" })}</span>
+          <span className="font-display font-bold uppercase tracking-wide text-chalk">
+            {formatDate(event.date, { weekday: "short", month: "short", day: "numeric" })}
+          </span>
           {/* A card whose bouts aren't published yet says nothing rather than
               advertising "0 bouts". */}
           {event.boutCount > 0 && (
@@ -202,10 +213,25 @@ export function EventCard({
 
         {event.venue && <p className="mt-1 truncate text-xs text-fog">{event.venue}</p>}
 
+        {/* ── THE CLOCK, AS ITS OWN OBJECT ────────────────────────────────
+            This was a 10px grey line reading "First bell 3d 04h 12m", set in
+            the same treatment as the venue directly above it. On a grid of
+            twelve cards the one piece of information that separates "this is
+            tonight" from "this is in five weeks" was the quietest thing on
+            every card.
+
+            It is now a bordered strip with the countdown right-aligned, and the
+            countdown colours ITSELF by urgency band (components/countdown), so
+            a card inside 24h reads volt and a card inside the hour reads blood
+            with a pulsing dot — legible from across the grid, before a single
+            digit has been read. */}
         {!isDone && !isOff && (
-          <p className="mt-2.5 flex items-center gap-2 text-3xs uppercase tracking-wider text-fog">
-            First bell <Countdown date={event.date} compact />
-          </p>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-ink-800 bg-ink-950/50 px-3 py-2">
+            <span className="font-display text-3xs font-bold uppercase tracking-[0.14em] text-fog">
+              First bell
+            </span>
+            <Countdown date={event.date} compact />
+          </div>
         )}
 
         {/* WATCH + ATTEND — two of the six questions, as first-class actions
@@ -215,7 +241,7 @@ export function EventCard({
           const watch = resolveWatch(event.promotion, event.broadcaster, event.eventUrl, event.name);
           const tickets = resolveTickets(event.promotion, event.ticketUrl, event.name);
           return (
-            <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <div className="mt-2 grid grid-cols-2 gap-2">
               <ActionPill icon={Tv} label="Watch" value={watch?.label ?? null} href={watch?.url || null} />
               <ActionPill icon={Ticket} label="Tickets" value={tickets?.label ?? null} href={tickets?.url || null} accent />
             </div>
@@ -298,7 +324,7 @@ export function EventCard({
               contrast, comfortably tappable. It is what the whole card is for. */}
           <Link
             href={`/events/${event.slug}`}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-blood-500 px-3.5 py-2 text-xs font-bold text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.7)] transition-colors hover:bg-blood-400"
+            className="tap ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-blood-500 px-4 text-xs font-bold text-white shadow-[0_6px_20px_-8px_rgba(225,29,42,0.7)] transition-colors hover:bg-blood-400"
           >
             {isDone ? "View results" : isLive ? "Watch live" : "Full card"} →
           </Link>
@@ -343,7 +369,10 @@ function CornerName({
         slug={slug}
         // `relative z-10`: this sits over the artwork layers, and needs to be the
         // thing that receives the tap.
-        className="group/name relative z-10 font-display text-base font-black leading-tight text-chalk decoration-1 underline-offset-4 drop-shadow transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 sm:text-lg"
+        // Up one step now the artwork gives it room. The headline bout is what
+        // a fan recognises a card by, so it should be unambiguously the largest
+        // type on the card rather than a half-step above the event title.
+        className="group/name relative z-10 font-display text-lg font-black leading-tight text-chalk decoration-1 underline-offset-4 drop-shadow transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blood-400 sm:text-xl"
         title={`${name} — fighter profile`}
       >
         <RankChip r={rank} />
@@ -398,14 +427,17 @@ function ActionPill({
       </span>
     </>
   );
-  const base = "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors";
+  // min-h-11 = 44px, the published minimum for a touch target. These were
+  // py-1.5 (~32px) — under it, on a phone-first surface, for a control that
+  // opens an external booking or broadcast page.
+  const base = "flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors";
   if (href) {
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${base} ${accent ? "border-blood-500/50 bg-blood-500/10 hover:border-blood-500 hover:bg-blood-500/20" : "border-ink-700 bg-ink-950/40 hover:border-ink-600"}`}
+        className={`tap ${base} ${accent ? "border-blood-500/50 bg-blood-500/10 hover:border-blood-500 hover:bg-blood-500/20" : "border-ink-700 bg-ink-950/40 hover:border-ink-600"}`}
       >
         {body}
       </a>

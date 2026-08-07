@@ -1,6 +1,6 @@
 import {
   AtSign, Award, Ban, BadgeCheck, Bell, Calendar, CalendarClock, CheckCircle2, ClipboardList,
-  Dumbbell, Flame, Handshake, Heart, Layers, Medal, Megaphone, MessageSquare, Mic, Newspaper,
+  Dumbbell, Flame, Handshake, Heart, Layers, Medal, Megaphone, MessageSquare, MessagesSquare, Mic, Newspaper,
   Pencil, Play, Radio, Share2, Star, Swords, Trash2, TrendingDown, TrendingUp, Trophy, User,
   UserPlus, XCircle,
 } from "lucide-react";
@@ -47,6 +47,9 @@ const ICONS: Record<NotificationIconKey, typeof Bell> = {
   person: User,
   follow: UserPlus,
   verified: BadgeCheck,
+  // Distinct from `reply` (MessageSquare): a DM is not a reply in a thread, and
+  // these two sit next to each other in the same scannable list.
+  message: MessagesSquare,
   reaction: Heart,
   share: Share2,
 

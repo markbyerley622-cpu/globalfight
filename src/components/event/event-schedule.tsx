@@ -4,18 +4,8 @@ import { useEffect, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import type { EventStatus } from "@/lib/types";
 import type { Coverage } from "@/lib/events/result-coverage";
-
-function diff(target: number) {
-  const d = target - Date.now();
-  if (d <= 0) return null;
-  return {
-    days: Math.floor(d / 86400000),
-    hours: Math.floor((d % 86400000) / 3600000),
-    minutes: Math.floor((d % 3600000) / 60000),
-    seconds: Math.floor((d % 60000) / 1000),
-    ms: d,
-  };
-}
+import { Countdown } from "@/components/countdown";
+import { DAY_MS, HOUR_MS, useCountdown } from "@/lib/use-countdown";
 
 export interface ScheduleBlock {
   key: string;
@@ -53,37 +43,24 @@ export function EventSchedule({
   coverage?: Coverage;
 }) {
   const target = new Date(date).getTime();
-  const [t, setT] = useState<ReturnType<typeof diff>>(null);
-  // Has first bell passed? `null` means "not measured yet".
+  // ONE shared clock for every countdown on the page (lib/use-countdown). This
+  // used to be a private `diff()` + `setInterval` here AND an identical copy in
+  // components/countdown.tsx — two implementations of the same arithmetic, each
+  // with its own timer, that had already drifted apart in behaviour.
   //
-  // This CANNOT be derived from `t` being null, which is what the component used to
-  // do, and it produced two separate wrong states:
-  //
-  //  • A card whose date has passed while its status is still SCHEDULED — i.e. every
-  //    card between the final bell and the results landing — rendered the eyebrow
-  //    "First bell in" ABOVE the words "Card finished". Both from the same render.
-  //  • `t` is also null on the FIRST render of an upcoming card, before the effect
-  //    runs, so every future event flashed "Card finished" before hydration.
-  //
-  // Measured in the effect rather than inline so server and client cannot disagree
-  // about the current time and trip a hydration mismatch.
-  const [started, setStarted] = useState<boolean | null>(null);
+  // `started === null` means NOT MEASURED YET, which is distinct from "finished"
+  // and must stay distinct: conflating the two is what previously made every
+  // future event flash "Card finished" before hydration.
+  const { remaining: t, started } = useCountdown(date);
   const [local, setLocal] = useState<string>("");
 
   useEffect(() => {
-    setT(diff(target));
-    setStarted(target <= Date.now());
     setLocal(
       new Intl.DateTimeFormat(undefined, {
         weekday: "long", month: "short", day: "numeric",
         hour: "numeric", minute: "2-digit", timeZoneName: "short",
       }).format(new Date(target)),
     );
-    const id = setInterval(() => {
-      setT(diff(target));
-      setStarted(target <= Date.now());
-    }, 1000);
-    return () => clearInterval(id);
   }, [target]);
 
   const isLive = status === "LIVE";
@@ -103,28 +80,22 @@ export function EventSchedule({
   // not, which is the whole reason the banner could contradict the card below it.
   const post = awaitingResults || isDone;
   const cov = post ? coverage : undefined;
-  const urgent = !!t && t.ms < 86400000; // inside 24h
-  const soon = !!t && t.ms < 3600000; // inside the hour
-
-  const cell = (v: number, l: string, pulse = false) => (
-    <div className="flex flex-col items-center">
-      <span
-        className={`font-display text-3xl font-black tabular-nums leading-none text-chalk sm:text-4xl ${pulse ? "animate-pulse text-blood-300" : ""}`}
-      >
-        {String(v).padStart(2, "0")}
-      </span>
-      <span className="mt-1 text-3xs uppercase tracking-widest text-fog">{l}</span>
-    </div>
-  );
+  const urgent = !!t && t.ms < DAY_MS; // inside 24h
+  const soon = !!t && t.ms < HOUR_MS; // inside the hour
 
   return (
     <section
       aria-label="Schedule"
-      className="relative overflow-hidden border-b border-ink-700/70 px-4 py-6"
+      className="relative overflow-hidden border-b border-ink-700/70 px-4 py-6 transition-shadow duration-700"
       style={
-        urgent
-          ? { boxShadow: "inset 0 0 60px -20px color-mix(in srgb, var(--accent, #e11d2a) 60%, transparent)" }
-          : undefined
+        // The whole block warms up inside the last day, and turns to the brand's
+        // alarm colour inside the last hour — so the urgency is legible from the
+        // page's own chrome, not only from the digits.
+        soon
+          ? { boxShadow: "inset 0 0 90px -20px rgba(225,29,42,0.45)" }
+          : urgent
+            ? { boxShadow: "inset 0 0 60px -20px color-mix(in srgb, var(--accent, #e11d2a) 60%, transparent)" }
+            : undefined
       }
     >
       <div className="mb-3 flex items-center justify-center gap-1.5 text-3xs font-semibold uppercase tracking-[0.2em] text-fog">
@@ -167,30 +138,12 @@ export function EventSchedule({
             Sources are checked hourly.
           </span>
         </p>
-      ) : t ? (
-        <div className={`flex items-center justify-center gap-3 sm:gap-5 ${urgent ? "text-blood-300" : ""}`}>
-          {cell(t.days, "Days")}
-          <span className="pb-4 text-2xl text-ink-700">:</span>
-          {cell(t.hours, "Hrs")}
-          <span className="pb-4 text-2xl text-ink-700">:</span>
-          {cell(t.minutes, "Min")}
-          <span className="pb-4 text-2xl text-ink-700">:</span>
-          {cell(t.seconds, "Sec", soon)}
-        </div>
       ) : (
-        // Pre-hydration only: the clock has not been measured yet. Zeroed cells hold
-        // the exact layout the real countdown will occupy, so the number swaps in
-        // without shifting anything. Previously this branch printed "Card finished"
-        // on every upcoming event for one frame.
-        <div aria-hidden className="flex items-center justify-center gap-3 opacity-40 sm:gap-5">
-          {cell(0, "Days")}
-          <span className="pb-4 text-2xl text-ink-700">:</span>
-          {cell(0, "Hrs")}
-          <span className="pb-4 text-2xl text-ink-700">:</span>
-          {cell(0, "Min")}
-          <span className="pb-4 text-2xl text-ink-700">:</span>
-          {cell(0, "Sec")}
-        </div>
+        // The ONE countdown component (components/countdown), at its largest.
+        // It owns the band escalation, the cell set, the pre-hydration
+        // placeholder and the accessible name — this surface no longer has its
+        // own copy of any of that.
+        <Countdown date={date} size="lg" />
       )}
 
       {local && (

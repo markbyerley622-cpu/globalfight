@@ -6,11 +6,27 @@ import { ArrowLeft, Send, Loader2, AlertCircle } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageSquare } from "lucide-react";
-import { MAX_MESSAGE_LENGTH, type ConversationView, type DmMessage } from "@/lib/messages/types";
+import { MentionTextarea } from "@/components/mentions/mention-textarea";
+import {
+  MAX_MESSAGE_LENGTH,
+  TYPING_PING_MS,
+  type ConversationView,
+  type DmMessage,
+} from "@/lib/messages/types";
 import { cn } from "@/lib/utils";
 
-/** Poll cadence while a thread is open. Matches the forum room's feel. */
-const POLL_MS = 6000;
+/**
+ * Poll cadence while a thread is open and VISIBLE.
+ *
+ * Was 6s. Halved because the poll now also carries the other side's typing
+ * state, and a "typing…" indicator that can be six seconds stale is worse than
+ * none — it appears after the message it was predicting has already arrived.
+ *
+ * The extra request rate is paid for by pausing entirely when the tab is
+ * hidden, which the previous version did not do: a backgrounded thread polled
+ * forever, and each poll also wrote a read-receipt.
+ */
+const POLL_MS = 3000;
 
 function dayLabel(iso: string): string {
   const d = new Date(iso);
@@ -31,8 +47,11 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [otherTyping, setOtherTyping] = useState(initial.otherTyping);
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  /** When we last told the server we are composing. Throttles the ping. */
+  const lastPing = useRef(0);
 
   const who = initial.withUser;
 
@@ -47,15 +66,24 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
 
   useEffect(() => { scrollToEnd(true); }, [scrollToEnd]);
 
-  // Poll for the other side's replies. Merges by id so an optimistic message
-  // is replaced rather than duplicated when the server's copy arrives.
+  // Poll for the other side's replies and their typing state. Merges by id so
+  // an optimistic message is replaced rather than duplicated when the server's
+  // copy arrives.
+  //
+  // Runs ONLY while the tab is visible. A backgrounded thread has nobody
+  // reading it, and every poll is also a read-receipt WRITE — so a thread left
+  // open in another tab used to keep a phone awake to record that a message
+  // nobody was looking at had been read.
   useEffect(() => {
     let alive = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
     const tick = async () => {
       try {
         const res = await fetch(`/api/messages/${initial.id}`, { cache: "no-store" });
         if (!res.ok || !alive) return;
         const data = (await res.json()) as ConversationView;
+        setOtherTyping(data.otherTyping);
         setMessages((prev) => {
           const server = new Map(data.messages.map((m) => [m.id, m]));
           // Keep any optimistic message the server has not acknowledged yet.
@@ -65,12 +93,63 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         scrollToEnd(false);
       } catch { /* a dropped poll is not an error the reader needs to see */ }
     };
-    const t = setInterval(tick, POLL_MS);
-    return () => { alive = false; clearInterval(t); };
+
+    const start = () => { if (!timer) timer = setInterval(tick, POLL_MS); };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        // Catch up IMMEDIATELY on return rather than waiting out a full
+        // interval — otherwise the first thing someone sees coming back to the
+        // tab is a conversation that is up to three seconds out of date.
+        void tick();
+        start();
+      } else {
+        stop();
+        // Their indicator cannot be trusted while we were not listening.
+        setOtherTyping(false);
+      }
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      alive = false;
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [initial.id, scrollToEnd]);
 
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
+  /**
+   * Tell the other side we are composing — at most once every TYPING_PING_MS.
+   *
+   * Throttled on the CLIENT rather than debounced, so the signal starts on the
+   * first keystroke instead of after a pause. A debounce would mean the
+   * indicator only appears once someone STOPS typing, which is precisely
+   * backwards.
+   *
+   * `keepalive` so the last ping still leaves the browser if the reader
+   * navigates away mid-word. There is no "stopped typing" ping and there does
+   * not need to be one: the server compares a timestamp against a TTL, so the
+   * signal expires by itself.
+   */
+  const pingTyping = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPing.current < TYPING_PING_MS) return;
+    lastPing.current = now;
+    void fetch(`/api/messages/${initial.id}/typing`, { method: "POST", keepalive: true }).catch(() => {});
+  }, [initial.id]);
+
+  const onDraftChange = useCallback((next: string) => {
+    setDraft(next);
+    // Only when there is something to type. Clearing the box is not composing.
+    if (next.trim()) pingTyping();
+  }, [pingTyping]);
+
+  // The event is optional: the form's onSubmit passes one, and the composer's
+  // Enter handler (owned by MentionTextarea) calls this directly with none.
+  async function send(e?: React.FormEvent) {
+    e?.preventDefault();
     const body = draft.trim();
     if (!body || sending) return;
 
@@ -158,11 +237,16 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                 <div className={cn("flex", m.fromMe ? "justify-end" : "justify-start", grouped ? "mt-0.5" : "mt-2.5")}>
                   <div
                     className={cn(
-                      "max-w-[min(80%,32rem)] rounded-2xl px-3.5 py-2",
+                      // cr-msg-in: a short rise+fade so a message ARRIVES rather
+                      // than appearing between two frames. Disabled under
+                      // prefers-reduced-motion (see globals).
+                      "cr-msg-in max-w-[min(80%,32rem)] rounded-2xl px-3.5 py-2",
                       m.fromMe
                         ? "rounded-br-md bg-blood-500 text-white"
                         : "rounded-bl-md border border-ink-700 bg-ink-850 text-chalk",
-                      m.id.startsWith("tmp-") && "opacity-70",
+                      // An unacknowledged optimistic message reads as in-flight
+                      // rather than delivered.
+                      m.id.startsWith("tmp-") && "opacity-60",
                     )}
                   >
                     <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.body}</p>
@@ -175,6 +259,25 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
             );
           })
         )}
+        {/* THEY ARE TYPING.
+            Rendered in the message flow rather than pinned to the header, so it
+            occupies the position the incoming message is about to occupy — the
+            bubble does not jump when the real one lands, it replaces it in
+            place. Announced politely once, not per frame. */}
+        {otherTyping && (
+          <div className="mt-2.5 flex justify-start">
+            <div
+              role="status"
+              aria-live="polite"
+              className="cr-msg-in flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-ink-700 bg-ink-850 px-3.5 py-3"
+            >
+              <span className="sr-only">{who?.name ?? "They"} is typing</span>
+              <span aria-hidden className="cr-typing-dot" />
+              <span aria-hidden className="cr-typing-dot" />
+              <span aria-hidden className="cr-typing-dot" />
+            </div>
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
@@ -185,25 +288,34 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
       )}
 
       {/* Composer */}
-      <form onSubmit={send} className="flex items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 backdrop-blur">
+      {/* NO safe-area padding here, deliberately. This composer sits inside
+          #main, and BottomTabBar — which is below #main and visible at this
+          breakpoint — already carries
+          `pb-[calc(0.75rem+env(safe-area-inset-bottom))]`. Adding the inset
+          again here would double-count it and leave a gap above the home
+          indicator on exactly the devices it is meant to help. */}
+      <form
+        onSubmit={send}
+        className="flex items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 backdrop-blur"
+      >
         <label htmlFor="dm-body" className="sr-only">Message</label>
-        <textarea
+        {/* MentionTextarea owns Enter: it picks from the @-menu when that menu
+            is open and calls onSubmit otherwise, so this surface's send
+            behaviour is written as if mentions did not exist. */}
+        <MentionTextarea
           id="dm-body"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter sends, Shift+Enter breaks the line — what every messenger does.
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(e as unknown as React.FormEvent); }
-          }}
+          onChange={onDraftChange}
+          onSubmit={() => void send()}
           rows={1}
           placeholder={`Message ${who?.name ?? ""}…`}
-          className="max-h-32 min-h-[2.75rem] flex-1 resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none"
+          className="max-h-32 min-h-[2.75rem] w-full resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none"
         />
         <button
           type="submit"
           disabled={!draft.trim() || sending || over}
           aria-label="Send message"
-          className="tap grid size-11 shrink-0 place-items-center rounded-lg bg-blood-500 text-white transition-colors hover:bg-blood-400 disabled:cursor-not-allowed disabled:bg-ink-800 disabled:text-fog"
+          className="tap grid size-11 shrink-0 place-items-center rounded-lg bg-blood-500 text-white transition-all hover:bg-blood-400 disabled:cursor-not-allowed disabled:bg-ink-800 disabled:text-fog"
         >
           {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         </button>
