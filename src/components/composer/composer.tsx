@@ -7,6 +7,7 @@ import { applyMention, readMentionToken, type MentionToken } from "@/lib/mention
 import { readDraft, writeDraft, clearDraft } from "@/lib/composer/drafts";
 import { ComposerToolbar, AttachmentPreviews, type ComposerAction } from "@/components/composer/toolbar";
 import type { UploadsApi } from "@/lib/composer/attachments";
+import type { MentionRegistry } from "@/lib/composer/entities";
 import type { PresenceDto } from "@/lib/presence/policy";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,16 @@ export interface ComposerProps {
   actions?: ComposerAction[];
   /** Rendered to the right of the toolbar — a surface's own send button. */
   trailing?: React.ReactNode;
+  /**
+   * Records who was picked from the mention menu, so the surface can build
+   * structured entities at submit.
+   *
+   * Optional: a surface that does not yet store entities simply omits it and
+   * its mentions stay legacy — highlighted and notified by the parser exactly
+   * as before. That is what makes this migration incremental rather than a
+   * flag day.
+   */
+  mentions?: MentionRegistry;
   className?: string;
   disabled?: boolean;
 }
@@ -122,6 +133,7 @@ export function Composer({
   uploads,
   actions,
   trailing,
+  mentions,
   className,
   disabled,
   ...rest
@@ -224,6 +236,11 @@ export function Composer({
     const el = ref.current;
     if (!el || !token) return;
 
+    // Identity is captured HERE, at the moment of choosing — the one instant
+    // the app knows which account was meant. Offsets are computed later from
+    // the final text; see lib/composer/entities for why they are not tracked.
+    mentions?.record({ username: person.username, name: person.name });
+
     const { text: next, caret } = applyMention(value, token, person.username);
     onChange(next);
     setToken(null);
@@ -236,7 +253,7 @@ export function Composer({
       el.focus();
       el.setSelectionRange(caret, caret);
     });
-  }, [token, value, onChange]);
+  }, [token, value, onChange, mentions]);
 
   const submit = useCallback(() => {
     onSubmit?.();

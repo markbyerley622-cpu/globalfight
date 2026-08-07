@@ -16,7 +16,8 @@ import { ReactionBar } from "@/components/forums/reaction-bar";
 import { ReportButton } from "@/components/forums/report-dialog";
 import { useComposerUploads } from "@/lib/composer/attachments";
 import { useMediaAction, useEmbedAction } from "@/components/composer/toolbar";
-import { RichText } from "@/components/forums/rich-text";
+import { useMentionRegistry } from "@/lib/composer/entities";
+import { EntityText } from "@/components/rich-text/entity-text";
 import { PickLine, RecordLine } from "@/components/forums/pick-identity";
 import type { ForumPostDTO, Paginated, ForumAttachment } from "@/lib/forum/types";
 import type { RoomIdentity } from "@/lib/community/room-types";
@@ -311,7 +312,7 @@ function PostItem({
         </div>
       ) : (
         <>
-          {post.content && <RichText text={post.content} className="whitespace-pre-wrap break-words text-sm leading-relaxed text-mist" />}
+          {post.content && <EntityText text={post.content} entities={post.entities} className="whitespace-pre-wrap break-words text-sm leading-relaxed text-mist" />}
           {post.attachments.length > 0 && <AttachmentGrid attachments={post.attachments as ForumAttachment[]} />}
         </>
       )}
@@ -363,6 +364,10 @@ function ReplyComposer({
   });
   const media = useMediaAction(uploads);
   const embed = useEmbedAction(uploads);
+  // Records WHO was picked from the mention menu. Offsets are computed from the
+  // final text at submit — see lib/composer/entities for why they are not
+  // tracked through every edit.
+  const mentions = useMentionRegistry();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -383,6 +388,7 @@ function ReplyComposer({
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           content, attachments: uploads.ready,
+          entities: mentions.build(content),
           parentId: target?.parentId ?? null,
           quotePostId: target?.quotePostId ?? null,
         }),
@@ -391,6 +397,7 @@ function ReplyComposer({
       if (!res.ok) throw new Error(data.error ?? "Could not post reply.");
       setContent("");
       uploads.clear();
+      mentions.reset();
       onClearTarget();
       onPosted();
     } catch (err) {
@@ -429,6 +436,7 @@ function ReplyComposer({
         draftKey={`forum-reply:${threadSlug}:${target?.parentId ?? "root"}`}
         uploads={uploads as never}
         actions={[media.action, embed.action]}
+        mentions={mentions}
         className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 p-3 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
       {media.input}
