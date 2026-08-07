@@ -20,6 +20,8 @@ import { resetDb, makeUser, pick } from "./helpers";
 // ════════════════════════════════════════════════════════════════════════════
 
 const pages = new Map<string, string>();
+/** title → the article it redirects to, as MediaWiki resolves it. */
+const redirects = new Map<string, string>();
 const searchIndex = new Map<string, string[]>();
 let queries: string[] = [];
 
@@ -59,6 +61,28 @@ const server = http.createServer((req, res) => {
   }
   if (action === "parse") {
     const page = url.searchParams.get("page") ?? "";
+    // Model REDIRECTS the way MediaWiki actually behaves, because the bug this
+    // guards was invisible without it. `action=parse` on a redirect WITHOUT
+    // `redirects=1` returns the redirect STUB — a real 200 with a tiny body and
+    // no results table — so the pipeline saw a page that simply had no card and
+    // recorded `no_card`. It is not an error and not empty, which is exactly why
+    // it went unnoticed.
+    const target = redirects.get(page);
+    if (target !== undefined) {
+      if (url.searchParams.get("redirects") !== "1") {
+        res.end(JSON.stringify({
+          parse: {
+            title: page,
+            text: { "*": `<div class="redirectMsg">This page is a redirect to <a href="/wiki/${target}">${target}</a>.</div>` },
+          },
+        }));
+        return;
+      }
+      const followed = pages.get(target);
+      if (!followed) { res.end(JSON.stringify({ error: { info: "missingtitle" } })); return; }
+      res.end(JSON.stringify({ parse: { title: target, text: { "*": followed } } }));
+      return;
+    }
     const html = pages.get(page);
     if (!html) { res.end(JSON.stringify({ error: { info: "missingtitle" } })); return; }
     res.end(JSON.stringify({ parse: { title: page, text: { "*": html } } }));
@@ -99,6 +123,7 @@ before(async () => {
 beforeEach(async () => {
   await resetDb();
   pages.clear();
+  redirects.clear();
   searchIndex.clear();
   queries = [];
 });
@@ -566,4 +591,66 @@ test("the CARD queue rotates — a second pass gets the events the first one mis
   // And the whole backlog is reachable, which is the property that actually
   // drains it — four events, two passes of two, no repeats.
   assert.deepEqual([...first, ...second].sort(), dates.map((_, i) => `ONE Friday Fights ${i + 1}`).sort());
+});
+
+// ── Redirects ───────────────────────────────────────────────────────────────
+
+test("a card behind a REDIRECT is recovered, not recorded as no_card", () => {
+  // The failure this pins. `action=parse` on a redirect returns the redirect
+  // STUB — a 200, with a body, and no results table. Every layer downstream read
+  // that as "the page exists and has no card on it", so the event was written off
+  // as a parser failure it never was. Measured against the live API before the
+  // fix: ONE X 0 bouts -> 20, and ONE Friday Fights 15/16/17/32/35 all 0 ->
+  // recovered. Wikipedia redirects individual event numbers to their series
+  // article constantly.
+  //
+  // The candidate here is a full event title rather than a bare "ONE X", so the
+  // title scorer accepts it and the REDIRECT is what the test actually exercises.
+  return (async () => {
+    const date = DAYS_AGO(6);
+    const event = await prisma.event.create({
+      data: { slug: "one-fn-41", name: "ONE Fight Night 41", sport: "MUAY_THAI", promotion: "ONE Championship", date, status: "SCHEDULED" },
+    });
+    index("ONE Fight Night 41", ["ONE Fight Night 41: Rodtang vs Superlek"]);
+    // The searched title is a REDIRECT; the card lives at the target.
+    redirects.set("ONE Fight Night 41: Rodtang vs Superlek", "ONE Championship: Fight Night 41");
+    pages.set("ONE Championship: Fight Night 41", cardHtml([
+      { red: "Rodtang Jitmuangnon", blue: "Superlek Kiatmoo9" },
+      { red: "Angela Lee", blue: "Stamp Fairtex" },
+    ]));
+
+    const line = await harvestWikiTargets({ gap: "missing_card", limit: 10, mode: "historical" });
+    assert.match(line, /verified=1/, line);
+
+    const fresh = await prisma.event.findUniqueOrThrow({ where: { id: event.id }, include: { fights: true } });
+    assert.equal(fresh.fights.length, 2, "the redirect target's card must be attached");
+  })();
+});
+
+test("a redirect into a SEASON page is refused, not attached wholesale", () => {
+  // The hazard the fix introduces if left alone. "ONE Friday Fights 35" redirects
+  // to the series article, which carries 414 bouts against the live API — every
+  // Friday Fights card ever held. Scored on the REQUESTED title it looks like a
+  // clean event page, so following the redirect blindly would put all 414 on one
+  // event. A missing-card target has no expected bouts, so there is nothing to
+  // filter it down with, and the only honest answer is to refuse it.
+  return (async () => {
+    const date = DAYS_AGO(7);
+    const event = await prisma.event.create({
+      data: {
+        slug: "one-friday-fights-35", name: "ONE Friday Fights 35",
+        sport: "MUAY_THAI", promotion: "ONE Championship", date, status: "SCHEDULED",
+      },
+    });
+    index("ONE Friday Fights 35", ["ONE Friday Fights 35: Superlek vs Takeru"]);
+    redirects.set("ONE Friday Fights 35: Superlek vs Takeru", "2023 in ONE Championship");
+    pages.set("2023 in ONE Championship", cardHtml(
+      Array.from({ length: 60 }, (_, i) => ({ red: `Red Fighter ${i}`, blue: `Blue Fighter ${i}` })),
+    ));
+
+    await harvestWikiTargets({ gap: "missing_card", limit: 10, mode: "historical" });
+
+    const fresh = await prisma.event.findUniqueOrThrow({ where: { id: event.id }, include: { fights: true } });
+    assert.equal(fresh.fights.length, 0, "a whole season's bouts must not land on one card");
+  })();
 });
