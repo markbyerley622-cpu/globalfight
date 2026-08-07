@@ -37,9 +37,25 @@ export type DateWindow = "week" | "month" | "quarter";
  * Parsing is tolerant on purpose: hand-edited URLs, stray whitespace and casing
  * all resolve rather than being punished, and duplicates collapse.
  */
+/**
+ * How many values one filter group may carry.
+ *
+ * This is a QUERY BOUND, not a UI preference. Every group here fans out into the
+ * SQL — `promotion` expands each slug into its alias list and ORs a `contains`
+ * per alias — so the cost of this array is superlinear in places, and the array
+ * comes from the URL, which anyone can type.
+ *
+ * Nothing legitimate approaches it: the facet lists are capped at 14 (see
+ * getEventFacets) and there are fewer sports than that. A URL carrying 400
+ * comma-separated promotions is either a stale link that accumulated values or
+ * someone probing, and both used to reach the database as one enormous OR.
+ */
+const MAX_VALUES_PER_GROUP = 24;
+
 export function parseMulti(raw: string | undefined | null): string[] {
   if (!raw) return [];
-  return [...new Set(raw.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean))];
+  return [...new Set(raw.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean))]
+    .slice(0, MAX_VALUES_PER_GROUP);
 }
 
 export interface EventFilters {
