@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1158 across 900 files
-- **By class:** 808 public · 255 user-owned · 95 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 95 medium · 🟡 201 low · ⚪ 862 info
+- **Queries analysed:** 1168 across 907 files
+- **By class:** 809 public · 264 user-owned · 95 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 102 medium · 🟡 201 low · ⚪ 865 info
 
 ## 🔴 High risk
 
@@ -111,6 +111,13 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/media/asset/lifecycle.ts:311` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/media/asset/lifecycle.ts:316` | cleanupMedia | MediaAsset (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/metrics.ts:75` | getLaunchMetrics | FightPick (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:61` | taken | PromoterOrg (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:74` | exists | PromoterOrg (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:121` | claim | PromoterClaim (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:128` | decidePromoterClaim | PromoterClaim (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:139` | decidePromoterClaim | PromoterOrg (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:189` | searchPromoterOrgs | PromoterOrg (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/promoter/claims.ts:199` | rows | PromoterClaim (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 
 ## Model classification
 

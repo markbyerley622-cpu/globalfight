@@ -25,10 +25,38 @@ export default async function PromoterHomePage() {
   const caps = promoter ? promoterCapabilities(promoter.state) : null;
   const copy = PROMOTER_STATE_COPY[promoter?.state ?? "NONE"];
 
-  if (!promoter || !caps?.draftEvents) {
+  // ── Not a promoter at all: the front door ────────────────────────────────
+  if (!promoter) {
     return (
       <>
-        <PageHero eyebrow="Promoters" title="Host your events" description={copy.detail} />
+        <PageHero
+          eyebrow="Promoters"
+          title="Host your events"
+          description="Upload a poster and we'll build the card. Claim your promotion to get started."
+        />
+        <div className="container-cr py-8">
+          <EmptyState
+            icon={<Megaphone className="size-6" />}
+            title="Claim your promotion"
+            body="Events on Combat Reviews are published by verified promoters only — it's what keeps a card on this platform trustworthy. Tell us who you run and we'll verify you."
+            action={{ href: "/promoter/claim", label: "Claim your promotion" }}
+          />
+        </div>
+      </>
+    );
+  }
+
+  // ── Applied, not yet decided ─────────────────────────────────────────────
+  //
+  // Drafting is NOT blocked here. An applicant can build their whole card while
+  // review happens — only `publishEvents` is withheld, and it is withheld by
+  // the capability table rather than by hiding the UI, so there is no path that
+  // "forgets" the gate. Making them wait to even start would mean the first
+  // thing a new promoter does on the platform is nothing.
+  if (!caps?.draftEvents) {
+    return (
+      <>
+        <PageHero eyebrow={promoter.orgName} title={copy.label} description={copy.detail} />
         <div className="container-cr py-8">
           <EmptyState
             icon={<Megaphone className="size-6" />}

@@ -76,12 +76,29 @@ const NONE_ALLOWED: PromoterCapabilities = {
 
 const CAPABILITIES: Record<PromoterState, PromoterCapabilities> = {
   NONE: NONE_ALLOWED,
-  // A pending application grants NOTHING — the same call the gym model makes,
-  // for the same reason. The tempting shortcut is to let an applicant start
-  // building their card while review happens "so they can hit the ground
-  // running". That is precisely how an unreviewed stranger ends up one button
-  // away from publishing an event to the whole product. Review first.
-  CLAIM_PENDING: NONE_ALLOWED,
+  // ── A pending application may BUILD but never PUBLISH ────────────────────
+  //
+  // This is the distinction the capability table exists for, and it is worth
+  // stating precisely because the gym model — which this otherwise mirrors —
+  // grants a pending claim nothing at all.
+  //
+  // The difference is what the artefact IS. A gym page is a real, public,
+  // pre-existing business listing, so letting an unreviewed claimant edit it
+  // means an unreviewed stranger changing a business's public page. A promoter
+  // DRAFT is none of those things: it is private to its author, it appears
+  // nowhere, it takes no predictions, and it is invisible to every query on the
+  // platform until `publishEvents` — which only VERIFIED holds — is exercised.
+  //
+  // So the risk of drafting is nil and the cost of forbidding it is real: the
+  // first thing a new promoter would do on the platform is wait. They can build
+  // the whole card while review happens and publish the moment it lands.
+  //
+  // The gate is withheld HERE, in the table every surface reads, rather than by
+  // hiding a button — so there is no path that forgets it.
+  CLAIM_PENDING: {
+    draftEvents: true, uploadPoster: true, buildCard: true,
+    publishEvents: false, recordResults: false, showBadge: false,
+  },
   CLAIM_REJECTED: NONE_ALLOWED,
   VERIFIED: {
     draftEvents: true, uploadPoster: true, buildCard: true,

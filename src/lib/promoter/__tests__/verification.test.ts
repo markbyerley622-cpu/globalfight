@@ -56,11 +56,22 @@ describe("promoterState", () => {
 });
 
 describe("promoterCapabilities", () => {
-  test("a pending application grants NOTHING", () => {
-    // The tempting shortcut is to let an applicant build their card while
-    // review happens. That is how an unreviewed stranger ends up one button
-    // from publishing to the whole product.
+  test("a pending application may BUILD but never PUBLISH", () => {
+    // A draft is private to its author, appears nowhere, and takes no
+    // predictions — so building one carries no risk, while forbidding it means
+    // a new promoter's first act on the platform is to wait. The gate is on
+    // publishing, and it is in this table rather than in a hidden button.
     const caps = promoterCapabilities("CLAIM_PENDING");
+    assert.equal(caps.draftEvents, true);
+    assert.equal(caps.buildCard, true);
+    assert.equal(caps.uploadPoster, true);
+    assert.equal(caps.publishEvents, false);
+    assert.equal(caps.recordResults, false);
+    assert.equal(caps.showBadge, false);
+  });
+
+  test("a REJECTED application grants nothing at all", () => {
+    const caps = promoterCapabilities("CLAIM_REJECTED");
     assert.deepEqual(Object.values(caps).filter(Boolean), []);
   });
 
