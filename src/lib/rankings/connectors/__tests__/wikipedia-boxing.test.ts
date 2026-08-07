@@ -107,16 +107,26 @@ test("the name is read from the link, so the record and date never leak into it"
   ]);
   const [row] = parse(html);
   assert.equal(row.name, "Dmitry Bivol");
-  assert.equal(row.effectiveDate, "2025-02-22", "effective date is when the belt was WON, not fetch time");
 });
 
-test("effectiveDate makes a re-read idempotent and a title change visible", () => {
-  const one = parse(division("Heavyweight (+200 lb)", [cell("Agit Kabayel", { date: "June 27, 2026" }) + vacant() + vacant() + vacant() + vacant()]));
-  const two = parse(division("Heavyweight (+200 lb)", [cell("Agit Kabayel", { date: "June 27, 2026" }) + vacant() + vacant() + vacant() + vacant()]));
-  assert.equal(one[0].effectiveDate, two[0].effectiveDate, "same publication → same key → no new observation");
+test("effectiveDate is the PUBLICATION date — a long reign is not stale evidence", () => {
+  // The regression that cost 65 belts. effectiveDate carried the date the title
+  // was WON, which reads as the more truthful choice and is not what the field
+  // means: `reconcile` filters on it with MAX_AGE_DAYS = 120, so every champion
+  // who won more than four months ago was discarded as stale and no reign was
+  // ever opened. Every WBC, WBO, IBF and Ring title was affected.
+  //
+  // Usyk won the Ring heavyweight belt in 2022. That is a fact about the reign,
+  // not a claim that Wikipedia last spoke in 2022.
+  const html = division("Heavyweight (+200 lb)", [
+    cell("Oleksandr Usyk", { date: "August 20, 2022" }) + vacant() + vacant() + vacant() + vacant(),
+  ]);
+  const [row] = parse(html);
 
-  const next = parse(division("Heavyweight (+200 lb)", [cell("Somebody Else", { date: "August 1, 2026" }) + vacant() + vacant() + vacant() + vacant()]));
-  assert.notEqual(next[0].effectiveDate, one[0].effectiveDate, "a new reign must carry a new date");
+  assert.equal(row.effectiveDate, "2026-08-07", "the page was read today, whatever the belt's history");
+
+  const ageDays = (at.getTime() - new Date(row.effectiveDate).getTime()) / 86_400_000;
+  assert.ok(ageDays < 120, `evidence must be inside the reconciler's ${120}-day window, was ${ageDays}d`);
 });
 
 // ── 3. Vacancy and secondary belts ──────────────────────────────────────────

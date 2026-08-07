@@ -218,7 +218,9 @@ export function parseWikipediaBoxingChampions(
 ): RankingEntry[] {
   const $ = cheerio.load(html);
   const now = opts.now ?? new Date();
-  const fallbackDate = now.toISOString().slice(0, 10);
+  // When this page was read. Wikipedia keeps this article continuously current,
+  // so the publication date of the claim is the date we retrieved it.
+  const publishedOn = now.toISOString().slice(0, 10);
   const sourceUrl = urlFor(opts.pageTitle);
   const entries: RankingEntry[] = [];
 
@@ -253,7 +255,7 @@ export function parseWikipediaBoxingChampions(
             name: "", weightClass, rank: 0, gender: opts.gender, kind: "professional",
             countryCode: null, organisation: org, sport: "boxing",
             titleStatus: "VACANT",
-            effectiveDate: fallbackDate, sourceUrl,
+            effectiveDate: publishedOn, sourceUrl,
           });
           continue;
         }
@@ -282,12 +284,29 @@ export function parseWikipediaBoxingChampions(
           organisation: org,
           sport: "boxing",
           titleStatus: status,
-          // The date the belt was WON, not the date we fetched. That is what the
-          // source actually asserts about this claim, and it is what makes the
-          // ingest idempotent: the champion-observation key includes the
-          // effective date, so re-reading an unchanged page writes nothing,
-          // while a new champion carries a new date and is recorded.
-          effectiveDate: claim.wonOn ?? fallbackDate,
+          // ── PUBLICATION date, not the date the belt was won ──────────────
+          //
+          // This carried `claim.wonOn` and it looked like the more truthful
+          // choice. It is not what the field means. `effectiveDate` is when the
+          // SOURCE published the claim, and `reconcile` filters on it:
+          // MAX_AGE_DAYS is 120, so anything won more than four months ago was
+          // discarded as stale evidence and NO REIGN WAS OPENED. Measured: 65 of
+          // 149 belts — every WBC, WBO, IBF and Ring title — existed as an
+          // observation and never became a reign. Oleksandr Usyk won the Ring
+          // heavyweight title in 2022; that is a fact about the reign, not a
+          // statement that Wikipedia last spoke in 2022.
+          //
+          // Idempotency does NOT depend on this field: ingestConnector
+          // short-circuits on the provider payload hash before champions are
+          // touched, so an unchanged page writes nothing regardless.
+          //
+          // The win date IS parsed and validated (see `claim.wonOn`) and is
+          // currently dropped, because a reign's true start needs a column of
+          // its own — `startedAt` is derived from effectiveDate, and one field
+          // cannot carry both "when this became true" and "when we were told".
+          // Every other connector has the same limitation. Left as a named gap
+          // rather than smuggled into a field that means something else.
+          effectiveDate: publishedOn,
           sourceUrl,
         });
       }

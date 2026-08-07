@@ -216,10 +216,29 @@ async function syncLegacyChampion(
   claim: TitleClaim,
   status: string,
 ): Promise<void> {
-  if (status !== "CHAMPION" || !claim.fighterId) return;
-
   const body = sanctioningBodyFor(organisation);
   if (!body) return;
+
+  // ── A VACATED belt must lose its champion row ───────────────────────────
+  //
+  // This returned early for every non-CHAMPION status, which was safe only
+  // while VACANT reigns could not exist — no connector could express one. Now
+  // that a source can say "this belt is vacant", returning early leaves the
+  // previous holder in `Champion`, and `Champion` is what the site reads. The
+  // reign would correctly say VACANT while every page still displayed a
+  // champion, which is a worse failure than showing nothing: it is confidently
+  // wrong, and it is exactly the state a source publishes a vacancy to correct.
+  //
+  // Deleted rather than flipped to `current: false`, because the constraint is
+  // `@@unique([weightClassId, body, current])` on a BOOLEAN — flipping succeeds
+  // once per division and then collides forever. The reign holds the history,
+  // so nothing is lost by removing the projection row.
+  if (status === "VACANT" || status === "STRIPPED" || status === "RETIRED") {
+    await prisma.champion.deleteMany({ where: { weightClassId, body, current: true } }).catch(() => {});
+    return;
+  }
+
+  if (status !== "CHAMPION" || !claim.fighterId) return;
 
   const existing = await prisma.champion.findFirst({
     where: { weightClassId, body, current: true },
