@@ -10,6 +10,8 @@ import { POLICY } from "@/lib/rate-limit";
 import { PROMOTIONS } from "@/lib/promotions";
 import { searchFollowState } from "@/lib/search-follow";
 import { publicDisplayName } from "@/lib/display-name";
+import { PRESENCE_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor } from "@/lib/presence/policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,7 +95,7 @@ export async function GET(req: Request) {
         take: 6,
         // `id` is selected only to compare against the viewer (the `self` flag) and
         // is never returned in the response.
-        select: { id: true, username: true, name: true, image: true, registryRole: true, reputation: true },
+        select: { username: true, name: true, image: true, registryRole: true, reputation: true, ...PRESENCE_SELECT },
       })
       .catch(() => []),
     // Video results come from the SAME recommender every other surface uses, so
@@ -165,6 +167,7 @@ export async function GET(req: Request) {
             // comparing ids in the component would mean shipping the viewer's id to
             // every search result to do it.
             self: u.id === viewer?.id,
+            presence: presenceDtoFor(u, viewer?.id ?? null),
           }]
         : [],
     ),

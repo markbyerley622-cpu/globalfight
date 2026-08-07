@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { enforceLimit } from "@/lib/rate-limit/guard";
 import { POLICY } from "@/lib/rate-limit";
 import { publicDisplayName } from "@/lib/display-name";
+import { PRESENCE_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor } from "@/lib/presence/policy";
 
 /**
  * PEOPLE autocomplete — the typeahead behind "Challenge a friend".
@@ -44,7 +46,10 @@ export async function GET(req: Request) {
   const raw = (new URL(req.url).searchParams.get("q") ?? "").trim().replace(/^@+/, "");
   const q = raw.slice(0, 64);
 
-  const select = { id: true, username: true, name: true, image: true } as const;
+  // PRESENCE_SELECT rather than the columns by hand — "are they around right
+  // now" is exactly the signal that decides who you challenge, and the shared
+  // fragment keeps a future switch reaching this query too.
+  const select = { username: true, name: true, image: true, ...PRESENCE_SELECT } as const;
 
   const rows = q
     ? await prisma.user.findMany({
@@ -90,6 +95,7 @@ export async function GET(req: Request) {
             // address there. See lib/display-name.
             name: publicDisplayName(u),
             image: u.image,
+            presence: presenceDtoFor(u, user.id),
           }]
         : [],
     ),

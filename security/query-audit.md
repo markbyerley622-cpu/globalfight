@@ -4,7 +4,7 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1184 across 919 files
+- **Queries analysed:** 1184 across 922 files
 - **By class:** 815 public · 267 user-owned · 102 shared · 0 admin
 - **Risk:** 🔴 0 high · 🟠 103 medium · 🟡 204 low · ⚪ 877 info
 
@@ -34,7 +34,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/app/api/gyms/[slug]/members/route.ts:96` | PATCH | GymMember (SHARED) | delete · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/gyms/[slug]/members/route.ts:104` | updated | GymMember (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/me/claims/route.ts:11` | GET | GymClaim (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/app/gyms/[slug]/followers/page.tsx:50` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/app/gyms/[slug]/followers/page.tsx:52` | rows | Follow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/app/gyms/[slug]/manage/page.tsx:45` | ManageGymPage | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/activity.ts:23` | getGlobalActivity | Activity (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/admin/merge-fighters.ts:77` | mergeFighter | CardAward (USER_OWNED) | updateMany · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
@@ -81,7 +81,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/forum/repo.ts:592` | onBattleRoomMessage | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/forum/repo.ts:711` | toggleBookmark | ForumBookmark (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/forum/repo.ts:719` | toggleSubscription | ForumSubscription (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/geo/people.ts:279` | getMutualFollowers | UserFollow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/geo/people.ts:281` | getMutualFollowers | UserFollow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:62` | checkIn | CheckIn (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:102` | getPresence | CheckIn (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:118` | coaches | GymMember (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { PRESENCE_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor } from "@/lib/presence/policy";
 import { publicDisplayName } from "@/lib/display-name";
 import { getCurrentUser } from "@/lib/auth";
 import { searchFollowState } from "@/lib/search-follow";
@@ -52,7 +54,7 @@ export default async function GymFollowersPage({ params }: { params: Promise<{ s
     orderBy: { createdAt: "desc" },
     take: 200,
     select: {
-      user: { select: { name: true, username: true, image: true, reputation: true } },
+      user: { select: { name: true, username: true, image: true, reputation: true, ...PRESENCE_SELECT } },
     },
   });
 
@@ -65,6 +67,7 @@ export default async function GymFollowersPage({ params }: { params: Promise<{ s
           name: publicDisplayName(r.user),
           image: r.user.image,
           reputation: r.user.reputation,
+          presence: presenceDtoFor(r.user, viewer?.id ?? null),
         }]
       : [],
   );

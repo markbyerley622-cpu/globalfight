@@ -61,7 +61,8 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   const [otherTyping, setOtherTyping] = useState(initial.otherTyping);
   const [otherReadAt, setOtherReadAt] = useState<string | null>(initial.otherReadAt);
   const [otherDeliveredAt, setOtherDeliveredAt] = useState<string | null>(initial.otherDeliveredAt);
-  const [otherSeenAt, setOtherSeenAt] = useState<string | null>(initial.withUser?.lastSeenAt ?? null);
+  const [otherPresence, setOtherPresence] = useState(initial.withUser?.presence ?? null);
+  const [receiptsHidden, setReceiptsHidden] = useState(initial.receiptsHidden);
 
   // Publish "I'm here" while this thread is open and the tab is visible. This
   // is what makes the OTHER side's presence dot mean anything — presence only
@@ -105,7 +106,8 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         setOtherTyping(data.otherTyping);
         setOtherReadAt(data.otherReadAt);
         setOtherDeliveredAt(data.otherDeliveredAt);
-        setOtherSeenAt(data.withUser?.lastSeenAt ?? null);
+        setOtherPresence(data.withUser?.presence ?? null);
+        setReceiptsHidden(data.receiptsHidden);
         setMessages((prev) => {
           const server = new Map(data.messages.map((m) => [m.id, m]));
           // Keep any optimistic message the server has not acknowledged yet.
@@ -263,14 +265,14 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
           <Link href={`/u/${who.username}`} className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80">
             <span className="relative shrink-0">
               <ForumAvatar name={who.name} image={who.image} size="md" />
-              <PresenceDot lastSeenAt={otherSeenAt} className="border-ink-950" />
+              <PresenceDot presence={otherPresence} ringClassName="border-ink-950" />
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1">
                 <span className="truncate font-display text-sm font-bold text-chalk">{who.name}</span>
                 {who.verified && <BadgeCheck className="size-3.5 shrink-0 text-volt-400" aria-label="Verified" />}
               </span>
-              <PresenceLabel lastSeenAt={otherSeenAt} typing={otherTyping} className="block truncate" />
+              <PresenceLabel presence={otherPresence} typing={otherTyping} className="block truncate" />
             </span>
           </Link>
         ) : (
@@ -347,6 +349,13 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                     <span className={receipt === "read" ? "text-volt-400" : undefined}>
                       {RECEIPT_LABEL[receipt]}
                     </span>
+                    {/* Ticks stopping at Delivered forever reads as a bug — the
+                        reader concludes the other person never opens their
+                        messages, which is a worse misunderstanding than the one
+                        the setting was protecting against. So say why. */}
+                    {receiptsHidden && receipt === "delivered" && (
+                      <span className="text-fog"> · read receipts off</span>
+                    )}
                   </p>
                 )}
               </div>

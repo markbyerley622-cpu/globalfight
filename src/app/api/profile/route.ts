@@ -84,6 +84,13 @@ const Body = z.object({
   notifySocial: z.boolean().optional(),
   notifyGym: z.boolean().optional(),
   notifyMessages: z.boolean().optional(),
+  // Presence privacy. Same endpoint as everything else on this screen: these
+  // are facts about a person, and a second settings endpoint would be a second
+  // place to get the allow-list wrong (rule 3).
+  showOnlineStatus: z.boolean().optional(),
+  showLastSeen: z.boolean().optional(),
+  allowTypingIndicator: z.boolean().optional(),
+  allowReadReceipts: z.boolean().optional(),
   quietHoursStart: z.number().int().min(0).max(23).nullable().optional(),
   quietHoursEnd: z.number().int().min(0).max(23).nullable().optional(),
   timezone: z.string().max(64).nullable().optional(),
@@ -98,6 +105,8 @@ const SELECT = {
   openToSpar: true, lookingForTraining: true,
   notifyFights: true, notifyPredictions: true, notifySocial: true, notifyGym: true,
   notifyMessages: true,
+  showOnlineStatus: true, showLastSeen: true,
+  allowTypingIndicator: true, allowReadReceipts: true,
   quietHoursStart: true, quietHoursEnd: true, timezone: true,
 } as const;
 
@@ -177,6 +186,10 @@ export async function PATCH(req: Request) {
       notifySocial: d.notifySocial,
       notifyGym: d.notifyGym,
       notifyMessages: d.notifyMessages,
+      showOnlineStatus: d.showOnlineStatus,
+      showLastSeen: d.showLastSeen,
+      allowTypingIndicator: d.allowTypingIndicator,
+      allowReadReceipts: d.allowReadReceipts,
       quietHoursStart: d.quietHoursStart,
       quietHoursEnd: d.quietHoursEnd,
       timezone: d.timezone,

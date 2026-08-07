@@ -1,3 +1,4 @@
+import type { PresenceDto } from "@/lib/presence/policy";
 // Client-safe DM contract: the shapes and limits both sides need.
 //
 // Separate from repo.ts because that module is `server-only` — importing it
@@ -17,14 +18,13 @@ export interface DmPerson {
   /** Staff-approved professional identity — drives the badge. */
   verified: boolean;
   /**
-   * Their presence heartbeat, ISO or null.
+   * Presence, already FILTERED for the viewer looking at it.
    *
-   * The RAW timestamp, not a derived "online" boolean, so the client can decay
-   * it against its own clock between polls. A server-computed state would be
-   * stale the moment it was serialised and would show somebody as online for
-   * the whole poll interval after they closed the tab.
+   * Built by `presenceDtoFor`, never assembled here: a hidden user's timestamp
+   * is absent from this object entirely rather than present-and-ignored, so
+   * there is nothing for a browser to read that the viewer was not entitled to.
    */
-  lastSeenAt: string | null;
+  presence: PresenceDto;
 }
 
 export interface DmMessage {
@@ -50,7 +50,13 @@ export interface ConversationSummary {
    * to open one thread over another.
    */
   otherTyping: boolean;
-  /** Their read watermark — drives the receipt on the last message you sent. */
+  /**
+   * Their read watermark — drives the receipt on the last message you sent.
+   *
+   * NULL when either side has read receipts switched off. The gate is applied
+   * server-side in the repo, so the watermark of somebody who opted out never
+   * reaches the client to be "hidden" by a component.
+   */
   otherReadAt: string | null;
   /** Their delivery watermark. See DeliveryState in lib/presence/derive. */
   otherDeliveredAt: string | null;
@@ -118,6 +124,16 @@ export interface ConversationView {
    * what turns ✓✓ into decoration. See DeliveryState in lib/presence/derive.
    */
   otherDeliveredAt: string | null;
+
+  /**
+   * Either side has read receipts switched off.
+   *
+   * Surfaced so the thread can EXPLAIN the missing tick. Without it the ticks
+   * would simply stop at Delivered forever and read as a bug — the user would
+   * conclude the other person never opens their messages, which is a worse
+   * misunderstanding than the one the privacy setting was protecting against.
+   */
+  receiptsHidden: boolean;
 }
 
 /**

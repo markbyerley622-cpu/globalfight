@@ -197,7 +197,7 @@ function InboxRow({ c }: { c: ConversationSummary }) {
     >
       <span className="relative shrink-0">
         <ForumAvatar name={c.withUser.name} image={c.withUser.image} size="lg" />
-        <PresenceDot lastSeenAt={c.withUser.lastSeenAt} />
+        <PresenceDot presence={c.withUser.presence} />
         {unread && (
           <span
             aria-hidden

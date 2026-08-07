@@ -38,7 +38,7 @@ export default async function FollowingPage({ params }: { params: Promise<{ user
   // would be one query per person on a page built to hold hundreds.
   const viewer = await getCurrentUser();
   const [people, counts] = await Promise.all([
-    listFollows(u.id, "following"),
+    listFollows(u.id, "following", 100, viewer?.id ?? null),
     getFollowCounts(u.id),
   ]);
   // searchFollowState is the ONE batched follow-state reader in the codebase

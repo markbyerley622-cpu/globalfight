@@ -17,6 +17,9 @@ import { ButtonLink } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { ShareMenu } from "@/components/share-menu";
 import { publicDisplayName } from "@/lib/display-name";
+import { PRESENCE_SELECT } from "@/lib/presence/select";
+import { presenceDtoFor } from "@/lib/presence/policy";
+import { PresenceLabel } from "@/components/presence/presence-dot";
 import { getFollowCounts, getMutualFollowers } from "@/lib/geo/people";
 import { getCurrentUser } from "@/lib/auth";
 import { isFollowing } from "@/lib/follow-targets";
@@ -35,7 +38,14 @@ function initials(name: string): string {
 async function loadUser(username: string) {
   return prisma.user.findUnique({
     where: { username },
-    select: { id: true, name: true, username: true, image: true, bannerUrl: true, bio: true, registryRole: true, createdAt: true },
+    select: {
+      // `id` arrives via PRESENCE_SELECT — it is part of that fragment because
+      // the DTO builder needs it to recognise a viewer looking at themselves.
+      name: true, username: true, image: true, bannerUrl: true, bio: true,
+      registryRole: true, createdAt: true,
+      // The shared fragment, so a new privacy switch reaches this page too.
+      ...PRESENCE_SELECT,
+    },
   });
 }
 
@@ -96,6 +106,9 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   ]);
 
   const displayName = publicDisplayName(u);
+  // Filtered for THIS viewer before it is rendered — a hidden user's timestamp
+  // is not in the object the client receives. See lib/presence/policy.
+  const presence = presenceDtoFor(u, viewer?.id ?? null);
   const rep = stats?.reputation ?? 0;
   const acc = stats?.accuracy ?? 0;
   const streak = stats?.pickStreak ?? 0;
@@ -146,7 +159,16 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
           </div>
           <div className="min-w-0 flex-1 pb-1">
             <h1 className="truncate font-display text-2xl font-black text-chalk sm:text-3xl">{displayName}</h1>
-            <p className="text-sm text-fog">@{u.username} · joined {u.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}</p>
+            {/* Presence sits with the handle and the join date — the identity
+                line — rather than in the chip row, which is for things the
+                person has EARNED. It renders nothing at all when hidden or
+                simply unknown, so it never dominates the page. */}
+            <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-sm text-fog sm:justify-start">
+              <span>@{u.username}</span>
+              <span aria-hidden>·</span>
+              <span>joined {u.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>
+              <PresenceLabel presence={presence} />
+            </p>
           </div>
           {/* Reputation headline */}
           <div className="shrink-0 card-surface px-5 py-3 text-center">
