@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1173 across 909 files
-- **By class:** 812 public · 266 user-owned · 95 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 102 medium · 🟡 203 low · ⚪ 868 info
+- **Queries analysed:** 1182 across 913 files
+- **By class:** 814 public · 266 user-owned · 102 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 103 medium · 🟡 203 low · ⚪ 876 info
 
 ## 🔴 High risk
 
@@ -45,10 +45,11 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/admin/merge-fighters.ts:108` | mergeFighter | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/admin/merge-fighters.ts:111` | winFavs | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/admin/merge-fighters.ts:113` | loseFavs | FavoriteFighter (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/battles.ts:261` | battles | Battle (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/battles.ts:284` | fresh | Battle (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/battles.ts:288` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/battles.ts:305` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:139` | acceptPendingInvite | Battle (SHARED) | updateMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:471` | battles | Battle (SHARED) | findMany · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:494` | fresh | Battle (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:498` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/battles.ts:515` | resolveFightBattles | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/community/repo.ts:100` | leaveCommunity | CommunityMember (SHARED) | delete · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/lifecycle.ts:55` | claim | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/lifecycle.ts:70` | deleteClaimEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |

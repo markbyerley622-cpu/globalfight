@@ -229,6 +229,7 @@ export async function getConversation(
     id: member.id,
     withUser: member.other,
     otherTyping: isTyping(member.otherTypingAt),
+    otherReadAt: member.otherLastReadAt?.toISOString() ?? null,
     // Oldest-first for rendering; the query is newest-first so `take` keeps the
     // most RECENT window rather than the first 100 messages ever sent.
     messages: rows.reverse().map((m) => ({

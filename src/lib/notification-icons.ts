@@ -125,6 +125,10 @@ const BY_TYPE: Record<string, NotificationIconKey> = {
   COMMUNITY_REPLY: "reply",
   BATTLE_RESULT: "victory",
   BATTLE_MATCHED: "community",
+  // Deliberately "fight", not "community": this is a call-out addressed to you
+  // that wants an answer, and it should not look like the room chatter rows it
+  // sits next to in the list.
+  BATTLE_INVITE: "fight",
   BATTLE_REPLY: "reply",
   STREAK_REMINDER: "streak",
   GYM_REVIEW: "review",

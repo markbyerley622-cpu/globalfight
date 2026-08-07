@@ -1,4 +1,5 @@
 import type { MapLayer, MapPin } from "@/lib/geo/types";
+import { eventMapState, EVENT_STATE_STYLE, type EventMapState } from "@/lib/geo/event-state";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Pin grouping.
@@ -26,6 +27,16 @@ export interface PinGroup {
   place: string | null;
   /** Anyone checked in across everything here, right now. */
   presentNow: number;
+  /**
+   * The MOST URGENT event state present, or null when the group holds no
+   * events.
+   *
+   * Most-urgent rather than first-pin: a cluster containing one live card and
+   * eleven upcoming ones is a live marker. Taking the first pin's state would
+   * make that depend on sort order, so the same cluster would change appearance
+   * when an unrelated pin was added.
+   */
+  eventState: EventMapState | null;
   pins: MapPin[];
 }
 
@@ -47,7 +58,13 @@ function cellSize(zoom: number): number {
  */
 const PRIORITY: MapLayer[] = ["events", "clubs", "gyms", "people"];
 
-export function groupPins(pins: MapPin[], zoom: number): PinGroup[] {
+/**
+ * @param now A clock reading, or null before hydration. Pass a COARSE one —
+ *   this drives marker rebuilds, so a per-second value would tear down and
+ *   recreate every Leaflet marker on the map once a second. See the minute
+ *   clock in map-explorer.
+ */
+export function groupPins(pins: MapPin[], zoom: number, now: number | null = null): PinGroup[] {
   const size = cellSize(zoom);
   const buckets = new Map<string, MapPin[]>();
 
@@ -72,6 +89,17 @@ export function groupPins(pins: MapPin[], zoom: number): PinGroup[] {
     for (const p of group) counts.set(p.layer, (counts.get(p.layer) ?? 0) + 1);
     const breakdown = PRIORITY.filter((l) => counts.has(l)).map((l) => ({ layer: l, count: counts.get(l)! }));
 
+    // Most urgent event state present. `weight` orders them (live → cancelled),
+    // so "most urgent" is a min over the same table the marker styles read.
+    let eventState: EventMapState | null = null;
+    for (const p of group) {
+      if (p.layer !== "events") continue;
+      const s = eventMapState({ status: p.event?.status ?? p.status, date: p.date, now });
+      if (eventState === null || EVENT_STATE_STYLE[s].weight < EVENT_STATE_STYLE[eventState].weight) {
+        eventState = s;
+      }
+    }
+
     groups.push({
       id,
       layer: breakdown[0]?.layer ?? "events",
@@ -80,6 +108,7 @@ export function groupPins(pins: MapPin[], zoom: number): PinGroup[] {
       lon,
       place: places.size === 1 ? [...places][0]! : null,
       presentNow: group.reduce((s, p) => s + (p.presentNow ?? 0), 0),
+      eventState,
       pins: [...group].sort(byRelevance),
     });
   }
