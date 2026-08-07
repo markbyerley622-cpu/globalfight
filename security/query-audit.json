@@ -3977,7 +3977,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 92,
+      "line": 82,
       "fn": "upsertChampion",
       "model": "Champion",
       "method": "update",
@@ -13727,7 +13727,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 86,
+      "line": 76,
       "fn": "existing",
       "model": "Champion",
       "method": "findFirst",
@@ -13740,7 +13740,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 95,
+      "line": 85,
       "fn": "upsertChampion",
       "model": "Champion",
       "method": "create",
@@ -13753,7 +13753,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 139,
+      "line": 129,
       "fn": "found",
       "model": "WeightClass",
       "method": "findFirst",
@@ -13766,7 +13766,7 @@
     },
     {
       "file": "src/lib/rankings/ingest.ts",
-      "line": 144,
+      "line": 134,
       "fn": "created",
       "model": "WeightClass",
       "method": "create",

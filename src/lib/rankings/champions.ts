@@ -241,9 +241,21 @@ async function syncLegacyChampion(
     .catch(() => {});
 }
 
-/** Organisation string → the SanctioningBody enum, or null when unmapped. */
-function sanctioningBodyFor(organisation: string) {
+/**
+ * Organisation string → the SanctioningBody enum, or null when unmapped.
+ *
+ * THE ONE DEFINITION. `ingest.ts` carried a byte-identical copy of this, and the
+ * two drifted the moment either was extended: adding THE_RING here fixed the
+ * reign but not the `Champion` projection, because upsertChampion asked the
+ * other copy and got null. Every Ring champion was recorded and then dropped on
+ * the way to the table the site reads. Import this; do not re-declare it.
+ */
+export function sanctioningBodyFor(organisation: string) {
   const key = organisation.trim().toUpperCase().replace(/[^A-Z]/g, "");
+  // "The Ring" collapses to THERING here, which matched nothing — so every Ring
+  // champion was recorded as an observation and then silently dropped on the way
+  // to `Champion`. The enum has had THE_RING all along.
+  if (key === "THERING" || key === "RING") return "THE_RING" as const;
   const known = ["WBA", "WBC", "IBF", "WBO", "IBO", "BKFC", "ONE", "PFL", "UFC", "BELLATOR", "GLORY", "RIZIN", "KSW"] as const;
   return (known as readonly string[]).includes(key) ? (key as (typeof known)[number]) : null;
 }
