@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { notify } from "@/lib/notifications-store";
 import { publicDisplayName } from "@/lib/display-name";
 import { extractMentions } from "@/lib/mentions";
+import { mentionedUserIds, type RichEntity } from "@/lib/rich-text/types";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  GYM POST NOTIFICATIONS — emitters only. There is no engine in this file.
@@ -55,6 +56,8 @@ export async function notifyPostComment(input: {
   post: PostRef;
   actorId: string;
   body: string;
+  /** Resolved mentions. Empty/absent falls back to the legacy parser. */
+  entities?: RichEntity[];
   /** The comment being replied to, when this is a reply. */
   parentAuthorId?: string | null;
 }): Promise<void> {
@@ -69,17 +72,27 @@ export async function notifyPostComment(input: {
 
     const targets = new Map<string, { title: string; icon: string }>();
 
-    // @mentions. Usernames are stored lower-case but people type them however
-    // they like, so extractMentions lowers them — matching on the raw text
-    // would silently drop "@KaylaBrooks".
-    const named = extractMentions(input.body);
-    if (named.length > 0) {
-      const mentioned = await prisma.user.findMany({
-        where: { username: { in: named } },
-        select: { id: true },
-      });
-      for (const u of mentioned) {
-        if (u.id !== input.actorId) targets.set(u.id, { title: `${who} mentioned you`, icon: "mention" });
+    // ── @mentions, from IDS ────────────────────────────────────────────────
+    // Read straight off the stored entities. No regex, no username lookup, and
+    // no way for the notifier to disagree with what was rendered — both read
+    // the same list.
+    const mentionIds = mentionedUserIds(input.entities ?? []);
+    if (mentionIds.length > 0) {
+      for (const id of mentionIds) {
+        if (id !== input.actorId) targets.set(id, { title: `${who} mentioned you`, icon: "mention" });
+      }
+    } else {
+      // LEGACY fallback, only when there are no entities at all: content from
+      // before this existed, or from a client that did not send them.
+      const named = extractMentions(input.body);
+      if (named.length > 0) {
+        const mentioned = await prisma.user.findMany({
+          where: { username: { in: named } },
+          select: { id: true },
+        });
+        for (const u of mentioned) {
+          if (u.id !== input.actorId) targets.set(u.id, { title: `${who} mentioned you`, icon: "mention" });
+        }
       }
     }
 

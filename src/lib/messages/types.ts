@@ -67,6 +67,13 @@ export interface DmMessage {
   kind: "TEXT" | "CHALLENGE";
   /** Present on a CHALLENGE whose battle still exists. */
   challenge?: DmChallenge | null;
+  /**
+   * Structured mentions, hints refreshed on read.
+   *
+   * Null on legacy messages — EntityText falls back to the parser, so every DM
+   * sent before this existed keeps rendering with no backfill.
+   */
+  entities?: unknown;
 }
 
 export interface ConversationSummary {

@@ -81,6 +81,8 @@ export interface GymPostDTO {
   media: PostMediaDTO[];
   commentCount: number;
   reactionCount: number;
+  /** Structured mentions, hints refreshed on read. Null on legacy content. */
+  entities?: unknown;
   shareCount: number;
   /** type → count, for every type anyone has used on this post. */
   reactions: Record<string, number>;
@@ -99,6 +101,13 @@ export interface GymPostCommentDTO {
   parentId: string | null;
   author: PostAuthorDTO;
   body: string;
+  /**
+   * Structured mentions, hints refreshed on read.
+   *
+   * Null on legacy content — EntityText falls back to the parser, so every
+   * comment written before this existed keeps rendering with no backfill.
+   */
+  entities?: unknown;
   reactionCount: number;
   myReactions: ReactionType[];
   createdAt: string;

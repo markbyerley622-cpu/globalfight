@@ -9,6 +9,8 @@ import { MAX_COMMENT_CHARS } from "@/lib/gym-posts/types";
 import { timeAgo } from "@/lib/utils";
 import { CommentSkeleton } from "./skeletons";
 import { Composer } from "@/components/composer/composer";
+import { EntityText } from "@/components/rich-text/entity-text";
+import { useMentionRegistry } from "@/lib/composer/entities";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Comments under a post.
@@ -38,6 +40,9 @@ interface Props {
 const tempId = () => `tmp_${Math.random().toString(36).slice(2)}`;
 
 export function CommentThread({ postId, initialCount, signedIn, onCountChange }: Props) {
+  // Records who was picked from the mention menu; spans are computed from the
+  // final text at submit. See lib/composer/entities.
+  const mentions = useMentionRegistry();
   const [items, setItems] = useState<GymPostCommentDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -101,7 +106,7 @@ export function CommentThread({ postId, initialCount, signedIn, onCountChange }:
       const res = await fetch(`/api/gym/posts/${postId}/comments`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ body, parentId: optimistic.parentId }),
+        body: JSON.stringify({ entities: mentions.build(body), body, parentId: optimistic.parentId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Couldn't post that.");
@@ -238,6 +243,7 @@ export function CommentThread({ postId, initialCount, signedIn, onCountChange }:
                 limit is enforced by the Composer on input rather than by a
                 slice in this handler. */}
             <Composer
+              mentions={mentions}
               value={draft}
               onChange={setDraft}
               onSubmit={() => void submit()}
@@ -318,9 +324,11 @@ function CommentRow({
             {comment.editedAt && " · edited"}
           </time>
         </p>
-        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-mist">
-          {comment.body}
-        </p>
+        <EntityText
+          text={comment.body}
+          entities={comment.entities}
+          className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-mist"
+        />
 
         <div className="mt-1 flex items-center gap-3">
           <button
