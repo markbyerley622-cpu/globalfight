@@ -1,6 +1,47 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { parseMulti } from "@/lib/events-query";
+import { toCountryCode } from "@/lib/countries";
+
+describe("country filter — case must match what is STORED", () => {
+  // Regression. buildWhere used to `.toUpperCase()` each country value before
+  // querying `countryCode IN (...)`.
+  //
+  // Event.countryCode is written by services/sync/persist as toCountryCode(),
+  // which returns a lowercase ISO-2 by contract. The facet pills are built from
+  // that stored column, so tapping "Australia" produced `country=au`, which was
+  // then upper-cased to "AU" — and SQL string comparison is case-sensitive, so
+  // the query never matched the rows the pill was counted from. The Location
+  // filter returned nothing, from an option the page had just offered.
+  //
+  // The invariant: whatever the filter derives must equal what persist writes.
+
+  test("what the filter derives equals what persist stores", () => {
+    for (const written of ["Australia", "USA", "GB", "Brazil"]) {
+      const stored = toCountryCode(written);
+      // The pill's value IS the stored column, so that is what round-trips.
+      const [fromUrl] = parseMulti(stored ?? "");
+      assert.equal(toCountryCode(fromUrl) ?? fromUrl, stored);
+    }
+  });
+
+  test("stored codes are lowercase, so the filter must not upper-case", () => {
+    assert.equal(toCountryCode("Australia"), "au");
+    assert.equal(toCountryCode("Australia"), toCountryCode("Australia")?.toLowerCase());
+  });
+
+  test("a hand-edited link resolves to the same code as the pill", () => {
+    // parseMulti lower-cases, then toCountryCode maps names and alpha-3 onto
+    // the stored form — so /events?country=Australia works as well as ?country=au.
+    const viaName = parseMulti("Australia").map((c) => toCountryCode(c) ?? c);
+    const viaCode = parseMulti("au").map((c) => toCountryCode(c) ?? c);
+    assert.deepEqual(viaName, viaCode);
+  });
+
+  test("UK resolves to the code the column actually holds", () => {
+    assert.equal(toCountryCode("uk"), "gb");
+  });
+});
 
 describe("parseMulti — the multi-value filter contract", () => {
   // Every filter group on the events page goes through this, and its output

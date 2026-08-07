@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { SPORT_BY_SLUG } from "@/lib/sports";
 import { PUBLIC_EVENT } from "@/lib/events-visibility";
 import { resolvePromotion, promotionSearchTerms } from "@/lib/promotions";
+import { toCountryCode } from "@/lib/countries";
 import { cardFighterImage } from "@/lib/events/media-resolver";
 import { decodeHtmlEntities } from "@/lib/text/entities";
 import { formatRecord } from "@/lib/utils";
@@ -205,7 +206,25 @@ function buildWhere(f: EventFilters, opts?: { ignore?: keyof EventFilters }): Pr
   }
 
   if (use("country")) {
-    const codes = parseMulti(f.country).map((c) => c.toUpperCase());
+    // ── LOWERCASE, and resolved through the shared gazetteer ────────────────
+    //
+    // This read `.toUpperCase()`, and it made the Location filter match
+    // NOTHING for ingested events.
+    //
+    // `Event.countryCode` is written by services/sync/persist as
+    // `toCountryCode(...)`, which returns a LOWERCASE ISO-2 by contract (its
+    // comment says so — flagcdn's path is case-sensitive). The facet pills are
+    // built from the stored column, so tapping "Australia" put `country=au`
+    // in the URL. This then upper-cased it to "AU" and asked Postgres for
+    // `countryCode IN ('AU')` — and SQL string comparison is case-sensitive,
+    // so a query for AU never matches a row holding au. Zero results, from a
+    // pill the page itself had just offered.
+    //
+    // Running each value back through `toCountryCode` also means a
+    // hand-edited or shared link carrying "Australia", "AUS" or "UK" resolves
+    // to the same code the column holds, rather than only the exact slug the
+    // pill happened to emit.
+    const codes = parseMulti(f.country).map((c) => toCountryCode(c) ?? c);
     if (codes.length) where.countryCode = { in: codes };
   }
 
