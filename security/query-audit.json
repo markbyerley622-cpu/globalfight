@@ -1,13 +1,13 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1181,
+    "queries": 1183,
     "high": 0,
     "medium": 103,
-    "low": 202,
-    "info": 876,
-    "public": 813,
-    "userOwned": 266,
+    "low": 203,
+    "info": 877,
+    "public": 814,
+    "userOwned": 267,
     "shared": 102,
     "admin": 0
   },
@@ -3785,7 +3785,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 71,
+      "line": 83,
       "fn": "convo",
       "model": "Conversation",
       "method": "upsert",
@@ -3798,7 +3798,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 267,
+      "line": 320,
       "fn": "sendMessage",
       "model": "Conversation",
       "method": "update",
@@ -3958,6 +3958,19 @@
       "fn": "completeOnboarding",
       "model": "User",
       "method": "update",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/presence/repo.ts",
+      "line": 32,
+      "fn": "heartbeat",
+      "model": "User",
+      "method": "updateMany",
       "klass": "PUBLIC",
       "kind": "write",
       "ownership": "unscoped",
@@ -12638,7 +12651,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 64,
+      "line": 76,
       "fn": "other",
       "model": "User",
       "method": "findUnique",
@@ -12651,7 +12664,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 82,
+      "line": 94,
       "fn": "openConversation",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12664,7 +12677,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 92,
+      "line": 104,
       "fn": "convo",
       "model": "Conversation",
       "method": "findFirst",
@@ -12677,7 +12690,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 125,
+      "line": 138,
       "fn": "setTyping",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12690,7 +12703,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 137,
+      "line": 150,
       "fn": "rows",
       "model": "Conversation",
       "method": "findMany",
@@ -12703,7 +12716,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 158,
+      "line": 171,
       "fn": "counts",
       "model": "DirectMessage",
       "method": "groupBy",
@@ -12716,7 +12729,20 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 192,
+      "line": 233,
+      "fn": "markDelivered",
+      "model": "ConversationMember",
+      "method": "updateMany",
+      "klass": "USER_OWNED",
+      "kind": "write",
+      "ownership": "scoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/lib/messages/repo.ts",
+      "line": 244,
       "fn": "members",
       "model": "ConversationMember",
       "method": "findMany",
@@ -12729,7 +12755,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 198,
+      "line": 250,
       "fn": "unreadMessageCount",
       "model": "DirectMessage",
       "method": "count",
@@ -12742,7 +12768,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 221,
+      "line": 273,
       "fn": "rows",
       "model": "DirectMessage",
       "method": "findMany",
@@ -12755,7 +12781,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 263,
+      "line": 316,
       "fn": "sendMessage",
       "model": "DirectMessage",
       "method": "create",
@@ -12768,7 +12794,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 275,
+      "line": 328,
       "fn": "sendMessage",
       "model": "ConversationMember",
       "method": "updateMany",
@@ -12781,7 +12807,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 327,
+      "line": 380,
       "fn": "sender",
       "model": "User",
       "method": "findUnique",
@@ -12794,7 +12820,7 @@
     },
     {
       "file": "src/lib/messages/repo.ts",
-      "line": 355,
+      "line": 409,
       "fn": "markRead",
       "model": "ConversationMember",
       "method": "updateMany",

@@ -1469,6 +1469,19 @@ model User {
   /// boolean. The verified badge derives from this — there is no separate flag
   /// to fall out of sync with it.
   professionalVerifiedAt DateTime?
+  /// Presence heartbeat — the last moment this user's client said it was there.
+  ///
+  /// A TIMESTAMP, never an `isOnline` boolean, and the reason is the same one
+  /// `ConversationMember.typingAt` gives: a boolean has to be set back to false
+  /// by a disconnect the server never observes (a closed laptop, a killed tab,
+  /// a train tunnel), so every product that stores online as a flag eventually
+  /// shows somebody online for three days. Presence is `now - lastSeenAt`, so
+  /// it decays on its own with nothing to sweep.
+  ///
+  /// Written by a throttled heartbeat (lib/presence/repo) — at most once per
+  /// HEARTBEAT_MS per user, so it is a cheap single-column update rather than
+  /// a write on every request. Derivation lives in lib/presence/derive.
+  lastSeenAt    DateTime?
   image         String?
   username      String?   @unique
   bannerUrl     String? // profile cover image (user-uploaded)
@@ -3008,6 +3021,16 @@ model ConversationMember {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   lastReadAt DateTime?
+  /// Last moment this member's CLIENT fetched this conversation's messages —
+  /// their inbox poll or their thread poll. Distinct from `lastReadAt`, which
+  /// only moves while the thread is actually open.
+  ///
+  /// The gap between the two is what makes ✓✓ Delivered honest and different
+  /// from ✓✓ Read: their device has the bytes, their eyes have not been on it.
+  /// Without this column a product either shows no delivered state or fakes one
+  /// the moment the sender's own request returns — which is a claim about the
+  /// recipient made purely from the sender's side.
+  lastDeliveredAt DateTime?
   /// Leaving hides the thread without destroying the other person's copy of the
   /// conversation — a message is shared history, not one user's row.
   archivedAt DateTime?

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Send, Loader2, AlertCircle, Check, CheckCheck } from "lucide-react";
+import { ArrowLeft, Send, Loader2, AlertCircle, Check, CheckCheck, BadgeCheck } from "lucide-react";
 import { ForumAvatar } from "@/components/forums/user-identity";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageSquare } from "lucide-react";
@@ -13,6 +13,9 @@ import {
   type ConversationView,
   type DmMessage,
 } from "@/lib/messages/types";
+import { deliveryOf, type DeliveryState } from "@/lib/presence/derive";
+import { useHeartbeat } from "@/lib/presence/use-presence";
+import { PresenceDot, PresenceLabel } from "@/components/presence/presence-dot";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,6 +45,14 @@ function dayLabel(iso: string): string {
 const timeLabel = (iso: string) =>
   new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
+/** One word per delivery state, in one place, so no surface invents its own. */
+const RECEIPT_LABEL: Record<DeliveryState, string> = {
+  sending: "Sending…",
+  sent: "Sent",
+  delivered: "Delivered",
+  read: "Read",
+};
+
 export function MessageThread({ initial }: { initial: ConversationView }) {
   const [messages, setMessages] = useState<DmMessage[]>(initial.messages);
   const [draft, setDraft] = useState("");
@@ -49,6 +60,13 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   const [error, setError] = useState<string | null>(null);
   const [otherTyping, setOtherTyping] = useState(initial.otherTyping);
   const [otherReadAt, setOtherReadAt] = useState<string | null>(initial.otherReadAt);
+  const [otherDeliveredAt, setOtherDeliveredAt] = useState<string | null>(initial.otherDeliveredAt);
+  const [otherSeenAt, setOtherSeenAt] = useState<string | null>(initial.withUser?.lastSeenAt ?? null);
+
+  // Publish "I'm here" while this thread is open and the tab is visible. This
+  // is what makes the OTHER side's presence dot mean anything — presence only
+  // works if both ends beat.
+  useHeartbeat();
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** When we last told the server we are composing. Throttles the ping. */
@@ -86,6 +104,8 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         const data = (await res.json()) as ConversationView;
         setOtherTyping(data.otherTyping);
         setOtherReadAt(data.otherReadAt);
+        setOtherDeliveredAt(data.otherDeliveredAt);
+        setOtherSeenAt(data.withUser?.lastSeenAt ?? null);
         setMessages((prev) => {
           const server = new Map(data.messages.map((m) => [m.id, m]));
           // Keep any optimistic message the server has not acknowledged yet.
@@ -200,15 +220,17 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
     return -1;
   })();
   const lastMine = lastMineIndex >= 0 ? messages[lastMineIndex] : null;
-  const receipt: "sending" | "sent" | "read" | null = !lastMine
-    ? null
-    : lastMine.id.startsWith("tmp-")
-      // Still in flight. Claiming "Sent" for a message that may yet fail and roll
-      // back would be a lie the user finds out about a second later.
-      ? "sending"
-      : otherReadAt && new Date(otherReadAt).getTime() >= new Date(lastMine.at).getTime()
-        ? "read"
-        : "sent";
+  // Sending → Sent → Delivered → Read, derived by the shared function so the
+  // thread and any future surface answer this identically. Every state is a
+  // fact somebody's client actually caused — see DeliveryState.
+  const receipt: DeliveryState | null = lastMine
+    ? deliveryOf({
+        at: lastMine.at,
+        optimistic: lastMine.id.startsWith("tmp-"),
+        otherDeliveredAt,
+        otherReadAt,
+      })
+    : null;
 
   return (
     // ── Width ──
@@ -231,12 +253,24 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         >
           <ArrowLeft className="size-5" />
         </Link>
+        {/* The second line is a STATUS line, not a handle.
+            "@markb" never changes and is one tap away on their profile;
+            "typing…" / "Active now" / "Active 12m ago" is the thing a person
+            actually wants from the top of a conversation, and it is the answer
+            to "should I wait for a reply?". Typing outranks presence because it
+            is strictly newer information. */}
         {who?.username ? (
           <Link href={`/u/${who.username}`} className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80">
-            <ForumAvatar name={who.name} image={who.image} size="md" />
+            <span className="relative shrink-0">
+              <ForumAvatar name={who.name} image={who.image} size="md" />
+              <PresenceDot lastSeenAt={otherSeenAt} className="border-ink-950" />
+            </span>
             <span className="min-w-0">
-              <span className="block truncate font-display text-sm font-bold text-chalk">{who.name}</span>
-              <span className="block truncate text-xs text-fog">@{who.username}</span>
+              <span className="flex items-center gap-1">
+                <span className="truncate font-display text-sm font-bold text-chalk">{who.name}</span>
+                {who.verified && <BadgeCheck className="size-3.5 shrink-0 text-volt-400" aria-label="Verified" />}
+              </span>
+              <PresenceLabel lastSeenAt={otherSeenAt} typing={otherTyping} className="block truncate" />
             </span>
           </Link>
         ) : (
@@ -303,10 +337,15 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
                     aria-live="polite"
                   >
                     {receipt === "sending" && <Loader2 className="size-2.5 animate-spin" aria-hidden />}
-                    {receipt === "read" && <CheckCheck className="size-3 text-volt-400" aria-hidden />}
                     {receipt === "sent" && <Check className="size-3" aria-hidden />}
+                    {(receipt === "delivered" || receipt === "read") && (
+                      <CheckCheck
+                        className={cn("size-3", receipt === "read" && "text-volt-400")}
+                        aria-hidden
+                      />
+                    )}
                     <span className={receipt === "read" ? "text-volt-400" : undefined}>
-                      {receipt === "sending" ? "Sending…" : receipt === "read" ? "Read" : "Sent"}
+                      {RECEIPT_LABEL[receipt]}
                     </span>
                   </p>
                 )}

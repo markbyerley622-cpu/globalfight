@@ -5,6 +5,7 @@ import { notify } from "@/lib/notifications-store";
 import {
   MAX_MESSAGE_LENGTH,
   TYPING_TTL_MS,
+  byInboxPriority,
   type ConversationSummary,
   type ConversationView,
   type DmMessage,
@@ -40,15 +41,26 @@ export function pairKeyFor(a: string, b: string): string {
 }
 
 const MEMBER_USER = {
-  select: { id: true, username: true, name: true, image: true },
+  select: {
+    id: true, username: true, name: true, image: true,
+    professionalVerifiedAt: true, lastSeenAt: true,
+  },
 } as const;
 
-const toPerson = (u: { id: string; username: string | null; name: string | null; image: string | null }): DmPerson => ({
+const toPerson = (u: {
+  id: string; username: string | null; name: string | null; image: string | null;
+  professionalVerifiedAt: Date | null; lastSeenAt: Date | null;
+}): DmPerson => ({
   id: u.id,
   username: u.username,
   // Never the raw `name` — see lib/display-name.
   name: publicDisplayName(u),
   image: u.image,
+  // Derived from the timestamp, never a separate boolean that could fall out of
+  // sync with it — the same rule the schema comment on the column states.
+  verified: u.professionalVerifiedAt !== null,
+  // RAW, so the client decays it against its own clock between polls.
+  lastSeenAt: u.lastSeenAt?.toISOString() ?? null,
 });
 
 /**
@@ -94,7 +106,7 @@ async function requireMember(conversationId: string, viewerId: string) {
     select: {
       id: true,
       members: {
-        select: { userId: true, typingAt: true, lastReadAt: true, user: MEMBER_USER },
+        select: { userId: true, typingAt: true, lastReadAt: true, lastDeliveredAt: true, user: MEMBER_USER },
       },
     },
   });
@@ -106,6 +118,7 @@ async function requireMember(conversationId: string, viewerId: string) {
     otherId: other?.userId ?? null,
     otherTypingAt: other?.typingAt ?? null,
     otherLastReadAt: other?.lastReadAt ?? null,
+    otherDeliveredAt: other?.lastDeliveredAt ?? null,
   };
 }
 
@@ -141,7 +154,7 @@ export async function listConversations(viewerId: string, limit = 50): Promise<C
     select: {
       id: true,
       lastMessageAt: true,
-      members: { select: { userId: true, lastReadAt: true, user: MEMBER_USER } },
+      members: { select: { userId: true, typingAt: true, lastReadAt: true, lastDeliveredAt: true, user: MEMBER_USER } },
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -170,6 +183,17 @@ export async function listConversations(viewerId: string, limit = 50): Promise<C
   });
   const unreadBy = new Map(counts.map((c) => [c.conversationId, c._count._all]));
 
+  // ── Fetching the inbox IS delivery ────────────────────────────────────
+  // This response carries the latest message of every thread, so once it lands
+  // the viewer's device has those messages — which is exactly what the sender's
+  // ✓✓ Delivered claims. Recorded here, in the same place the bytes are handed
+  // over, rather than trusted from a separate client call that could be skipped.
+  //
+  // Not awaited: the watermark is for the OTHER side's receipts, and making the
+  // reader wait on a write that does nothing for them would slow every inbox
+  // load. A missed one self-corrects on the next poll.
+  void markDelivered(rows.map((r) => r.id), viewerId);
+
   return rows.flatMap((r) => {
     const other = r.members.find((m) => m.userId !== viewerId);
     // A thread whose other member is gone is not renderable as a conversation.
@@ -180,11 +204,39 @@ export async function listConversations(viewerId: string, limit = 50): Promise<C
       withUser: toPerson(other.user),
       lastMessageAt: r.lastMessageAt.toISOString(),
       unread: unreadBy.get(r.id) ?? 0,
+      otherTyping: isTyping(other.typingAt),
+      otherReadAt: other.lastReadAt?.toISOString() ?? null,
+      otherDeliveredAt: other.lastDeliveredAt?.toISOString() ?? null,
       lastMessage: last
         ? { body: last.body, at: last.createdAt.toISOString(), fromMe: last.senderId === viewerId }
         : null,
     }];
-  });
+    // Typing → unread → recent. The SQL can only order by recency, so the
+    // priority sort is applied here rather than in each caller — otherwise the
+    // page and the poll would present the same inbox in two different orders.
+  }).sort(byInboxPriority);
+}
+
+/**
+ * Record that this member's client has received the messages in these threads.
+ *
+ * `updateMany` scoped by membership: it is the ownership check and the write in
+ * one statement, so an id the caller is not in is a silent no-op rather than a
+ * P2025 that would confirm the conversation exists (rules 2, 4 and 6).
+ *
+ * Never throws — a delivery watermark is bookkeeping for the OTHER side's tick
+ * marks, and failing a read of somebody's own inbox over it would be absurd.
+ */
+export async function markDelivered(conversationIds: string[], viewerId: string): Promise<void> {
+  if (conversationIds.length === 0) return;
+  try {
+    await prisma.conversationMember.updateMany({
+      where: { conversationId: { in: conversationIds }, userId: viewerId },
+      data: { lastDeliveredAt: new Date() },
+    });
+  } catch {
+    /* bookkeeping — see above */
+  }
 }
 
 /** Total unread across the inbox — what the header badge renders. */
@@ -230,6 +282,7 @@ export async function getConversation(
     withUser: member.other,
     otherTyping: isTyping(member.otherTypingAt),
     otherReadAt: member.otherLastReadAt?.toISOString() ?? null,
+    otherDeliveredAt: member.otherDeliveredAt?.toISOString() ?? null,
     // Oldest-first for rendering; the query is newest-first so `take` keeps the
     // most RECENT window rather than the first 100 messages ever sent.
     messages: rows.reverse().map((m) => ({
@@ -352,8 +405,15 @@ async function notifyRecipient(
 export async function markRead(conversationId: string, viewerId: string): Promise<void> {
   // updateMany, not update: it is a no-op for a non-member instead of throwing
   // a P2025 that would confirm the conversation exists.
+  const now = new Date();
   await prisma.conversationMember.updateMany({
     where: { conversationId, userId: viewerId },
-    data: { lastReadAt: new Date() },
+    // Reading implies DELIVERY, so both watermarks move together. `deliveryOf`
+    // checks read first and would report correctly either way, but leaving
+    // lastDeliveredAt behind would mean a member who only ever opens threads
+    // directly (never the inbox) has a delivery watermark stuck at null — and
+    // any future query that asks "was this delivered?" on its own would answer
+    // no for somebody who has demonstrably read it.
+    data: { lastReadAt: now, lastDeliveredAt: now },
   });
 }

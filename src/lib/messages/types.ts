@@ -14,6 +14,17 @@ export interface DmPerson {
   /** Already passed through publicDisplayName — never a raw User.name. */
   name: string;
   image: string | null;
+  /** Staff-approved professional identity — drives the badge. */
+  verified: boolean;
+  /**
+   * Their presence heartbeat, ISO or null.
+   *
+   * The RAW timestamp, not a derived "online" boolean, so the client can decay
+   * it against its own clock between polls. A server-computed state would be
+   * stale the moment it was serialised and would show somebody as online for
+   * the whole poll interval after they closed the tab.
+   */
+  lastSeenAt: string | null;
 }
 
 export interface DmMessage {
@@ -31,6 +42,40 @@ export interface ConversationSummary {
   lastMessage: { body: string; at: string; fromMe: boolean } | null;
   unread: number;
   lastMessageAt: string;
+  /**
+   * Is the other person composing, right now, in THIS thread?
+   *
+   * In the inbox as well as in the thread, because "someone is replying to you"
+   * is the single most useful thing an inbox can tell you and it is the reason
+   * to open one thread over another.
+   */
+  otherTyping: boolean;
+  /** Their read watermark — drives the receipt on the last message you sent. */
+  otherReadAt: string | null;
+  /** Their delivery watermark. See DeliveryState in lib/presence/derive. */
+  otherDeliveredAt: string | null;
+}
+
+/**
+ * Inbox order.
+ *
+ * ── Why not simply "most recent first" ────────────────────────────────────
+ * Recency answers "what happened last", which is not what somebody opening an
+ * inbox wants — they want "what needs me". A thread where the other person is
+ * typing RIGHT NOW is the most urgent thing on the screen and can easily sit
+ * fourth by timestamp, below three conversations that are finished.
+ *
+ * Typing → unread → recent, and the tiebreaker within every band is still
+ * recency, so the ordering is total and stable. Shared by the server and any
+ * client that re-sorts after a poll, so the list cannot reorder itself
+ * differently between a fetch and a re-render.
+ */
+export function byInboxPriority(a: ConversationSummary, b: ConversationSummary): number {
+  if (a.otherTyping !== b.otherTyping) return a.otherTyping ? -1 : 1;
+  const unreadA = a.unread > 0 ? 0 : 1;
+  const unreadB = b.unread > 0 ? 0 : 1;
+  if (unreadA !== unreadB) return unreadA - unreadB;
+  return b.lastMessageAt.localeCompare(a.lastMessageAt);
 }
 
 export interface ConversationView {
@@ -64,6 +109,15 @@ export interface ConversationView {
    * anybody outside the conversation.
    */
   otherReadAt: string | null;
+
+  /**
+   * Their DELIVERY watermark — the last time their client fetched this thread.
+   *
+   * Separate from `otherReadAt` on purpose: their device having the message and
+   * their eyes having been on it are different facts, and collapsing them is
+   * what turns ✓✓ into decoration. See DeliveryState in lib/presence/derive.
+   */
+  otherDeliveredAt: string | null;
 }
 
 /**

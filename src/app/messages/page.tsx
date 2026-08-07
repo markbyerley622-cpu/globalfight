@@ -4,11 +4,10 @@ import { redirect } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ForumAvatar } from "@/components/forums/user-identity";
 import { NewMessageButton } from "@/components/messages/new-message-button";
+import { InboxList } from "@/components/messages/inbox-list";
 import { getCurrentUser } from "@/lib/auth";
 import { listConversations } from "@/lib/messages/repo";
-import { timeAgo, cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Messages",
@@ -60,44 +59,10 @@ export default async function MessagesPage() {
             }
           />
         ) : (
-          <ul className="divide-y divide-ink-800 overflow-hidden rounded-card border border-ink-800 bg-ink-900/40">
-            {conversations.map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/messages/${c.id}`}
-                  className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-ink-800/60"
-                >
-                  <span className="relative shrink-0">
-                    <ForumAvatar name={c.withUser.name} image={c.withUser.image} size="lg" />
-                    {c.unread > 0 && (
-                      <span
-                        aria-hidden
-                        className="absolute -right-0.5 -top-0.5 grid min-w-[1.15rem] place-items-center rounded-full border-2 border-ink-900 bg-blood-500 px-1 text-3xs font-bold tabular-nums text-white"
-                      >
-                        {c.unread > 9 ? "9+" : c.unread}
-                      </span>
-                    )}
-                  </span>
-
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className={cn("truncate font-display text-sm", c.unread > 0 ? "font-black text-white" : "font-bold text-chalk")}>
-                        {c.withUser.name}
-                      </span>
-                      <span className="shrink-0 text-3xs tabular-nums text-fog">
-                        {timeAgo(c.lastMessageAt)}
-                      </span>
-                    </span>
-                    <span className={cn("mt-0.5 block truncate text-xs", c.unread > 0 ? "font-semibold text-mist" : "text-fog")}>
-                      {c.lastMessage
-                        ? `${c.lastMessage.fromMe ? "You: " : ""}${c.lastMessage.body}`
-                        : "No messages yet"}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          // The first list is still SERVER-rendered and handed straight in — no
+          // spinner, no layout shift, and it works with JavaScript off. The
+          // client takes over from there to keep presence and typing live.
+          <InboxList initial={conversations} />
         )}
 
       </div>

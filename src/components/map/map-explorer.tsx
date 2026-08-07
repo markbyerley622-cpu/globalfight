@@ -129,7 +129,12 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
   // group-id selection silently evaporates mid-animation.
   const [anchorPin, setAnchorPin] = useState<string | null>(null);
   const [detailPin, setDetailPin] = useState<string | null>(null);
-  const [detent, setDetent] = useState<Detent>("half");
+  // COLLAPSED, not half. The map is the product on this page, and opening at
+  // half meant the first thing every visitor saw was a list sitting on top of
+  // the thing they came for — including, after tapping a pin, on top of the pin
+  // itself. It opens as a peekable bar and the reader pulls it up when they want
+  // the list.
+  const [detent, setDetent] = useState<Detent>("collapsed");
   const [zoom, setZoom] = useState(2);
   const [me, setMe] = useState<{ lat: number; lon: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -257,11 +262,13 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
 
   const flyTo = useCallback((lat: number, lon: number, z: number) => {
     nonce.current += 1;
-    // `offset` lifts the target above the sheet so a selected pin is never
-    // hidden underneath the card describing it.
-    setFocus({ lat, lon, zoom: z, nonce: nonce.current, offset: true });
+    // `offset` lifts the target above the SHEET so a selected pin is never
+    // hidden underneath the card describing it. Desktop has no sheet — the
+    // panel is beside the map — so the same offset there would shove every
+    // selection into the top third of the screen for no reason.
+    setFocus({ lat, lon, zoom: z, nonce: nonce.current, offset: !isDesktop });
     setZoom(z);
-  }, []);
+  }, [isDesktop]);
 
   // Deep link: /map?lat=..&lon=..&z=.. flies straight to a location — this is how
   // an event's venue opens INSIDE the app map (event-header) instead of bouncing
@@ -346,6 +353,96 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
   }, [clearSelection]);
 
   const empty = new Set(data.pending);
+
+  // ── The panel, built ONCE ──────────────────────────────────────────────
+  //
+  // Phones get it as a bottom sheet over the map (there is no room for
+  // anything else); desktop gets it as a column BESIDE the map. Same header,
+  // same body, one definition — rendering two copies and hiding one with CSS
+  // would run two countdowns and two lists for one selection, and they would
+  // drift the first time somebody edited only the visible one.
+  const panelHeader = sheetGroup ? (
+    // A single selected pin gets NO header title — the detail card below
+    // already leads with the name, and printing it twice a finger-width apart
+    // reads as a rendering fault.
+    <SheetSelectionHeader
+      title={pin ? null : describeGroup(sheetGroup)}
+      subtitle={pin ? null : sheetGroup.place}
+      onBack={pin && sheetGroup.pins.length > 1 ? () => setDetailPin(null) : undefined}
+      onClose={clearSelection}
+    />
+  ) : (
+    <SheetDiscoveryHeader
+      section={section}
+      onSection={setSection}
+      count={listed.length}
+      hasLocation={!!me}
+    />
+  );
+
+  const panelBody = sheetGroup ? (
+    pin ? (
+      // Events get the dedicated premium preview; the other three families keep
+      // the generic card that still serves them.
+      pin.event ? (
+        <EventMapPreview pin={pin} distanceKm={distanceTo(pin)} />
+      ) : (
+        <PinDetail pin={pin} distanceKm={distanceTo(pin)} signedIn={data.signedIn} />
+      )
+    ) : (
+      <div className="flex flex-col gap-1.5">
+        <p className="mb-1 flex items-center gap-1.5 font-display text-2xs font-bold uppercase tracking-wider text-fog">
+          <Layers className="size-3.5 text-blood-400" /> Everything here
+        </p>
+        {sheetGroup.pins.map((p) => (
+          <PinRow key={p.id} pin={p} distanceKm={distanceTo(p)} onClick={() => setDetailPin(p.id)} />
+        ))}
+      </div>
+    )
+  ) : (
+    <div className="flex flex-col gap-1.5">
+      {listed.length === 0 ? (
+        <EmptyLayer filter={filter} section={section} empty={empty} signedIn={data.signedIn} />
+      ) : (
+        listed.slice(0, 80).map((p) => (
+          <PinRow
+            key={p.id}
+            pin={p}
+            distanceKm={distanceTo(p)}
+            active={pin?.id === p.id}
+            onClick={() => selectPin(p)}
+          />
+        ))
+      )}
+
+      {!data.signedIn && <SignInNote />}
+
+      {data.unmapped.length > 0 && (filter === "all" || data.unmapped.some((u) => u.layer === filter)) && (
+        <details className="mt-2 rounded-lg border border-ink-800 bg-ink-900/50 px-3 py-2.5">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-2xs font-semibold text-mist">
+            <MapPinOff className="size-3.5 text-fog" />
+            {data.unmapped.length} not yet mapped
+          </summary>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {data.unmapped
+              .filter((u) => filter === "all" || u.layer === filter)
+              .slice(0, 25)
+              .map((u) => (
+                <li key={u.id}>
+                  <Link href={u.href ?? "#"} className="block rounded-lg px-2 py-1.5 hover:bg-ink-850">
+                    <span className="block truncate text-xs font-semibold text-chalk">{u.name}</span>
+                    <span className="block truncate text-2xs text-fog">{u.place ?? u.subtitle}</span>
+                  </Link>
+                </li>
+              ))}
+          </ul>
+          <p className="mt-2 text-2xs leading-relaxed text-fog">
+            We only pin a place when we can locate it. These have a city or country we don&apos;t recognise yet.
+          </p>
+        </details>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex min-h-0 flex-col lg:h-full lg:flex-row">
@@ -460,103 +557,38 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
             </p>
           )}
 
-          {/* ── The bottom sheet — collapsed / half / expanded ── */}
-          <BottomSheet
-            detent={detent}
-            onDetentChange={setDetent}
-            // Dismissable only while it is SHOWING a selection. In discovery
-            // mode a downward fling would otherwise clear nothing and leave a
-            // sheet stub over a map the user was already looking at.
-            onDismiss={sheetGroup ? clearSelection : undefined}
-            header={
-              sheetGroup ? (
-                // A single selected pin gets NO header title — the detail card
-                // below already leads with the name, and printing it twice a
-                // finger-width apart reads as a rendering fault.
-                <SheetSelectionHeader
-                  title={pin ? null : describeGroup(sheetGroup)}
-                  subtitle={pin ? null : sheetGroup.place}
-                  onBack={pin && sheetGroup.pins.length > 1 ? () => setDetailPin(null) : undefined}
-                  onClose={clearSelection}
-                />
-              ) : (
-                <SheetDiscoveryHeader
-                  section={section}
-                  onSection={setSection}
-                  count={listed.length}
-                  hasLocation={!!me}
-                />
-              )
-            }
-          >
-            {sheetGroup ? (
-              pin ? (
-                // Events get the dedicated premium preview; the other three
-                // families keep the generic card that still serves them.
-                pin.event ? (
-                  <EventMapPreview pin={pin} distanceKm={distanceTo(pin)} />
-                ) : (
-                  <PinDetail pin={pin} distanceKm={distanceTo(pin)} signedIn={data.signedIn} />
-                )
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <p className="mb-1 flex items-center gap-1.5 font-display text-2xs font-bold uppercase tracking-wider text-fog">
-                    <Layers className="size-3.5 text-blood-400" /> Everything here
-                  </p>
-                  {sheetGroup.pins.map((p) => (
-                    <PinRow key={p.id} pin={p} distanceKm={distanceTo(p)} onClick={() => setDetailPin(p.id)} />
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {listed.length === 0 ? (
-                  <EmptyLayer filter={filter} section={section} empty={empty} signedIn={data.signedIn} />
-                ) : (
-                  listed.slice(0, 80).map((p) => (
-                    <PinRow
-                      key={p.id}
-                      pin={p}
-                      distanceKm={distanceTo(p)}
-                      active={pin?.id === p.id}
-                      onClick={() => selectPin(p)}
-                    />
-                  ))
-                )}
-
-                {!data.signedIn && (
-                  <SignInNote />
-                )}
-
-                {data.unmapped.length > 0 && (filter === "all" || data.unmapped.some((u) => u.layer === filter)) && (
-                  <details className="mt-2 rounded-lg border border-ink-800 bg-ink-900/50 px-3 py-2.5">
-                    <summary className="flex cursor-pointer list-none items-center gap-2 text-2xs font-semibold text-mist">
-                      <MapPinOff className="size-3.5 text-fog" />
-                      {data.unmapped.length} not yet mapped
-                    </summary>
-                    <ul className="mt-2 flex flex-col gap-1.5">
-                      {data.unmapped
-                        .filter((u) => filter === "all" || u.layer === filter)
-                        .slice(0, 25)
-                        .map((u) => (
-                          <li key={u.id}>
-                            <Link href={u.href ?? "#"} className="block rounded-lg px-2 py-1.5 hover:bg-ink-850">
-                              <span className="block truncate text-xs font-semibold text-chalk">{u.name}</span>
-                              <span className="block truncate text-2xs text-fog">{u.place ?? u.subtitle}</span>
-                            </Link>
-                          </li>
-                        ))}
-                    </ul>
-                    <p className="mt-2 text-2xs leading-relaxed text-fog">
-                      We only pin a place when we can locate it. These have a city or country we don&apos;t recognise yet.
-                    </p>
-                  </details>
-                )}
-              </div>
-            )}
-          </BottomSheet>
+          {/* ── Phones: the panel as a sheet OVER the map ──
+              Only below `lg`. On a phone there is nowhere else to put it, so
+              it overlays — but it now opens COLLAPSED and carries explicit
+              minimise/expand buttons, so it is never covering the map without
+              the reader having asked it to. */}
+          {!isDesktop && (
+            <BottomSheet
+              detent={detent}
+              onDetentChange={setDetent}
+              // Dismissable only while it is SHOWING a selection. In discovery
+              // mode a downward fling would otherwise clear nothing and leave a
+              // sheet stub over a map the user was already looking at.
+              onDismiss={sheetGroup ? clearSelection : undefined}
+              header={panelHeader}
+            >
+              {panelBody}
+            </BottomSheet>
+          )}
         </div>
       </div>
+
+      {/* ── Desktop: the panel BESIDE the map, never on top of it ──
+          The sheet was covering the bottom half of a 1400px-wide map on a
+          surface that has room for both. A column costs nothing here and means
+          the map — and a pin the reader just clicked — is never underneath the
+          list describing it. */}
+      {isDesktop && (
+        <aside className="hidden min-h-0 shrink-0 flex-col border-l border-ink-800 bg-ink-950/60 lg:flex lg:w-[26rem] lg:pb-4 lg:pt-2.5">
+          <div className="shrink-0 px-4 pb-2">{panelHeader}</div>
+          <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto px-4">{panelBody}</div>
+        </aside>
+      )}
     </div>
   );
 }

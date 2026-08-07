@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -18,6 +19,31 @@ import { cn } from "@/lib/utils";
 // ════════════════════════════════════════════════════════════════════════════
 
 export type Detent = "collapsed" | "half" | "expanded";
+
+/** A resize affordance that is actually visible. Disabled at the end stops. */
+function ResizeButton({
+  label, onClick, disabled, children,
+}: { label: string; onClick: () => void; disabled: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      // stopPropagation: the grabber underneath cycles detents on click, so
+      // without this a press on "minimise" would also fire the cycle and land
+      // somewhere the user did not ask for.
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        "tap grid size-7 place-items-center rounded-md transition-colors",
+        disabled ? "cursor-default text-ink-600" : "text-mist hover:bg-ink-800 hover:text-chalk",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 /** Sheet height as a fraction of the container, per detent. */
 const HEIGHT: Record<Detent, number> = { collapsed: 0.16, half: 0.5, expanded: 0.92 };
@@ -151,25 +177,50 @@ export function BottomSheet({
         className,
       )}
     >
-      {/* Grabber */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={`Sheet: ${detent}. Drag or press to resize.`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onClick={(e) => { if (!drag) { e.stopPropagation(); cycle(); } }}
-        onKeyDown={(e) => {
-          const i = ORDER.indexOf(detent);
-          if (e.key === "ArrowUp" && i < ORDER.length - 1) { e.preventDefault(); onDetentChange(ORDER[i + 1]); }
-          if (e.key === "ArrowDown" && i > 0) { e.preventDefault(); onDetentChange(ORDER[i - 1]); }
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); }
-        }}
-        className="shrink-0 cursor-grab touch-none select-none px-4 pb-1 pt-2 active:cursor-grabbing"
-      >
-        <div className="mx-auto h-1 w-10 rounded-full bg-ink-600" />
+      {/* ── Grabber + explicit resize buttons ──
+          The drag handle alone was the whole affordance, and a 4px bar is not a
+          control most people recognise — the sheet read as something that was
+          simply covering the map rather than something they could move. The two
+          buttons say it outright, work with a mouse, work with a keyboard, and
+          leave the drag gesture exactly as it was for anyone who does reach for
+          it. */}
+      <div className="relative shrink-0">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`Sheet: ${detent}. Drag or press to resize.`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onClick={(e) => { if (!drag) { e.stopPropagation(); cycle(); } }}
+          onKeyDown={(e) => {
+            const i = ORDER.indexOf(detent);
+            if (e.key === "ArrowUp" && i < ORDER.length - 1) { e.preventDefault(); onDetentChange(ORDER[i + 1]); }
+            if (e.key === "ArrowDown" && i > 0) { e.preventDefault(); onDetentChange(ORDER[i - 1]); }
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); }
+          }}
+          className="cursor-grab touch-none select-none px-4 pb-1 pt-2 active:cursor-grabbing"
+        >
+          <div className="mx-auto h-1 w-10 rounded-full bg-ink-600" />
+        </div>
+
+        <div className="absolute right-2 top-1 flex items-center gap-0.5">
+          <ResizeButton
+            label="Minimise list"
+            disabled={detent === "collapsed"}
+            onClick={() => onDetentChange(ORDER[Math.max(0, ORDER.indexOf(detent) - 1)])}
+          >
+            <ChevronDown className="size-4" />
+          </ResizeButton>
+          <ResizeButton
+            label="Expand list"
+            disabled={detent === "expanded"}
+            onClick={() => onDetentChange(ORDER[Math.min(ORDER.length - 1, ORDER.indexOf(detent) + 1)])}
+          >
+            <ChevronUp className="size-4" />
+          </ResizeButton>
+        </div>
       </div>
 
       {header && <div className="shrink-0 px-4 pb-2 pt-1">{header}</div>}
