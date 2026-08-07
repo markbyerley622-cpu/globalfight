@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n";
 import { useForumStream } from "@/lib/forum/use-forum-stream";
 import { timeAgo, cn } from "@/lib/utils";
 import { AuthorIdentity } from "@/components/forums/user-identity";
+import { Composer } from "@/components/composer/composer";
 import { AttachmentGrid } from "@/components/forums/attachments";
 import { ReactionBar } from "@/components/forums/reaction-bar";
 import { ReportButton } from "@/components/forums/report-dialog";
@@ -293,9 +294,12 @@ function PostItem({
 
       {editing ? (
         <div className="space-y-2">
-          <textarea
+          {/* NO draftKey on an edit box: restoring a draft over content that
+              already exists would silently replace a published post. */}
+          <Composer
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={setDraft}
+            onSubmit={saveEdit}
             rows={3}
             className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 p-3 text-sm text-chalk outline-none focus:border-blood-500/50"
           />
@@ -354,8 +358,11 @@ function ReplyComposer({
     if (target?.mention) setContent((c) => (c ? c : `@${target.mention} `));
   }, [target]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  // The event is OPTIONAL: the form's onSubmit passes one, and the Composer's
+  // Cmd/Ctrl+Enter handler calls this directly with none. Same shape the DM
+  // composer uses, so the two surfaces submit identically.
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     setError(null);
     setBusy(true);
     try {
@@ -396,11 +403,17 @@ function ReplyComposer({
           <AlertCircle className="mt-0.5 size-4 shrink-0" /> <span>{error}</span>
         </div>
       )}
-      <textarea
+      {/* Document-like: a "take" runs to paragraphs, so Enter is a newline and
+          Cmd/Ctrl+Enter posts. Same component, same contract, one flag. */}
+      <Composer
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={setContent}
+        onSubmit={() => void submit()}
         placeholder={placeholder ?? t("Add your take… use @ to mention someone")}
         rows={compact ? 2 : 3}
+        // Scoped to the thread AND the reply target, so a draft aimed at one
+        // person does not reappear under a different one.
+        draftKey={`forum-reply:${threadSlug}:${target?.parentId ?? "root"}`}
         className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 p-3 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
       <div className="mt-3">

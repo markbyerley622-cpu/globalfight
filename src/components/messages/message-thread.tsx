@@ -6,7 +6,7 @@ import { ArrowLeft, Send, Loader2, AlertCircle, Check, CheckCheck, BadgeCheck } 
 import { ForumAvatar } from "@/components/forums/user-identity";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageSquare } from "lucide-react";
-import { MentionTextarea } from "@/components/mentions/mention-textarea";
+import { Composer } from "@/components/composer/composer";
 import {
   MAX_MESSAGE_LENGTH,
   TYPING_PING_MS,
@@ -181,7 +181,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   }, [pingTyping]);
 
   // The event is optional: the form's onSubmit passes one, and the composer's
-  // Enter handler (owned by MentionTextarea) calls this directly with none.
+  // Enter handler (owned by the Composer) calls this directly with none.
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
     const body = draft.trim();
@@ -455,15 +455,22 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
         className="flex shrink-0 items-end gap-2 border-t border-ink-800 bg-ink-950/80 p-3 backdrop-blur lg:px-3 lg:py-2"
       >
         <label htmlFor="dm-body" className="sr-only">Message</label>
-        {/* MentionTextarea owns Enter: it picks from the @-menu when that menu
-            is open and calls onSubmit otherwise, so this surface's send
-            behaviour is written as if mentions did not exist. */}
-        <MentionTextarea
+        {/* The Composer owns Enter: it picks from the @-menu when that menu is
+            open and calls onSubmit otherwise, so this surface's send behaviour
+            is written as if mentions did not exist. */}
+        <Composer
           id="dm-body"
           value={draft}
           onChange={onDraftChange}
           onSubmit={() => void send()}
           rows={1}
+          // Chat-like: Enter sends. A DM is short and fast, and Shift+Enter is
+          // the newline everybody already expects here.
+          submitOnEnter
+          maxLength={MAX_MESSAGE_LENGTH}
+          // One draft slot per conversation, so a half-typed reply survives a
+          // tab close and does not leak into the next thread.
+          draftKey={`dm:${initial.id}`}
           placeholder={`Message ${who?.name ?? ""}…`}
           className="max-h-32 min-h-[2.75rem] w-full resize-y rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/60 focus:outline-none lg:min-h-[2.5rem] lg:py-2"
         />

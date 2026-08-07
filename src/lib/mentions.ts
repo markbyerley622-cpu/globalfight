@@ -45,7 +45,7 @@ export function extractMentions(text: string, limit = 10): string[] {
 // ── Autocomplete ────────────────────────────────────────────────────────────
 //  Where does the @handle being typed start and end?
 //
-//  Pure, and separate from MentionTextarea, because this is the part with the
+//  Pure, and separate from the Composer component, because this is the part with the
 //  edge cases — everything else in that component is a fetch and a list. The
 //  interesting question is not "does @dav match" but all the places it must NOT
 //  fire: inside an email address, in the middle of a handle the reader has

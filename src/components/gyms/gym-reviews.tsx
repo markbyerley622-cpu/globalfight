@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn, timeAgo } from "@/lib/utils";
 import type { GymReviewData, ReviewDTO } from "@/lib/gym-reviews";
 import { ButtonLink } from "@/components/ui/button";
+import { Composer } from "@/components/composer/composer";
 
 // Presentation config kept local so this client component never imports the
 // server-only review module. Order = display order.
@@ -409,12 +410,16 @@ function ReviewForm({
         placeholder="Title (optional) — e.g. Elite wrestling, welcoming room"
         className="w-full rounded-lg border border-ink-700 bg-ink-950/50 px-3 py-2 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
-      <textarea
+      {/* Document-like, and the surface where losing text would hurt most —
+          a review is the longest thing most people write here. */}
+      <Composer
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         rows={4}
         maxLength={4000}
+        showCount
         placeholder="How's the coaching, the rounds, the room? Would you send a training partner here?"
+        draftKey={`gym-review:${gymSlug}`}
         className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 p-3 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
 

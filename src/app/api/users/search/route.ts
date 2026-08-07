@@ -35,6 +35,41 @@ import { presenceDtoFor } from "@/lib/presence/policy";
 /** Never ship an unbounded people list to a typeahead. */
 const LIMIT = 8;
 
+/**
+ * Re-rank a candidate list so the viewer's own graph comes first.
+ *
+ * followed → verified → everything else, and the incoming order (reputation)
+ * is preserved WITHIN each band, so the ranking is total and stable rather than
+ * shuffling between keystrokes.
+ *
+ * `rows` is already capped, so the follow lookup is a single indexed query over
+ * a handful of ids.
+ */
+async function rankByRelationship<T extends { id: string; professionalVerifiedAt: Date | null }>(
+  rows: T[],
+  viewerId: string,
+  limit: number,
+): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  let followed = new Set<string>();
+  try {
+    const follows = await prisma.userFollow.findMany({
+      where: { followerId: viewerId, followingId: { in: rows.map((r) => r.id) } },
+      select: { followingId: true },
+    });
+    followed = new Set(follows.map((f) => f.followingId));
+  } catch {
+    // Ranking is an enhancement. A failed lookup must not fail the typeahead —
+    // reputation order is still a usable answer.
+  }
+  const band = (r: T) => (followed.has(r.id) ? 0 : r.professionalVerifiedAt ? 1 : 2);
+  return rows
+    .map((r, i) => ({ r, i, b: band(r) }))
+    .sort((x, y) => (x.b - y.b) || (x.i - y.i))
+    .slice(0, limit)
+    .map((x) => x.r);
+}
+
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Sign in to find people." }, { status: 401 });
@@ -49,7 +84,11 @@ export async function GET(req: Request) {
   // PRESENCE_SELECT rather than the columns by hand — "are they around right
   // now" is exactly the signal that decides who you challenge, and the shared
   // fragment keeps a future switch reaching this query too.
-  const select = { username: true, name: true, image: true, ...PRESENCE_SELECT } as const;
+  const select = {
+    username: true, name: true, image: true,
+    professionalVerifiedAt: true,
+    ...PRESENCE_SELECT,
+  } as const;
 
   const rows = q
     ? await prisma.user.findMany({
@@ -68,7 +107,10 @@ export async function GET(req: Request) {
         // display name. Postgres has no cheap "starts-with-first" ordering here,
         // so the tie-break is reputation — the accounts most likely to be real.
         orderBy: [{ reputation: "desc" }, { username: "asc" }],
-        take: LIMIT,
+        // Over-fetch, then re-rank below. The interesting ordering — people you
+        // already follow first — cannot be expressed in this query without a
+        // join that would make the common case slower for every keystroke.
+        take: LIMIT * 3,
         select,
       })
     : // SUGGESTIONS: the people you already follow, most recent first. This is
@@ -84,9 +126,19 @@ export async function GET(req: Request) {
         })
       ).map((f) => f.following);
 
+  // ── Ranking ──────────────────────────────────────────────────────────────
+  // A name match is not a useful ordering on its own: typing "ma" on a platform
+  // with ten thousand accounts returns ten strangers before the friend you were
+  // reaching for. People you FOLLOW come first, because a mention is nearly
+  // always aimed at somebody you already have a relationship with.
+  //
+  // One extra query for the whole response, not one per row, and only for the
+  // handful of ids actually being returned.
+  const ranked = await rankByRelationship(rows, user.id, q ? LIMIT : rows.length);
+
   return NextResponse.json({
     suggested: !q,
-    people: rows.flatMap((u) =>
+    people: ranked.flatMap((u) =>
       u.username
         ? [{
             username: u.username,
@@ -95,6 +147,7 @@ export async function GET(req: Request) {
             // address there. See lib/display-name.
             name: publicDisplayName(u),
             image: u.image,
+            verified: u.professionalVerifiedAt !== null,
             presence: presenceDtoFor(u, user.id),
           }]
         : [],

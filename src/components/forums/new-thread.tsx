@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-client";
 import { MediaComposer } from "@/components/forums/media-composer";
 import type { ForumCategoryDTO, ForumThreadDTO, ForumAttachment } from "@/lib/forum/types";
+import { Composer } from "@/components/composer/composer";
 
 // Post kinds a user may publish, gated by their registry role (Phase 10/11).
 function kindOptions(role: string): { value: string; label: string }[] {
@@ -99,11 +100,15 @@ export function NewThreadComposer({
         maxLength={160}
         className="w-full rounded-lg border border-ink-700 bg-ink-950/50 px-3 py-2.5 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
-      <textarea
+      {/* Document-like: a thread body is paragraphs. Enter is a newline;
+          Cmd/Ctrl+Enter posts. The draft survives a mis-tap on Cancel, which is
+          the loss this surface could most afford to stop. */}
+      <Composer
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={setContent}
         placeholder={t("What's on your mind?")}
         rows={4}
+        draftKey="forum-new-thread"
         className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/50 px-3 py-2.5 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
       />
       <MediaComposer attachments={attachments} onChange={setAttachments} />

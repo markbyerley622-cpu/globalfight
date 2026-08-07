@@ -8,6 +8,7 @@ import type { GymPostCommentDTO } from "@/lib/gym-posts/types";
 import { MAX_COMMENT_CHARS } from "@/lib/gym-posts/types";
 import { timeAgo } from "@/lib/utils";
 import { CommentSkeleton } from "./skeletons";
+import { Composer } from "@/components/composer/composer";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Comments under a post.
@@ -71,8 +72,9 @@ export function CommentThread({ postId, initialCount, signedIn, onCountChange }:
 
   useEffect(() => { void load(null); }, [load]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  // Optional event: the form passes one, the Composer's Enter handler does not.
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     const body = draft.trim();
     if (!body || !signedIn) return;
 
@@ -232,13 +234,21 @@ export function CommentThread({ postId, initialCount, signedIn, onCountChange }:
             </p>
           )}
           <div className="flex items-end gap-2">
-            <textarea
+            {/* Chat-like: a comment is one or two lines, so Enter sends. The
+                limit is enforced by the Composer on input rather than by a
+                slice in this handler. */}
+            <Composer
               value={draft}
-              onChange={(e) => setDraft(e.target.value.slice(0, MAX_COMMENT_CHARS))}
+              onChange={setDraft}
+              onSubmit={() => void submit()}
+              submitOnEnter
+              maxLength={MAX_COMMENT_CHARS}
+              showCount
               rows={1}
               placeholder={replyTo ? "Write a reply…" : "Add a comment…"}
               aria-label="Write a comment"
-              className="min-h-11 flex-1 resize-y rounded-lg border border-ink-700 bg-ink-950 px-3 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/50 focus:outline-none"
+              draftKey={`gym-comment:${postId}:${replyTo ?? "root"}`}
+              className="min-h-11 w-full resize-y rounded-lg border border-ink-700 bg-ink-950 px-3 py-2.5 text-sm text-chalk placeholder:text-fog focus:border-blood-500/50 focus:outline-none"
             />
             <button
               type="submit"

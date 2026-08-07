@@ -6,6 +6,8 @@ import { ImagePlus, Loader2, RotateCw, X, Users, Lock, Globe } from "lucide-reac
 import type { GymPostDTO, PostMediaDTO, Visibility } from "@/lib/gym-posts/types";
 import { MAX_BODY_CHARS, MAX_MEDIA_PER_POST } from "@/lib/gym-posts/types";
 import { IMAGE_ACCEPT, MAX_UPLOAD_MB } from "@/lib/images/limits";
+import { Composer } from "@/components/composer/composer";
+import { clearDraft } from "@/lib/composer/drafts";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  THE COMPOSER.
@@ -57,7 +59,6 @@ const VISIBILITY_LOOK: Record<Visibility, { icon: typeof Globe; label: string; h
   PRIVATE: { icon: Lock, label: "Private", help: "Only you and the gym's owner." },
 };
 
-const draftKey = (gymSlug: string) => `gf:gymPostDraft:${gymSlug}`;
 const newKey = () => `a_${Math.random().toString(36).slice(2)}`;
 
 export function GymComposer({
@@ -83,27 +84,10 @@ export function GymComposer({
   // time someone returns to a day-old draft the cleanup sweep may have
   // collected those assets, and a draft that silently restores broken images is
   // worse than one that restores the words and asks for the photos again.
-  useEffect(() => {
-    if (restored.current) return;
-    restored.current = true;
-    try {
-      const saved = localStorage.getItem(draftKey(gymSlug));
-      if (saved) setBody(saved);
-    } catch { /* private mode */ }
-  }, [gymSlug]);
-
-  useEffect(() => {
-    if (!restored.current) return;
-    // Debounced: writing to localStorage on every keystroke puts a synchronous
-    // storage write on the typing path.
-    const id = setTimeout(() => {
-      try {
-        if (body.trim()) localStorage.setItem(draftKey(gymSlug), body);
-        else localStorage.removeItem(draftKey(gymSlug));
-      } catch { /* private mode */ }
-    }, 400);
-    return () => clearTimeout(id);
-  }, [body, gymSlug]);
+  // Draft restore and save USED to live here, as a second implementation of
+  // what lib/composer/drafts now does for every surface. Deleted rather than
+  // adapted: two draft systems means two key formats, two expiry rules and two
+  // places to fix the day private-mode storage throws.
 
   // Object URLs are a real leak if they are not revoked — a session of adding
   // and removing photos holds every one of them in memory otherwise.
@@ -228,7 +212,7 @@ export function GymComposer({
       for (const a of attachments) URL.revokeObjectURL(a.localUrl);
       setAttachments([]);
       setBody("");
-      try { localStorage.removeItem(draftKey(gymSlug)); } catch { /* private mode */ }
+      clearDraft(`gym-post:${gymSlug}`);
     } catch (e) {
       // The text and the attachments are left exactly as they were. A failed
       // publish that clears the composer is how people lose what they wrote.
@@ -249,9 +233,16 @@ export function GymComposer({
       onDrop={(e) => { e.preventDefault(); setDragging(false); accept(e.dataTransfer.files); }}
       aria-label={`Post to ${gymName}`}
     >
-      <textarea
+      {/* onPaste passes straight through: the Composer spreads unknown textarea
+          props onto the element, so a surface keeps its own extras without the
+          Composer having to know about them. Paste-to-attach survives the
+          migration unchanged. */}
+      <Composer
         value={body}
-        onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY_CHARS))}
+        onChange={setBody}
+        maxLength={MAX_BODY_CHARS}
+        showCount
+        draftKey={`gym-post:${gymSlug}`}
         // Paste-to-attach. Screenshots and phone photos arrive on the clipboard
         // far more often than through a file picker.
         onPaste={(e) => {

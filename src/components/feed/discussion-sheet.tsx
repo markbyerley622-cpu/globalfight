@@ -10,6 +10,7 @@ import { suggestedCommunitySlug } from "@/lib/community/topics";
 import type { FeedVideo } from "./client";
 import { embedUrl } from "@/lib/feed/channels";
 import { ButtonLink } from "@/components/ui/button";
+import { Composer } from "@/components/composer/composer";
 
 interface Discussion {
   slug: string;
@@ -161,13 +162,15 @@ export function DiscussionSheet({ video, onClose }: { video: FeedVideo; onClose:
                 {communities.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
               </select>
 
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add the first comment… (optional)"
-                rows={3}
-                className="mt-3 w-full resize-y rounded-lg border border-ink-700 bg-ink-950/60 p-3 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
-              />
+              <div className="mt-3">
+                <Composer
+                  value={comment}
+                  onChange={setComment}
+                  placeholder="Add the first comment… (optional)"
+                  rows={3}
+                  className="w-full resize-y rounded-lg border border-ink-700 bg-ink-950/60 p-3 text-sm text-chalk outline-none placeholder:text-fog focus:border-blood-500/50"
+                />
+              </div>
 
               {error && <p className="mt-2 text-sm text-blood-300">{error}</p>}
 
