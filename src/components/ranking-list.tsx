@@ -6,6 +6,7 @@ import { Flag } from "./flag";
 import { formatRecord } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { SPORT_LABEL } from "@/lib/sports";
+import { RankCrown, isPodium, PODIUM } from "./ui/rank-crown";
 
 export function RankingList({
   ranking, limit, showRating = true, dense = false, showSport = false,
@@ -20,7 +21,10 @@ export function RankingList({
   return (
     <ul className="divide-y divide-ink-800">
       {rows.map((r) => {
-        const champ = r.rank === 1;
+        // The top three are the only thing most readers scan for, and the list
+        // marked exactly one of them (rank 1, by colouring the number). Ranks 2
+        // and 3 now carry their metal too.
+        const podium = isPodium(r.rank);
         return (
           <li key={r.fighter.slug}>
             <Link
@@ -32,10 +36,14 @@ export function RankingList({
             >
               <span
                 className={cn(
-                  "flex w-7 shrink-0 justify-center font-display text-lg font-bold tabular-nums",
-                  champ ? "text-gold-400" : "text-fog",
+                  // The crown sits ABOVE the number rather than replacing it —
+                  // the rank is the thing being looked up, and a crown alone
+                  // makes "who is 2nd" a colour-matching exercise.
+                  "flex w-7 shrink-0 flex-col items-center font-display text-lg font-bold leading-none tabular-nums",
+                  podium ? PODIUM[r.rank as 1 | 2 | 3].accent : "text-fog",
                 )}
               >
+                <RankCrown rank={r.rank} />
                 {r.rank}
               </span>
               <div className="flex w-8 justify-center"><MovementIndicator movement={r.movement} /></div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Crown, Medal } from "lucide-react";
+import { RankCrown } from "@/components/ui/rank-crown";
 import { PageHero } from "@/components/page-hero";
 import { FighterAvatar } from "@/components/fighter-avatar";
 import { MovementIndicator } from "@/components/ui/badge";
@@ -117,9 +117,10 @@ export default async function P4PPage({ searchParams }: { searchParams: Promise<
                       href={`/fighters/${r.fighter.slug}`}
                       className={`group relative flex flex-col items-center rounded-card border p-6 text-center transition-all ${medal.ring} ${isFirst ? "order-first sm:order-none sm:-mt-6 sm:pb-10" : ""}`}
                     >
-                      {isFirst
-                        ? <Crown className="absolute -top-4 size-8 text-gold-400" />
-                        : <Medal className={`absolute -top-3.5 size-7 ${medal.accent}`} />}
+                      {/* All three places wear a crown, in their own metal —
+                          #2 and #3 used to get a Medal, which read as a
+                          different KIND of thing rather than a lower place. */}
+                      <RankCrown rank={r.rank} size="md" className={isFirst ? "absolute -top-4 size-8" : "absolute -top-3.5 size-7"} />
                       <span className={`font-display text-5xl font-black ${medal.accent}`}>{r.rank}</span>
                       <FighterAvatar fighter={r.fighter} size={isFirst ? "xl" : "lg"} showFlag className="my-3" />
                       <p className="font-display text-lg font-bold text-chalk group-hover:text-blood-300">{r.fighter.name}</p>
