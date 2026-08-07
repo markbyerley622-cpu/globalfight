@@ -522,3 +522,48 @@ test("card backfill refuses a page whose title is a different event", async () =
   const fresh = await prisma.event.findUniqueOrThrow({ where: { id: event.id }, include: { fights: true } });
   assert.equal(fresh.fights.length, 0, "event 39's card must not be attached to event 40");
 });
+
+test("the CARD queue rotates — a second pass gets the events the first one missed", async () => {
+  // The result queue has been a least-recently-attempted rotation for a while.
+  // The card queue was still `orderBy: { date: "desc" }`, so it handed back the
+  // same newest N on every single call and everything behind them was never
+  // attempted ONCE — ONE Championship sat on 97 empty cards, all of them
+  // reported by the audit as "never attempted", for exactly this reason.
+  //
+  // No page is indexed here on purpose. Every target MISSES, which is the case
+  // that used to loop forever: a batch that resolves nothing must still hand the
+  // next batch different work.
+  const dates = [10, 11, 12, 13];
+  for (const [i, d] of dates.entries()) {
+    await prisma.event.create({
+      data: {
+        slug: `one-ff-${i + 1}`, name: `ONE Friday Fights ${i + 1}`, sport: "MUAY_THAI",
+        promotion: "ONE Championship", date: DAYS_AGO(d), status: "SCHEDULED",
+      },
+    });
+  }
+
+  const namesOf = async () =>
+    (await findWikiTargets({ gap: "missing_card", mode: "historical", limit: 2 }))
+      .map((t) => t.eventIdentity.name);
+
+  const first = await namesOf();
+  assert.equal(first.length, 2);
+
+  // Stamping the attempt is what the harvest does via recordResultAttempts. Do it
+  // directly so this test covers the ORDERING and not the network mock.
+  await prisma.event.updateMany({
+    where: { name: { in: first } },
+    data: { resultAttemptAt: new Date(), resultAttempts: 1, resultAttemptReason: "no_candidate" },
+  });
+
+  const second = await namesOf();
+  assert.equal(second.length, 2);
+  for (const name of second) {
+    assert.ok(!first.includes(name), `pass 2 re-served "${name}" while 2 events had never been tried`);
+  }
+
+  // And the whole backlog is reachable, which is the property that actually
+  // drains it — four events, two passes of two, no repeats.
+  assert.deepEqual([...first, ...second].sort(), dates.map((_, i) => `ONE Friday Fights ${i + 1}`).sort());
+});

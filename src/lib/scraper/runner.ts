@@ -482,9 +482,27 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
     case "wikicards":
       // Backfill fight cards + RESULTS from Wikipedia (CC BY-SA) for past events.
       // Promotion-agnostic — it's the only source carrying bout winners/method for
-      // BKFC/ONE (their sites render those client-side). findWikiTargets covers
-      // BOTH gaps (missing card, missing result), results first.
-      await safe("wikicards", () => harvestWikiTargets({ limit: WIKICARD_BATCH }));
+      // BKFC/ONE (their sites render those client-side).
+      //
+      // TWO CALLS, not one, and that is the whole point of this job.
+      //
+      // It used to be a single `harvestWikiTargets({ limit })` covering both gaps.
+      // findWikiTargets fills the batch RESULTS FIRST and only gives the card gap
+      // `limit - rows.length` — correct for the hourly result job, fatal here.
+      // This is the ONLY scheduled job that backfills empty cards, and whenever
+      // the result queue had WIKICARD_BATCH or more entries (it routinely does)
+      // the card gap got a budget of exactly zero. Twice a week, forever. That is
+      // why ONE sat on 97 empty cards, every one of them "never attempted".
+      //
+      // Splitting the call gives the card gap its own guaranteed budget. Results
+      // keep theirs, and they are also chased hourly by `results`, so the card
+      // half is the part that only ever happens here.
+      await safe("wikicards:results", () =>
+        harvestWikiTargets({ gap: "missing_result", limit: WIKICARD_BATCH }),
+      );
+      await safe("wikicards:cards", () =>
+        harvestWikiTargets({ gap: "missing_card", limit: WIKICARD_BATCH }),
+      );
       break;
     case "enrich":
       // Profile enrichment: photos + bio for new/stale fighters.

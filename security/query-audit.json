@@ -4289,7 +4289,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 393,
+      "line": 407,
       "fn": "recordResultAttempts",
       "model": "Event",
       "method": "update",
@@ -8267,7 +8267,7 @@
     },
     {
       "file": "src/lib/enrich/enrich.ts",
-      "line": 119,
+      "line": 140,
       "fn": "backfill",
       "model": "Fighter",
       "method": "findMany",
@@ -14871,7 +14871,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 237,
+      "line": 251,
       "fn": "fights",
       "model": "Fight",
       "method": "findMany",
@@ -14884,7 +14884,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 251,
+      "line": 265,
       "fn": "aliasRows",
       "model": "FighterAlias",
       "method": "findMany",
@@ -14897,7 +14897,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 311,
+      "line": 325,
       "fn": "fight",
       "model": "Fight",
       "method": "findFirst",
@@ -14910,7 +14910,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 325,
+      "line": 339,
       "fn": "ev",
       "model": "Event",
       "method": "findUnique",
@@ -14923,7 +14923,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 377,
+      "line": 391,
       "fn": "fights",
       "model": "Fight",
       "method": "findMany",
@@ -14936,7 +14936,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 454,
+      "line": 468,
       "fn": "countWikiGaps",
       "model": "Event",
       "method": "count",
@@ -14949,7 +14949,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 462,
+      "line": 476,
       "fn": "countWikiGaps",
       "model": "Fight",
       "method": "count",
@@ -14962,7 +14962,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 469,
+      "line": 483,
       "fn": "countWikiGaps",
       "model": "Event",
       "method": "count",
@@ -14975,7 +14975,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 479,
+      "line": 493,
       "fn": "countWikiGaps",
       "model": "Event",
       "method": "count",
@@ -14988,7 +14988,7 @@
     },
     {
       "file": "src/lib/scraper/wikicard/targets.ts",
-      "line": 487,
+      "line": 501,
       "fn": "countWikiGaps",
       "model": "Event",
       "method": "count",

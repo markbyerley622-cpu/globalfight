@@ -214,7 +214,21 @@ export async function findWikiTargets(opts: FindTargetsOpts = {}): Promise<WikiT
         ...revisitable,
         ...filter,
       },
-      orderBy: { date: "desc" },
+      // LEAST-RECENTLY-ATTEMPTED FIRST — the same rotation the result queue got,
+      // for the same reason. Ordered by `date: "desc"` this queue handed back the
+      // NEWEST 25 empty cards on every single call, and `recordResultAttempts`
+      // (which the card path does write) changed nothing because no clause read
+      // it. So a 97-event backlog re-attempted its head forever and 72 of those
+      // events were still "never attempted" after every historical run we have
+      // ever done — the audit's `never attempted` count was the symptom.
+      //
+      // nulls-first keeps a brand-new empty card ahead of one already tried, so
+      // adding an event does not go to the back of a queue that never rotated.
+      orderBy: [
+        { resultAttemptAt: { sort: "asc", nulls: "first" } },
+        { date: "desc" },
+      ],
+      skip,
       take: limit - rows.length,
       select,
     });

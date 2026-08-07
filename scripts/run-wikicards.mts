@@ -240,10 +240,41 @@ for (let i = 0; i < batches; i++) {
   }
 }
 
-// Card backfill (events with no bouts at all) — whatever budget is left.
-if (mode !== "replay") {
-  const cards = await harvestWikiTargets({ gap: "missing_card", limit, mode });
-  console.log(`\n  cards    ${cards}`);
+// ── CARD BACKFILL (events with no bouts at all) ─────────────────────────────
+//
+// This ran ONCE, for one batch of `limit`, unfiltered, and not at all in replay
+// mode. Three consequences, all of which we measured:
+//   · `--replay "ONE"` — the one command you would reach for to fix a named
+//     promotion's empty cards — skipped the card queue entirely, so it could
+//     never fill an empty card. It only ever chased missing RESULTS.
+//   · The promotion filter was accepted, printed in the header, and then not
+//     passed here, so even `--historical` spent its single card batch on
+//     whatever was newest across all promotions.
+//   · One batch of 25 against a 97-event backlog cannot finish, and with the
+//     old `date desc` ordering (fixed in targets.ts) it re-attempted the same
+//     25 every run.
+//
+// It now batches like the result loop and carries the filter, so the backlog
+// actually drains and `--replay "<promotion>"` means what it says.
+console.log("\n── cards ───────────────────────────────────────────────────");
+// NO `skip` here, deliberately — the result loop above uses one, and copying it
+// would be wrong now that the card queue rotates. Rotation already guarantees
+// forward progress: a batch stamps `resultAttemptAt` on the 25 it attempted,
+// which sends them to the back, so the next batch at offset 0 IS the next 25.
+// Adding skip on top of that would step over the 25 the rotation just promoted
+// and leave a hole in every pass.
+//
+// Bounded by the actual backlog rather than the batch count, so we walk the
+// queue once instead of cycling back onto events this run already tried.
+const cardBatches = Math.min(batches, Math.max(1, Math.ceil(before.missingCardEvents / limit)));
+let emptyCardBatches = 0;
+for (let i = 0; i < cardBatches; i++) {
+  const line = await harvestWikiTargets({ gap: "missing_card", limit, mode, promotion });
+  console.log(`  batch ${String(i + 1).padStart(2)} ${line}`);
+  if (line.startsWith("targets=0")) {
+    emptyCardBatches += 1;
+    if (emptyCardBatches >= 2) break; // walked off the end of the backlog
+  }
 }
 
 // ── RETRIEVAL EFFICIENCY ────────────────────────────────────────────────────
