@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Loader2, BadgeCheck } from "lucide-react";
-import { ForumAvatar } from "@/components/forums/user-identity";
+import { Loader2 } from "lucide-react";
 import { applyMention, readMentionToken, type MentionToken } from "@/lib/mentions";
+import { entityPlugin, type EntityTone } from "@/lib/rich-text/registry";
+import { EntitySuggestionRow } from "@/components/composer/suggestion-row";
 import { readDraft, writeDraft, clearDraft } from "@/lib/composer/drafts";
 import { ComposerToolbar, AttachmentPreviews, type ComposerAction } from "@/components/composer/toolbar";
 import type { UploadsApi } from "@/lib/composer/attachments";
-import type { MentionRegistry } from "@/lib/composer/entities";
-import type { PresenceDto } from "@/lib/presence/policy";
+import type { EntityPickRegistry } from "@/lib/composer/entities";
 import { cn } from "@/lib/utils";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -59,12 +59,22 @@ const DEBOUNCE_MS = 180;
 /** Drafts are written at most this often, not on every keystroke. */
 const DRAFT_DEBOUNCE_MS = 400;
 
-interface MentionPerson {
-  username: string;
-  name: string;
-  image: string | null;
+/**
+ * One row the picker can offer, exactly as the server returns it.
+ *
+ * Generic on purpose: the Composer renders these five fields and never learns
+ * what a kind is. See /api/entities/suggest and the EntitySource registry.
+ */
+interface EntitySuggestion {
+  kind: string;
+  /** The PUBLIC key — a handle, a slug. Never a primary key. */
+  key: string;
+  /** The text inserted after the "@". */
+  insert: string;
+  title: string;
+  subtitle?: string | null;
+  imageUrl?: string | null;
   verified?: boolean;
-  presence?: PresenceDto | null;
 }
 
 export interface ComposerProps {
@@ -109,7 +119,7 @@ export interface ComposerProps {
   /** Rendered to the right of the toolbar — a surface's own send button. */
   trailing?: React.ReactNode;
   /**
-   * Records who was picked from the mention menu, so the surface can build
+   * Records WHAT was picked from the "@" menu, so the surface can build
    * structured entities at submit.
    *
    * Optional: a surface that does not yet store entities simply omits it and
@@ -117,7 +127,7 @@ export interface ComposerProps {
    * as before. That is what makes this migration incremental rather than a
    * flag day.
    */
-  mentions?: MentionRegistry;
+  mentions?: EntityPickRegistry;
   className?: string;
   disabled?: boolean;
 }
@@ -156,7 +166,7 @@ export function Composer({
    */
   const [token, setToken] = useState<MentionToken | null>(null);
   const query = token?.text ?? null;
-  const [people, setPeople] = useState<MentionPerson[]>([]);
+  const [suggestions, setSuggestions] = useState<EntitySuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
   /**
@@ -166,7 +176,7 @@ export function Composer({
    */
   const seq = useRef(0);
 
-  const open = query !== null && people.length > 0;
+  const open = query !== null && suggestions.length > 0;
 
   // ── Draft restore ────────────────────────────────────────────────────────
   // Once, on mount, and ONLY into an empty composer: restoring over text the
@@ -213,38 +223,57 @@ export function Composer({
     setActive(0);
   };
 
+  // ── The picker's one request ────────────────────────────────────────────
+  //  Debounced, sequenced and ABORTED. All three matter and they solve
+  //  different problems: the debounce stops a request per keystroke, the
+  //  sequence number stops a slow early response overwriting a fast later one
+  //  (they do not return in order), and the abort stops the network carrying a
+  //  reply nobody will read. Without the sequence guard, typing "alex" can end
+  //  with the results for "al" on screen.
   useEffect(() => {
-    if (query === null) { setPeople([]); return; }
+    if (query === null) { setSuggestions([]); return; }
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       const mine = ++seq.current;
       setLoading(true);
       try {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(
+          `/api/entities/suggest?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal },
+        );
         if (mine !== seq.current) return;
         const data = res.ok ? await res.json() : null;
-        setPeople(Array.isArray(data?.people) ? data.people : []);
+        setSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
       } catch {
-        if (mine === seq.current) setPeople([]);
+        // An abort is not a failure — it is a newer keystroke. Only the newest
+        // request may clear the list.
+        if (mine === seq.current) setSuggestions([]);
       } finally {
         if (mine === seq.current) setLoading(false);
       }
     }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [query]);
 
-  const choose = useCallback((person: MentionPerson) => {
+  const choose = useCallback((suggestion: EntitySuggestion) => {
     const el = ref.current;
     if (!el || !token) return;
 
     // Identity is captured HERE, at the moment of choosing — the one instant
-    // the app knows which account was meant. Offsets are computed later from
-    // the final text; see lib/composer/entities for why they are not tracked.
-    mentions?.record({ username: person.username, name: person.name });
+    // the app knows which row was meant. Offsets are computed later from the
+    // final text; see lib/composer/entities for why they are not tracked.
+    //
+    // The KEY is a handle or a slug, never a primary key: the server resolves
+    // it at submit. That is what stops a client naming any row it can guess.
+    mentions?.record({ kind: suggestion.kind, key: suggestion.key, insert: suggestion.insert });
 
-    const { text: next, caret } = applyMention(value, token, person.username);
+    // `insert` rather than the key, because they differ by kind and only the
+    // server-supplied value reads naturally: a person inserts as "@alex", a
+    // fighter as "@Alex Pereira". The Composer does not decide which.
+    const { text: next, caret } = applyMention(value, token, suggestion.insert);
     onChange(next);
     setToken(null);
-    setPeople([]);
+    setSuggestions([]);
 
     // The caret has to be restored AFTER React has written the new value, or
     // the browser puts it at the end of the whole textarea — wrong for anyone
@@ -264,15 +293,15 @@ export function Composer({
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (open) {
-      if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => (i + 1) % people.length); return; }
-      if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => (i - 1 + people.length) % people.length); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => (i + 1) % suggestions.length); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => (i - 1 + suggestions.length) % suggestions.length); return; }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         // `active` can point past the end: a debounced response can replace the
         // list with a shorter one between the keypress being aimed and handled.
         // Falling back to the first row beats calling choose(undefined).
-        const person = people[active] ?? people[0];
-        if (person) choose(person);
+        const picked = suggestions[active] ?? suggestions[0];
+        if (picked) choose(picked);
         return;
       }
       if (e.key === "Escape") {
@@ -282,7 +311,7 @@ export function Composer({
         e.preventDefault();
         e.stopPropagation();
         setToken(null);
-        setPeople([]);
+        setSuggestions([]);
         return;
       }
     }
@@ -329,6 +358,36 @@ export function Composer({
     if (e.dataTransfer.files.length) uploads.addFiles(e.dataTransfer.files);
   };
 
+  // ── Grouping, without an order anybody had to choose ───────────────────
+  //  The server returns ONE ranked list across every kind. Groups appear in
+  //  order of FIRST APPEARANCE in that ranking, so a query that matches a
+  //  person best shows People first and one that matches an event best shows
+  //  Events first — and no file anywhere contains "people before fighters".
+  //
+  //  `index` is the row's position in the flat list, which is what the keyboard
+  //  moves through. Grouping is presentation only; arrow keys still walk the
+  //  ranking in order, so the highlight never jumps sideways.
+  const groups = (() => {
+    const byKind = new Map<string, { kind: string; label: string; tone: EntityTone; round: boolean; rows: { item: EntitySuggestion; index: number }[] }>();
+    suggestions.forEach((item, index) => {
+      const plugin = entityPlugin(item.kind);
+      // A kind this bundle has never heard of is dropped rather than rendered
+      // as an unlabelled row. It cannot be inserted either — `choose` would
+      // record a kind the server would resolve but nothing here could style.
+      if (!plugin) return;
+      const existing = byKind.get(item.kind);
+      if (existing) existing.rows.push({ item, index });
+      else byKind.set(item.kind, {
+        kind: item.kind,
+        label: plugin.labelPlural,
+        tone: plugin.tone,
+        round: plugin.markShape === "round",
+        rows: [{ item, index }],
+      });
+    });
+    return [...byKind.values()];
+  })();
+
   const listId = `mentions-${useId()}`;
   const remaining = maxLength ? maxLength - value.length : null;
   // Only speak up near the ceiling. A counter present from the first character
@@ -352,47 +411,46 @@ export function Composer({
         <ul
           id={listId}
           role="listbox"
-          aria-label="People"
-          className="cr-overscroll-contain absolute bottom-full left-0 z-30 mb-2 max-h-56 w-full min-w-56 overflow-y-auto rounded-xl border border-ink-700 bg-ink-900/98 p-1 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+          aria-label="Mentions"
+          className="cr-overscroll-contain absolute bottom-full left-0 z-30 mb-2 max-h-72 w-full min-w-56 overflow-y-auto rounded-xl border border-ink-700 bg-ink-900/98 p-1 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl"
         >
-          {people.map((p, i) => (
-            <li key={p.username}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={i === active}
-                // pointerDown, not click: `click` fires after `blur`, and the
-                // blur would have already torn the menu down.
-                onPointerDown={(e) => { e.preventDefault(); choose(p); }}
-                onMouseEnter={() => setActive(i)}
-                className={cn(
-                  "tap flex min-h-12 w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors",
-                  i === active ? "bg-blood-500/15 text-chalk" : "text-mist hover:bg-ink-800",
-                )}
+          {groups.map((group) => (
+            <li key={group.kind}>
+              {/* The heading names the family so a fighter is never mistaken
+                  for the person who shares their name. `presentation` because
+                  a listbox's children must all be options — the heading is a
+                  label for the rows beneath it, not one of them. */}
+              <p
+                role="presentation"
+                className="px-2 pb-0.5 pt-1.5 font-display text-3xs font-bold uppercase tracking-[0.14em] text-fog"
               >
-                {/* Presence in the picker: mentioning somebody who is here now
-                    is a different act from mentioning somebody who will read it
-                    tomorrow. showOffline=false — a short list of grey dots is
-                    noise. */}
-                <ForumAvatar
-                  name={p.name}
-                  image={p.image}
-                  size="sm"
-                  presence={p.presence ?? null}
-                  showOffline={false}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1">
-                    <span className="truncate font-display text-sm font-bold text-chalk">{p.name}</span>
-                    {p.verified && <BadgeCheck aria-label="Verified" className="size-3.5 shrink-0 text-volt-400" />}
-                  </span>
-                  <span className="block truncate text-xs text-fog">@{p.username}</span>
-                </span>
-              </button>
+                {group.label}
+              </p>
+              <ul role="presentation">
+                {group.rows.map(({ item, index }) => (
+                  <li key={`${item.kind}:${item.key}`}>
+                    <EntitySuggestionRow
+                      id={`${listId}-opt-${index}`}
+                      title={item.title}
+                      subtitle={item.subtitle}
+                      imageUrl={item.imageUrl}
+                      verified={item.verified}
+                      tone={group.tone}
+                      // Declared by the plugin, not inferred here — see
+                      // EntityPlugin.markShape for why the inference was wrong.
+                      round={group.round}
+                      active={index === active}
+                      onPick={() => choose(item)}
+                      onHover={() => setActive(index)}
+                    />
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
       )}
+
 
       <textarea
         {...rest}

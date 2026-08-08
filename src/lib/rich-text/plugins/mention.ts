@@ -11,7 +11,9 @@ import { registerEntity } from "../registry";
 
 registerEntity({
   kind: "mention",
+  labelPlural: "People",
   label: "person",
+  markShape: "round",
   tone: "person",
 
   /**

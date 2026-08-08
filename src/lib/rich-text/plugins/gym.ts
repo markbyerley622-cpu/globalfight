@@ -6,7 +6,9 @@ import { registerEntity } from "../registry";
 
 registerEntity({
   kind: "gym",
+  labelPlural: "Gyms",
   label: "gym",
+  markShape: "square",
   tone: "place",
 
   href: (e) => (e.hint?.slug ? `/gyms/${e.hint.slug}` : null),

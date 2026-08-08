@@ -1,4 +1,4 @@
-import type { RichEntity } from "./types";
+import type { EntityHint, RichEntity } from "./types";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  THE ENTITY REGISTRY — what a kind of entity IS, in one object.
@@ -65,7 +65,36 @@ export interface EntityPlugin {
    */
   label: string;
 
+  /**
+   * Plural, for a group heading in the composer's picker — "People",
+   * "Fighters", "Events".
+   *
+   * A field rather than a pluralise() call: English plurals are irregular and
+   * the picker is user-facing copy, so guessing would eventually print
+   * "Promotions" correctly and something else badly. It is also the last thing
+   * a new plugin needs before the picker can offer it — nothing in the picker
+   * itself is edited.
+   */
+  labelPlural: string;
+
   tone: EntityTone;
+
+  /**
+   * How the picker draws this kind's mark when there is no image.
+   *
+   * ── Why a field and not `tone === "person"` ──────────────────────────────
+   * The picker did infer it from the tone, and the inference was wrong in a way
+   * worth recording: the tone token for fighters is literally `"fighter"`, so a
+   * guard checking that the picker never names a kind could not tell a
+   * presentation branch from a kind branch. Two different concepts sharing a
+   * spelling is exactly how a "no per-kind logic" rule quietly stops being
+   * checkable.
+   *
+   * So the plugin states it. `round` for anything depicting a HUMAN — a person,
+   * a fighter — and `square` for a place, an event, an organisation, which is
+   * the same convention the map pins and the preview cards already follow.
+   */
+  markShape: "round" | "square";
 
   /**
    * Where this entity points, or null when there is nothing to point at.
@@ -169,6 +198,23 @@ export function entityPlugins(): EntityPlugin[] {
  */
 export function entityHref(entity: RichEntity): string | null {
   return entityPlugin(entity.type)?.href(entity) ?? null;
+}
+
+/**
+ * Where a kind points, given only its routing hint.
+ *
+ * For callers that hold a LOADED row rather than a stored entity — chiefly the
+ * preview cards, whose "Open" button had each rebuilt the URL its own plugin
+ * already defines. Four cards, four copies of a route, and the day
+ * `/fighters/<slug>` moves, three of them keep working and one 404s.
+ *
+ * `href()` only ever reads the hint, so this is the same answer by the same
+ * code path — not a parallel one.
+ */
+export function entityHrefForHint(kind: string, hint: EntityHint): string | null {
+  const plugin = entityPlugin(kind);
+  if (!plugin) return null;
+  return plugin.href({ type: kind, id: "", start: 0, end: 0, hint });
 }
 
 /** Whether a preview should even be attempted for this entity and viewer. */

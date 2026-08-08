@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarDays, MapPin, Navigation, Swords } from "lucide-react";
+import { entityHrefForHint } from "@/lib/rich-text/registry";
 import { registerPreview, str, num, type PreviewViewProps } from "./registry";
 import { PreviewActions, PreviewAction, PreviewFact, PreviewHeader, PreviewStats } from "./parts";
 
@@ -95,7 +96,7 @@ function EventPreview({ preview }: PreviewViewProps) {
 
       <PreviewActions>
         {slug && (
-          <PreviewAction href={`/events/${slug}`} primary focusTarget>
+          <PreviewAction href={entityHrefForHint("event", { slug }) ?? `/events/${slug}`} primary focusTarget>
             Open event
           </PreviewAction>
         )}

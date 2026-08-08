@@ -147,26 +147,69 @@ describe("uploads have one implementation", () => {
 });
 
 describe("mention autocomplete has one implementation", () => {
-  test("only the Composer queries the people typeahead", () => {
-    // A second caller of this endpoint means a second menu, a second keyboard
-    // model and a second ranking — which is how "mentions feel different over
-    // here" starts. The challenge PICKER is a different control (it picks a
-    // person, it does not complete text mid-sentence) and has its own file.
-    // Comments are stripped first: several files legitimately DESCRIBE the
-    // endpoint ("the picker is fed by /api/users/search") without calling it,
-    // and a guard that cannot tell prose from code trains people to ignore it.
-    const stripComments = (src: string) =>
-      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  // Comments are stripped first: several files legitimately DESCRIBE an
+  // endpoint ("the picker is fed by /api/entities/suggest") without calling it,
+  // and a guard that cannot tell prose from code trains people to ignore it.
+  const stripComments = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
+  const callersOf = (endpoint: string): string[] => {
     const all = walk(join(SRC, "components")).concat(walk(join(SRC, "lib")));
-    const callers = all
+    return all
       .map((f) => relative(SRC, f).replace(/\\/g, "/"))
-      .filter((rel) => stripComments(readFileSync(join(SRC, rel), "utf8")).includes("/api/users/search"));
+      .filter((rel) => stripComments(readFileSync(join(SRC, rel), "utf8")).includes(endpoint))
+      .sort();
+  };
 
+  test("only the Composer queries the ENTITY typeahead", () => {
+    // A second caller means a second menu, a second keyboard model and a second
+    // ranking — which is how "mentions feel different over here" starts. This
+    // is the endpoint the "@" menu is fed by, across every kind it offers.
     assert.deepEqual(
-      callers.sort(),
-      ["components/composer/composer.tsx", "components/people/people-picker.tsx"],
-      "an unexpected surface is querying the mention endpoint directly",
+      callersOf("/api/entities/suggest"),
+      ["components/composer/composer.tsx"],
+      "an unexpected surface is querying the entity typeahead directly",
     );
+  });
+
+  test("the people endpoint is left to the challenge picker", () => {
+    // /api/users/search predates the entity picker and still serves the
+    // challenge PICKER — a different control, which picks a person rather than
+    // completing text mid-sentence. Its people QUERY is shared with the
+    // composer's picker through lib/users/search, so there is one definition of
+    // "find a person" even though there are two endpoints.
+    //
+    // The Composer must NOT appear here: it moved to the entity endpoint, and a
+    // regression to this one would silently drop fighters and events from the
+    // menu while still looking like it worked.
+    assert.deepEqual(
+      callersOf("/api/users/search"),
+      ["components/people/people-picker.tsx"],
+      "an unexpected surface is querying the people endpoint directly",
+    );
+  });
+
+  test("both people typeaheads share ONE query definition", () => {
+    // Two endpoints now answer "find a person": /api/users/search for the
+    // challenge picker, and the mention half of /api/entities/suggest. They
+    // must reach the same function rather than each growing a
+    // `prisma.user.findMany` that agrees today and drifts on the first tuning
+    // change — the ranking in particular (people you follow first) is easy to
+    // reimplement slightly differently and impossible to notice.
+    //
+    // Asserted by delegation rather than by counting queries: the mention
+    // source legitimately queries the user table for resolve, hydrate and
+    // preview, none of which are typeaheads.
+    for (const rel of [
+      "app/api/users/search/route.ts",
+      "lib/rich-text/server/mention.ts",
+    ]) {
+      const body = readFileSync(join(SRC, rel), "utf8");
+      assert.ok(
+        body.includes("searchPeople("),
+        `${rel} runs a people typeahead without calling searchPeople from ` +
+          "lib/users/search. Two definitions of this query will diverge.",
+      );
+    }
   });
 });

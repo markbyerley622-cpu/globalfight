@@ -15,7 +15,7 @@ import {
 } from "@/lib/messages/types";
 import { ChallengeCard } from "@/components/messages/challenge-card";
 import { EntityText } from "@/components/rich-text/entity-text";
-import { useMentionRegistry } from "@/lib/composer/entities";
+import { useEntityPicks } from "@/lib/composer/entities";
 import { deliveryOf, type DeliveryState } from "@/lib/presence/derive";
 import { useHeartbeat } from "@/lib/presence/use-presence";
 import { PresenceDot, PresenceLabel } from "@/components/presence/presence-dot";
@@ -73,7 +73,7 @@ export function MessageThread({ initial }: { initial: ConversationView }) {
   useHeartbeat();
   // Records who was picked from the mention menu; spans are computed from the
   // final text at submit. See lib/composer/entities.
-  const mentions = useMentionRegistry();
+  const mentions = useEntityPicks();
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** When we last told the server we are composing. Throttles the ping. */

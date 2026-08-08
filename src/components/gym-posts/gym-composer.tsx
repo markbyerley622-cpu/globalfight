@@ -6,7 +6,7 @@ import type { GymPostDTO, Visibility } from "@/lib/gym-posts/types";
 import { MAX_BODY_CHARS, MAX_MEDIA_PER_POST } from "@/lib/gym-posts/types";
 import { IMAGE_ACCEPT, MAX_UPLOAD_MB } from "@/lib/images/limits";
 import { Composer } from "@/components/composer/composer";
-import { useMentionRegistry } from "@/lib/composer/entities";
+import { useEntityPicks } from "@/lib/composer/entities";
 import { clearDraft } from "@/lib/composer/drafts";
 import { useComposerUploads } from "@/lib/composer/attachments";
 import { useMediaAction } from "@/components/composer/toolbar";
@@ -66,7 +66,7 @@ export function GymComposer({
   // WHO was picked, not where. Offsets are computed once from the final text at
   // submit — see lib/composer/entities for why tracking them per keystroke is
   // the thing that silently drifts.
-  const mentions = useMentionRegistry();
+  const mentions = useEntityPicks();
   const uploads = useComposerUploads<string>({
     uploader: {
       endpoint: "/api/media",

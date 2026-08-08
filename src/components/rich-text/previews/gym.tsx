@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarDays, Dumbbell, MapPin, Navigation } from "lucide-react";
+import { entityHrefForHint } from "@/lib/rich-text/registry";
 import { registerPreview, str, num, bool, list, type PreviewViewProps } from "./registry";
 import { PreviewActions, PreviewAction, PreviewFact, PreviewHeader, PreviewStats } from "./parts";
 
@@ -42,7 +43,7 @@ function GymPreview({ preview }: PreviewViewProps) {
 
       <PreviewActions>
         {slug && (
-          <PreviewAction href={`/gyms/${slug}`} primary focusTarget>
+          <PreviewAction href={entityHrefForHint("gym", { slug }) ?? `/gyms/${slug}`} primary focusTarget>
             Open gym
           </PreviewAction>
         )}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { enforceLimit } from "@/lib/rate-limit/guard";
 import { POLICY } from "@/lib/rate-limit";
-import { loadPreviews, type PreviewRequest } from "@/lib/rich-text/preview";
+import { loadPreviews, type PreviewRequest } from "@/lib/rich-text/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

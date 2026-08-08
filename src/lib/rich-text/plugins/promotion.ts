@@ -18,7 +18,9 @@ import { registerEntity } from "../registry";
 
 registerEntity({
   kind: "promotion",
+  labelPlural: "Promotions",
   label: "promotion",
+  markShape: "square",
   tone: "org",
 
   href: (e) => (e.hint?.slug ? `/events?promotion=${encodeURIComponent(e.hint.slug)}` : null),

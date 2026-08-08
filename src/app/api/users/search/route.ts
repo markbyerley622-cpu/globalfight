@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { enforceLimit } from "@/lib/rate-limit/guard";
 import { POLICY } from "@/lib/rate-limit";
 import { publicDisplayName } from "@/lib/display-name";
-import { PRESENCE_SELECT } from "@/lib/presence/select";
 import { presenceDtoFor } from "@/lib/presence/policy";
+import { searchPeople } from "@/lib/users/search";
 
 /**
  * PEOPLE autocomplete — the typeahead behind "Challenge a friend".
@@ -35,40 +34,10 @@ import { presenceDtoFor } from "@/lib/presence/policy";
 /** Never ship an unbounded people list to a typeahead. */
 const LIMIT = 8;
 
-/**
- * Re-rank a candidate list so the viewer's own graph comes first.
- *
- * followed → verified → everything else, and the incoming order (reputation)
- * is preserved WITHIN each band, so the ranking is total and stable rather than
- * shuffling between keystrokes.
- *
- * `rows` is already capped, so the follow lookup is a single indexed query over
- * a handful of ids.
- */
-async function rankByRelationship<T extends { id: string; professionalVerifiedAt: Date | null }>(
-  rows: T[],
-  viewerId: string,
-  limit: number,
-): Promise<T[]> {
-  if (rows.length === 0) return rows;
-  let followed = new Set<string>();
-  try {
-    const follows = await prisma.userFollow.findMany({
-      where: { followerId: viewerId, followingId: { in: rows.map((r) => r.id) } },
-      select: { followingId: true },
-    });
-    followed = new Set(follows.map((f) => f.followingId));
-  } catch {
-    // Ranking is an enhancement. A failed lookup must not fail the typeahead —
-    // reputation order is still a usable answer.
-  }
-  const band = (r: T) => (followed.has(r.id) ? 0 : r.professionalVerifiedAt ? 1 : 2);
-  return rows
-    .map((r, i) => ({ r, i, b: band(r) }))
-    .sort((x, y) => (x.b - y.b) || (x.i - y.i))
-    .slice(0, limit)
-    .map((x) => x.r);
-}
+// The QUERY and the RANKING moved to lib/users/search, unchanged, so the
+// composer's entity picker can offer people through the same one definition
+// rather than growing a second people-search that agrees today and drifts
+// the first time either is tuned. This route's behaviour is identical.
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
@@ -81,61 +50,10 @@ export async function GET(req: Request) {
   const raw = (new URL(req.url).searchParams.get("q") ?? "").trim().replace(/^@+/, "");
   const q = raw.slice(0, 64);
 
-  // PRESENCE_SELECT rather than the columns by hand — "are they around right
-  // now" is exactly the signal that decides who you challenge, and the shared
-  // fragment keeps a future switch reaching this query too.
-  const select = {
-    username: true, name: true, image: true,
-    professionalVerifiedAt: true,
-    ...PRESENCE_SELECT,
-  } as const;
-
-  const rows = q
-    ? await prisma.user.findMany({
-        where: {
-          // A user with no username has no public page to send anyone to.
-          username: { not: null },
-          // Never offer the viewer themselves: challengeUser refuses it, so the
-          // row would be a guaranteed dead end.
-          id: { not: user.id },
-          OR: [
-            { username: { contains: q, mode: "insensitive" } },
-            { name: { contains: q, mode: "insensitive" } },
-          ],
-        },
-        // Handle matches first: someone typing "@jo" wants jo, not "Jo-Anne's"
-        // display name. Postgres has no cheap "starts-with-first" ordering here,
-        // so the tie-break is reputation — the accounts most likely to be real.
-        orderBy: [{ reputation: "desc" }, { username: "asc" }],
-        // Over-fetch, then re-rank below. The interesting ordering — people you
-        // already follow first — cannot be expressed in this query without a
-        // join that would make the common case slower for every keystroke.
-        take: LIMIT * 3,
-        select,
-      })
-    : // SUGGESTIONS: the people you already follow, most recent first. This is
-      // what makes the picker useful on the first tap, before a single
-      // character is typed — the friend you want to challenge is almost always
-      // someone you already follow.
-      (
-        await prisma.userFollow.findMany({
-          where: { followerId: user.id, following: { username: { not: null } } },
-          orderBy: { createdAt: "desc" },
-          take: LIMIT,
-          select: { following: { select } },
-        })
-      ).map((f) => f.following);
-
-  // ── Ranking ──────────────────────────────────────────────────────────────
-  // A name match is not a useful ordering on its own: typing "ma" on a platform
-  // with ten thousand accounts returns ten strangers before the friend you were
-  // reaching for. People you FOLLOW come first, because a mention is nearly
-  // always aimed at somebody you already have a relationship with.
-  //
-  // One extra query for the whole response, not one per row, and only for the
-  // handful of ids actually being returned.
-  const ranked = await rankByRelationship(rows, user.id, q ? LIMIT : rows.length);
-
+  // ONE definition of the people query and the follow-first ranking, shared
+  // with the composer's entity picker. See lib/users/search — including why an
+  // empty query returns the people you follow rather than nothing.
+  const ranked = await searchPeople(q, user.id, LIMIT);
   return NextResponse.json({
     suggested: !q,
     people: ranked.flatMap((u) =>
