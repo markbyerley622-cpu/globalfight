@@ -518,7 +518,11 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
               <EventMapPreview
                 pin={floatingPin}
                 distanceKm={distanceTo(floatingPin)}
-                variant="floating"
+                // The phone gets its OWN layout, not the desktop card at
+                // phone width — which is what it was getting, and why the
+                // card ran off the bottom of the map. See EventMapPreview's
+                // `variant` note.
+                variant={isDesktop ? "floating" : "compact"}
               />
             </FloatingPreview>
           )}

@@ -86,6 +86,21 @@ export function BottomSheet({
   const ref = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ startY: number; startH: number; h: number } | null>(null);
+  /**
+   * Did this gesture actually MOVE?
+   *
+   * ── The bug this fixes ────────────────────────────────────────────────────
+   * A pointerup is followed by a click. The click handler below cycles the
+   * detent, and it was guarded by `!drag` — but `endDrag` has already set drag
+   * to null by the time the click fires, so the guard was always true. Every
+   * drag therefore ended by snapping to the detent the gesture asked for and
+   * then IMMEDIATELY cycling one further. Dragging the sheet half-way opened it
+   * fully; dragging it closed reopened it. It read as the sheet fighting you.
+   *
+   * A ref, not state: it is written during the gesture and read in the click
+   * that follows, and neither should cost a render.
+   */
+  const moved = useRef(false);
 
   const containerH = () => ref.current?.parentElement?.clientHeight ?? 0;
 
@@ -126,11 +141,22 @@ export function BottomSheet({
     const total = containerH();
     if (!total) return;
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    moved.current = false;
     setDrag({ startY: e.clientY, startH: HEIGHT[detent] * total, h: HEIGHT[detent] * total });
   };
 
+  /**
+   * How far the pointer must travel before this counts as a drag.
+   *
+   * Below it the gesture is a TAP on the grabber, which cycles detents — a
+   * press that wobbles by two pixels must not be settled to the nearest detent
+   * as though it were a deliberate resize.
+   */
+  const DRAG_SLOP_PX = 4;
+
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drag) return;
+    if (Math.abs(e.clientY - drag.startY) > DRAG_SLOP_PX) moved.current = true;
     const total = containerH();
     // The floor drops below `collapsed` only when there is something to dismiss
     // TO. Without that the sheet would rubber-band against a floor it can never
@@ -146,7 +172,16 @@ export function BottomSheet({
 
   const endDrag = () => {
     if (!drag) return;
-    settle(drag.h);
+    // A gesture that never moved is a TAP. Leave the detent alone and let the
+    // click that follows cycle it — settling here as well would apply two
+    // changes to one press.
+    if (moved.current) settle(drag.h);
+    setDrag(null);
+  };
+
+  /** A cancelled pointer (a system gesture taking over) resizes nothing. */
+  const cancelDrag = () => {
+    moved.current = false;
     setDrag(null);
   };
 
@@ -192,8 +227,14 @@ export function BottomSheet({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          onClick={(e) => { if (!drag) { e.stopPropagation(); cycle(); } }}
+          onPointerCancel={cancelDrag}
+          onClick={(e) => {
+            e.stopPropagation();
+            // Checked against the GESTURE, not against `drag` — which endDrag
+            // has already cleared by the time a click fires. See `moved`.
+            if (moved.current) { moved.current = false; return; }
+            cycle();
+          }}
           onKeyDown={(e) => {
             const i = ORDER.indexOf(detent);
             if (e.key === "ArrowUp" && i < ORDER.length - 1) { e.preventDefault(); onDetentChange(ORDER[i + 1]); }
