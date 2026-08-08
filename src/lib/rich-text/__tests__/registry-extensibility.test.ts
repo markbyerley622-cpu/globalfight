@@ -135,12 +135,29 @@ describe("a brand-new kind works with no core edits", () => {
 
 const SRC = join(process.cwd(), "src");
 
-/** Files in a plugin directory that are infrastructure rather than plugins. */
-const NOT_A_PLUGIN = new Set(["index.ts", "index.tsx", "registry.ts", "parts.tsx"]);
+/**
+ * Does this file REGISTER something?
+ *
+ * ── Why this replaced a filename allow-list ───────────────────────────────
+ * The exclusion used to be a set of names — index, registry, parts. That works
+ * until a plugin directory gains a shared helper (`rank.ts`, extracted so gyms
+ * and fighters could not drift apart), at which point the guard fails on a file
+ * that is not a plugin and the reflex is to add its name to the list. Do that
+ * twice and the list is a place where a REAL plugin can be silently parked.
+ *
+ * So the test is behavioural: a plugin is a file that calls a register
+ * function. Infrastructure does not, and cannot be mistaken for one whatever it
+ * is called.
+ */
+const REGISTERS = /\bregister(EntitySource|Entity|PreviewLoader|Preview)\s*\(/;
 
 function pluginFiles(dir: string): string[] {
   return readdirSync(join(SRC, dir))
-    .filter((f) => (f.endsWith(".ts") || f.endsWith(".tsx")) && !NOT_A_PLUGIN.has(f))
+    .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"))
+    // The manifest itself imports every plugin, so it always matches the
+    // pattern in the files it names — exclude it by path, not by behaviour.
+    .filter((f) => !/^index\.tsx?$/.test(f))
+    .filter((f) => REGISTERS.test(readFileSync(join(SRC, dir, f), "utf8")))
     .map((f) => f.replace(/\.tsx?$/, ""));
 }
 

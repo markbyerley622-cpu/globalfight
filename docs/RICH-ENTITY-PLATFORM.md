@@ -139,8 +139,8 @@ a new kind can never produce a broken-looking body on an older client.
 
 ## The composer picker
 
-Typing `@` opens one menu offering **People**, **Fighters** and **Events** —
-whichever kinds' sources implement `suggest`.
+Typing `@` opens one menu offering **People**, **Fighters**, **Events**,
+**Gyms** and **Promotions** — whichever kinds' sources implement `suggest`.
 
 ```
 PEOPLE
@@ -149,6 +149,10 @@ FIGHTERS
   Alex Pereira          "Poatan" · MMA · 12-3
 EVENTS
   UFC 322               UFC · 15 Nov 2026 · Madison Square Garden
+GYMS
+  City Kickboxing       Auckland, NZ · MMA · Kickboxing
+PROMOTIONS
+  UFC
 ```
 
 **Group order is not configured anywhere.** The server returns one ranked list
@@ -173,10 +177,38 @@ naturally in a sentence:
 | person | `alex` | `@alex` |
 | fighter | `alex-pereira` | `@Alex Pereira` |
 | event | `ufc-322` | `@UFC 322` |
+| gym | `city-kickboxing` | `@City Kickboxing` |
+| promotion | `ufc` | `@UFC` |
 
 Multi-word inserts are why the pick registry no longer scans for a
 handle-alphabet token. It scans for the literal string that was inserted, so
 `@UFC 322: Main Event` is one span and `@Alex` does not claim `@Alexander`.
+
+**The scan is deliberately permissive.** Searching for `UFC` genuinely matches
+inside `@UFC 322` — the character after it is a space, which is not a word
+character. That is not a bug: the scanner is handed one pick at a time and asked
+where that text appears, so it cannot know which picks were made. Overlaps are
+resolved once, later, where the whole set is visible: `build()` sorts by start
+then **longer first**, and the sanitiser keeps the earlier span. At the same
+offset, "earlier" and "longer" are the same span — the one the author actually
+inserted. So `the @UFC put on @UFC 322` stores a promotion and an event, not
+three entities.
+
+### Two suggesters with no query between them
+
+`promotion.suggest` touches no database at all — identity lives in the in-code
+registry, so it filters a few dozen objects already in memory. It matches
+**aliases** as well as names ("ultimate fighting", "onefc") but always inserts
+the canonical name, so the stored span does not vary with the alias typed. The
+neutral fallback org (`combat` / "Multiple promotions") is declared outside the
+`PROMOTIONS` array and is therefore neither suggestable nor resolvable.
+
+Gyms have **no private state to filter**. The `Gym` model has no status, no
+soft-delete and no visibility flag; every row is a public page, and `verified`
+is a quality signal that orders the directory and gates a gym's own feed — not a
+visibility gate. Suggestion and resolution therefore apply the same filter the
+rest of the product applies: none. If a visibility concept is ever introduced it
+belongs on the model as a shared predicate, the way `PUBLIC_EVENT` works.
 
 ---
 
@@ -268,7 +300,8 @@ Timing constants live in one place (`HOVER_TIMING`) and are pinned by
 | person | the referenced user — "X mentioned you" |
 | fighter | **nobody** |
 | event | **nobody** |
-| gym, promotion | **nobody** |
+| gym | **nobody** — `Gym.ownerId` exists and is never read by any entity source |
+| promotion | **nobody** |
 | any future kind | **nobody**, by default |
 
 `mentionedUserIds()` filters on kind, and it is the only thing standing between
@@ -277,9 +310,28 @@ a fighter mention and a notification. That matters more than it looks:
 notifier that read "every entity's id" would eventually ping a real person every
 time anyone named them in any post — notification spam with no opt-out.
 
-`entity-notifications.test.ts` pins both halves: the filter itself, and a
-source-walking guard that fails if any notifier reads entity ids without going
-through it.
+`entity-notifications.test.ts` pins three things: the filter itself, asserted
+against **every registered kind** rather than a hand-written list so a kind added
+tomorrow is covered the day it is added; a source-walking guard that fails if any
+notifier reads entity ids without going through `mentionedUserIds`; and a guard
+that no entity source reads an `ownerId` at all — which is one `.map()` away from
+notifying a gym owner every time somebody names their gym.
+
+---
+
+## The search bar
+
+Typing `@alex` into the site-wide search used to return **nothing**: the sigil
+went into the query verbatim and no username or display name contains one, so
+every family matched zero rows and the overlay said "No results" about a person
+who exists.
+
+A leading `@` now strips the sigil and **narrows the search to people** — the
+same grammar the composer has used since Phase 4, and the one every product
+people already use follows. It is also eight fewer family queries per keystroke.
+The rule is a pure function (`lib/search-query.ts`) so it is tested without a
+database, and the people query itself is shared with the composer's picker
+through `lib/users/search`.
 
 ---
 
@@ -353,11 +405,8 @@ Stated plainly so it is not mistaken for working behaviour:
   follower counts or presence, and seeding a partial DTO would render a card
   missing fields it should have. It becomes useful when a surface genuinely
   holds a complete preview.
-- **Gyms and promotions are not yet authorable.** Their sources implement
-  `resolve`, `hydrate` and `preview` but not `suggest`, so no composer offers
-  them. That is a product decision the registry expresses directly rather than a
-  missing implementation — adding them to the picker is one method on the
-  existing source and nothing else.
+- All five kinds are now authorable. Nothing in the platform is
+  implemented-but-unreachable.
 - **Event prediction counts** are `null` in the event preview. Picks are counted
   per fight, and summing them for a batch of events is a group-by on a hover
   path. `PreviewStats` drops a null cell rather than printing a misleading zero.

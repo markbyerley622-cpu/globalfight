@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { SPORT_LABEL } from "@/lib/sports";
 import { registerEntitySource } from "./registry";
+import { rankByMatch } from "./rank";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  A FIGHTER — a registry row, not an account.
@@ -33,38 +34,6 @@ function record(w: number, l: number, d: number): string {
   return d > 0 ? `${w}-${l}-${d}` : `${w}-${l}`;
 }
 
-/**
- * Rank a candidate list against what was typed.
- *
- * Exact → prefix → word-start → anything else, with the database's own order
- * (a stable name sort) preserved inside each band. Done in JS over a small
- * over-fetched window because Postgres has no cheap way to express it, and the
- * window is bounded — this is never a scan.
- */
-function rankByMatch<T extends { name: string; nickname: string | null }>(
-  rows: T[],
-  q: string,
-  limit: number,
-): T[] {
-  const ql = q.toLowerCase();
-  const band = (r: T): number => {
-    const name = r.name.toLowerCase();
-    const nick = (r.nickname ?? "").toLowerCase();
-    if (name === ql) return 0;
-    if (name.startsWith(ql)) return 1;
-    if (nick === ql || nick.startsWith(ql)) return 2;
-    // A match at the start of any WORD — "pereira" finding "Alex Pereira" —
-    // beats one buried mid-token, which is usually incidental.
-    if (name.split(/\s+/).some((w) => w.startsWith(ql))) return 3;
-    return 4;
-  };
-  return rows
-    .map((r, i) => ({ r, i, b: band(r) }))
-    .sort((x, y) => (x.b - y.b) || (x.i - y.i))
-    .slice(0, limit)
-    .map((x) => x.r);
-}
-
 registerEntitySource({
   kind: "fighter",
 
@@ -86,7 +55,7 @@ registerEntitySource({
       select: SUGGEST_SELECT,
     });
 
-    return rankByMatch(rows, q, limit).map((f) => ({
+    return rankByMatch(rows, q, limit, (f) => [f.name, f.nickname]).map((f) => ({
       kind: "fighter",
       key: f.slug,
       // A fighter inserts as their NAME. "@alex-pereira" is a URL, not

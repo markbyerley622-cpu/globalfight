@@ -2,6 +2,7 @@ import "server-only";
 import type { EntityPreview } from "../cache";
 import { MAX_ENTITIES, sanitizeEntities, type RichEntity } from "../types";
 import { entitySource, entitySources, type EntitySuggestion, type SourceContext } from "./registry";
+import { interleaveByRank } from "./rank";
 
 // ── The source manifest ─────────────────────────────────────────────────────
 //  Importing a file is what registers it. A source left out here never runs,
@@ -105,19 +106,9 @@ export async function suggestEntities(
     }),
   );
 
-  // Round-robin by rank: each kind's best, then each kind's second, and so on.
-  // Every kind that matched at all is therefore visible without any kind being
-  // able to crowd the others out — a fighter search that returns eight results
-  // must not hide the one person the author actually meant.
-  const merged: EntitySuggestion[] = [];
-  const depth = Math.max(0, ...lists.map((l) => l.length));
-  for (let i = 0; i < depth && merged.length < total; i++) {
-    for (const list of lists) {
-      if (merged.length >= total) break;
-      if (list[i]) merged.push(list[i]);
-    }
-  }
-  return merged;
+  // Round-robin by rank — see interleaveByRank for why, and for why this is
+  // also what decides the ORDER of the groups the client renders.
+  return interleaveByRank(lists, total);
 }
 
 // ── RESOLVE (the write path) ────────────────────────────────────────────────

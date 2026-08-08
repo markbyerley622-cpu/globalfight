@@ -38,6 +38,13 @@ let hydrateEntities: Hydrate;
 const ROWS = new Map<string, { id: string; name: string }>([
   ["alex-pereira", { id: "ftr_1", name: "Alex Pereira" }],
   ["ufc-322", { id: "evt_1", name: "UFC 322" }],
+  // The shapes gyms and promotions introduce, each of which broke a different
+  // assumption the handle-only pipeline made:
+  ["city-kickboxing", { id: "gym_1", name: "City Kickboxing" }],   // multi-word
+  ["ufc", { id: "promo_1", name: "UFC" }],                          // very short
+  ["10th-planet", { id: "gym_2", name: "10th Planet Jiu-Jitsu" }],  // digits + hyphen
+  ["team-alpha", { id: "gym_3", name: "Team Alpha (MMA)" }],        // brackets
+  ["academia-jose", { id: "gym_4", name: "Academia José Aldo" }],   // accented
 ]);
 
 /** Keys the fake source can see but this VIEWER may not — a draft event. */
@@ -216,6 +223,68 @@ describe("stale autocomplete degrades, it never throws", () => {
     assert.deepEqual(await resolveDraftEntities("hello", undefined), []);
     assert.deepEqual(await resolveDraftEntities("hello", []), []);
     assert.deepEqual(await resolveDraftEntities("hello", "garbage"), []);
+  });
+});
+
+describe("the shapes gyms and promotions introduce", () => {
+  test("a MULTI-WORD name resolves as one span", async () => {
+    const text = "training at @City Kickboxing tomorrow";
+    const out = await resolveDraftEntities(text, [draft("city-kickboxing", 12, 28)]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].id, "gym_1");
+  });
+
+  test("a VERY SHORT name resolves — and only over its own span", async () => {
+    // "@UFC" is three characters. The span check has to accept it exactly and
+    // reject a span that runs on into the next word.
+    const text = "the @UFC card was good";
+    assert.equal((await resolveDraftEntities(text, [draft("ufc", 4, 8)])).length, 1);
+    assert.deepEqual(await resolveDraftEntities(text, [draft("ufc", 4, 13)]), []);
+  });
+
+  test("DIGITS and hyphens in a name resolve", async () => {
+    const text = "@10th Planet Jiu-Jitsu is close by";
+    const out = await resolveDraftEntities(text, [draft("10th-planet", 0, 22)]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].id, "gym_2");
+  });
+
+  test("BRACKETS in a name resolve — the span is compared literally", async () => {
+    // Nothing here treats the expected text as a pattern, so "(MMA)" is matched
+    // as characters rather than as a group.
+    const text = "@Team Alpha (MMA) are hosting";
+    const out = await resolveDraftEntities(text, [draft("team-alpha", 0, 17)]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].id, "gym_3");
+  });
+
+  test("ACCENTED characters resolve, and case still does not matter", async () => {
+    const text = "@Academia José Aldo is legendary";
+    assert.equal((await resolveDraftEntities(text, [draft("academia-jose", 0, 19)])).length, 1);
+
+    const shouty = "@ACADEMIA JOSÉ ALDO is legendary";
+    assert.equal(
+      (await resolveDraftEntities(shouty, [draft("academia-jose", 0, 19)])).length, 1,
+      "an accented name stopped matching when case changed",
+    );
+  });
+
+  test("a gym and a promotion coexist with a person in one body", async () => {
+    //  "@City Kickboxing fight at @UFC 322 — @Alex Pereira"
+    const text = "@City Kickboxing fight at @UFC 322 — @Alex Pereira";
+    const out = await resolveDraftEntities(text, [
+      draft("city-kickboxing", 0, 16),
+      draft("ufc-322", 26, 34),
+      draft("alex-pereira", 37, 50),
+    ]);
+    assert.deepEqual(out.map((e) => e.id), ["gym_1", "evt_1", "ftr_1"]);
+  });
+
+  test("a span mismatch on a multi-word name degrades to plain text", async () => {
+    // One word of the gym's name edited after picking. The words no longer say
+    // what the entity says, so the entity goes rather than the words.
+    const text = "training at @City Kickboxin tomorrow";
+    assert.deepEqual(await resolveDraftEntities(text, [draft("city-kickboxing", 12, 27)]), []);
   });
 });
 

@@ -117,7 +117,10 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search the whole site — fighters, events, news, communities…"
+            // The "@" hint is in the placeholder because the shortcut is
+            // otherwise undiscoverable: nothing on the screen suggests that a
+            // sigil narrows the search, and people only try it if they are told.
+            placeholder="Search everything, or @ to find people…"
             className="h-14 min-w-0 flex-1 bg-transparent text-base text-chalk outline-none placeholder:text-fog"
           />
           {loading && <Loader2 className="size-4 shrink-0 animate-spin text-mist" />}
