@@ -8,6 +8,7 @@ import { Ticker } from "@/components/layout/ticker";
 import { AppShell } from "@/components/layout/app-shell";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-client";
+import { EntityHoverHost } from "@/components/rich-text/hover/entity-hover-host";
 import { getCurrentUser } from "@/lib/auth";
 import { ChunkReloadGuard } from "@/components/chunk-reload-guard";
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker";
@@ -125,6 +126,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {children}
             </AppShell>
             <InstallPrompt />
+            {/* Mounted ONCE for the whole application. Renders nothing until a
+                chip is hovered, long-pressed or focused; every EntityText in
+                every tree opens its card here. See components/rich-text/hover. */}
+            <EntityHoverHost />
           </AuthProvider>
         </I18nProvider>
       </body>

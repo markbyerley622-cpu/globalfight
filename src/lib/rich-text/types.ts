@@ -37,26 +37,49 @@
 //  PURE and client-safe: no prisma, no env, no React.
 // ════════════════════════════════════════════════════════════════════════════
 
+// Side-effect import: registers every built-in kind. Validation below asks the
+// registry what exists, so without this a sanitize would drop every entity in
+// the product. Kept here — the lowest module in the stack — so no consumer can
+// forget it. There is no runtime cycle: the plugins import `registry`, and the
+// only thing they take from this file is a type, which erases.
+import "./plugins";
+import { entityPlugin } from "./registry";
+
 /**
  * What an entity stands for.
  *
- * Only `mention` is produced today. The rest are declared because the envelope
- * has to be designed for them — a union that grows is a one-line change here
- * plus a resolver, whereas retrofitting a second entity system later is the
- * whole cost this module exists to avoid.
+ * ── Why this is `string` and not a union ──────────────────────────────────
+ * It WAS a union of five literals, and every kind therefore cost an edit here
+ * plus an edit to the validator below plus an edit to the renderer. The kinds
+ * that actually exist are now declared by the plugin REGISTRY
+ * (lib/rich-text/registry), and `sanitizeEntities` validates against what is
+ * registered rather than against a literal restated in this file.
+ *
+ * TypeScript could not have checked this anyway: plugins register at runtime,
+ * so a union here would only ever have been a second list to keep in step — and
+ * the failure mode of it drifting is a stored kind the validator silently
+ * drops. The registry is the one source of truth; see `entityKinds()`.
  */
-export type EntityType =
-  | "mention"
-  /** Reserved. A bout, an event, a gym, a promotion, a fighter. */
-  | "event"
-  | "gym"
-  | "fighter"
-  | "promotion";
+export type EntityType = string;
 
-/** Display values cached at write time. ALWAYS treated as possibly stale. */
+/**
+ * Display values cached at write time. ALWAYS treated as possibly stale.
+ *
+ * Refreshed from the database on read (see hydrate), which is what makes a
+ * rename or a re-slug apply to every historical body without rewriting a row.
+ */
 export interface EntityHint {
-  /** The handle as it was when written. Refreshed on read. */
+  /** A person's handle as it was when written. Mentions route on this. */
   username?: string;
+  /**
+   * A row's URL slug — how fighters, events, gyms and promotions route.
+   *
+   * Separate from `username` because they are not the same fact: a handle is
+   * chosen by a person and is unique across users, a slug is derived from a
+   * name and is unique within its own table. One field serving both would make
+   * `/u/<slug>` and `/gyms/<username>` typecheck.
+   */
+  slug?: string;
   /** Already through publicDisplayName — never a raw User.name. */
   name?: string;
 }
@@ -87,7 +110,16 @@ const isString = (v: unknown): v is string => typeof v === "string";
 const isIndex = (v: unknown): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= 0;
 
-const TYPES = new Set<string>(["mention", "event", "gym", "fighter", "promotion"]);
+/**
+ * Is this a kind anything knows how to handle?
+ *
+ * Asked of the REGISTRY, not of a literal in this file. An unregistered kind is
+ * dropped for the same reason a malformed offset is: nothing downstream could
+ * render, link or preview it, so keeping it would produce a span that is styled
+ * as an entity and behaves as nothing — the exact "highlighted but inert"
+ * failure the whole architecture exists to remove.
+ */
+const isKnownKind = (type: string): boolean => entityPlugin(type) !== null;
 
 /**
  * Coerce untrusted JSON into entities, DROPPING anything that does not hold up.
@@ -119,7 +151,7 @@ export function sanitizeEntities(raw: unknown, text: string): RichEntity[] {
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const e = item as Record<string, unknown>;
-    if (!isString(e.type) || !TYPES.has(e.type)) continue;
+    if (!isString(e.type) || !isKnownKind(e.type)) continue;
     if (!isString(e.id) || e.id.length === 0 || e.id.length > 64) continue;
     if (!isIndex(e.start) || !isIndex(e.end)) continue;
     if (e.start >= e.end) continue;
@@ -128,6 +160,7 @@ export function sanitizeEntities(raw: unknown, text: string): RichEntity[] {
     const hint = e.hint && typeof e.hint === "object"
       ? {
           username: isString((e.hint as EntityHint).username) ? (e.hint as EntityHint).username : undefined,
+          slug: isString((e.hint as EntityHint).slug) ? (e.hint as EntityHint).slug : undefined,
           name: isString((e.hint as EntityHint).name) ? (e.hint as EntityHint).name : undefined,
         }
       : undefined;

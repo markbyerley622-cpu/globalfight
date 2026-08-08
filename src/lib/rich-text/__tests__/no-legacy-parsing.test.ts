@@ -95,15 +95,64 @@ describe("legacy mention parsing is confined to the compatibility layer", () => 
 });
 
 describe("there is one entity renderer", () => {
-  test("no surface reimplements mention rendering", () => {
+  /**
+   * The marker EntityText stamps on every chip it builds.
+   *
+   * It was `data-mention`, carrying the handle. It is now `data-entity`,
+   * carrying the KIND — because a chip is no longer necessarily a person, and
+   * because the handle was a value the DOM did not need. Anything else emitting
+   * this attribute is a second renderer.
+   */
+  const MARKER = "data-entity=";
+
+  test("no surface reimplements entity rendering", () => {
     // The old RichText produced a <span data-mention> that looked like a link
-    // and did nothing. A second renderer would reintroduce exactly that split.
+    // and did nothing. A second renderer would reintroduce exactly that split —
+    // and now that chips carry hover, focus and long-press bindings, a second
+    // one would also be a second set of those.
     const files = walk(SRC).filter((f) => f.endsWith(".tsx"));
     const owners = files
       .map((f) => relative(SRC, f).replace(/\\/g, "/"))
       .filter((rel) => rel !== "components/rich-text/entity-text.tsx")
-      .filter((rel) => readFileSync(join(SRC, rel), "utf8").includes("data-mention"));
+      .filter((rel) => readFileSync(join(SRC, rel), "utf8").includes(MARKER));
 
-    assert.deepEqual(owners, [], `mention rendering is duplicated in: ${owners.join(", ")}`);
+    assert.deepEqual(
+      owners,
+      [],
+      `entity rendering is duplicated in: ${owners.join(", ")}\n` +
+        "Render bodies with <EntityText>. If a surface needs a different chip, " +
+        "the difference belongs in its plugin's tone or label, not in a second " +
+        "component.",
+    );
+  });
+
+  test("the ONE renderer still stamps the marker — this guard is not vacuous", () => {
+    // Without this, renaming the attribute in entity-text.tsx would make the
+    // test above pass by finding nothing anywhere, which is the failure mode
+    // that let `data-mention` linger after it stopped being emitted.
+    const source = readFileSync(join(SRC, "components/rich-text/entity-text.tsx"), "utf8");
+    assert.ok(
+      source.includes(MARKER),
+      `EntityText no longer emits ${MARKER}. Update MARKER in this test to ` +
+        "whatever replaced it, or the duplicate-renderer check above is testing nothing.",
+    );
+  });
+
+  test("the renderer does not branch on entity KIND", () => {
+    // The registry's whole purpose. A comparison against a kind string here is
+    // the first step back to a switch, and the second one is always added by
+    // somebody who did not know the first existed.
+    const source = readFileSync(join(SRC, "components/rich-text/entity-text.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+    for (const kind of ["mention", "fighter", "event", "gym", "promotion"]) {
+      assert.ok(
+        !source.includes(`"${kind}"`) && !source.includes(`'${kind}'`),
+        `EntityText names the kind "${kind}". It must ask the registry instead — ` +
+          "see lib/rich-text/registry. A kind named here is a kind the next " +
+          "plugin will have to be added beside.",
+      );
+    }
   });
 });
