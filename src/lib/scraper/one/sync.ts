@@ -31,7 +31,9 @@ export async function syncONE(opts: SyncOptions = {}): Promise<OneHarvest> {
     discovered: { events: 0 }, extracted: { events: 0, fighters: 0 }, rejected: { events: 0 }, warnings,
   };
 
-  const urls = opts.slug ? [`https://www.onefc.com/events/${opts.slug}/`] : await discoverEvents();
+  const urls =
+    opts.urls ??
+    (opts.slug ? [`https://www.onefc.com/events/${opts.slug}/`] : await discoverEvents());
   report.discovered.events = urls.length;
   const capped = maxPages > 0 ? urls.slice(0, maxPages) : urls;
   if (capped.length < urls.length) {

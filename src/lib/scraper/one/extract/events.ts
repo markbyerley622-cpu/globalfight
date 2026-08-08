@@ -6,8 +6,17 @@
 //  assign a sport from the event slug/name (the "ONE Friday Fights" series is
 //  Muay Thai / kickboxing; everything else is treated as mixed MMA).
 //
-//  The fight CARD is not reliably in the static HTML (loaded dynamically), so
-//  events carry no bouts — the schedule only needs name/date/venue.
+//  ── The card is here too ──────────────────────────────────────────────────
+//  This file used to end with "the fight CARD is not reliably in the static
+//  HTML (loaded dynamically), so events carry no bouts", and that single
+//  sentence is why every ONE card in the database was empty. It is wrong:
+//  onefc.com server-renders the whole card, results included, into
+//  `div.event-matchup`. Measured across 30 events from ONE's sitemap: 24 carried
+//  a card, 247 bouts, 245 winners, zero missing corner links.
+//
+//  ../extract/matchups reads it. An event with no blocks — every card ONE has
+//  not announced yet, and its pre-2017 archive — yields an empty card, which is
+//  the same honest outcome the old comment assumed for everything.
 // ════════════════════════════════════════════════════════════════════════
 
 import * as cheerio from "cheerio";
@@ -15,6 +24,7 @@ import { extractJsonLd, findType, str, obj } from "../../bkfc/extract/jsonld";
 import { clean, slugFromUrl } from "../../bkfc/normalize";
 import type { OneEvent, OneSport } from "../types";
 import { normalizeText } from "@/lib/text/entities";
+import { parseOneMatchups } from "./matchups";
 
 /** Assign a project sport from the event identity. */
 export function detectOneSport(slug: string, name: string): OneSport {
@@ -85,5 +95,6 @@ export function parseOneEventPage(html: string, url: string, now = new Date()): 
     posterUrl,
     sport: detectOneSport(slug, name),
     status,
+    bouts: parseOneMatchups($),
   };
 }

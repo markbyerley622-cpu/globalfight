@@ -24,7 +24,8 @@ import { projectChampions } from "@/lib/rankings/champions";
 import { crawlOneArchive } from "@/lib/scraper/one/ingest";
 import { applyDerivedRecords } from "@/lib/fighters/derive-records";
 import { SPORTS } from "@/lib/sports";
-import { syncONE } from "@/lib/scraper/one";
+import { syncONE, discoverEvents as discoverOneEvents } from "@/lib/scraper/one";
+import { planOneSweep, ONE_SWEEP_SCOPE } from "@/lib/scraper/one/sweep";
 import { syncADCC } from "@/lib/scraper/adcc";
 import { syncEspn, ESPN_LEAGUES, DEFAULT_LEAGUE_KEYS } from "@/lib/scraper/espn";
 import {
@@ -393,12 +394,28 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
       });
       break;
     case "one":
-      // ONE Championship (onefc.com) → events; sport per-event (Friday Fights →
-      // MUAY_THAI / KICKBOXING, else MMA). Pure provider; shared pipeline
-      // persists, grouped by sport. The "one-events" write-gate is removed —
-      // isSourceEnabled() always passes; the call is the reinstatement seam.
+      // ONE Championship (onefc.com) → events AND their cards; sport per-event
+      // (Friday Fights → MUAY_THAI / KICKBOXING, else MMA), ruleset per BOUT.
+      // Pure provider; shared pipeline persists, grouped by sport. The
+      // "one-events" write-gate is removed — isSourceEnabled() always passes;
+      // the call is the reinstatement seam.
+      //
+      // ── Windowed and RESUMABLE ────────────────────────────────────────────
+      // ONE's sitemap holds 423 events and the shared fetcher paces at 5s, so a
+      // full sweep is ~35 minutes against this route's maxDuration of 300. Before
+      // the cursor, every run was killed ~60 events in — always the SAME 60,
+      // because discovery is lastmod-desc and nothing remembered a position, so
+      // ~360 events were unreachable by construction. Now each tick re-reads the
+      // freshest window (announcements + new results) and advances a rotating
+      // window through the archive behind it. See one/sweep.ts.
       await safe("one:sync", async () => {
-        const h = await syncONE();
+        const urls = await discoverOneEvents();
+        const checkpoint = await prisma.providerCheckpoint
+          .findUnique({ where: { provider_scope: { provider: "one", scope: ONE_SWEEP_SCOPE } } })
+          .catch(() => null);
+        const plan = planOneSweep(urls.length, Number(checkpoint?.cursor ?? NaN));
+
+        const h = await syncONE({ urls: plan.indices.map((i) => urls[i]) });
         let written = 0;
         if (isSourceEnabled("one-events")) {
           const bySport = new Map<Sport, typeof h.events>();
@@ -409,13 +426,44 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
           }
           for (const [sport, evs] of bySport) written += await persistAggregated(sport, "events", evs);
         }
-        log.info({ harvested: h.report.extracted, written }, "one:runner:done");
-        return written;
+
+        const bouts = h.events.reduce((n, e) => n + (e.fights?.length ?? 0), 0);
+        // Advancing the cursor even on a zero-write tick is deliberate: an
+        // archive slice where every event is already current legitimately writes
+        // nothing, and refusing to move would pin the sweep there forever.
+        await prisma.providerCheckpoint
+          .upsert({
+            where: { provider_scope: { provider: "one", scope: ONE_SWEEP_SCOPE } },
+            create: {
+              provider: "one", scope: ONE_SWEEP_SCOPE,
+              cursor: String(plan.nextCursor), lastCheckedAt: new Date(),
+              ...(written > 0 ? { lastChangedAt: new Date() } : {}),
+              stats: { discovered: urls.length, fetched: plan.indices.length, bouts, written },
+            },
+            update: {
+              cursor: String(plan.nextCursor), lastCheckedAt: new Date(),
+              ...(written > 0 ? { lastChangedAt: new Date() } : {}),
+              stats: { discovered: urls.length, fetched: plan.indices.length, bouts, written },
+            },
+          })
+          .catch(() => {});
+
+        log.info(
+          {
+            discovered: urls.length, fetched: plan.indices.length,
+            nextCursor: plan.nextCursor, wrapped: plan.wrapped,
+            harvested: h.report.extracted, bouts, written,
+          },
+          "one:runner:done",
+        );
+        return `events=${written} bouts=${bouts} window=${plan.indices.length}/${urls.length} next=${plan.nextCursor}`;
       });
       // ── RESULTS, from the live-results archive ────────────────────────────
-      // syncONE above brings in EVENTS. It cannot bring in bouts: ONE renders
-      // its cards client-side, which is why 251 ONE events sat with no bouts at
-      // all — the largest measured gap in the database.
+      // A SECOND path to the same bouts, kept because it reaches cards the event
+      // pages do not: ONE's CMS carries no matchup blocks before ~2017, and the
+      // editorial articles cover some of that era. It is no longer the only path
+      // — syncONE above now reads the card straight off the event page, which is
+      // where the bulk of the measured 251-empty-event gap actually closes.
       //
       // This walks the editorial results archive, which IS server-rendered, and
       // it RESUMES: the last index page reached is stored on the provider

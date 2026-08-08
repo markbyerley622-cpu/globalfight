@@ -1,18 +1,35 @@
 // ONE Championship backfill — fill the events the audit measured as empty.
 //
-//   npm run backfill:one -- --dry              # match only, write nothing
-//   npm run backfill:one -- --pages=5 --limit=25
+// TWO SOURCES, because they reach different eras:
 //
-// Target from `npm run audit:quality`: 251 ONE events with no bouts at all.
+//   npm run backfill:one -- --events            # EVENT PAGES — start here
+//   npm run backfill:one -- --events --limit=60 --offset=120
+//   npm run backfill:one -- --dry               # articles: match only, no writes
+//   npm run backfill:one -- --pages=5 --limit=25 # articles
 //
-// Idempotent and resume-safe with no cursor: an article whose bouts already
-// exist writes nothing, so an interrupted run is resumed by running it again.
-// `--limit` bounds a single run so this is many small passes rather than one
-// long one against a third party.
+// --events reads the card straight off each event page (one/extract/matchups),
+// which is where most of the gap closes: ONE's sitemap lists ~423 events and
+// ~80% of those from mid-2017 onward carry a full card, results included.
+// Prefer it. The default (article) mode walks the editorial results archive,
+// which still reaches the pre-2017 era the event pages do not.
+//
+// ── Why this mode exists at all ──────────────────────────────────────────
+// The cron does the same sweep, but windowed: refresh-one runs twice a week and
+// advances 16 archive events per tick, so closing 400+ events through the cron
+// alone takes months. This is the one-off pass that does it in a single sitting
+// (~35 minutes at the 5s shared rate limit), after which the cron only has to
+// maintain the front of the list.
+//
+// Idempotent and resume-safe: persistAggregated keys a bout on (event, corners),
+// so re-running writes nothing new, and an interrupted run is resumed by
+// re-running it — or continued precisely with --offset.
 
 import { prisma } from "@/lib/db";
 import { discoverOneArticles, ingestOneArticle } from "@/lib/scraper/one/ingest";
 import { matchArticleToEvent, type EventCandidate } from "@/lib/scraper/one/match";
+import { syncONE, discoverEvents } from "@/lib/scraper/one";
+import { persistAggregated } from "@/services/sync/persist";
+import type { Sport } from "@/lib/types";
 
 const arg = (name: string, fallback: number) => {
   const raw = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -20,8 +37,12 @@ const arg = (name: string, fallback: number) => {
   return Number.isFinite(n) ? n : fallback;
 };
 const dry = process.argv.includes("--dry");
+const eventsMode = process.argv.includes("--events");
 const pages = arg("pages", 1);
-const limit = arg("limit", 10);
+// Article mode is a polite trickle; the event sweep is a one-off pass, so its
+// default is "the whole archive" rather than a batch.
+const limit = arg("limit", eventsMode ? 0 : 10);
+const offset = arg("offset", 0);
 
 function redactedDbTarget(): string {
   const raw = process.env.DATABASE_URL;
@@ -45,12 +66,71 @@ async function emptyOneEvents(): Promise<number> {
   });
 }
 
+/**
+ * Sweep ONE's event pages and persist whatever card each one carries.
+ *
+ * Sequential and paced by the shared fetcher — this is a sustained crawl of
+ * somebody else's server, and the polite rate is the one that finishes rather
+ * than the one that gets 429'd.
+ */
+async function sweepEventPages(before: number): Promise<void> {
+  const all = await discoverEvents();
+  const slice = all.slice(offset, limit > 0 ? offset + limit : undefined);
+  console.log(`Discovered ${all.length} event page(s); sweeping ${slice.length} from offset ${offset}\n`);
+
+  let withCard = 0;
+  let bouts = 0;
+  let written = 0;
+  let cardless = 0;
+
+  for (const [i, url] of slice.entries()) {
+    let harvest;
+    try {
+      harvest = await syncONE({ urls: [url] });
+    } catch (e) {
+      console.log(`  ✗ ${url.slice(0, 70)}  (${(e as Error).message.slice(0, 60)})`);
+      continue;
+    }
+
+    for (const ev of harvest.events) {
+      const card = ev.fights ?? [];
+      bouts += card.length;
+      if (card.length) withCard++;
+      else cardless++;
+
+      // Write per event so an interrupted sweep keeps everything it reached.
+      if (!dry && card.length) {
+        written += await persistAggregated((ev as { sport: Sport }).sport, "events", [ev]);
+      }
+
+      const decided = card.filter((b) => b.result === "WIN").length;
+      console.log(
+        `  ${card.length ? "✓" : "·"} [${String(offset + i).padStart(3)}] ` +
+          `${ev.date.slice(0, 10)} ${ev.name.slice(0, 46).padEnd(46)} ` +
+          `${String(card.length).padStart(2)} bouts${card.length ? `, ${decided} decided` : ""}`,
+      );
+    }
+  }
+
+  const after = dry ? before : await emptyOneEvents();
+  console.log(`\nswept=${slice.length} withCard=${withCard} cardless=${cardless} · bouts=${bouts} · events written=${written}`);
+  if (dry) console.log("DRY RUN — nothing written.\n");
+  else console.log(`AFTER: ${after} past ONE events with no bouts  (was ${before}, −${before - after})\n`);
+}
+
 async function main() {
   console.log(`\nDatabase: ${redactedDbTarget()}`);
-  console.log(`Mode: ${dry ? "DRY RUN (no writes)" : "WRITE"} · pages=${pages} · limit=${limit}\n`);
+  console.log(
+    `Mode: ${eventsMode ? "EVENT PAGES" : "RESULTS ARTICLES"} · ` +
+      `${dry ? "DRY RUN (no writes)" : "WRITE"} · ` +
+      (eventsMode ? `offset=${offset} · limit=${limit || "all"}` : `pages=${pages} · limit=${limit}`) +
+      `\n`,
+  );
 
   const before = await emptyOneEvents();
   console.log(`BEFORE: ${before} past ONE events with no bouts\n`);
+
+  if (eventsMode) return sweepEventPages(before);
 
   const articles = await discoverOneArticles(pages);
   console.log(`Discovered ${articles.length} results article(s)\n`);
