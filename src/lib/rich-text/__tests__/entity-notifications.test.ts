@@ -25,6 +25,13 @@ import { mentionedUserIds } from "../types";
 
 const entity = (type: string, id: string) => ({ type, id, start: 0, end: 5 });
 
+/** Every kind the product actually ships, read from the registry. */
+async function registeredKinds(): Promise<string[]> {
+  await import("../plugins");
+  const { entityKinds } = await import("../registry");
+  return entityKinds();
+}
+
 describe("only PEOPLE are notified", () => {
   test("a person mention yields their user id", () => {
     assert.deepEqual(mentionedUserIds([entity("mention", "usr_1")]), ["usr_1"]);
@@ -61,6 +68,33 @@ describe("only PEOPLE are notified", () => {
     // yet must not be able to ping anyone just by carrying an id that happens
     // to look like a user id.
     assert.deepEqual(mentionedUserIds([entity("sponsor", "usr_1")]), []);
+  });
+
+  test("EVERY registered kind except the person one notifies nobody", async () => {
+    // Asserted against the REGISTRY rather than a list written here, so a kind
+    // added tomorrow is covered the day it is added. Gyms and promotions became
+    // pickable in this pass, which is exactly when this needed to stop being a
+    // hand-maintained list.
+    const kinds = await registeredKinds();
+    assert.ok(kinds.includes("gym") && kinds.includes("promotion"), "the registry looks empty");
+
+    for (const kind of kinds) {
+      if (kind === "mention") continue;
+      assert.deepEqual(
+        mentionedUserIds([entity(kind, "usr_looks_like_a_user_id")]),
+        [],
+        `"${kind}" produced a notification target. Only a PERSON mention may.`,
+      );
+    }
+  });
+
+  test("only ONE registered kind can produce a target at all", async () => {
+    const kinds = await registeredKinds();
+    const notifying = kinds.filter((k) => mentionedUserIds([entity(k, "x")]).length > 0);
+    assert.deepEqual(
+      notifying, ["mention"],
+      "more than one kind can notify — the person kind must be the only one",
+    );
   });
 
   test("the same person named twice is notified once", () => {
@@ -112,6 +146,28 @@ describe("no notifier reads entity ids without filtering by kind", () => {
         "mentionedUserIds, which is the only thing that filters non-person\n" +
         "kinds out:\n" +
         suspects.map((f) => `  - ${f}`).join("\n"),
+    );
+  });
+
+  test("no entity source reads an ownerId", () => {
+    // The specific accident worth naming: `Gym.ownerId` and `Fighter.ownerId`
+    // exist, so a source that selected one would put a real user id inside an
+    // entity preview — one `.map(e => e.ownerId)` away from notifying a gym
+    // owner every time anybody mentions their gym.
+    //
+    // No source has any reason to read it: ownership decides who may EDIT a
+    // gym, which is an authorisation question answered in lib/gym-posts, not
+    // something a mention needs to know.
+    const sources = walk(join(SRC, "lib", "rich-text", "server"))
+      .map((f) => relative(SRC, f).replace(/\\/g, "/"))
+      .filter((rel) => stripComments(readFileSync(join(SRC, rel), "utf8")).includes("ownerId"));
+
+    assert.deepEqual(
+      sources,
+      [],
+      "These entity sources read an ownerId:\n" +
+        sources.map((f) => `  - ${f}`).join("\n") +
+        "\n\nAn entity is CONTENT. Its owner is not a party to being mentioned.",
     );
   });
 

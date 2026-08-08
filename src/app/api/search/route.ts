@@ -9,6 +9,7 @@ import { enforceLimit } from "@/lib/rate-limit/guard";
 import { POLICY } from "@/lib/rate-limit";
 import { PROMOTIONS } from "@/lib/promotions";
 import { searchFollowState } from "@/lib/search-follow";
+import { parseSearchQuery } from "@/lib/search-query";
 import { publicDisplayName } from "@/lib/display-name";
 import { PRESENCE_SELECT } from "@/lib/presence/select";
 import { presenceDtoFor } from "@/lib/presence/policy";
@@ -42,12 +43,31 @@ const PAGES = [
 // setting: /u/[username] is already a public page. Search therefore returns
 // people who have chosen a public username, and nothing about where they are.
 export async function GET(req: Request) {
-  const q = (new URL(req.url).searchParams.get("q") ?? "").trim();
+  const raw = (new URL(req.url).searchParams.get("q") ?? "").trim();
   const empty = {
     fighters: [], events: [], gyms: [], people: [], promotions: [],
     articles: [], communities: [], threads: [], videos: [], pages: [],
     follow: null,
   };
+
+  // ── "@handle" is a PERSON lookup ────────────────────────────────────────
+  //  Typing "@alex" here used to find nothing at all: the "@" went into the
+  //  query verbatim and no username or display name contains one, so the most
+  //  natural way to look somebody up returned an empty overlay. Every product
+  //  people already use — and this app's own composer — reads a leading "@" as
+  //  "a person", and lib/mentions has encoded that grammar since Phase 4.
+  //
+  //  So the sigil is stripped for matching, and it also NARROWS the search to
+  //  people: "@alex" asks a question about a person, and returning a fighter,
+  //  an event and three articles beside the answer is noise. It is faster too —
+  //  eight of the nine family queries are skipped rather than run and thrown
+  //  away.
+  //
+  //  Parsed by a pure function so the rule is testable without Postgres.
+  const { q, handleQuery } = parseSearchQuery(raw);
+
+  // A bare "@" is a real state while typing, and it is not a query. Returning
+  // the whole user table for it would be a directory dump.
   if (!q) return NextResponse.json(empty);
 
   // Bounded before any query runs. Anonymous by design (search must work signed
@@ -63,6 +83,74 @@ export async function GET(req: Request) {
   // The viewer, for follow state. Search stays fully functional signed out — a null
   // viewer just means every follow map comes back empty.
   const viewer = await getCurrentUser().catch(() => null);
+
+  // ── ONE definition of the people search, used by both paths ─────────────
+  //  The handle path below and the all-families path further down must return
+  //  identical rows for the same person — two copies of this query and its
+  //  projection would eventually disagree about `self`, about presence, or
+  //  about the underage filter, and only one of the two would be noticed.
+  const findPeople = (take: number) =>
+    prisma.user
+      .findMany({
+        where: {
+          username: { not: null },
+          underageFlagged: false,
+          OR: [{ username: contains }, { name: contains }],
+        },
+        // Handle matches are not orderable ahead of name matches in one query,
+        // so reputation stands in: the accounts most likely to be real.
+        orderBy: { reputation: "desc" },
+        take,
+        // `id` is selected only to compare against the viewer (the `self` flag)
+        // and is never returned in the response.
+        select: {
+          username: true, name: true, image: true, registryRole: true,
+          reputation: true, ...PRESENCE_SELECT,
+        },
+      })
+      .catch(() => []);
+
+  type PersonRow = Awaited<ReturnType<typeof findPeople>>[number];
+
+  const mapPerson = (u: PersonRow) =>
+    u.username
+      ? [{
+          username: u.username,
+          // publicDisplayName, never `u.name` — signup stores whatever was typed
+          // into the display-name field and people type their email there.
+          name: publicDisplayName(u),
+          image: u.image,
+          role: u.registryRole,
+          reputation: u.reputation,
+          // You cannot follow yourself — toggleFollow throws SelfFollowError —
+          // so the row must not offer a button guaranteed to fail. Decided on
+          // the SERVER because that is where the viewer's identity already is;
+          // comparing ids in the component would mean shipping the viewer's id
+          // to every search result to do it.
+          self: u.id === viewer?.id,
+          presence: presenceDtoFor(u, viewer?.id ?? null),
+        }]
+      : [];
+
+  // ── The handle path ─────────────────────────────────────────────────────
+  //  People only, and a longer list than the mixed view affords them, because
+  //  this query asked for exactly one thing. The other eight families are not
+  //  queried at all.
+  if (handleQuery) {
+    const people = await findPeople(12);
+    // Every other family is empty here by construction, not by omission — the
+    // full key set is passed so a new family added to SearchKeys cannot silently
+    // skip this path.
+    const follow = await searchFollowState(viewer?.id ?? null, {
+      fighterSlugs: [],
+      eventSlugs: [],
+      gymSlugs: [],
+      promotionSlugs: [],
+      usernames: people.flatMap((u) => (u.username ? [u.username] : [])),
+    }).catch(() => null);
+
+    return NextResponse.json({ ...empty, people: people.flatMap(mapPerson), follow });
+  }
 
   const [fighters, upcoming, results, articles, communities, threadsPage, gyms, people, videos] = await Promise.all([
     searchFighters(q).catch(() => []),
@@ -84,20 +172,8 @@ export async function GET(req: Request) {
         },
       })
       .catch(() => []),
-    prisma.user
-      .findMany({
-        where: {
-          username: { not: null },
-          underageFlagged: false,
-          OR: [{ username: contains }, { name: contains }],
-        },
-        orderBy: { reputation: "desc" },
-        take: 6,
-        // `id` is selected only to compare against the viewer (the `self` flag) and
-        // is never returned in the response.
-        select: { username: true, name: true, image: true, registryRole: true, reputation: true, ...PRESENCE_SELECT },
-      })
-      .catch(() => []),
+    // Same query as the handle path above — see findPeople.
+    findPeople(6),
     // Video results come from the SAME recommender every other surface uses, so
     // a search for a fighter ranks an interview above a generic promotion clip
     // by the same rules — not a second, subtly different matcher.
@@ -153,23 +229,8 @@ export async function GET(req: Request) {
     // consumed by the overlay, the search page and anything added later, and a raw
     // `name` in this payload is one careless render away from publishing an email.
     // The client never receives an unsafe name.
-    people: people.flatMap((u) =>
-      u.username
-        ? [{
-            username: u.username,
-            name: publicDisplayName(u),
-            image: u.image,
-            role: u.registryRole,
-            reputation: u.reputation,
-            // You cannot follow yourself — toggleFollow throws SelfFollowError — so
-            // the row must not offer a button that is guaranteed to fail. Decided on
-            // the SERVER because that is where the viewer's identity already is;
-            // comparing ids in the component would mean shipping the viewer's id to
-            // every search result to do it.
-            self: u.id === viewer?.id,
-            presence: presenceDtoFor(u, viewer?.id ?? null),
-          }]
-        : [],
+    // Same projection as the handle path — see mapPerson.
+    people: people.flatMap(mapPerson
     ),
     articles: articles.filter((a) => has(a.title) || has(a.category)).slice(0, 6)
       .map((a) => ({ slug: a.slug, title: a.title, category: a.category })),

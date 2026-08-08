@@ -1,7 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { promotionBySlug } from "@/lib/promotions";
+import { PROMOTIONS, promotionBySlug } from "@/lib/promotions";
 import { registerEntitySource } from "./registry";
+import { rankByMatch } from "./rank";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  A PROMOTION.
@@ -21,9 +22,53 @@ import { registerEntitySource } from "./registry";
 registerEntitySource({
   kind: "promotion",
 
+  /**
+   * The only suggester that touches no database at all.
+   *
+   * Identity lives in the in-code registry, so this is a filter over a
+   * few dozen objects already in memory. That is worth saying out loud because
+   * the obvious alternative — deriving promotions from DISTINCT Event.promotion
+   * — would be an unbounded group-by on a keystroke path, and would surface the
+   * raw ingest strings ("UFC Fight Night", "ONE Friday Fights 163") as though
+   * they were organisations.
+   *
+   * ALIASES are matched as well as names, which is the point of the registry:
+   * somebody typing "ultimate fighting" or "onefc" finds the org they mean.
+   * They are matched but never DISPLAYED — the canonical name is what gets
+   * inserted, so the stored span is stable whichever alias was typed.
+   */
+  async suggest(q, limit) {
+    if (!q) return [];
+    const ql = q.toLowerCase();
+
+    const matches = PROMOTIONS.filter((p) =>
+      p.name.toLowerCase().includes(ql) ||
+      p.mark.toLowerCase().includes(ql) ||
+      p.aliases.some((a) => a.includes(ql)),
+    );
+
+    return rankByMatch(matches, q, limit, (p) => [p.name, p.mark, ...p.aliases]).map((p) => ({
+      kind: "promotion",
+      key: p.slug,
+      insert: p.name,
+      title: p.name,
+      // The monogram, only when it says something the name does not — "UFC"
+      // under the title "UFC" is noise.
+      subtitle: p.mark.toLowerCase() === p.name.toLowerCase() ? null : p.mark,
+      imageUrl: p.logo ?? null,
+    }));
+  },
+
   async resolve(keys) {
     const out = new Map<string, { id: string; hint: { slug: string; name: string }; expect: string }>();
     for (const key of keys) {
+      // The REGISTRY is the visibility policy: `promotionBySlug` is a lookup in
+      // PROMOTIONS, and the neutral fallback ("combat" / "Multiple promotions")
+      // is deliberately declared outside that array. So the placeholder we
+      // synthesise for events whose source names no org can be neither
+      // suggested nor resolved — it is not an organisation, and letting one be
+      // referenced would put "Multiple promotions" in front of a reader as
+      // though it were one.
       const promo = promotionBySlug(key);
       if (!promo) continue;
       out.set(key, {

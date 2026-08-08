@@ -117,6 +117,74 @@ describe("scanning the final text for what was picked", () => {
     assert.deepEqual(findInsertion("ask @ALEX about it", "alex"), [[4, 9]]);
   });
 
+  test("the scan is PERMISSIVE — a short name is found inside a longer one", () => {
+    // Worth pinning as a fact rather than assuming it away. "@UFC" is a
+    // promotion and "@UFC 322" is an event, and the scan for "UFC" genuinely
+    // matches inside the event's text: the character after it is a space, which
+    // is not a word character, so the boundary rule accepts it.
+    //
+    // That is NOT a bug, and trying to fix it here would be. The scanner does
+    // not know which picks the author made — it is handed each pick separately
+    // and asked where that text appears. Disambiguation happens once, later,
+    // where the whole set is visible. See the next test.
+    assert.deepEqual(findInsertion("watching @UFC 322 tonight", "UFC"), [[9, 13]]);
+  });
+
+  test("the ORDERING RULE is what disambiguates the overlap", () => {
+    // A sentence naming both. The promotion is found twice — once on its own,
+    // once inside the event — so three spans are generated for two entities.
+    const text = "the @UFC put on @UFC 322";
+    const drafts = [
+      ...findInsertion(text, "UFC").map(([start, end]) => ({ type: "promotion", start, end })),
+      ...findInsertion(text, "UFC 322").map(([start, end]) => ({ type: "event", start, end })),
+    ];
+    assert.equal(drafts.length, 3, "the scan did not over-generate as expected");
+
+    // build() sorts by start, then LONGER first at the same start. That single
+    // rule is what makes the event beat the promotion at offset 16: the
+    // sanitiser resolves overlaps by keeping the earlier span, and after this
+    // sort "earlier" and "longer" are the same span — the one the author
+    // actually inserted.
+    const sorted = drafts.sort((a, b) => (a.start - b.start) || (b.end - a.end));
+
+    // Then the sanitiser's own rule: walk in order, drop anything overlapping
+    // what has already been kept.
+    const kept: typeof sorted = [];
+    let cursor = 0;
+    for (const d of sorted) {
+      if (d.start < cursor) continue;
+      kept.push(d);
+      cursor = d.end;
+    }
+
+    assert.deepEqual(
+      kept.map((d) => [d.type, d.start, d.end]),
+      [["promotion", 4, 8], ["event", 16, 24]],
+      "the overlap resolved the wrong way — a promotion swallowed an event",
+    );
+  });
+
+  test("a multi-word GYM name is found as one span", () => {
+    assert.deepEqual(findInsertion("training at @City Kickboxing today", "City Kickboxing"), [[12, 28]]);
+  });
+
+  test("digits and hyphens in a gym name match", () => {
+    assert.deepEqual(
+      findInsertion("@10th Planet Jiu-Jitsu is close", "10th Planet Jiu-Jitsu"),
+      [[0, 22]],
+    );
+  });
+
+  test("ACCENTED names match, including across case", () => {
+    assert.deepEqual(findInsertion("at @Academia José Aldo now", "Academia José Aldo"), [[3, 22]]);
+    assert.deepEqual(findInsertion("at @ACADEMIA JOSÉ ALDO now", "Academia José Aldo"), [[3, 22]]);
+  });
+
+  test("a non-Latin name matches", () => {
+    const spans = findInsertion("training with @Хабиб today", "Хабиб");
+    assert.equal(spans.length, 1);
+  });
+
   test("an insert containing punctuation is matched literally, not as a pattern", () => {
     // Event names carry dots, colons and brackets. Treating the insert as a
     // regex would either throw or match the wrong thing.
