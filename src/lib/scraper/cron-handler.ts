@@ -32,12 +32,20 @@ export function makeCronHandler(kind: RefreshKind) {
   return async function GET(req: Request) {
     if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const requested = new URL(req.url).searchParams.get("tier");
+    const params = new URL(req.url).searchParams;
+    const requested = params.get("tier");
     const tier = isResultTier(requested) ? requested : undefined;
+
+    // `?window=fresh` — read only the recently-changed prefix of a promotion
+    // sweep, skipping the archive tail. The cheap, frequent job that catches
+    // card ANNOUNCEMENTS between the slow twice-weekly archive walks.
+    // Anything else (absent, mistyped) means the normal full sweep, so a
+    // fat-fingered cron URL does more work rather than silently less.
+    const freshOnly = params.get("window") === "fresh";
 
     const started = Date.now();
     try {
-      const { results, failed } = await refreshDetailed(kind, { tier });
+      const { results, failed } = await refreshDetailed(kind, { tier, freshOnly });
       const durationMs = Date.now() - started;
 
       // A run in which EVERY target threw is a failed run, and must answer with an

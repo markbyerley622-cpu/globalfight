@@ -654,6 +654,37 @@ services:
     envVars:
       - fromGroup: globalfight
 
+  # ── Cron: ONE card announcements (daily) ─────────────────────────────────
+  #
+  # SEPARATE FROM THE ARCHIVE SWEEP ABOVE, on purpose.
+  #
+  # gf-cron-promotions walks ONE's 423-event archive twice a week. That cadence
+  # is right for history and WRONG for announcements: ONE Friday Fights run every
+  # week and their cards go up days beforehand, so a card could be live on
+  # onefc.com for three days while our event page still read "Card to be
+  # announced". Observed 2026-08-08 — ONE Friday Fights 168 and 170 had each
+  # announced a World Championship bout that we were not showing.
+  #
+  # `?window=fresh` reads only the recently-changed prefix of the sitemap
+  # (lastmod-descending, so an announced card is at the FRONT by construction)
+  # and skips both the rotating archive tail and the editorial results crawl.
+  # That is ~24 requests, about 72s at the 3s throttle — cheap enough to run
+  # daily, which is the whole point.
+  #
+  # It deliberately does NOT advance the archive cursor (see runner.ts): a
+  # frequent job writing the checkpoint would rewind the slow walk through
+  # history every single day and it would never finish.
+  - type: cron
+    name: gf-cron-one-fresh
+    runtime: node
+    plan: starter
+    schedule: "0 9 * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -m 300 --retry 3 --retry-delay 15 --retry-all-errors -H "Authorization: Bearer $CRON_SECRET" "https://$APP_HOST/api/cron/refresh-one?window=fresh"
+    envVars:
+      - fromGroup: globalfight
+
   # ── Cron: BJJ (weekly) ───────────────────────────────────────────────────
   - type: cron
     name: gf-cron-weekly

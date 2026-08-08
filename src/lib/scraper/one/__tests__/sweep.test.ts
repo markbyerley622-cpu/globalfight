@@ -66,3 +66,33 @@ test("degenerate inputs yield no fetches rather than throwing", () => {
   assert.deepEqual(small.indices, [0, 1, 2, 3, 4]);
   assert.equal(small.wrapped, false);
 });
+
+// ── The fresh (announcement-catching) window ────────────────────────────────
+// `?window=fresh` runs the sweep with tail=0 so it reads only recently-changed
+// events. Cheap enough to run daily, which is the point: ONE announces Friday
+// Fights cards days ahead, and a twice-weekly archive walk shows "Card to be
+// announced" for days after the card is public.
+test("a fresh run reads only the recently-changed prefix", () => {
+  const p = planOneSweep(423, 200, FRESH, 0);
+  assert.equal(p.indices.length, FRESH);
+  assert.deepEqual(p.indices, [...Array(FRESH).keys()]);
+  assert.equal(p.wrapped, false);
+});
+
+test("tail=0 returns the archive HEAD — which the runner must NOT persist", () => {
+  // This is the trap the runner guards. With no tail window there is no position
+  // to advance, so the planner reports the archive head. Writing that on every
+  // frequent fresh run would rewind the slow archive walk to its first slice and
+  // it would never progress. runner.ts keeps the stored cursor for a fresh run;
+  // this asserts WHY that guard has to exist, so removing it fails here too.
+  const deepIntoArchive = 300;
+  const p = planOneSweep(423, deepIntoArchive, FRESH, 0);
+  assert.equal(p.nextCursor, FRESH, "planner reports the head, not the caller's position");
+  assert.notEqual(p.nextCursor, deepIntoArchive);
+});
+
+test("a fresh run and an archive run cover the same freshest events", () => {
+  const fresh = planOneSweep(423, 200, FRESH, 0);
+  const full = planOneSweep(423, 200, FRESH, TAIL);
+  assert.deepEqual(fresh.indices, full.indices.slice(0, FRESH));
+});

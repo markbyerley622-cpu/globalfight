@@ -4461,7 +4461,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 412,
+      "line": 453,
       "fn": "refreshDetailed",
       "model": "ProviderCheckpoint",
       "method": "upsert",
@@ -4474,7 +4474,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 474,
+      "line": 533,
       "fn": "refreshDetailed",
       "model": "ProviderCheckpoint",
       "method": "upsert",
@@ -15654,7 +15654,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 395,
+      "line": 415,
       "fn": "checkpoint",
       "model": "ProviderCheckpoint",
       "method": "findUnique",
@@ -15667,7 +15667,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 453,
+      "line": 494,
       "fn": "checkpoint",
       "model": "ProviderCheckpoint",
       "method": "findUnique",

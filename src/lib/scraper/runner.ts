@@ -223,6 +223,26 @@ export interface RefreshOpts {
    * Defaults to `recent`, so the frequent job never scans history.
    */
   tier?: ResultTier;
+  /**
+   * Fetch ONLY the freshest window, skipping the rotating archive tail and any
+   * secondary crawl. For the promotion sweeps (`one`, `bkfc`).
+   *
+   * ── Why this exists ──────────────────────────────────────────────────────
+   * The full sweep is a slow, twice-weekly archive walk. Card ANNOUNCEMENTS are
+   * a different problem with a different tempo: ONE Friday Fights run weekly and
+   * their cards appear days beforehand, so on a Mon/Thu cadence a card can be
+   * live on onefc.com for three days while our page still says "Card to be
+   * announced". Measured on 2026-08-08: ONE Friday Fights 168 and 170 had each
+   * announced a World Championship bout that we were not showing.
+   *
+   * Because discovery is ordered lastmod-descending, an event that CHANGED —
+   * a card announced, results posted — is at the front of the list by
+   * construction. So re-reading just the fresh prefix catches announcements for
+   * ~24 requests (~72s), cheap enough to run daily without touching the archive.
+   *
+   * The archive tail is what must not run often; the front is what must.
+   */
+  freshOnly?: boolean;
 }
 
 export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {}): Promise<RefreshOutcome> {
@@ -474,7 +494,13 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
         const checkpoint = await prisma.providerCheckpoint
           .findUnique({ where: { provider_scope: { provider: "one", scope: ONE_SWEEP_SCOPE } } })
           .catch(() => null);
-        const plan = planOneSweep(urls.length, Number(checkpoint?.cursor ?? NaN));
+        // freshOnly: tail = 0, so this reads the recently-changed prefix and
+        // nothing else — the announcement-catching job. It also leaves the
+        // cursor where the archive sweep left it, so a frequent fresh run can
+        // never starve or rewind the slow walk through history.
+        const plan = opts.freshOnly
+          ? planOneSweep(urls.length, Number(checkpoint?.cursor ?? NaN), undefined, 0)
+          : planOneSweep(urls.length, Number(checkpoint?.cursor ?? NaN));
 
         const h = await syncONE({ urls: plan.indices.map((i) => urls[i]) });
         let written = 0;
@@ -489,6 +515,18 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
         }
 
         const bouts = h.events.reduce((n, e) => n + (e.fights?.length ?? 0), 0);
+
+        // ── THE CURSOR BELONGS TO THE ARCHIVE SWEEP, NOT THE FRESH JOB ──────
+        // planOneSweep() with tail=0 returns nextCursor = the archive HEAD,
+        // because with no tail window there is no position to advance. Writing
+        // that would rewind the slow walk through history to the start on every
+        // fresh run — and since the fresh job is the FREQUENT one, the archive
+        // would never get past its first slice. The fresh job therefore keeps
+        // whatever cursor it found.
+        const nextCursor = opts.freshOnly
+          ? String(checkpoint?.cursor ?? plan.nextCursor)
+          : String(plan.nextCursor);
+
         // Advancing the cursor even on a zero-write tick is deliberate: an
         // archive slice where every event is already current legitimately writes
         // nothing, and refusing to move would pin the sweep there forever.
@@ -497,12 +535,12 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
             where: { provider_scope: { provider: "one", scope: ONE_SWEEP_SCOPE } },
             create: {
               provider: "one", scope: ONE_SWEEP_SCOPE,
-              cursor: String(plan.nextCursor), lastCheckedAt: new Date(),
+              cursor: nextCursor, lastCheckedAt: new Date(),
               ...(written > 0 ? { lastChangedAt: new Date() } : {}),
               stats: { discovered: urls.length, fetched: plan.indices.length, bouts, written },
             },
             update: {
-              cursor: String(plan.nextCursor), lastCheckedAt: new Date(),
+              cursor: nextCursor, lastCheckedAt: new Date(),
               ...(written > 0 ? { lastChangedAt: new Date() } : {}),
               stats: { discovered: urls.length, fetched: plan.indices.length, bouts, written },
             },
@@ -534,7 +572,12 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
       //
       // Deliberately small per tick. This is a sustained crawl of somebody
       // else's server, and an unpaced run was rate-limited after a dozen fetches.
-      await safe("one:results", async () => {
+      //
+      // Skipped on a fresh run. This is an ARCHIVE walk with its own cursor,
+      // and the announcement job's whole point is to be cheap enough to run
+      // daily — pulling three editorial index pages plus a dozen articles every
+      // time would triple its cost to re-read history that has not changed.
+      if (!opts.freshOnly) await safe("one:results", async () => {
         const state = await crawlOneArchive({ pages: 3, limit: 12 });
         return (
           `page=${state.fromPage}→${state.nextPage} exhausted=${state.exhausted} ` +
