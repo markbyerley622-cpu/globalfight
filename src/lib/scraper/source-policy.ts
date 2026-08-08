@@ -40,9 +40,11 @@ export const SOURCE_POLICIES: SourcePolicy[] = [
   },
   {
     source: "bkfc",
-    label: "BKFC (bkfc.com)",
+    label: "BKFC (bkfc.com + official scored feed)",
     supportsLiveResultUpdates: true,
-    note: "Event pages gain detail after the card, though winners stay client-side only.",
+    note: "Event pages gain detail after the card. Winners are client-side in the HTML, but the page " +
+      "declares its official scored feed in an inline script — the provider reads that, so a card " +
+      "re-visited after the bell now gains real results rather than only detail.",
   },
   {
     source: "one",

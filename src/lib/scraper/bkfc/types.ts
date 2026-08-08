@@ -62,6 +62,53 @@ export interface BkfcBout {
   method: string | null;
   roundEnded: number | null;
   timeEnded: string | null;
+  /** Ruleset AS THE SOURCE STATES IT ("BARE KNUCKLE BOXING"). Never derived
+   *  from the promotion — BKFC has run non-bare-knuckle bouts on its cards. */
+  ruleset?: string | null;
+  /** Official of record, when the feed names one. */
+  referee?: string | null;
+}
+
+/** One bout as the official stats feed states it. See ./results-feed. */
+export interface BkfcFeedBout {
+  /** ASCENDS from the first prelim — the MAIN EVENT IS THE HIGHEST. */
+  boutNumber: number;
+  redFirstName: string | null;
+  redLastName: string | null;
+  blueFirstName: string | null;
+  blueLastName: string | null;
+  redNickname: string | null;
+  blueNickname: string | null;
+  /** MMAReg's athlete id. A THIRD namespace — not the bkfc.com page slug and
+   *  not the DOM's data-*-fighter-uuid. Kept for provenance, not for identity. */
+  redUuid: string | null;
+  blueUuid: string | null;
+  redResult: CardResult | null;
+  blueResult: CardResult | null;
+  weightClass: string | null;
+  boutRules: string | null;
+  championship: boolean;
+  totalRounds: number | null;
+  winMethod: string | null;
+  winTechnique: string | null;
+  roundEnded: number | null;
+  roundEndedTime: string | null;
+  referee: string | null;
+}
+
+/** An event's scored card, as the official stats feed states it. */
+export interface BkfcFeedCard {
+  /** The feed's own stable event id (the `id=` in the feed URL). */
+  eventId: string | null;
+  eventUuid: string | null;
+  eventName: string | null;
+  /** BKFC's own wording, e.g. "Sat Feb 15 2020" — used to VERIFY identity. */
+  eventDate: string | null;
+  venue: string | null;
+  country: string | null;
+  /** The feed's own "this card is finished" flag. */
+  complete: boolean;
+  bouts: BkfcFeedBout[];
 }
 
 /** A BKFC event with its card. */
@@ -81,6 +128,15 @@ export interface BkfcEvent {
   ticketsUrl: string | null;
   watchUrl: string | null;
   bouts: BkfcBout[];
+  /**
+   * The official stats feed this page declares, or null when it declares none
+   * (measured: only future events). Extraction is pure — the FETCH belongs to
+   * sync.ts, so parseEventPage() stays testable without a network.
+   */
+  statsFeedUrl?: string | null;
+  /** slug → display name for every fighter the card links, used to resolve the
+   *  feed's athletes back to our existing external-id namespace. */
+  cardFighters?: Map<string, string>;
 }
 
 /** A social profile link scraped from a fighter page. */
@@ -185,4 +241,13 @@ export interface SyncOptions {
   slug?: string;
   /** Hard cap on pages fetched (safety valve for `full`). 0 = unlimited. */
   maxPages?: number;
+  /**
+   * Exact event URLs to fetch, skipping discovery.
+   *
+   * The runner uses this to fetch a WINDOW of the sitemap (see ./sweep): a full
+   * sweep costs two requests per event and does not fit a cron tick, so the
+   * caller picks which slice this run pays for. syncBKFC stays pure — the
+   * resume cursor belongs to the runner, which is the layer that has a database.
+   */
+  eventUrls?: string[];
 }

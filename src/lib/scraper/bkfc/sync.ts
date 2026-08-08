@@ -17,6 +17,7 @@ import { fetchPage } from "../http";
 import { log } from "../logger";
 import { discover } from "./sitemap";
 import { parseEventPage } from "./extract/events";
+import { parseFeedCard, feedCardToBouts, verifyFeedCard } from "./results-feed";
 import { parseFighterPage } from "./extract/fighters";
 import { parseRankingsPage } from "./extract/rankings";
 import { parseArticlePage } from "./extract/news";
@@ -64,14 +65,48 @@ export async function syncBKFC(opts: SyncOptions = {}): Promise<BkfcHarvest> {
     for (const v of parseVideos(html)) videoSink.set(v.youtubeId ?? v.url, v);
   };
 
-  const urls = await resolveUrls(mode, entities, opts.slug);
+  const urls = opts.eventUrls
+    ? { events: opts.eventUrls, fighters: [], news: [] }
+    : await resolveUrls(mode, entities, opts.slug);
 
   // ── Events → NormalizedEvent[] ─────────────────────────────────────────────
   if (entities.includes("events") && urls.events.length) {
     report.discovered.events = urls.events.length;
-    const events = await runPages(urls.events, maxPages, warnings, harvestVideos, (html, url) => {
+    const events = await runPages(urls.events, maxPages, warnings, harvestVideos, async (html, url) => {
       const e = parseEventPage(html, url);
       if (!e) return null;
+
+      // ── RESULTS ─────────────────────────────────────────────────────────
+      // The DOM card has no winner (verified — all four variants ship unmarked
+      // and the method reads "TBU"). The page declares its official scored feed
+      // in an inline script; ../results-feed reads that URL and this fetches it.
+      // The feed SUPERSEDES the DOM card, because it carries the same matchups
+      // plus result, method, round, time, ruleset, scheduled rounds and referee.
+      //
+      // Every failure below degrades to the DOM card rather than dropping the
+      // event: a card without results is still a card, and it is what this
+      // provider produced before the feed existed.
+      if (e.statsFeedUrl) {
+        try {
+          const { html: raw } = await fetchPage(e.statsFeedUrl);
+          const card = parseFeedCard(JSON.parse(raw));
+          if (!card) {
+            warnings.push(`${url}: stats feed carried no readable card`);
+          } else {
+            const check = verifyFeedCard(e, card);
+            if (!check.ok) {
+              // Skipped, not guessed — attaching a mismatched card would put
+              // real bouts on the wrong event, which is worse than no results.
+              warnings.push(`${url}: stats feed REJECTED — ${check.reason}`);
+            } else {
+              e.bouts = feedCardToBouts(card, e.cardFighters ?? new Map());
+            }
+          }
+        } catch (err) {
+          warnings.push(`${url}: stats feed unavailable — ${(err as Error).message}`);
+        }
+      }
+
       const v = validateEvent(e);
       warnings.push(...v.warnings);
       if (!v.ok || !v.value) { report.rejected.events += 1; return null; }
@@ -146,7 +181,9 @@ async function runPages<T>(
   maxPages: number,
   warnings: string[],
   onHtml: (html: string, url: string) => void,
-  parse: (html: string, url: string) => T | null,
+  // Async-capable: the events pass makes a SECOND request per page (the official
+  // stats feed) before it can produce a canonical event.
+  parse: (html: string, url: string) => T | null | Promise<T | null>,
 ): Promise<T[]> {
   const capped = maxPages > 0 ? list.slice(0, maxPages) : list;
   if (capped.length < list.length) {
@@ -160,7 +197,7 @@ async function runPages<T>(
         try {
           const { html } = await fetchPage(url);
           onHtml(html, url);
-          const value = parse(html, url);
+          const value = await parse(html, url);
           if (value) out.push(value);
         } catch (e) {
           warnings.push(`${url}: ${(e as Error).message}`);

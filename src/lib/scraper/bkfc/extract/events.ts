@@ -4,12 +4,20 @@
 //  Strategy: JSON-LD (schema.org/Event) for name, poster, date and venue;
 //  cheerio over the Webflow card markup for the bout list.
 //
-//  IMPORTANT — event RESULTS are intentionally left null. BKFC renders the
-//  per-bout winner via a client-side widget (data-cond-key="RedResult"/…),
-//  and the static HTML contains all four result variants unmarked — there is
-//  no server-rendered winner to read. Fabricating an outcome in a combat-sports
-//  registry is worse than a null, so we store the matchup and leave the result
-//  SCHEDULED until a licensed results feed (gigcasters) is available.
+//  IMPORTANT — the results are NOT in this markup, and that part of the old
+//  comment was verified correct: BKFC renders the per-bout winner via a
+//  client-side widget (data-cond-key="RedResult"/…), the static HTML ships all
+//  four result variants unmarked, and the method placeholder reads "TBU".
+//  Nothing here fabricates an outcome from that.
+//
+//  What the old comment got wrong was the conclusion — that results were
+//  therefore unavailable "until a licensed results feed is available". The feed
+//  is declared by this very page, in an inline script, unauthenticated:
+//      const FINAL_STATS = 'https://xapi.mmareg.com/api/bkfc?type=json&…';
+//  `statsFeedUrl` below extracts it; ../results-feed fetches and parses it, and
+//  supersedes the DOM card when it resolves. See that module for the numbers.
+//
+//  This file stays PURE — it extracts the URL, it does not fetch it.
 // ════════════════════════════════════════════════════════════════════════
 
 import * as cheerio from "cheerio";
@@ -23,6 +31,7 @@ import {
   splitLocation,
 } from "../normalize";
 import { extractJsonLd, findType, str, obj } from "./jsonld";
+import { extractStatsFeedUrl, cardFighterIndex } from "../results-feed";
 
 const FIGHTER_HREF = /\/fighters\/([a-z0-9-]+)/i;
 
@@ -94,6 +103,8 @@ export function parseEventPage(html: string, url: string, now = new Date()): Bkf
     ticketsUrl,
     watchUrl,
     bouts,
+    statsFeedUrl: extractStatsFeedUrl(html),
+    cardFighters: cardFighterIndex($),
   };
 }
 

@@ -16,7 +16,8 @@ import { ingestAdapterEvents } from "@/lib/events/ingest";
 import { enrichPending } from "@/lib/enrich/enrich";
 import { ingestNews } from "@/lib/news/ingest";
 import { enrichArticleImages } from "@/lib/news/og-images";
-import { syncBKFC } from "@/lib/scraper/bkfc";
+import { syncBKFC, discover as discoverBkfc } from "@/lib/scraper/bkfc";
+import { planBkfcSweep, BKFC_SWEEP_SCOPE } from "@/lib/scraper/bkfc/sweep";
 import { generateAllP4P } from "@/lib/rankings/generate";
 import { ingestAllRankings } from "@/lib/rankings/ingest";
 import { ingestCuratedP4P } from "@/lib/rankings/curated/ingest";
@@ -381,16 +382,55 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
       // Rankings/news/videos are still returned by the harvest and still NOT
       // written — there is no aggregated persister for them, which is a missing
       // feature now rather than a policy gate.
+      //
+      // ── Windowed and RESUMABLE ────────────────────────────────────────────
+      // Each event now costs TWO requests — the page, then the official scored
+      // feed it declares — so a full 169-event sweep is ~17 minutes at the
+      // production rate limit, against a job budget this route SHARES with
+      // refresh-one and refresh-wikicards. Without a cursor the run would be cut
+      // off in the same place every tick and the tail would never be reached.
+      // See bkfc/sweep.ts.
       await safe("bkfc:sync", async () => {
-        const h = await syncBKFC({ mode: "daily" });
+        const all = await discoverBkfc();
+        const checkpoint = await prisma.providerCheckpoint
+          .findUnique({ where: { provider_scope: { provider: "bkfc", scope: BKFC_SWEEP_SCOPE } } })
+          .catch(() => null);
+        const plan = planBkfcSweep(all.events.length, Number(checkpoint?.cursor ?? NaN));
+
+        const h = await syncBKFC({ mode: "daily", eventUrls: plan.indices.map((i) => all.events[i]) });
         let written = 0;
         if (isSourceEnabled("bkfc-fighters")) written += await persistAggregated("BARE_KNUCKLE", "fighters", h.fighters);
         if (isSourceEnabled("bkfc-events")) written += await persistAggregated("BARE_KNUCKLE", "events", h.events);
+
+        const bouts = h.events.reduce((n, e) => n + (e.fights?.length ?? 0), 0);
+        const decided = h.events.reduce((n, e) => n + (e.fights ?? []).filter((f) => f.result === "WIN").length, 0);
+
+        // The cursor advances even on a zero-write tick: an archive slice that is
+        // already current legitimately writes nothing, and refusing to move would
+        // pin the sweep there forever.
+        const stats = { discovered: all.events.length, fetched: plan.indices.length, bouts, decided, written };
+        await prisma.providerCheckpoint
+          .upsert({
+            where: { provider_scope: { provider: "bkfc", scope: BKFC_SWEEP_SCOPE } },
+            create: {
+              provider: "bkfc", scope: BKFC_SWEEP_SCOPE,
+              cursor: String(plan.nextCursor), lastCheckedAt: new Date(),
+              ...(written > 0 ? { lastChangedAt: new Date() } : {}),
+              stats,
+            },
+            update: {
+              cursor: String(plan.nextCursor), lastCheckedAt: new Date(),
+              ...(written > 0 ? { lastChangedAt: new Date() } : {}),
+              stats,
+            },
+          })
+          .catch(() => {});
+
         log.info(
-          { harvested: h.report.extracted, written, persistedFighters: isSourceEnabled("bkfc-fighters"), persistedEvents: isSourceEnabled("bkfc-events") },
+          { ...stats, nextCursor: plan.nextCursor, wrapped: plan.wrapped, harvested: h.report.extracted },
           "bkfc:runner:done",
         );
-        return written;
+        return `events=${written} bouts=${bouts} decided=${decided} window=${plan.indices.length}/${all.events.length} next=${plan.nextCursor}`;
       });
       break;
     case "one":
