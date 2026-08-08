@@ -15,6 +15,7 @@
 import pRetry, { AbortError } from "p-retry";
 import { log } from "./logger";
 import { BOT_USER_AGENT, isTerminal, retryAfterMs } from "@/lib/http-identity";
+import { assertFetchAllowed } from "./source-gate";
 
 const RATE_LIMIT_MS = Number(process.env.SCRAPER_RATE_LIMIT_MS ?? 5000);
 const MAX_RETRIES = Number(process.env.SCRAPER_MAX_RETRIES ?? 2);
@@ -61,6 +62,15 @@ function scraperGateError(): string | null {
 export async function fetchPage(url: string): Promise<FetchResult> {
   const gate = scraperGateError();
   if (gate) throw new Error(gate);
+
+  // ── THE PER-SOURCE COMPLIANCE GATE ──────────────────────────────────────
+  // ENABLE_SCRAPER above is the master switch: may we touch anyone's server at
+  // all. This is the narrower question: may we touch THIS one. It lives here,
+  // at the shared boundary, because a check inside a provider is a check the
+  // next provider will be written without — and because "disabled" has to mean
+  // unreachable from cron, CLI, backfill and dry runs alike, not just
+  // unpersisted. See ./source-gate.
+  assertFetchAllowed(url);
 
   return pRetry(
     async () => {

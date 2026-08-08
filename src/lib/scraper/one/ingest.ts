@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { log } from "@/lib/scraper/logger";
 import { BOT_HEADERS } from "@/lib/http-identity";
+import { assertFetchAllowed } from "@/lib/scraper/source-gate";
 import { resolveOrCreateFighter } from "@/lib/registry/identity";
 import { parseOneResults, validateOneResults, type OneBout } from "./results";
 import { matchArticleToEvent, type EventCandidate } from "./match";
@@ -62,6 +63,12 @@ export class RateLimited extends Error {
 let lastRequestAt = 0;
 
 async function fetchText(url: string): Promise<string> {
+  // This path predates the shared fetch layer and calls `fetch` directly (it
+  // needs its own 1.5s pacing, distinct from the global throttle). That made it
+  // the one scraper outbound the source gate could not see, so the check is
+  // repeated here explicitly. Any NEW outbound belongs in ../http instead.
+  assertFetchAllowed(url);
+
   const wait = REQUEST_GAP_MS - (Date.now() - lastRequestAt);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastRequestAt = Date.now();

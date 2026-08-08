@@ -4396,7 +4396,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 323,
+      "line": 330,
       "fn": "recordProvenance",
       "model": "FightImport",
       "method": "upsert",
@@ -4409,7 +4409,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 346,
+      "line": 353,
       "fn": "queueUnmatched",
       "model": "ImportConflict",
       "method": "upsert",
@@ -4422,7 +4422,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 503,
+      "line": 510,
       "fn": "crawlOneArchive",
       "model": "ProviderCheckpoint",
       "method": "upsert",
@@ -15563,7 +15563,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 142,
+      "line": 149,
       "fn": "candidates",
       "model": "Event",
       "method": "findMany",
@@ -15576,7 +15576,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 155,
+      "line": 162,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -15589,7 +15589,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 202,
+      "line": 209,
       "fn": "already",
       "model": "Fight",
       "method": "findFirst",
@@ -15602,7 +15602,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 232,
+      "line": 239,
       "fn": "fight",
       "model": "Fight",
       "method": "create",
@@ -15615,7 +15615,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 315,
+      "line": 322,
       "fn": "freeFightSlug",
       "model": "Fight",
       "method": "findUnique",
@@ -15628,7 +15628,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 489,
+      "line": 496,
       "fn": "checkpoint",
       "model": "ProviderCheckpoint",
       "method": "findUnique",
