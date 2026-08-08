@@ -248,10 +248,14 @@ export const INGESTION_SOURCES: IngestionSource[] = [
     name: "BKFC official scored cards (xapi.mmareg.com)",
     host: "xapi.mmareg.com",
     method: "public-api",
-    basis: "OPERATOR OVERRIDE (development), not an established legal basis. The endpoint is " +
-      "unauthenticated and is the one bkfc.com's own public event pages call to render their " +
-      "results widget. A written licence or permission from BKFC *and* MMAReg is REQUIRED before " +
-      "production/public use — obtain one and replace this text.",
+    basis: "NONE — PENDING. Not cleared, and deliberately NOT granted an operator override like the " +
+      "other bkfc-* entries. The endpoint is unauthenticated and is the one bkfc.com's own public " +
+      "pages call, but reachable is not licensed, and three checked facts point the other way: " +
+      "(1) MMAReg/CombatReg is a commercial combat-sports DATA COMPANY that sells exactly this — " +
+      "its own description is \"historical results, fighter data, live capture of bout striking " +
+      "statistics… for the UFC, PFL, and BKFC\"; (2) its product sits behind a sign-in at " +
+      "app.combatreg.com; (3) its robots.txt is a bare comment with no rules — an absence of " +
+      "policy, not a grant. Written permission from BKFC *and* MMAReg is REQUIRED.",
     permittedFields: [
       "bout order", "corner names", "weightClass", "boutRules(ruleset)", "championshipBout",
       "result", "winMethod", "roundEnded", "roundEndedTime", "totalRounds", "referee",
@@ -259,10 +263,14 @@ export const INGESTION_SOURCES: IngestionSource[] = [
     frequency: "daily",
     retention: "until superseded",
     attribution: "Official results via BKFC (bkfc.com), scoring data by MMAReg.",
-    enabled: true,
-    note: "ENABLED via operator override (dev), matching the bkfc-events precedent. Requires " +
-      "ENABLE_SCRAPER=true. Per-round STRIKE STATISTICS are present in the payload and are " +
-      "deliberately NOT ingested — only the fields above. Not a licence — see basis.",
+    enabled: false,
+    note: "DISABLED. The connector is complete, tested and measured (20/24 sampled events expose a " +
+      "full scored card; 207/207 bouts decided) — it is withheld on COMPLIANCE, not capability. " +
+      "Because isSourceEnabled() has been a no-op since 2026-08-01, this `enabled` field does NOT " +
+      "stop anything: the real gate is the BKFC_RESULTS_ENABLED feature flag, which fails closed " +
+      "and is unset. Turn both on together, never one alone. Per-round STRIKE STATISTICS are in " +
+      "the payload and are deliberately NOT ingested. Meanwhile BKFC results still arrive via the " +
+      "licensed Wikipedia (wikicard) path.",
   },
   {
     id: "bkfc-fighters",

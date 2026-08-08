@@ -7451,7 +7451,7 @@
     },
     {
       "file": "src/lib/admin/provider-health.ts",
-      "line": 165,
+      "line": 172,
       "fn": "grouped",
       "model": "EventExternalId",
       "method": "groupBy",
@@ -7464,7 +7464,7 @@
     },
     {
       "file": "src/lib/admin/provider-health.ts",
-      "line": 183,
+      "line": 190,
       "fn": "getProviderHealth",
       "model": "Fight",
       "method": "count",
@@ -7477,7 +7477,7 @@
     },
     {
       "file": "src/lib/admin/provider-health.ts",
-      "line": 184,
+      "line": 191,
       "fn": "getProviderHealth",
       "model": "Event",
       "method": "count",
@@ -7490,7 +7490,7 @@
     },
     {
       "file": "src/lib/admin/provider-health.ts",
-      "line": 226,
+      "line": 233,
       "fn": "getProviderHealth",
       "model": "Event",
       "method": "groupBy",
@@ -7503,7 +7503,7 @@
     },
     {
       "file": "src/lib/admin/provider-health.ts",
-      "line": 227,
+      "line": 234,
       "fn": "getProviderHealth",
       "model": "Event",
       "method": "findMany",
@@ -7516,7 +7516,7 @@
     },
     {
       "file": "src/lib/admin/provider-health.ts",
-      "line": 236,
+      "line": 243,
       "fn": "bouts",
       "model": "Fight",
       "method": "count",

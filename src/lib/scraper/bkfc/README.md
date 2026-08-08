@@ -111,8 +111,39 @@ namespace our fighters are already stored under) inside each card's closed set �
 90% resolve, with zero ambiguous matches; a miss emits no external id and lets the
 shared dedupe engine resolve by name.
 
-⚠️ `xapi.mmareg.com` is a **third-party host** with its own registry entry
-(`bkfc-results`). Read its `basis` before production use.
+### ⛔ Results ingestion is OFF — blocked on compliance, not capability
+
+The connector above is complete, tested and measured. It is **disabled by default**
+and must stay that way until someone obtains permission.
+
+```
+BKFC_RESULTS_ENABLED     unset  → the feed is never requested
+```
+
+**Why.** `xapi.mmareg.com` is not BKFC — it is MMAReg / CombatReg, a commercial
+combat-sports **data company** that describes itself as selling "historical results,
+fighter data, live capture of bout striking statistics… for the UFC, PFL, and BKFC".
+Its product sits behind a sign-in at `app.combatreg.com`, and its `robots.txt` is a
+bare comment with no rules — an absence of policy, not a grant. The endpoint being
+unauthenticated makes it *reachable*; it does not make it *licensed*, and bulk
+ingesting a data vendor's results archive is consuming the thing they sell.
+
+Separately, `bkfc.com/robots.txt` sets `Crawl-delay: 86400` for all agents. Our
+shared throttle is 3s and does not honour it.
+
+**Where the gate actually is.** `readFlags().bkfcResultsEnabled`, checked in
+`sync.ts`. It is *not* the registry's `enabled: false` — `isSourceEnabled()` has
+returned `true` unconditionally since the 2026-08-01 gate removal, so the registry
+is a **record** and the flag is the **enforcement**. `__tests__/results-gate.test.ts`
+asserts exactly this so the two cannot drift.
+
+With the gate off, BKFC still ingests events, cards, fighters and title flags from
+bkfc.com, and bout **results still arrive via the licensed Wikipedia (wikicard)
+path** — which is what makes withholding this source affordable.
+
+To enable: obtain written permission from **BKFC and MMAReg**, replace the `basis`
+in the `bkfc-results` registry entry with it, set `enabled: true` there, and set
+`BKFC_RESULTS_ENABLED=true`. All four together, never one alone.
 
 ### Other known limits (honest nulls, never fabricated data)
 - **Images are not re-hosted** — source URLs only.

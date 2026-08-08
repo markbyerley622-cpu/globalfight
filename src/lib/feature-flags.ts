@@ -67,6 +67,31 @@ export interface FeatureFlags {
   /** BJJ / grappling ingestion (ADCC and successors). */
   bjjProviderEnabled: boolean;
   /**
+   * BKFC bout RESULTS from the official scored feed (xapi.mmareg.com).
+   *
+   * ── OFF UNTIL A LEGAL BASIS EXISTS. This is a compliance gate, not a
+   *    performance switch, and it is the ONLY thing standing in front of the
+   *    request — `isSourceEnabled()` in the ingestion registry returns true
+   *    unconditionally since the 2026-08-01 gate removal, so the registry is a
+   *    RECORD and this flag is the ENFORCEMENT.
+   *
+   * The endpoint is unauthenticated and is the one bkfc.com's own public pages
+   * call. That makes it reachable; it does not make it licensed. MMAReg
+   * (app.combatreg.com) is a commercial combat-sports DATA COMPANY whose product
+   * is behind a sign-in and whose own description is "historical results, fighter
+   * data, live capture of bout striking statistics… for the UFC, PFL, and BKFC" —
+   * i.e. bulk-ingesting it is consuming the thing they sell. No terms grant it,
+   * and their robots.txt is a bare comment: an absence of policy, not a licence.
+   *
+   * The connector is complete and tested. Set BKFC_RESULTS_ENABLED=true only
+   * once written permission from BKFC *and* MMAReg exists, and record it in the
+   * `bkfc-results` registry entry at the same time.
+   *
+   * With this off, BKFC still ingests events, cards and fighters from bkfc.com,
+   * and bout results still arrive via the licensed Wikipedia (wikicard) path.
+   */
+  bkfcResultsEnabled: boolean;
+  /**
    * Historical BACKFILL, as distinct from incremental sync. A backfill walks
    * every year a source has and is the expensive, long-running mode; leaving it
    * behind its own switch means a daily cron cannot accidentally start one.
@@ -118,6 +143,7 @@ export function readFlags(env: NodeJS.ProcessEnv = process.env): FeatureFlags {
     boxingProviderEnabled: on("BOXING_PROVIDER_ENABLED", env),
     muayThaiProviderEnabled: on("MUAYTHAI_PROVIDER_ENABLED", env),
     bjjProviderEnabled: on("BJJ_PROVIDER_ENABLED", env),
+    bkfcResultsEnabled: on("BKFC_RESULTS_ENABLED", env),
     providerBackfillEnabled: on("PROVIDER_BACKFILL_ENABLED", env),
 
     ugcMediaUploadsEnabled: on("UGC_MEDIA_UPLOADS_ENABLED", env),

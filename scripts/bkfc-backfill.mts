@@ -22,6 +22,7 @@
 import { prisma } from "@/lib/db";
 import { syncBKFC, discover } from "@/lib/scraper/bkfc";
 import { persistAggregated } from "@/services/sync/persist";
+import { readFlags } from "@/lib/feature-flags";
 
 const arg = (name: string, fallback: number) => {
   const raw = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -77,6 +78,27 @@ async function main() {
   const before = await audit();
   printAudit("BEFORE", before);
   if (auditOnly) return;
+
+  // ── COMPLIANCE GATE ─────────────────────────────────────────────────────
+  // The sweep's whole purpose is the scored feed, so running it with the gate
+  // off would spend ~17 minutes of somebody's rate limit to re-write cards that
+  // already exist, and report a misleading "0 decided" as if the parser failed.
+  // Refuse loudly instead. --dry is still allowed: it writes nothing, and being
+  // able to see what WOULD be ingested is exactly what the operator needs to
+  // make the licensing decision.
+  if (!readFlags().bkfcResultsEnabled && !dry) {
+    console.error(
+      `\nREFUSING TO RUN — BKFC_RESULTS_ENABLED is not "true".\n\n` +
+        `  The BKFC results feed (xapi.mmareg.com) has NO legal basis recorded. See the\n` +
+        `  'bkfc-results' entry in src/lib/ingestion-registry.ts for the three facts behind\n` +
+        `  that call, and src/lib/feature-flags.ts for what turning it on commits you to.\n\n` +
+        `  Without the feed this sweep would re-fetch every card and write no results.\n` +
+        `  BKFC results continue to arrive via the licensed Wikipedia (wikicard) path.\n\n` +
+        `  --dry still works and shows exactly what would be ingested.\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   console.log(`\nMode: EVENT PAGES + OFFICIAL FEED · ${dry ? "DRY RUN (no writes)" : "WRITE"} · offset=${offset} · limit=${limit || "all"}\n`);
 

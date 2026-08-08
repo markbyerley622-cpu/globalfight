@@ -18,6 +18,7 @@ import { log } from "../logger";
 import { discover } from "./sitemap";
 import { parseEventPage } from "./extract/events";
 import { parseFeedCard, feedCardToBouts, verifyFeedCard } from "./results-feed";
+import { readFlags } from "@/lib/feature-flags";
 import { parseFighterPage } from "./extract/fighters";
 import { parseRankingsPage } from "./extract/rankings";
 import { parseArticlePage } from "./extract/news";
@@ -70,6 +71,11 @@ export async function syncBKFC(opts: SyncOptions = {}): Promise<BkfcHarvest> {
     : await resolveUrls(mode, entities, opts.slug);
 
   // ── Events → NormalizedEvent[] ─────────────────────────────────────────────
+  /** Events whose scored feed was NOT fetched because the compliance gate is off.
+   *  Counted and surfaced rather than silent: "no results" must be
+   *  distinguishable from "results refused", or a future run reads the gate as a
+   *  data gap and someone goes looking for a parser bug that does not exist. */
+  let resultsGateBlocked = 0;
   if (entities.includes("events") && urls.events.length) {
     report.discovered.events = urls.events.length;
     const events = await runPages(urls.events, maxPages, warnings, harvestVideos, async (html, url) => {
@@ -86,7 +92,21 @@ export async function syncBKFC(opts: SyncOptions = {}): Promise<BkfcHarvest> {
       // Every failure below degrades to the DOM card rather than dropping the
       // event: a card without results is still a card, and it is what this
       // provider produced before the feed existed.
-      if (e.statsFeedUrl) {
+      //
+      // ── COMPLIANCE GATE — fail closed ───────────────────────────────────
+      // BKFC_RESULTS_ENABLED is the ONLY thing in front of this request.
+      // `isSourceEnabled()` has returned true unconditionally since the
+      // 2026-08-01 registry-gate removal, so the `bkfc-results` registry entry
+      // is a record and this check is the enforcement. See feature-flags.ts for
+      // why the source is not cleared: MMAReg is a commercial combat-sports data
+      // vendor and this feed is the product they sell.
+      //
+      // Off is not a degraded mode — it is the documented default. The card,
+      // fighters and event still ingest from bkfc.com, and results still arrive
+      // via the licensed Wikipedia path.
+      if (e.statsFeedUrl && !readFlags().bkfcResultsEnabled) {
+        resultsGateBlocked += 1;
+      } else if (e.statsFeedUrl) {
         try {
           const { html: raw } = await fetchPage(e.statsFeedUrl);
           const card = parseFeedCard(JSON.parse(raw));
@@ -114,6 +134,13 @@ export async function syncBKFC(opts: SyncOptions = {}): Promise<BkfcHarvest> {
     });
     harvest.events = events;
     report.extracted.events = events.length;
+    if (resultsGateBlocked > 0) {
+      warnings.push(
+        `BKFC results NOT ingested for ${resultsGateBlocked} event(s): BKFC_RESULTS_ENABLED is not "true". ` +
+          `This is the documented default — the source (xapi.mmareg.com) has no legal basis recorded. ` +
+          `Cards, fighters and events were still ingested; results come from the licensed Wikipedia path.`,
+      );
+    }
   }
 
   // ── Fighters → NormalizedFighter[] ──────────────────────────────────────────

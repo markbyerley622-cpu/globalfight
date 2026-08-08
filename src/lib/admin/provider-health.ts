@@ -131,7 +131,14 @@ const KNOWN: Array<{ source: string; label: string; sport: Sport | "multi"; flag
   { source: "wikipedia-index", label: "Misfits — promotion index", sport: "BOXING", note: "Index article to per-card articles." },
   { source: "wikipedia", label: "Wikipedia cards (results harvest)", sport: "multi", note: "The only bout-RESULTS source for several promotions." },
   { source: "espn", label: "ESPN scoreboard", sport: "MMA", note: "UFC / PFL / Bellator / ONE / RIZIN." },
-  { source: "bkfc", label: "BKFC", sport: "BARE_KNUCKLE", note: "Official site." },
+  { source: "bkfc", label: "BKFC", sport: "BARE_KNUCKLE", note: "Official site — events, cards and fighters." },
+  {
+    source: "bkfc-results", label: "BKFC scored cards (MMAReg)", sport: "BARE_KNUCKLE",
+    flag: "bkfcResultsEnabled",
+    note: "BLOCKED ON COMPLIANCE, not capability: connector is complete and measured (207/207 " +
+      "sampled bouts decided), but MMAReg is a commercial data vendor with no basis recorded. " +
+      "Results meanwhile come from the Wikipedia path.",
+  },
   { source: "one", label: "ONE Championship (official)", sport: "multi", flag: "muayThaiProviderEnabled", note: "Official event pages." },
   { source: "adcc", label: "ADCC (adcombat.com)", sport: "BJJ", flag: "bjjProviderEnabled", note: "Source answered HTTP 403 on 2026-08-02 — see the ladder." },
   // Both of these were WRITING ROWS while unregistered, so the dashboard flagged
