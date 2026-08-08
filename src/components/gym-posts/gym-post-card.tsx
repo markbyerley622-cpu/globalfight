@@ -10,6 +10,7 @@ import type { GymPostDTO, ReactionType } from "@/lib/gym-posts/types";
 import { REACTION_TYPES } from "@/lib/gym-posts/types";
 import { timeAgo } from "@/lib/utils";
 import { ReportButton } from "@/components/forums/report-dialog";
+import { EntityText } from "@/components/rich-text/entity-text";
 import { MediaCarousel } from "./media-carousel";
 import { CommentThread } from "./comment-thread";
 
@@ -171,10 +172,17 @@ function Card({ post, signedIn, hideGym, priority, onChange, onDelete }: Props) 
         </div>
       </header>
 
+      {/* The ONE renderer. This was a raw {post.body} in a <p> — the last text
+          surface in the app still printing user-authored text as a string, so a
+          post was the only place an @mention was neither a link nor a
+          notification. It now segments and renders exactly as forum posts,
+          comments and DMs do. */}
       {post.body && (
-        <p className="mt-2.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-mist">
-          {post.body}
-        </p>
+        <EntityText
+          text={post.body}
+          entities={post.entities}
+          className="mt-2.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-mist"
+        />
       )}
 
       <MediaCarousel media={post.media} priority={priority} />

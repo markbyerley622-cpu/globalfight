@@ -168,8 +168,28 @@ export interface EventMapPreviewProps {
   pin: MapPin;
   /** Kilometres from the viewer, when they've shared a position. */
   distanceKm?: number | null;
-  /** Desktop floating card trims a little chrome the sheet can afford. */
-  variant?: "sheet" | "floating";
+  /**
+   * How much room the card has.
+   *
+   *   sheet     the mobile bottom sheet — full detail, the reader pulled it up
+   *   floating  the desktop anchored card — trims a little chrome
+   *   compact   the PHONE anchored card — the tight one
+   *
+   * ── Why `compact` exists ─────────────────────────────────────────────────
+   * The anchored card went to phones without a layout of its own: it rendered
+   * the desktop card at the width of the screen. A 16:9 poster across a 390px
+   * phone is 220px before a single fact, and the finished card ran to roughly
+   * 500px against a map that is 72dvh — under 480px on a common phone. The
+   * bottom of the card, both actions included, was clipped by the map's
+   * `overflow-hidden`, and because nothing was scrollable there was no way to
+   * reach it.
+   *
+   * FloatingPreview now caps the height and scrolls, so nothing can be lost.
+   * This variant is the other half: it makes the card small enough that the cap
+   * is a safety net rather than the normal case, because a card you have to
+   * scroll to press "View event" is still a bad card.
+   */
+  variant?: "sheet" | "floating" | "compact";
 }
 
 /**
@@ -193,7 +213,9 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
   const state = eventMapState({ status: ev.status, date: pin.date, now });
   const style = EVENT_STATE_STYLE[state];
   const past = isPastState(state);
-  const floating = variant === "floating";
+  const tight = variant === "compact";
+  // Both anchored variants trim the same chrome; `compact` trims more on top.
+  const floating = variant === "floating" || tight;
   const date = pin.date ? new Date(pin.date) : null;
 
   return (
@@ -208,7 +230,16 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
           A fight poster is the single most recognisable thing about a card, so
           it leads. 16:9 rather than the poster's native 2:3 — a full-height
           poster would push every fact below the fold of a floating card. */}
-      <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-ink-900">
+      {/* 16:9 is already a compromise against the poster's native 2:3. On a
+          phone, where the card is as wide as the screen, even that is 220px of
+          art above the first fact — so the compact layout crops harder. The
+          poster is recognition, not the content. */}
+      <div
+        className={cn(
+          "relative w-full shrink-0 overflow-hidden bg-ink-900",
+          tight ? "aspect-[2.6/1]" : "aspect-[16/9]",
+        )}
+      >
         {pin.imageUrl ? (
           <Image
             src={pin.imageUrl}
@@ -285,7 +316,7 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
         </div>
       </div>
 
-      <div className="flex flex-col gap-2.5 p-3">
+      <div className={cn("flex flex-col", tight ? "gap-2 p-2.5" : "gap-2.5 p-3")}>
         {/* ── First bell ──────────────────────────────────────────────────
             Full width and centred: it is the card's headline number, not a
             fact in a list. The exact date sits under it in a quieter line, so
@@ -304,7 +335,10 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
         ) : (
           <div>
             <CountdownBlock iso={pin.date} compactMode={floating} />
-            {date && (
+            {/* The exact date under the countdown is a second reading of the
+                same fact. Worth the two lines on a card with room; the first
+                thing to go on one without. */}
+            {date && !tight && (
               <p className="mt-1.5 text-center text-2xs tabular-nums text-fog">
                 {DATE_FMT.format(date)} · {TIME_FMT.format(date)}
               </p>
@@ -350,7 +384,10 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
         {/* ── Community ───────────────────────────────────────────────────
             Hidden once the card is done: "0 predictions" on a finished event
             reads as a broken counter rather than as history. */}
-        {!past && (ev.followers > 0 || ev.predictions > 0 || (pin.presentNow ?? 0) > 0) && (
+        {/* Dropped on the compact card. Three counts are the least load-bearing
+            thing here — the event page carries them, and "View event" is one
+            tap away and must stay above the fold. */}
+        {!tight && !past && (ev.followers > 0 || ev.predictions > 0 || (pin.presentNow ?? 0) > 0) && (
           <div className="grid grid-cols-3 gap-1.5">
             <Stat icon={Users} value={compact(ev.followers)} label="Following" />
             <Stat icon={TrendingUp} value={compact(ev.predictions)} label="Picks" />

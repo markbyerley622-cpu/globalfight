@@ -6,6 +6,7 @@ import type { GymPostDTO, Visibility } from "@/lib/gym-posts/types";
 import { MAX_BODY_CHARS, MAX_MEDIA_PER_POST } from "@/lib/gym-posts/types";
 import { IMAGE_ACCEPT, MAX_UPLOAD_MB } from "@/lib/images/limits";
 import { Composer } from "@/components/composer/composer";
+import { useMentionRegistry } from "@/lib/composer/entities";
 import { clearDraft } from "@/lib/composer/drafts";
 import { useComposerUploads } from "@/lib/composer/attachments";
 import { useMediaAction } from "@/components/composer/toolbar";
@@ -62,6 +63,10 @@ export function GymComposer({
   const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // WHO was picked, not where. Offsets are computed once from the final text at
+  // submit — see lib/composer/entities for why tracking them per keystroke is
+  // the thing that silently drifts.
+  const mentions = useMentionRegistry();
   const uploads = useComposerUploads<string>({
     uploader: {
       endpoint: "/api/media",
@@ -98,6 +103,9 @@ export function GymComposer({
         body: JSON.stringify({
           gym: gymSlug,
           body,
+          // Built from the FINAL text, so a mention the author typed and then
+          // deleted produces nothing and one they duplicated produces two.
+          entities: mentions.build(body),
           visibility,
           media: uploads.ready.map((assetId) => ({ assetId })),
         }),
@@ -108,6 +116,10 @@ export function GymComposer({
       onPublished(data.post as GymPostDTO);
       uploads.clear();
       setBody("");
+      // Only after a SUCCESSFUL publish. Resetting in `finally` would drop the
+      // picks behind a body the author still has in front of them, so a retry
+      // would send the same text with its mentions silently downgraded.
+      mentions.reset();
       clearDraft(`gym-post:${gymSlug}`);
     } catch (e) {
       // The text and the attachments are left exactly as they were. A failed
@@ -127,6 +139,7 @@ export function GymComposer({
           spreads unknown textarea props onto the element, so a surface keeps
           its own extras without the Composer knowing about them. */}
       <Composer
+        mentions={mentions}
         value={body}
         onChange={setBody}
         maxLength={MAX_BODY_CHARS}

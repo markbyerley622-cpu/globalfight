@@ -84,6 +84,11 @@ export function FloatingPreview({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The scrolling box. Separate from `ref` so the close button can sit OUTSIDE
+  // it and stay pinned while the card's body scrolls — a close button that
+  // scrolls out of reach on the one layout that needs scrolling is worse than
+  // no cap at all.
+  const scrollRef = useRef<HTMLDivElement>(null);
   // Read through a ref so `place` never goes stale and never needs to be a
   // dependency that re-runs effects.
   const getAnchorRef = useRef(getAnchor);
@@ -106,10 +111,29 @@ export function FloatingPreview({
     el.style.visibility = "visible";
 
     const { clientWidth: W, clientHeight: H } = host;
-    const h = el.offsetHeight || 340;
     const narrow = W < NARROW;
     const w = narrow ? Math.max(200, W - EDGE * 2) : CARD_W;
     el.style.width = `${w}px`;
+
+    // ── The height BUDGET ────────────────────────────────────────────────
+    // Without this the card was laid out at whatever height its content
+    // wanted and then positioned inside a box that might be smaller. On a
+    // phone an event card runs to roughly 500px against a 72dvh map — about
+    // 480px on a 667px viewport — so the bottom of the card, including both
+    // its actions, was simply clipped by the map's `overflow-hidden`. There
+    // was no scrollbar to find it with, because nothing was scrollable: the
+    // card genuinely extended past the container.
+    //
+    // Capping here and letting the body scroll makes the card fit BY
+    // CONSTRUCTION at any viewport, including landscape phones where the map
+    // is only a couple of hundred pixels tall.
+    const budget = Math.max(140, H - EDGE * 2);
+    const scroller = scrollRef.current;
+    if (scroller) scroller.style.maxHeight = `${budget}px`;
+
+    // Measured AFTER the cap is applied, so the flip decision below is made
+    // against the height the card will actually have.
+    const h = Math.min(el.offsetHeight || 340, budget);
 
     let x: number;
     let y: number;
@@ -197,21 +221,32 @@ export function FloatingPreview({
           Keying is also what makes it correct: React remounts the subtree, so
           the new event's poster and countdown can never be painted inside the
           previous event's already-scrolled card. */}
+      {/* The SCROLLER. maxHeight is written by `place` from the container's
+          real height, so the card can never be taller than the map it sits in.
+          `overscroll-contain` stops a flick that reaches the end of the card
+          from continuing into the page behind it. */}
       <div
-        key={contentKey}
-        className="relative motion-safe:animate-[crPreviewSwap_0.2s_ease-out_both]"
+        ref={scrollRef}
+        className="hide-scrollbar overflow-y-auto overscroll-contain rounded-xl"
       >
-        {children}
-
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close preview"
-          className="tap absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-lg bg-ink-950/80 text-mist backdrop-blur-sm transition-colors hover:text-chalk"
+        <div
+          key={contentKey}
+          className="relative motion-safe:animate-[crPreviewSwap_0.2s_ease-out_both]"
         >
-          <X className="size-3.5" />
-        </button>
+          {children}
+        </div>
       </div>
+
+      {/* Outside the scroller on purpose — see scrollRef. Absolute against the
+          shell, so it stays put however far the body is scrolled. */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close preview"
+        className="tap absolute right-1.5 top-1.5 z-10 grid size-7 place-items-center rounded-lg bg-ink-950/80 text-mist backdrop-blur-sm transition-colors hover:text-chalk"
+      >
+        <X className="size-3.5" />
+      </button>
 
       {/* The tail: a small notch pointing back at the pin, so the card reads as
           belonging to that marker rather than floating near it. Hidden on the

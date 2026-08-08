@@ -74,7 +74,10 @@ describe("sanitizeEntities — untrusted input is DROPPED, never trusted", () =>
       [{ ...mention("u1", 8, 13), hint: { username: "alex", name: 42, evil: "x" } }],
       text,
     );
-    assert.deepEqual(out[0].hint, { username: "alex", name: undefined });
+    // `slug` joins username and name in the envelope: mentions route on a
+    // handle, every other kind routes on a slug. Absent here, but present as a
+    // key — the sanitiser normalises the shape rather than omitting fields.
+    assert.deepEqual(out[0].hint, { username: "alex", slug: undefined, name: undefined });
   });
 });
 

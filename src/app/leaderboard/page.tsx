@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Trophy, Flame, Target, ShieldAlert, ArrowRight } from "lucide-react";
 import { Chip, ChipRow } from "@/components/ui/chip";
+import { PODIUM, RankCrown } from "@/components/ui/rank-crown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getLeaderboard, LEADER_WINDOWS, type Leader, type LeaderWindow } from "@/lib/reputation";
 import { flags } from "@/lib/feature-flags";
@@ -112,7 +113,22 @@ export default async function LeaderboardPage({
 
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
-const MEDAL = ["text-gold-300", "text-mist", "text-gold-600"];
+// ── The metals come from the ONE definition ────────────────────────────────
+// This board used to carry its own: ["text-gold-300", "text-mist",
+// "text-gold-600"]. Silver was `mist` — the same grey as ordinary body text —
+// and bronze was a DARKER GOLD, so second place looked like unstyled text and
+// third looked like a dimmer first. The product has had real `--color-silver`
+// and `--color-bronze` tokens and a shared RankCrown since the p4p podium, and
+// this page simply predated them.
+//
+// Reusing PODIUM means the leaderboard and the fighter rankings show the same
+// three metals, which is the whole point: a reader should not have to learn
+// that gold means one thing on one board and another elsewhere.
+const MEDAL: Record<number, string> = {
+  1: PODIUM[1].accent,
+  2: PODIUM[2].accent,
+  3: PODIUM[3].accent,
+};
 
 function Avatar({ leader, size }: { leader: Leader; size: number }) {
   const letter = publicDisplayName(leader).slice(0, 1).toUpperCase();
@@ -155,25 +171,41 @@ function Podium({ leaders }: { leaders: Leader[] }) {
   return (
     <div className="grid grid-cols-3 gap-2 rounded-card border border-ink-800 bg-gradient-to-b from-ink-850 to-ink-900 p-4">
       {order.map((u, i) => {
-        const first = rank[i] === 1;
+        const place = rank[i];
+        const first = place === 1;
+        // Same three metals as the p4p podium — see MEDAL.
+        const medal = first
+          ? "border-gold-500/50 bg-gradient-to-b from-gold-500/15 to-transparent shadow-glow-gold"
+          : place === 2
+            ? "border-silver/45 bg-gradient-to-b from-silver/12 to-transparent"
+            : "border-bronze/55 bg-gradient-to-b from-bronze/15 to-transparent";
         return (
           <LeaderLink
             key={u.id}
             leader={u}
             className={cn(
-              "flex flex-col items-center rounded-lg px-1.5 py-2 text-center transition-colors hover:bg-ink-850",
+              "relative flex flex-col items-center rounded-lg border px-1.5 pb-2 pt-4 text-center transition-colors hover:bg-ink-850",
+              medal,
               first && "-mt-2",
             )}
           >
+            {/* All three wear a crown in their own metal, exactly as the p4p
+                podium does. Previously the only mark of place was a small
+                number in a colour, and second place's colour was body grey. */}
+            <RankCrown
+              rank={place}
+              size={first ? "md" : "sm"}
+              className={cn("absolute left-1/2 -translate-x-1/2", first ? "-top-3 size-6" : "-top-2.5 size-5")}
+            />
             <span className="relative">
               <Avatar leader={u} size={first ? 62 : 48} />
               <span
                 className={cn(
                   "absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-ink-700 bg-ink-950 px-1.5 font-display text-3xs font-black",
-                  MEDAL[rank[i] - 1],
+                  MEDAL[place],
                 )}
               >
-                {rank[i]}
+                {place}
               </span>
             </span>
             <span className={cn("mt-2.5 max-w-full truncate font-display font-bold text-chalk", first ? "text-sm" : "text-xs")}>
@@ -197,7 +229,11 @@ function LeaderRow({ leader, rank }: { leader: Leader; rank: number }) {
         leader={leader}
         className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-3.5 py-3 transition-colors last:border-b-0 hover:bg-ink-850"
       >
-        <span className={cn("w-6 shrink-0 text-center font-display text-base font-black tabular-nums", MEDAL[rank - 1] ?? "text-fog")}>
+        {/* The top three keep their metal in the LIST too, and wear the crown
+            beside it — so scrolling from the podium into the table does not
+            silently drop the distinction the podium just made. */}
+        <span className={cn("flex w-9 shrink-0 items-center justify-end gap-0.5 font-display text-base font-black tabular-nums", MEDAL[rank] ?? "text-fog")}>
+          <RankCrown rank={rank} />
           {rank}
         </span>
         <Avatar leader={leader} size={36} />
@@ -267,6 +303,14 @@ function FighterRankings({ enabled }: { enabled: boolean }) {
             </span>
           </>
         }
+        // ── The registry is NOT withdrawn ────────────────────────────────
+        // What is withdrawn is the editorial RANKING — an opinion about who is
+        // better than whom, which needs a licensed source. Who a fighter is,
+        // their record and their schedule are facts, and /fighters serves them
+        // today. Without this the tab was a dead end: it explained an absence
+        // and offered nothing, so the one fighter surface that does work was
+        // unreachable from the page whose whole subject is fighters.
+        action={{ href: "/fighters", label: "Browse the fighter registry" }}
       />
     );
   }
@@ -276,6 +320,10 @@ function FighterRankings({ enabled }: { enabled: boolean }) {
       <RankingCard href="/p4p" title="Pound for Pound" desc="The best in the world, regardless of division." />
       <RankingCard href="/rankings" title="Divisions" desc="Weight-class rankings across every sport." />
       <RankingCard href="/champions" title="Champions" desc="Every current title holder in one place." />
+      {/* The registry sits beside the rankings rather than behind them: it is
+          the factual half, and it is available whether or not a ranking source
+          is licensed. */}
+      <RankingCard href="/fighters" title="Fighter registry" desc="Every fighter we hold — records, schedules and results." />
     </div>
   );
 }

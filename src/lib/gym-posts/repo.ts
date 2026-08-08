@@ -1,7 +1,10 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+// Value import, not `import type`: clearing a Json column needs Prisma.DbNull,
+// which is a runtime sentinel. `null` would be rejected as ambiguous.
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { resolveDraftEntities, hydrateEntities } from "@/lib/rich-text/resolve";
+import type { RichEntity } from "@/lib/rich-text/types";
 import { isAdminRole } from "@/lib/admin/roles";
 import { publicDisplayName } from "@/lib/display-name";
 import { assertPublishable } from "@/lib/moderation/text";
@@ -23,8 +26,8 @@ import {
   renderMedia, widestOf, MEDIA_INCLUDE,
 } from "./media";
 import {
-  notifyPostComment, notifyPostReaction, notifyCommentReaction, notifyPostShare,
-  type PostRef,
+  notifyPostComment, notifyPostMention, notifyPostReaction, notifyCommentReaction,
+  notifyPostShare, type PostRef,
 } from "./notify";
 import { forbidden, notFound } from "./errors";
 
@@ -220,6 +223,10 @@ function mapPost(row: PostRow, viewer: Viewer, tallies: Tallies): GymPostDTO {
     gym: row.gym,
     author: mapAuthor(row.author),
     body: row.body,
+    // Raw here; hydrated by whichever read is returning this row. Mapping is
+    // synchronous on purpose — the refresh is one batched query per PAGE, so it
+    // cannot live in a per-row mapper without becoming a query per post.
+    entities: row.entities ?? null,
     visibility: row.visibility as Visibility,
     pinned: row.pinned,
     media: renderMedia(row.media),
@@ -235,6 +242,25 @@ function mapPost(row: PostRow, viewer: Viewer, tallies: Tallies): GymPostDTO {
     canEdit: canEditPost(subject, viewer),
     canDelete: canDeletePost(subject, viewer),
   };
+}
+
+/**
+ * Refresh the display hints on a whole page of bodies, in ONE query.
+ *
+ * Every read that returns text goes through here — posts and comments alike —
+ * so a rename applies to a feed exactly as it applies to a comment thread.
+ * Batched by construction: hydrating inside `mapPost` would read the user table
+ * once per row, which is the N+1 this exists to prevent.
+ *
+ * An empty result is stored as `null` rather than `[]` so "no entities" has one
+ * representation on the wire, and the renderer's legacy fallback is reached by
+ * the same check for new content as for old.
+ */
+async function hydratePage<T extends { body: string; entities?: unknown }>(items: T[]): Promise<T[]> {
+  if (items.length === 0) return items;
+  const hydrated = await hydrateEntities(items.map((i) => ({ text: i.body, entities: i.entities })));
+  items.forEach((item, i) => { item.entities = hydrated[i].length ? hydrated[i] : null; });
+  return items;
 }
 
 // ─── Reads ──────────────────────────────────────────────────────────────────
@@ -319,7 +345,8 @@ export async function getFeed(q: FeedQuery = {}): Promise<Page<GymPostDTO>> {
   const pinnedIds = new Set(pinned.map((r) => r.id));
   const rest = rankFeed(rankable.filter((r) => !pinnedIds.has(r.id)));
 
-  return { items: [...pinned, ...rest].map((r) => r.dto), nextCursor };
+  const items = await hydratePage([...pinned, ...rest].map((r) => r.dto));
+  return { items, nextCursor };
 }
 
 /** One post, or null when it does not exist or the viewer may not see it. */
@@ -343,7 +370,8 @@ export async function getPost(id: string, user: Principal | null): Promise<GymPo
   if (!canViewPost(subject, viewer)) return null;
 
   const tallies = await postTallies([row.id], user?.id ?? null);
-  return mapPost(row, viewer, tallies);
+  const [dto] = await hydratePage([mapPost(row, viewer, tallies)]);
+  return dto;
 }
 
 // ─── Writes ─────────────────────────────────────────────────────────────────
@@ -353,6 +381,8 @@ export interface CreateInput {
   authorId: string;
   authorRole: string;
   body: string;
+  /** Draft mention spans from the composer. Resolved to ids before storage. */
+  entities?: unknown;
   visibility?: string | null;
   media?: unknown;
 }
@@ -389,11 +419,31 @@ export async function createPost(input: CreateInput): Promise<GymPostDTO> {
 
   const visibility = isVisibility(input.visibility) ? input.visibility : "PUBLIC";
 
+  // Resolved BEFORE the write and verified against the final text, exactly as
+  // comments already do it — so what is stored is known-good and the notifier
+  // below reads ids off it rather than re-parsing the body.
+  const entities = await resolveDraftEntities(body, input.entities);
+
   const post = await prisma.gymPost.create({
-    data: { gymId: ctx.gym.id, authorId: input.authorId, body, visibility },
+    data: {
+      gymId: ctx.gym.id, authorId: input.authorId, body, visibility,
+      entities: entities.length ? (entities as unknown as Prisma.InputJsonValue) : undefined,
+    },
     select: { id: true },
   });
   await attachMedia(post.id, media);
+
+  // Only PUBLIC and MEMBERS posts ping the people they name. Mentioning someone
+  // in a PRIVATE post would send them to a post only the author and the gym's
+  // owner can open — a notification whose link 404s for its recipient.
+  if (entities.length > 0 && visibility !== "PRIVATE") {
+    await notifyPostMention({
+      post: { id: post.id, authorId: input.authorId, gymSlug: ctx.gym.slug, gymName: ctx.gym.name },
+      actorId: input.authorId,
+      body,
+      entities,
+    });
+  }
 
   const created = await getPost(post.id, { id: input.authorId, role: input.authorRole });
   if (!created) throw new Error("Could not publish that post.");
@@ -405,6 +455,8 @@ export interface UpdateInput {
   userId: string;
   userRole: string;
   body?: string | null;
+  /** Draft mention spans for the NEW body. Only read when the body changes. */
+  entities?: unknown;
   visibility?: string | null;
   /** The FULL desired attachment set. Omitted leaves media untouched. */
   media?: unknown;
@@ -424,7 +476,7 @@ export async function updatePost(input: UpdateInput): Promise<GymPostDTO> {
     where: { id: input.id },
     select: {
       id: true, gymId: true, authorId: true, visibility: true, deletedAt: true, body: true,
-      gym: { select: { ownerId: true } },
+      gym: { select: { ownerId: true, slug: true, name: true } },
       media: { select: { assetId: true } },
     },
   });
@@ -456,6 +508,21 @@ export async function updatePost(input: UpdateInput): Promise<GymPostDTO> {
       if (body) await assertPublishable(body);
       data.body = body;
       touched = true;
+
+      // ── Entities are re-resolved against the NEW text, always ────────────
+      // Offsets are absolute positions into the body. Leaving the old list in
+      // place after an edit is not a stale hint, it is corruption: deleting one
+      // character earlier in the sentence shifts every span, and the entity now
+      // covers the wrong characters while still carrying a real user's id — a
+      // link and a highlight over somebody else's words.
+      //
+      // So a body change always REPLACES the list. A client that edits without
+      // sending entities clears them, which degrades the post to the legacy
+      // parser rather than leaving spans pointing at text that moved.
+      const resolved = await resolveDraftEntities(body, input.entities);
+      data.entities = resolved.length
+        ? (resolved as unknown as Prisma.InputJsonValue)
+        : Prisma.DbNull;
     }
   }
   if (isVisibility(input.visibility) && input.visibility !== existing.visibility) {
@@ -488,6 +555,22 @@ export async function updatePost(input: UpdateInput): Promise<GymPostDTO> {
     // "edited" badge driven by it would appear the moment somebody else liked
     // the post.
     await prisma.gymPost.update({ where: { id: existing.id }, data: { ...data, editedAt: new Date() } });
+  }
+
+  // Someone added to the post by an edit is told, once. The emitter's dedupe key
+  // is (post, recipient), so re-saving a post that already named them is a
+  // no-op — which is what stops an edit loop from being a notification loop.
+  const finalVisibility = (data.visibility as Visibility | undefined) ?? (existing.visibility as Visibility);
+  if (Array.isArray(data.entities) && data.entities.length > 0 && finalVisibility !== "PRIVATE") {
+    await notifyPostMention({
+      post: {
+        id: existing.id, authorId: existing.authorId,
+        gymSlug: existing.gym.slug, gymName: existing.gym.name,
+      },
+      actorId: input.userId,
+      body: finalBody,
+      entities: data.entities as unknown as RichEntity[],
+    });
   }
 
   const updated = await getPost(existing.id, { id: input.userId, role: input.userRole });

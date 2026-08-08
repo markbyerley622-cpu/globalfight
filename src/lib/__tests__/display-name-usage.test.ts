@@ -49,6 +49,8 @@ const ALLOWED: Record<string, string> = {
   "components/profile/profile-view.tsx": "the viewer's own profile editor",
   "components/predictions/predictions-markets.tsx": "the viewer's own name in their own panel",
   "components/map/gym-members-manager.tsx": "gym owner managing their own roster",
+  "lib/rich-text/registry.ts":
+    "entityDisplayName falls back across an entity HINT, not a User row. `hint.name` is stamped by resolveDraftEntities on write and re-stamped by hydrateEntities on read, and both pass the row through publicDisplayName first — so an email-shaped name has already become a handle before it reaches this envelope. This is the ONE place the chain is written, precisely so the argument is made once instead of at every card and aria-label that needs a name before its preview has loaded",
   "lib/display-name.ts": "the implementation itself",
   "lib/__tests__/display-name.test.ts": "tests the implementation",
   "lib/__tests__/display-name-usage.test.ts": "this file",

@@ -123,6 +123,55 @@ export async function notifyPostComment(input: {
   }
 }
 
+/**
+ * Someone was NAMED in a post's body.
+ *
+ * ── Why this has no legacy fallback, where the comment notifier does ──────
+ * `notifyPostComment` re-parses a body that carries no entities, because
+ * comments have been mentioning people since before the structured layer
+ * existed and those bodies still have to notify. A post BODY has never notified
+ * anyone — this is the first version that does — so there is no historical
+ * content to be fair to, and adding a regex path here would introduce the
+ * highlight/notify drift the entity layer was built to remove rather than
+ * inherit it. Ids only.
+ *
+ * Deduped per (post, recipient): editing a post that already named someone must
+ * not ping them a second time for the same mention.
+ */
+export async function notifyPostMention(input: {
+  post: PostRef;
+  actorId: string;
+  body: string;
+  entities: RichEntity[];
+}): Promise<void> {
+  try {
+    const ids = mentionedUserIds(input.entities).filter((id) => id !== input.actorId);
+    if (ids.length === 0) return;
+
+    const actor = await prisma.user.findUnique({
+      where: { id: input.actorId },
+      select: { name: true, username: true },
+    });
+    const who = actor ? publicDisplayName(actor) : "Someone";
+
+    await Promise.all(
+      ids.map((userId) =>
+        notify(prisma, userId, {
+          type: "GYM_POST_REPLY",
+          title: `${who} mentioned you`,
+          body: `${input.post.gymName} — ${excerpt(input.body)}`,
+          url: postUrl(input.post),
+          icon: "mention",
+          dedupeKey: `gym_post_mention:${input.post.id}:${userId}`,
+          tag: `gym-post:${input.post.id}`,
+        }),
+      ),
+    );
+  } catch {
+    // Best-effort, like every emitter here — the post is already saved.
+  }
+}
+
 /** Someone reacted to a post. Once per person per post, ever. */
 export async function notifyPostReaction(input: {
   post: PostRef;
