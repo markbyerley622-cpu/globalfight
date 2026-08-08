@@ -10,6 +10,7 @@
 
 export { syncONE } from "./sync";
 export { discoverEvents } from "./sitemap";
-export { toNormalizedOneEvent, ONE_SOURCE } from "./map";
+export { toNormalizedOneEvent, toOneFightStub, ONE_SOURCE } from "./map";
 export { detectOneSport } from "./extract/events";
-export type { SyncOptions, OneHarvest, OneEvent, OneSport } from "./types";
+export { parseOneMatchups } from "./extract/matchups";
+export type { SyncOptions, OneHarvest, OneEvent, OneSport, OneMatchup } from "./types";

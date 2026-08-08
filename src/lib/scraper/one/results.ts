@@ -11,9 +11,22 @@ import type { Element } from "domhandler";
 //  ── Why this connector matters most ──────────────────────────────────────
 //  audit:quality measured 251 ONE events with NO BOUTS AT ALL — the single
 //  largest coverage gap in the database, several times any other promotion's.
-//  ONE renders results client-side on its event pages, which is why the existing
-//  pipeline could never read them; these editorial "results and highlights"
-//  articles are server-rendered and carry the whole card.
+//  These editorial "results and highlights" articles are server-rendered and
+//  carry the whole card.
+//
+//  ── CORRECTION: this is the SECOND path, not the only one ────────────────
+//  This header used to claim "ONE renders results client-side on its event
+//  pages, which is why the existing pipeline could never read them". That was
+//  never true, and believing it is what kept every ONE card empty: onefc.com
+//  server-renders the full card into `div.event-matchup`, results included, and
+//  ../extract/matchups now reads it. The event-page path is strictly better
+//  where it applies — it keys off the event's own slug instead of matching an
+//  article HEADLINE to an event, and it covers upcoming cards, which have no
+//  results article by definition.
+//
+//  This connector still earns its place: ONE's CMS carries no matchup blocks on
+//  events before ~2017 (measured — 6 of 6 sampled events dated 2016-03-18 or
+//  earlier had none), and the editorial archive reaches into that era.
 //
 //  ── The shape, verbatim from the page ────────────────────────────────────
 //      <h2 class="mt-5">Fight Card</h2>
