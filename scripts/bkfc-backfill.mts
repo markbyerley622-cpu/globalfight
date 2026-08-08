@@ -80,13 +80,19 @@ async function main() {
   if (auditOnly) return;
 
   // ── COMPLIANCE GATE ─────────────────────────────────────────────────────
-  // The sweep's whole purpose is the scored feed, so running it with the gate
-  // off would spend ~17 minutes of somebody's rate limit to re-write cards that
-  // already exist, and report a misleading "0 decided" as if the parser failed.
-  // Refuse loudly instead. --dry is still allowed: it writes nothing, and being
-  // able to see what WOULD be ingested is exactly what the operator needs to
-  // make the licensing decision.
-  if (!readFlags().bkfcResultsEnabled && !dry) {
+  // --dry IS ALSO BLOCKED, and that is the whole point.
+  //
+  // This check originally exempted --dry, reasoning that it writes nothing. That
+  // was wrong, and production proved it: a `--events --limit=3 --dry` run on
+  // Render made three live GETs to xapi.mmareg.com before printing "nothing
+  // written". A dry run skips the DATABASE, not the NETWORK, and the compliance
+  // question here is about the request, not the row.
+  //
+  // An unlicensed source must be unreachable in every mode. If you need to see
+  // what the feed would yield in order to make the licensing decision, do it
+  // against the captured fixtures in __tests__/fixtures — they are real payloads
+  // and cost the vendor nothing.
+  if (!readFlags().bkfcResultsEnabled) {
     console.error(
       `\nREFUSING TO RUN — BKFC_RESULTS_ENABLED is not "true".\n\n` +
         `  The BKFC results feed (xapi.mmareg.com) has NO legal basis recorded. See the\n` +
