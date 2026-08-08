@@ -2,6 +2,7 @@
 
 import { CalendarDays, ExternalLink } from "lucide-react";
 import { PromotionLogo } from "@/components/promotion-logo";
+import { entityHrefForHint } from "@/lib/rich-text/registry";
 import { registerPreview, str, num, type PreviewViewProps } from "./registry";
 import { PreviewActions, PreviewAction, PreviewFact, PreviewHeader } from "./parts";
 
@@ -39,7 +40,7 @@ function PromotionPreview({ preview }: PreviewViewProps) {
 
       <PreviewActions>
         {slug && (
-          <PreviewAction href={`/events?promotion=${encodeURIComponent(slug)}`} primary focusTarget>
+          <PreviewAction href={entityHrefForHint("promotion", { slug }) ?? "/events"} primary focusTarget>
             Schedule
           </PreviewAction>
         )}

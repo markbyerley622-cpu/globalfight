@@ -1,6 +1,7 @@
 "use client";
 
 import { Swords, Trophy } from "lucide-react";
+import { entityHrefForHint } from "@/lib/rich-text/registry";
 import { registerPreview, str, num, type PreviewViewProps } from "./registry";
 import { PreviewActions, PreviewAction, PreviewFact, PreviewHeader, PreviewStats } from "./parts";
 
@@ -54,7 +55,7 @@ function FighterPreview({ preview }: PreviewViewProps) {
 
       {slug && (
         <PreviewActions>
-          <PreviewAction href={`/fighters/${slug}`} primary focusTarget>
+          <PreviewAction href={entityHrefForHint("fighter", { slug }) ?? `/fighters/${slug}`} primary focusTarget>
             Open profile
           </PreviewAction>
         </PreviewActions>

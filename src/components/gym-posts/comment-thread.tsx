@@ -10,7 +10,7 @@ import { timeAgo } from "@/lib/utils";
 import { CommentSkeleton } from "./skeletons";
 import { Composer } from "@/components/composer/composer";
 import { EntityText } from "@/components/rich-text/entity-text";
-import { useMentionRegistry } from "@/lib/composer/entities";
+import { useEntityPicks } from "@/lib/composer/entities";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Comments under a post.
@@ -42,7 +42,7 @@ const tempId = () => `tmp_${Math.random().toString(36).slice(2)}`;
 export function CommentThread({ postId, initialCount, signedIn, onCountChange }: Props) {
   // Records who was picked from the mention menu; spans are computed from the
   // final text at submit. See lib/composer/entities.
-  const mentions = useMentionRegistry();
+  const mentions = useEntityPicks();
   const [items, setItems] = useState<GymPostCommentDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);

@@ -16,7 +16,7 @@ import { ReactionBar } from "@/components/forums/reaction-bar";
 import { ReportButton } from "@/components/forums/report-dialog";
 import { useComposerUploads } from "@/lib/composer/attachments";
 import { useMediaAction, useEmbedAction } from "@/components/composer/toolbar";
-import { useMentionRegistry } from "@/lib/composer/entities";
+import { useEntityPicks } from "@/lib/composer/entities";
 import { EntityText } from "@/components/rich-text/entity-text";
 import { PickLine, RecordLine } from "@/components/forums/pick-identity";
 import type { ForumPostDTO, Paginated, ForumAttachment } from "@/lib/forum/types";
@@ -367,7 +367,7 @@ function ReplyComposer({
   // Records WHO was picked from the mention menu. Offsets are computed from the
   // final text at submit — see lib/composer/entities for why they are not
   // tracked through every edit.
-  const mentions = useMentionRegistry();
+  const mentions = useEntityPicks();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
