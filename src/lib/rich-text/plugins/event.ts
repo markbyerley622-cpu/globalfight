@@ -6,7 +6,9 @@ import { registerEntity } from "../registry";
 
 registerEntity({
   kind: "event",
+  labelPlural: "Events",
   label: "event",
+  markShape: "square",
   tone: "event",
 
   href: (e) => (e.hint?.slug ? `/events/${e.hint.slug}` : null),

@@ -31,7 +31,9 @@ import { segmentBody } from "../segment";
 const SPONSOR = {
   kind: "sponsor",
   label: "sponsor",
+  labelPlural: "Sponsors",
   tone: "org" as const,
+  markShape: "square" as const,
   href: (e: { hint?: { slug?: string } }) => (e.hint?.slug ? `/sponsors/${e.hint.slug}` : null),
   unavailable: "This sponsor is no longer listed",
   previewable: true,
@@ -149,9 +151,9 @@ const MANIFESTS: { name: string; dir: string; manifest: string }[] = [
     manifest: "lib/rich-text/plugins/index.ts",
   },
   {
-    name: "preview loaders (server)",
-    dir: "lib/rich-text/preview",
-    manifest: "lib/rich-text/preview/index.ts",
+    name: "entity sources (server)",
+    dir: "lib/rich-text/server",
+    manifest: "lib/rich-text/server/index.ts",
   },
   {
     name: "preview views (client)",
@@ -190,7 +192,7 @@ describe("the three halves of a plugin agree", () => {
       join(SRC, "components/rich-text/previews/index.tsx"), "utf8",
     );
     const loaderSource = readFileSync(
-      join(SRC, "lib/rich-text/preview/index.ts"), "utf8",
+      join(SRC, "lib/rich-text/server/index.ts"), "utf8",
     );
 
     // Only the kinds this repository ships. The synthetic kinds registered by
@@ -205,8 +207,8 @@ describe("the three halves of a plugin agree", () => {
 
       assert.ok(
         loaderSource.includes(`"./${kind}"`),
-        `"${kind}" is previewable but has no server loader — its card would ` +
-          "always render the missing state.",
+        `"${kind}" is previewable but has no entity source — it could not be ` +
+          "resolved, hydrated or previewed.",
       );
       assert.ok(
         viewSource.includes(`"./${kind}"`),

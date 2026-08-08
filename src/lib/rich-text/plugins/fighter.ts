@@ -12,7 +12,9 @@ import { registerEntity } from "../registry";
 
 registerEntity({
   kind: "fighter",
+  labelPlural: "Fighters",
   label: "fighter",
+  markShape: "round",
   tone: "fighter",
 
   href: (e) => (e.hint?.slug ? `/fighters/${e.hint.slug}` : null),

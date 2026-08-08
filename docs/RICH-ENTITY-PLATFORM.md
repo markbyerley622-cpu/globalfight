@@ -85,14 +85,25 @@ checked against runtime registration; it would only ever have been a second list
 
 ### The three halves of a plugin
 
-A full-stack plugin spans three modules, because the pure core, the server query
-and the React card have genuinely different constraints:
+A full-stack plugin spans three modules, because the pure core, the server
+queries and the React card have genuinely different constraints:
 
 | Half | Location | Constraint |
 |---|---|---|
 | Core | `lib/rich-text/plugins/<kind>.ts` | Pure. Imported by `sanitizeEntities`, which runs server-side on every read and inside plain node tests — so no React, no prisma. |
-| Loader | `lib/rich-text/preview/<kind>.ts` | `server-only`. Owns the query and what the kind may publish. |
+| Source | `lib/rich-text/server/<kind>.ts` | `server-only`. Owns every database question about the kind. |
 | View | `components/rich-text/previews/<kind>.tsx` | Client. Renders a loaded DTO; never fetches, never handles loading states. |
+
+**The source answers four questions**, and they live together because they
+cannot actually be independent — `suggest` hands out the key `resolve` must
+accept, and `resolve` writes the hint `hydrate` refreshes:
+
+| Operation | When | Contract |
+|---|---|---|
+| `suggest` | composer picker | Optional. Bounded, visibility-filtered, ranked best-first. A kind without it is never offered but stays fully storable — gyms and promotions are exactly that today. |
+| `resolve` | write | Takes **public keys**, returns ids. One query per batch. |
+| `hydrate` | read | Takes ids, returns today's hints. One query per kind per page. |
+| `preview` | hover | Takes ids, returns the card DTO. |
 
 Each half has a **manifest** (`index.ts`) that imports its files. Registration is
 an import side effect, so a plugin left out of a manifest never runs and its kind
@@ -105,8 +116,13 @@ Three files and three manifest lines. Nothing else is edited — not `EntityText
 not the hover host, not the cache, not the composer, not the registry core:
 
 1. `lib/rich-text/plugins/sponsor.ts` — `registerEntity({ kind: "sponsor", … })`
-2. `lib/rich-text/preview/sponsor.ts` — `registerPreviewLoader("sponsor", …)`
+2. `lib/rich-text/server/sponsor.ts` — `registerEntitySource({ kind: "sponsor", … })`
 3. `components/rich-text/previews/sponsor.tsx` — `registerPreview("sponsor", …)`
+
+Implementing `suggest` on the source is the only thing that puts the kind in the
+composer's "@" menu. The picker itself is not edited: it renders generic
+suggestion fields and takes the group heading from `labelPlural` and the mark
+shape from `markShape`.
 
 `registry-extensibility.test.ts` proves this by *doing* it: it registers a
 `sponsor` kind that exists nowhere in the source and asserts the pipeline handles
@@ -118,6 +134,75 @@ A kind with no view falls back to a generic card that names the thing and links
 to it. A kind this bundle has never heard of renders as **plain text** — which is
 exactly what already happens to legacy content, so a rollout that starts storing
 a new kind can never produce a broken-looking body on an older client.
+
+---
+
+## The composer picker
+
+Typing `@` opens one menu offering **People**, **Fighters** and **Events** —
+whichever kinds' sources implement `suggest`.
+
+```
+PEOPLE
+  Alex Rodriguez        @alex
+FIGHTERS
+  Alex Pereira          "Poatan" · MMA · 12-3
+EVENTS
+  UFC 322               UFC · 15 Nov 2026 · Madison Square Garden
+```
+
+**Group order is not configured anywhere.** The server returns one ranked list
+across all kinds, interleaved round-robin by rank so no kind can crowd the
+others out; the client renders groups in order of **first appearance**. A query
+that matches a person best shows People first. No file contains "people before
+fighters."
+
+Arrow keys walk the flat ranking, so the highlight never jumps sideways between
+groups. `Enter`/`Tab` picks, `Escape` closes (and stops propagating, so it does
+not also close the sheet the composer sits in), `Enter` with no menu open falls
+through to the surface's own submit. The Composer remains the single keyboard
+authority — this added no per-surface handler.
+
+### What gets inserted
+
+`insert` comes from the server and differs by kind, because only one form reads
+naturally in a sentence:
+
+| Kind | Key (sent back) | Inserted text |
+|---|---|---|
+| person | `alex` | `@alex` |
+| fighter | `alex-pereira` | `@Alex Pereira` |
+| event | `ufc-322` | `@UFC 322` |
+
+Multi-word inserts are why the pick registry no longer scans for a
+handle-alphabet token. It scans for the literal string that was inserted, so
+`@UFC 322: Main Event` is one span and `@Alex` does not claim `@Alexander`.
+
+---
+
+## Security: the client never holds an id
+
+The single invariant of the write path.
+
+- The picker receives a **key** — a username or a slug, both already public in
+  URLs. Primary keys never reach the browser, which is the rule
+  `/api/users/search` has always followed and which now holds for every kind.
+- `resolve` takes **keys**, not ids. Posting an id back does not resolve.
+- The source looks the row up itself, applying its own visibility rules. Draft
+  events are excluded by `PUBLIC_EVENT` inside `resolve`, not merely inside
+  `suggest` — otherwise picker filtering would be a UI-level control over a
+  server-level fact, and anyone who knew a draft's slug could still reference it.
+- **The span must be the thing.** The stored text is re-sliced and required to
+  equal what the row is actually called. Without it a client could attach any
+  entity to a span over somebody else's words, and it would render, link and
+  preview. A stale selection — the row was renamed after the menu was drawn —
+  fails here too, which is correct: the words no longer say what the entity says.
+- Nothing throws. Autocomplete goes stale constantly; every failure degrades the
+  span to plain text.
+
+All of this is asserted in `__tests__/draft-resolution.test.ts`, which drives the
+real resolver against a fake source — possible only because resolution is
+registry-driven rather than a switch.
 
 ---
 
@@ -173,6 +258,28 @@ variable.
 
 Timing constants live in one place (`HOVER_TIMING`) and are pinned by
 `hover/__tests__/hover-store.test.ts`, including the 150–250ms band.
+
+---
+
+## Notifications
+
+| Kind | Notifies |
+|---|---|
+| person | the referenced user — "X mentioned you" |
+| fighter | **nobody** |
+| event | **nobody** |
+| gym, promotion | **nobody** |
+| any future kind | **nobody**, by default |
+
+`mentionedUserIds()` filters on kind, and it is the only thing standing between
+a fighter mention and a notification. That matters more than it looks:
+`Fighter.ownerId` exists, so a claimed fighter page belongs to a real account. A
+notifier that read "every entity's id" would eventually ping a real person every
+time anyone named them in any post — notification spam with no opt-out.
+
+`entity-notifications.test.ts` pins both halves: the filter itself, and a
+source-walking guard that fails if any notifier reads entity ids without going
+through it.
 
 ---
 
@@ -246,12 +353,11 @@ Stated plainly so it is not mistaken for working behaviour:
   follower counts or presence, and seeding a partial DTO would render a card
   missing fields it should have. It becomes useful when a surface genuinely
   holds a complete preview.
-- **Kinds other than `mention` are not yet authorable.** `resolveDraftEntities`
-  only resolves mentions, and the composer's picker only offers people. The
-  `fighter`, `event`, `gym` and `promotion` plugins are complete — they route,
-  preview and cache — but no composer produces those spans yet, so they do not
-  appear in production content. Making them authorable is a change to the
-  composer and the resolver, not to any of the layers documented above.
+- **Gyms and promotions are not yet authorable.** Their sources implement
+  `resolve`, `hydrate` and `preview` but not `suggest`, so no composer offers
+  them. That is a product decision the registry expresses directly rather than a
+  missing implementation — adding them to the picker is one method on the
+  existing source and nothing else.
 - **Event prediction counts** are `null` in the event preview. Picks are counted
   per fight, and summing them for a batch of events is a group-by on a hover
   path. `PreviewStats` drops a null cell rather than printing a misleading zero.
