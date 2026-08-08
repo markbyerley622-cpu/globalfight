@@ -3,11 +3,31 @@
 //  without a network or a database.
 //
 //  ── The arithmetic that forces this ───────────────────────────────────────
-//  ONE's sitemap lists 423 events. The shared fetcher paces at 5s per request
-//  (SCRAPER_RATE_LIMIT_MS), and /api/cron/refresh-one has maxDuration = 300.
-//  A full sweep is therefore ~35 minutes against a 5-minute ceiling: the run is
-//  killed roughly 60 events in, EVERY TIME, and — with no cursor — those are the
-//  same 60 events on every run. The remaining ~360 would never be fetched at all.
+//  ONE's sitemap lists 423 events, and production paces at 3s per request
+//  (SCRAPER_RATE_LIMIT_MS in render.yaml — 800ms drew 199 HTTP 429s out of 224
+//  event pages, so this rate is bought with experience). A full sweep is
+//  therefore ~21 minutes. Whatever the request ceiling is, it is less than that:
+//  the run is cut off partway, and WITHOUT A CURSOR it is cut off in the same
+//  place every time, leaving the rest of the archive unreachable by construction
+//  rather than merely slow.
+//
+//  ── What the ceiling actually is ──────────────────────────────────────────
+//  Read this before retuning, because the obvious number is the wrong one.
+//  refresh-one/route.ts declares `maxDuration = 300`, which is a VERCEL
+//  serverless directive and has no effect on this deployment: production is a
+//  long-running Next server on Render, driven by the `gf-cron-promotions` job,
+//  whose startCommand curls the route with `-m 900`. The real budget is 900s,
+//  shared with the results-archive crawl in the same request.
+//
+//  The defaults below spend ~290s of that (96 events × 3s), which leaves room
+//  for the results crawl, the persist writes, and a rate limit that someone
+//  later decides to loosen. Both are env-tunable, because the numbers that set
+//  them are themselves configuration.
+//
+//  At 96 events per tick, twice a week, the archive behind the fresh window is
+//  swept in about two weeks — versus three months at a 16-event window. To close
+//  it in one sitting instead, run `npm run backfill:one -- --events`, which
+//  sweeps the whole sitemap and leaves the cron to maintain the front of it.
 //
 //  ── Two windows ───────────────────────────────────────────────────────────
 //  ONE's sitemap is ordered lastmod-descending, so index 0 is whatever ONE
@@ -34,10 +54,17 @@
  */
 export const ONE_SWEEP_SCOPE = "events";
 
-/** How many of the freshest events to re-read every tick. */
-export const ONE_FRESH_WINDOW = Number(process.env.ONE_FRESH_WINDOW ?? 16);
-/** How many archive events to advance through every tick. */
-export const ONE_TAIL_WINDOW = Number(process.env.ONE_TAIL_WINDOW ?? 16);
+/**
+ * How many of the freshest events to re-read every tick.
+ *
+ * Sized to cover more than a cron interval of ONE's output: the promotion runs
+ * roughly weekly, and this job fires twice a week, so 24 is several cycles of
+ * slack. Announcements and posted results are caught without waiting for the
+ * rotating window to come round.
+ */
+export const ONE_FRESH_WINDOW = Number(process.env.ONE_FRESH_WINDOW ?? 24);
+/** How many archive events to advance through every tick. See the budget above. */
+export const ONE_TAIL_WINDOW = Number(process.env.ONE_TAIL_WINDOW ?? 72);
 
 export interface SweepPlan {
   /** Indices into the discovered (lastmod-desc) URL list, fresh window first. */
