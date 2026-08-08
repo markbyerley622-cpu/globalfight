@@ -1,12 +1,12 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1204,
+    "queries": 1206,
     "high": 0,
     "medium": 103,
-    "low": 206,
-    "info": 895,
-    "public": 832,
+    "low": 207,
+    "info": 896,
+    "public": 834,
     "userOwned": 270,
     "shared": 102,
     "admin": 0
@@ -4435,7 +4435,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 181,
+      "line": 182,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -4448,7 +4448,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 184,
+      "line": 185,
       "fn": "runJob",
       "model": "ScrapeJob",
       "method": "update",
@@ -4461,7 +4461,20 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 434,
+      "line": 412,
+      "fn": "refreshDetailed",
+      "model": "ProviderCheckpoint",
+      "method": "upsert",
+      "klass": "PUBLIC",
+      "kind": "write",
+      "ownership": "unscoped",
+      "severity": "LOW",
+      "confidence": "high",
+      "why": "Public model write — relies on app-layer auth (expected)."
+    },
+    {
+      "file": "src/lib/scraper/runner.ts",
+      "line": 474,
       "fn": "refreshDetailed",
       "model": "ProviderCheckpoint",
       "method": "upsert",
@@ -15550,7 +15563,7 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 178,
+      "line": 179,
       "fn": "job",
       "model": "ScrapeJob",
       "method": "create",
@@ -15563,7 +15576,20 @@
     },
     {
       "file": "src/lib/scraper/runner.ts",
-      "line": 413,
+      "line": 395,
+      "fn": "checkpoint",
+      "model": "ProviderCheckpoint",
+      "method": "findUnique",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/lib/scraper/runner.ts",
+      "line": 453,
       "fn": "checkpoint",
       "model": "ProviderCheckpoint",
       "method": "findUnique",
