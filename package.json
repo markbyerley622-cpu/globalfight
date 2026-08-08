@@ -83,7 +83,8 @@
     "triage:wikicards": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/wikicard-triage.mts",
     "audit:rankings": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/ranking-audit.mts",
     "audit:champions": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/champion-audit.mts",
-    "backfill:one": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/one-backfill.mts"
+    "backfill:one": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/one-backfill.mts",
+    "backfill:bkfc": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/bkfc-backfill.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

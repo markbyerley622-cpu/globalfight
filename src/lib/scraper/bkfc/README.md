@@ -71,12 +71,50 @@ classified by path — no crawl queue. Each page is parsed two ways:
 BKFC is a Webflow site — there is **no Next.js data layer or JSON API**, so those
 extraction stages are intentionally absent.
 
-### Known limits (honest nulls, never fabricated data)
+### Results — read from the page's own official feed
 
-- **Event results are not in the static HTML.** Winner/method/round come from a
-  client-side widget (`data-cond-key="RedResult"…`, gigcasters feed). The card
-  (fighters, order, title-fight flag, poster, venue, date) is extracted; bout results
-  are left for a future licensed results feed.
+Event results are genuinely **not in the static HTML**, and that was verified rather
+than assumed: a completed card ships all four result variants unmarked
+(`data-cond-key="RedResult"`, values win/lose/draw/no contest) and
+`<p data-render="WinMethod">TBU</p>` as the placeholder.
+
+What the old note got wrong was the conclusion — that results were therefore
+unavailable "until a licensed results feed is available". **The page declares that
+feed itself**, in an inline script, as an unauthenticated GET:
+
+```js
+const FINAL_STATS = 'https://xapi.mmareg.com/api/bkfc?type=json&modifier=event-stats&id=312';
+```
+
+`results-feed.ts` extracts the URL (pure), `sync.ts` fetches it, and the feed card
+**supersedes** the DOM card — it carries the same matchups plus result, method,
+round, time, weight class, ruleset, scheduled rounds and referee.
+
+Measured over 24 events sampled across every slug family:
+
+| | |
+|---|---|
+| feed present → full results | 20 events, **207 bouts, 207 decided** |
+| no feed URL | 4 — *all four are future events* |
+| round / time / weight class / both athlete UUIDs | 207 / 207 |
+| method | 206 (one bout genuinely states none) |
+
+Three response shapes exist and all are handled: **v1** `Bouts` is an array, **v2**
+`/api/v2/` keys it `Bout1..BoutN` as an object, and one page embeds `type=xml`
+(forced back to JSON). A parser assuming the array shape reads 11 of 20 events as empty.
+
+`BoutNumber` **ascends from the first prelim — the main event is LAST** (the opposite
+of ONE). The card is emitted main-event-first so `orderOnCard` matches every other provider.
+
+Corner identity resolves the feed's athletes back to **bkfc.com page slugs** (the
+namespace our fighters are already stored under) inside each card's closed set —
+90% resolve, with zero ambiguous matches; a miss emits no external id and lets the
+shared dedupe engine resolve by name.
+
+⚠️ `xapi.mmareg.com` is a **third-party host** with its own registry entry
+(`bkfc-results`). Read its `basis` before production use.
+
+### Other known limits (honest nulls, never fabricated data)
 - **Images are not re-hosted** — source URLs only.
 - **Videos** only surface when a page carries a YouTube id; BKFC's own PPV embeds
   (gigcasters) have none and are reported but not mapped to `FeedVideo`.

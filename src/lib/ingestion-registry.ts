@@ -217,8 +217,52 @@ export const INGESTION_SOURCES: IngestionSource[] = [
     retention: "until superseded",
     attribution: "Event data via BKFC (bkfc.com).",
     enabled: true,
-    note: "ENABLED via operator override (dev). Requires ENABLE_SCRAPER=true. Bout RESULTS are not " +
-      "scraped (not in static HTML). Rankings/news/photos remain disabled. Not a licence — see basis.",
+    note: "ENABLED via operator override (dev). Requires ENABLE_SCRAPER=true. Bout results come from " +
+      "the separate 'bkfc-results' entry below (they are genuinely absent from this HTML). " +
+      "Rankings/news/photos remain disabled. Not a licence — see basis.",
+  },
+  {
+    // ── READ THIS BEFORE ENABLING IN PRODUCTION ────────────────────────────
+    // A DIFFERENT HOST from every other bkfc-* entry. bkfc.com's event pages
+    // render results client-side and declare their data source in an inline
+    // script as a plain, unauthenticated GET:
+    //
+    //   const FINAL_STATS = 'https://xapi.mmareg.com/api/bkfc?type=json&…&id=312';
+    //
+    // It is the same request a visitor's browser makes to render the page — no
+    // credentials, no session, no token, nothing circumvented. But the operator
+    // should know two facts before this runs in production:
+    //
+    //   1. xapi.mmareg.com is MMAReg, a THIRD PARTY serving BKFC's official
+    //      data. Permission from BKFC would not automatically cover it.
+    //   2. It publishes no robots.txt (the host returns an API-gateway 403 for
+    //      /robots.txt), so there is no crawl policy to honour or violate —
+    //      which is an absence of permission, not a grant of it.
+    //
+    // Separately, bkfc.com's own robots.txt sets `Crawl-delay: 86400` for all
+    // agents. Our shared throttle is 3s. That directive is almost certainly a
+    // misconfiguration (it would permit one page per day), but it is what the
+    // file says and the operator should decide deliberately rather than inherit
+    // the decision from this comment.
+    id: "bkfc-results",
+    name: "BKFC official scored cards (xapi.mmareg.com)",
+    host: "xapi.mmareg.com",
+    method: "public-api",
+    basis: "OPERATOR OVERRIDE (development), not an established legal basis. The endpoint is " +
+      "unauthenticated and is the one bkfc.com's own public event pages call to render their " +
+      "results widget. A written licence or permission from BKFC *and* MMAReg is REQUIRED before " +
+      "production/public use — obtain one and replace this text.",
+    permittedFields: [
+      "bout order", "corner names", "weightClass", "boutRules(ruleset)", "championshipBout",
+      "result", "winMethod", "roundEnded", "roundEndedTime", "totalRounds", "referee",
+    ],
+    frequency: "daily",
+    retention: "until superseded",
+    attribution: "Official results via BKFC (bkfc.com), scoring data by MMAReg.",
+    enabled: true,
+    note: "ENABLED via operator override (dev), matching the bkfc-events precedent. Requires " +
+      "ENABLE_SCRAPER=true. Per-round STRIKE STATISTICS are present in the payload and are " +
+      "deliberately NOT ingested — only the fields above. Not a licence — see basis.",
   },
   {
     id: "bkfc-fighters",
