@@ -41,6 +41,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       userId: user.id,
       userRole: user.role,
       body: typeof body.body === "string" ? body.body : undefined,
+      // Read only when `body` changes — see updatePost. Passed through raw:
+      // resolveDraftEntities owns the validation.
+      entities: body.entities,
       visibility: typeof body.visibility === "string" ? body.visibility : undefined,
       // `undefined` means "leave media alone"; an empty array means "remove it
       // all". Those are different intents and the distinction has to survive

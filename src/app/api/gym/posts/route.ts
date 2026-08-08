@@ -73,6 +73,11 @@ export async function POST(req: Request) {
       authorId: user.id,
       authorRole: user.role,
       body: typeof body.body === "string" ? body.body : "",
+      // Unvalidated here on purpose, like `media` below: resolveDraftEntities
+      // owns the shape check AND the identity check (it re-slices the text and
+      // requires the span to actually read `@handle` before attaching an id).
+      // Half a check here would be a second place to keep in step with it.
+      entities: body.entities,
       visibility: typeof body.visibility === "string" ? body.visibility : null,
       // Passed through unvalidated ON PURPOSE — normaliseAttachments and
       // assertAttachable own that, so the shape is checked in one place rather
