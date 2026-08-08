@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CARD_GAP, CARD_EDGE, previewCardWidth } from "./event-card-layout";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The desktop floating preview — the SHELL, not the content.
@@ -35,17 +36,10 @@ export interface Anchor {
   y: number;
 }
 
-/** Card box. Kept here because the flip maths needs the real numbers. */
-const CARD_W = 340;
-const GAP = 18;
-const EDGE = 12;
-
-/**
- * Below this container width there is no room BESIDE a pin for a 340px card,
- * so the layout changes: the card sits ABOVE the pin, centred, and shrinks to
- * fit. That is the phone case.
- */
-const NARROW = CARD_W + GAP + EDGE * 2;
+// The box maths lives in event-card-layout beside the card's own sizing, so the
+// narrow case can be tested without a DOM — see previewCardWidth.
+const GAP = CARD_GAP;
+const EDGE = CARD_EDGE;
 
 /** What the parent calls to re-place the card without re-rendering anything. */
 export interface PreviewHandle {
@@ -111,8 +105,7 @@ export function FloatingPreview({
     el.style.visibility = "visible";
 
     const { clientWidth: W, clientHeight: H } = host;
-    const narrow = W < NARROW;
-    const w = narrow ? Math.max(200, W - EDGE * 2) : CARD_W;
+    const { width: w, narrow } = previewCardWidth(W);
     el.style.width = `${w}px`;
 
     // ── The height BUDGET ────────────────────────────────────────────────

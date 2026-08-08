@@ -12,6 +12,7 @@ import { eventMapState, EVENT_STATE_STYLE, isPastState } from "@/lib/geo/event-s
 import { directionsUrl, type MapPin } from "@/lib/geo/types";
 import { formatDistance } from "@/lib/geo/gazetteer";
 import { cn } from "@/lib/utils";
+import { eventCardLayout, type EventCardVariant } from "./event-card-layout";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  EventMapPreview — the card a pin opens.
@@ -189,7 +190,7 @@ export interface EventMapPreviewProps {
    * is a safety net rather than the normal case, because a card you have to
    * scroll to press "View event" is still a bad card.
    */
-  variant?: "sheet" | "floating" | "compact";
+  variant?: EventCardVariant;
 }
 
 /**
@@ -213,10 +214,39 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
   const state = eventMapState({ status: ev.status, date: pin.date, now });
   const style = EVENT_STATE_STYLE[state];
   const past = isPastState(state);
-  const tight = variant === "compact";
-  // Both anchored variants trim the same chrome; `compact` trims more on top.
-  const floating = variant === "floating" || tight;
+  // Every "how much room is there" decision comes from ONE place — see
+  // event-card-layout, including the invariant that made the mobile card wrong.
+  const L = eventCardLayout(variant);
   const date = pin.date ? new Date(pin.date) : null;
+
+  /**
+   * Promotion crest, series and event name.
+   *
+   * Built once and placed EITHER over the hero (where there is room for it) or
+   * as the first row of the content column (where there is not). Same markup
+   * both ways, so the two layouts cannot drift into two different headings.
+   */
+  const titleBlock = (
+    <div className="flex items-end gap-2">
+      <PromotionLogo promotion={pin.promotion} size="sm" />
+      <div className="min-w-0 flex-1">
+        {pin.subtitle && (
+          <p className="truncate font-display text-3xs font-bold uppercase tracking-[0.14em] text-mist">
+            {pin.subtitle}
+          </p>
+        )}
+        <h3
+          className={cn(
+            "truncate font-display font-black leading-tight text-chalk",
+            L.titleSize,
+            state === "CANCELLED" && "line-through decoration-fog/70",
+          )}
+        >
+          {pin.name}
+        </h3>
+      </div>
+    </div>
+  );
 
   return (
     <article
@@ -226,18 +256,17 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
       )}
       style={past ? undefined : { boxShadow: `0 0 0 1px ${style.accent}22` }}
     >
-      {/* ── Poster banner ───────────────────────────────────────────────────
-          A fight poster is the single most recognisable thing about a card, so
-          it leads. 16:9 rather than the poster's native 2:3 — a full-height
-          poster would push every fact below the fold of a floating card. */}
-      {/* 16:9 is already a compromise against the poster's native 2:3. On a
-          phone, where the card is as wide as the screen, even that is 220px of
-          art above the first fact — so the compact layout crops harder. The
-          poster is recognition, not the content. */}
+      {/* ── The HERO ────────────────────────────────────────────────────────
+          A fight poster is the most recognisable thing about a card, so it
+          leads — but it is recognition, not content. Its height, whether it
+          carries the title, and how far the scrim reaches are all decided in
+          event-card-layout, where the relationship between those three can be
+          stated and tested. Everything positioned absolutely below is a child
+          of THIS box; nothing is ever layered over the card as a whole. */}
       <div
         className={cn(
           "relative w-full shrink-0 overflow-hidden bg-ink-900",
-          tight ? "aspect-[2.6/1]" : "aspect-[16/9]",
+          L.heroAspect,
         )}
       >
         {pin.imageUrl ? (
@@ -245,7 +274,7 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
             src={pin.imageUrl}
             alt=""
             fill
-            sizes={floating ? "360px" : "(max-width: 1024px) 100vw, 420px"}
+            sizes={L.imageSizes}
             className={cn("object-cover", past && "opacity-45 saturate-50")}
             // Posters are promoter uploads and ingested art on arbitrary hosts;
             // the optimiser is not in front of every one of them.
@@ -253,15 +282,28 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
           />
         ) : (
           <div className="grid h-full w-full place-items-center bg-gradient-to-br from-ink-900 to-ink-950">
-            <PromotionLogo promotion={pin.promotion} size="lg" />
+            <PromotionLogo promotion={pin.promotion} size={L.heroLogoSize} />
           </div>
         )}
 
-        {/* Legibility floor for the text over the art. */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/45 to-transparent"
-        />
+        {/* ── The scrim ──────────────────────────────────────────────────
+            A legibility floor for text that sits ON the art — and nothing
+            else. When the title moves into normal flow there is no text to
+            protect, so the full-height version would be darkening the poster
+            for no reason; a short foot is all that is needed to stop a bright
+            poster edge colliding with the card body. `scrimIsJustified` is
+            the assertion of that, and it is tested. */}
+        {L.scrim !== "none" && (
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0",
+              L.scrim === "full"
+                ? "top-0 bg-gradient-to-t from-ink-950 via-ink-950/45 to-transparent"
+                : "h-1/3 bg-gradient-to-t from-ink-950/85 to-transparent",
+            )}
+          />
+        )}
 
         {/* State + verification badges */}
         <div className="absolute left-2.5 top-2.5 flex flex-wrap items-center gap-1.5">
@@ -292,31 +334,20 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
           {ev.sport}
         </span>
 
-        {/* Name + promotion, sitting on the gradient. */}
-        <div className="absolute inset-x-0 bottom-0 p-2.5">
-          <div className="flex items-end gap-2">
-            <PromotionLogo promotion={pin.promotion} size="sm" />
-            <div className="min-w-0 flex-1">
-              {pin.subtitle && (
-                <p className="truncate font-display text-3xs font-bold uppercase tracking-[0.14em] text-mist">
-                  {pin.subtitle}
-                </p>
-              )}
-              <h3
-                className={cn(
-                  "truncate font-display font-black leading-tight text-chalk",
-                  floating ? "text-sm" : "text-base",
-                  state === "CANCELLED" && "line-through decoration-fog/70",
-                )}
-              >
-                {pin.name}
-              </h3>
-            </div>
-          </div>
-        </div>
+        {/* Name + promotion, sitting on the scrim — only where the hero is
+            tall enough to carry them. Otherwise this same block renders as the
+            first row of the content column below. */}
+        {L.titleInHero && <div className="absolute inset-x-0 bottom-0 p-2.5">{titleBlock}</div>}
       </div>
 
-      <div className={cn("flex flex-col", tight ? "gap-2 p-2.5" : "gap-2.5 p-3")}>
+      <div className={cn("flex flex-col", L.contentSpacing)}>
+        {/* ── Title, in normal flow ───────────────────────────────────────
+            Where the hero is too short to carry it. First in the column, so
+            the reading order is promotion → name → countdown → main event on
+            every variant — the same order, whether the name is on the poster
+            or under it. */}
+        {!L.titleInHero && titleBlock}
+
         {/* ── First bell ──────────────────────────────────────────────────
             Full width and centred: it is the card's headline number, not a
             fact in a list. The exact date sits under it in a quieter line, so
@@ -334,11 +365,11 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
           </div>
         ) : (
           <div>
-            <CountdownBlock iso={pin.date} compactMode={floating} />
+            <CountdownBlock iso={pin.date} compactMode={L.compactCountdown} />
             {/* The exact date under the countdown is a second reading of the
                 same fact. Worth the two lines on a card with room; the first
                 thing to go on one without. */}
-            {date && !tight && (
+            {date && L.showDateLine && (
               <p className="mt-1.5 text-center text-2xs tabular-nums text-fog">
                 {DATE_FMT.format(date)} · {TIME_FMT.format(date)}
               </p>
@@ -387,7 +418,7 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
         {/* Dropped on the compact card. Three counts are the least load-bearing
             thing here — the event page carries them, and "View event" is one
             tap away and must stay above the fold. */}
-        {!tight && !past && (ev.followers > 0 || ev.predictions > 0 || (pin.presentNow ?? 0) > 0) && (
+        {L.showStats && !past && (ev.followers > 0 || ev.predictions > 0 || (pin.presentNow ?? 0) > 0) && (
           <div className="grid grid-cols-3 gap-1.5">
             <Stat icon={Users} value={compact(ev.followers)} label="Following" />
             <Stat icon={TrendingUp} value={compact(ev.predictions)} label="Picks" />
