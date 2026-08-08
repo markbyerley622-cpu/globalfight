@@ -397,7 +397,28 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
           .catch(() => null);
         const plan = planBkfcSweep(all.events.length, Number(checkpoint?.cursor ?? NaN));
 
-        const h = await syncBKFC({ mode: "daily", eventUrls: plan.indices.map((i) => all.events[i]) });
+        // ── EVENTS ONLY, and that is a REGRESSION worth naming ───────────────
+        // Passing eventUrls makes syncBKFC skip discovery entirely, so fighters
+        // and news resolve to empty and the persist calls below are no-ops for
+        // them. Stated explicitly here rather than left as a side effect of the
+        // windowing change.
+        //
+        // For news that is an improvement — bkfc.com/robots.txt says
+        // `Disallow: /news` and `mode: "daily"` was queueing up to 100 news pages
+        // against it, with the registry's disabled `bkfc-news` entry gating only
+        // the WRITE, never the fetch.
+        //
+        // For FIGHTERS it is a real loss, though a smaller one than it looks:
+        // daily mode queued all ~1,564 fighter pages with BKFC_MAX_PAGES=0, which
+        // at a 3s throttle is ~78 minutes against a 900s budget — so the run was
+        // always cut off partway through fighters and never reached news at all.
+        // Windowed fighter ingestion is the follow-up; it needs its own cursor,
+        // not a second copy of this one.
+        const h = await syncBKFC({
+          mode: "daily",
+          entities: ["events"],
+          eventUrls: plan.indices.map((i) => all.events[i]),
+        });
         let written = 0;
         if (isSourceEnabled("bkfc-fighters")) written += await persistAggregated("BARE_KNUCKLE", "fighters", h.fighters);
         if (isSourceEnabled("bkfc-events")) written += await persistAggregated("BARE_KNUCKLE", "events", h.events);
