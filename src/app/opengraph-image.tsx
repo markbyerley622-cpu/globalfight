@@ -31,7 +31,9 @@ export const alt = `${SITE.name} — every combat sport, one place`;
 
 export default async function Image() {
   return renderOgCard({
-    eyebrow: SITE.name,
+    // No eyebrow. BrandLockup already prints "Combat Reviews" top-right on every
+    // card, and putting the site name in the eyebrow too rendered it twice on
+    // one image, once in each upper corner.
     headline: "Every combat sport, one place",
     sub: "See what's upcoming. See what people think.",
     chips: ["Boxing", "MMA", "Muay Thai", "Kickboxing"],
