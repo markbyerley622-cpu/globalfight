@@ -270,10 +270,12 @@ export function BottomSheet({
           // small does. The visible bar grew with it, because a handle you can
           // hit but cannot see is only half the fix.
           //
-          // `pr-28` keeps the zone clear of the two resize buttons on the right:
-          // it spans the full width otherwise, and a press meant for "expand"
-          // that landed a pixel outside the button would start a drag instead.
-          className="cursor-grab touch-none select-none px-4 pb-2.5 pr-28 pt-3.5 active:cursor-grabbing"
+          // Full width on purpose. Reserving a right-hand gutter for the resize
+          // buttons would shift `mx-auto` off the sheet's centre line — and it
+          // buys nothing, because those buttons stop propagation on both
+          // pointerdown and click, so a press that lands on one never reaches
+          // this drag handler.
+          className="cursor-grab touch-none select-none px-4 pb-2.5 pt-3.5 active:cursor-grabbing"
         >
           <div className="mx-auto h-1.5 w-12 rounded-full bg-ink-500" />
         </div>

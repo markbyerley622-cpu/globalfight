@@ -36,7 +36,27 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, not 20. `npm test` is
+          #     node --test "src/**/__tests__/**/*.test.ts"
+          # and GLOB PATTERNS FOR `--test` DID NOT EXIST BEFORE NODE 21. On 20
+          # the quoted pattern reached the runner as a literal path, so every
+          # run died instantly with
+          #     Could not find '.../src/**/__tests__/**/*.test.ts'
+          # and exit 1 — before a single test executed.
+          #
+          # This is why main has been red for twelve consecutive runs while the
+          # same command passes locally (Node 25, which expands it). It was NOT
+          # a failing test, and the cost was much larger than the unit suite:
+          # `Test` is the fourth step, so integration, the query-ownership
+          # audit, the production build, Playwright and the axe pass were all
+          # SKIPPED on every push. The workflow's own comment says it exists so
+          # a green local run is not the only thing between a commit and a live
+          # Render auto-deploy — and it has been enforcing typecheck and lint
+          # only.
+          #
+          # Keep this at or above 21. Below it, the failure is silent in the
+          # sense that matters: it looks like a test failure.
+          node-version: 22
           cache: npm
 
       # postinstall runs `prisma generate`; keep an explicit call so a change to
