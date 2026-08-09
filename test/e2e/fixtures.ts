@@ -122,4 +122,52 @@ export async function signUp(page: Page, email: string): Promise<void> {
   await expect(page.getByRole("button", { name: /account menu/i })).toBeVisible({ timeout: 20_000 });
 }
 
+/**
+ * The password every seeded E2E account shares (prisma/seed/e2e.mts).
+ *
+ * Duplicated rather than imported: the seed module is compiled for
+ * `--conditions=react-server` and pulls in Prisma, which the Playwright process
+ * has no reason to load. If the seed's password ever changes, `signIn` fails
+ * loudly on the next run rather than silently authenticating nobody.
+ */
+export const E2E_SEED_PASSWORD = "e2e-Passw0rd!";
+
+/**
+ * Sign in as a SEEDED account, through the real login API.
+ *
+ * ── Why not `signUp` ──────────────────────────────────────────────────────
+ * Signup is rate limited to 8 per hour PER IP (POLICY.signup), and that budget
+ * is shared with every other spec in the suite. A test that creates its own
+ * accounts therefore passes in isolation and 429s in a full run — which is
+ * exactly how the first version of the feed-identity spec failed. Login is
+ * bounded per EMAIL, so distinct seeded accounts do not compete.
+ *
+ * Uses `page.request`, so the session cookie lands in the page's context and
+ * subsequent navigations and API calls are genuinely authenticated.
+ */
+export async function signIn(page: Page, email: string): Promise<void> {
+  // Through the real FORM, not `page.request.post`.
+  //
+  // The session cookie is `Secure`. Chromium grants http://127.0.0.1 the
+  // localhost exception and stores it; Playwright's APIRequestContext does not,
+  // so a `page.request` login returns 200 with a Set-Cookie header and then
+  // leaves /api/auth/me answering `{user:null}` — a silent failure that reads
+  // exactly like wrong credentials. `signUp` avoids this by submitting the real
+  // form, and so does this.
+  await page.goto("/account");
+  await page.getByRole("button", { name: /^Sign in$/i }).first().click().catch(() => {});
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(E2E_SEED_PASSWORD);
+
+  const [res] = await Promise.all([
+    page.waitForResponse((r) => /\/api\/auth\/login/.test(r.url()) && r.request().method() === "POST", { timeout: 20_000 }),
+    page.getByRole("button", { name: /^Sign in$/i }).last().click(),
+  ]);
+  if (res.status() !== 200) {
+    throw new Error(`login for ${email} expected 200, got ${res.status()}: ${await res.text()}`);
+  }
+  // Prove the session actually stuck rather than trusting the status code.
+  await expect(page.getByRole("button", { name: /account menu/i })).toBeVisible({ timeout: 20_000 });
+}
+
 export { expect };

@@ -24,8 +24,8 @@ covered by DB-level tests, **not** by live HTTP.
 
 ```
 SECURITY STATUS:            YELLOW
-CRITICAL:                   0 open  (1 found and fixed this session)
-HIGH:                       0 open  (1 found and fixed this session)
+CRITICAL:                   0 open  (1 found and fixed)
+HIGH:                       0 open  (2 found and fixed — H-1 verification race, H-2 feed identity)
 MEDIUM:                     3 open
 LOW:                        3 open
 RLS STATUS:                 NOT ENFORCED — application-layer only (documented, accurate)
@@ -116,7 +116,72 @@ provision an `app_rw` non-owner role → ship `RLS_SESSION_CONTEXT=1` → apply
 `DISABLE ROW LEVEL SECURITY` as the tested rollback. This is the order CLAUDE.md
 already specifies.
 
-### M-3 · Thirteen ownership-bearing tables are absent from the RLS classification — **OPEN**
+### H-2 · Anonymous feed identity confusion — caller-controlled namespace — **FIXED**
+
+*Class: PROD + CODE + DB.* Found while classifying the `Feed*` tables for the RLS
+rollout (see `docs/RLS-TABLE-CLASSIFICATION.md`).
+
+**Before.** `feedKey` returned `uid ?? fallbackCid`, and `fallbackCid` came
+straight off the query string or JSON body. A signed-in caller was safe — the
+session wins. An **anonymous** caller chose their own storage key. And `User.id`
+is not a secret: `/leaderboard` serves cuid values beside usernames in its RSC
+payload. So an unauthenticated attacker could read an id off a public page and
+address that person's personalisation namespace:
+
+```
+GET  /api/feed/library?cid=<key>        → 200, that key's collections
+POST /api/feed/prefs {"cid":"<key>"}    → 200 {"ok":true}
+```
+
+Both confirmed against production **with a synthetic key**. No real user's data
+was read or written: an attempt to prove it against a real leaderboard id was
+correctly blocked as a destructive production action and was not retried.
+
+**Impact.** Unauthenticated read of a named user's saved video library, and
+unauthenticated write to their feed preferences (hidden channels, not-interested,
+interest weights). Personalisation, not documents — **HIGH, not CRITICAL** — but
+unauthenticated, read *and* write, targeted at a named person.
+
+**After.** Two namespaces that cannot collide. Authenticated identity stays the
+**raw session user id** — unchanged, so no signed-in user loses a row, and it
+matches what `following.ts` and `home/recommendations.ts` already write directly.
+Anonymous identity is **always** `anon:`-prefixed, so a caller-supplied value can
+never equal a `User.id`. The impersonation is not blocked by a check; it is
+unrepresentable.
+
+Two further holes closed in the same function: the `catch` branch used to return
+`fallbackCid`, so a request that could induce a session error got to name its own
+identity; and a missing/junk id collapsed to the bare literal `"anon"`, which sat
+in the same row-space as user ids.
+
+**No compatibility fallback, deliberately.** Reading through to the bare key when
+the namespaced one is empty would restore existing anonymous rows *and* reopen
+the vulnerability exactly — attacker sends `cid=<victim id>`, namespaced lookup
+misses, fallback hits the victim. Signed-out personalisation resets once instead.
+Authenticated data is untouched.
+
+**Evidence.** Unit suite asserts `feedKey` returns only the session uid or a
+value through `anonKey`, on every path. Integration suite proves four principals
+write four row-spaces and that an attacker's namespaced key reaches none of user
+A's rows. **Both suites were verified non-vacuous**: the first version passed
+against a deliberately reintroduced `return fallbackCid` — it tested `anonKey`
+rather than `feedKey`, the function that was actually vulnerable — and was
+rewritten until the vulnerable code fails it (10/10 → 9/10 with the exact
+message; integration 4/4 → 2/4).
+
+**RLS did not fix this and does not protect it.** RLS remains NOT ENFORCED. This
+is an application-layer fix, and it is a prerequisite for the RLS rollout: the
+old mixed namespace could not be expressed as a safe policy.
+
+### M-3 · Thirteen ownership-bearing tables are absent from the RLS classification — **SUPERSEDED**
+
+The real number is **62 of 101**, not 13, and the corrected classification is in
+`docs/RLS-TABLE-CLASSIFICATION.md`. The 13 was an artefact of deriving scope from
+a regex over ownership column names — a method structurally blind to
+`IdentityDocument` (no person column; scoped through its parent) and to `User`
+itself. **Derive RLS scope from access paths, never from column names.**
+
+### M-3b · Thirteen ownership-bearing tables are absent from the RLS classification — **OPEN**
 
 *Class: CODE.* CLAUDE.md instructs: *"When you add a table, place it in the RLS
 classification below."* The schema has **101 models**; **45** carry an ownership
