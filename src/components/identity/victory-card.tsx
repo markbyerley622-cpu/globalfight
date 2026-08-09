@@ -145,7 +145,24 @@ export function VictoryCard({ card }: { card: VictoryCardData }) {
           <span className="block truncate text-sm font-bold text-chalk">{card.user.name}</span>
           <span className="block truncate text-2xs text-fog">{footer}</span>
         </span>
-        <span className="shrink-0 font-display text-3xs font-black uppercase tracking-[0.22em] text-fog">Combat Reviews</span>
+        {/* The lock-up, not bare grey text.
+            This card exists to be screenshotted and posted, and a screenshot
+            carries no link — the mark is the only thing in it that says where it
+            came from. The share IMAGE has carried the mark since it was written
+            (see BrandLockup in lib/og); the card people actually photograph was
+            still signing itself with a caption. */}
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="hidden font-display text-3xs font-black uppercase tracking-[0.22em] text-fog sm:inline">
+            Combat Reviews
+          </span>
+          <Image
+            src="/cr-logo.png"
+            alt="Combat Reviews"
+            width={150}
+            height={100}
+            className="h-6 w-auto drop-shadow-[0_2px_10px_rgba(225,29,42,0.25)]"
+          />
+        </span>
       </Link>
     </article>
   );

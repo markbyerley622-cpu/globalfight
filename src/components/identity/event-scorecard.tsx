@@ -111,7 +111,20 @@ export function EventScorecard({ card }: { card: ScorecardData }) {
           <span className="block truncate text-sm font-bold text-chalk">{card.user.name}</span>
           <span className="block truncate text-2xs text-fog">{card.user.reputation.toLocaleString()} reputation{card.user.rank ? ` · #${card.user.rank}` : ""}</span>
         </span>
-        <span className="shrink-0 font-display text-3xs font-black uppercase tracking-[0.22em] text-fog">Combat Reviews</span>
+        {/* Same lock-up as the Victory Card — these two are photographed and
+            posted together and must sign themselves identically. */}
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="hidden font-display text-3xs font-black uppercase tracking-[0.22em] text-fog sm:inline">
+            Combat Reviews
+          </span>
+          <Image
+            src="/cr-logo.png"
+            alt="Combat Reviews"
+            width={150}
+            height={100}
+            className="h-6 w-auto drop-shadow-[0_2px_10px_rgba(225,29,42,0.25)]"
+          />
+        </span>
       </Link>
     </article>
   );

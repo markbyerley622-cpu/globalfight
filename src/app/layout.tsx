@@ -48,12 +48,6 @@ const OG_DESCRIPTION =
   "Upcoming fights, results and fighter records across boxing, MMA, Muay Thai, " +
   "kickboxing, BJJ and bare-knuckle — and what the fans think of them. " +
   "See what's on next.";
-const OG_IMAGE = {
-  url: "/og-default.png",
-  width: 1200,
-  height: 630,
-  alt: `${SITE.name} — every combat sport, one place. See what's upcoming, see what people think.`,
-};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -74,7 +68,14 @@ export const metadata: Metadata = {
     description: OG_DESCRIPTION,
     url: SITE.url,
     locale: "en_US",
-    images: [OG_IMAGE],
+    // NO `images` here, deliberately — the same trap as `twitter.images` below.
+    //
+    // An explicit root `images` is inherited by every page AND SHADOWS the
+    // `opengraph-image.tsx` file convention, so it would pin the whole site to
+    // one bitmap. The card now comes from `src/app/opengraph-image.tsx`, which
+    // cascades: pages with their own card use it, everything else falls back to
+    // the branded default. `public/og-default.png` was that bitmap and it still
+    // said "COMBAT REGISTER".
   },
   twitter: {
     card: "summary_large_image",
