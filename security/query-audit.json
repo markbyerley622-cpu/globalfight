@@ -1,14 +1,14 @@
 {
   "generatedFrom": "scripts/security-audit.mts",
   "totals": {
-    "queries": 1216,
+    "queries": 1222,
     "high": 0,
     "medium": 103,
     "low": 207,
-    "info": 906,
-    "public": 844,
-    "userOwned": 270,
-    "shared": 102,
+    "info": 912,
+    "public": 847,
+    "userOwned": 271,
+    "shared": 104,
     "admin": 0
   },
   "models": [
@@ -2953,7 +2953,7 @@
     },
     {
       "file": "src/lib/auth.ts",
-      "line": 158,
+      "line": 169,
       "fn": "user",
       "model": "User",
       "method": "update",
@@ -4809,6 +4809,84 @@
       "severity": "INFO",
       "confidence": "high",
       "why": "Owner-scoped read/write on a private model."
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "line": 39,
+      "fn": "openQueues",
+      "model": "FighterClaim",
+      "method": "count",
+      "klass": "SHARED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "line": 40,
+      "fn": "openQueues",
+      "model": "GymClaim",
+      "method": "count",
+      "klass": "SHARED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "line": 41,
+      "fn": "openQueues",
+      "model": "PromoterClaim",
+      "method": "count",
+      "klass": "USER_OWNED",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Aggregate (count/aggregate/groupBy) — returns totals, not individual rows."
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "line": 42,
+      "fn": "openQueues",
+      "model": "ForumReport",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "line": 51,
+      "fn": "AdminOverview",
+      "model": "User",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
+    },
+    {
+      "file": "src/app/admin/page.tsx",
+      "line": 52,
+      "fn": "AdminOverview",
+      "model": "Event",
+      "method": "count",
+      "klass": "PUBLIC",
+      "kind": "read",
+      "ownership": "unscoped",
+      "severity": "INFO",
+      "confidence": "high",
+      "why": "Public model read — world-readable by design."
     },
     {
       "file": "src/app/api/admin/data/route.ts",
@@ -7802,7 +7880,7 @@
     },
     {
       "file": "src/lib/auth.ts",
-      "line": 129,
+      "line": 140,
       "fn": "user",
       "model": "User",
       "method": "findUnique",

@@ -111,7 +111,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // /api/auth/me round-trip on load and no loading→resolved flash (the profile
   // CLS root cause). This reads cookies(), so the tree renders dynamically —
   // an accepted trade-off (the header is personalized on every page anyway).
-  const initialUser = await getCurrentUser();
+  const session = await getCurrentUser();
+  // Serialised at the boundary, not typed away. `professionalVerifiedAt` is a
+  // Date on the server and arrives at the client as an ISO string — declaring
+  // the client type as Date would compile and then hand every consumer an
+  // object with no getTime(). One explicit conversion here is the whole cost.
+  const initialUser = session
+    ? { ...session, professionalVerifiedAt: session.professionalVerifiedAt?.toISOString() ?? null }
+    : null;
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh bg-ink-950 antialiased">

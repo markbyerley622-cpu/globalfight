@@ -108,24 +108,57 @@ export default function AccountPage() {
         />
         {/* The nudge, not a gate. Signup already finished — this is the first
             place a professional role is asked to prove who they are, and it is
-            dismissible by simply not clicking it. Fans never see it. */}
+            dismissible by simply not clicking it. Fans never see it.
+
+            It is STATE-AWARE now. It used to key on the registry role alone, so
+            somebody who had already been verified was still being told to go
+            and verify — the one message guaranteed to make a completed process
+            look broken. `professionalVerifiedAt` rides the session (see
+            lib/auth SAFE_SELECT), so this costs no extra request.
+
+            The PENDING case is deliberately not inferred here: whether a review
+            is open is a second question the session does not answer, and
+            /account/verification shows the full history the moment they arrive.
+            Better a neutral doorway than a confident wrong state. */}
         {isProfessionalRole(user.registryRole) && (
           <div className="container-cr pt-6">
-            <Link
-              href="/account/verification"
-              className="flex items-center gap-3 rounded-card border border-gold-500/30 bg-gold-500/10 p-4 transition-colors hover:border-gold-500/50"
-            >
-              <BadgeCheck className="size-5 shrink-0 text-gold-300" />
-              <span className="min-w-0 flex-1">
-                <span className="block font-display text-sm font-bold text-gold-200">
-                  Verify your professional identity
+            {user.professionalVerifiedAt ? (
+              <Link
+                href="/account/verification"
+                className="flex items-center gap-3 rounded-card border border-volt-500/30 bg-volt-500/10 p-4 transition-colors hover:border-volt-500/50"
+              >
+                <BadgeCheck className="size-5 shrink-0 text-volt-300" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-sm font-bold text-volt-200">
+                    Verified {roleName}
+                  </span>
+                  <span className="block text-xs text-volt-200/70">
+                    Confirmed{" "}
+                    {new Date(user.professionalVerifiedAt).toLocaleDateString(undefined, {
+                      day: "numeric", month: "long", year: "numeric",
+                    })}
+                    . Your verified badge is live.
+                  </span>
                 </span>
-                <span className="block text-xs text-gold-200/70">
-                  Get your verified badge and unlock {roleName} features. Takes a couple of minutes.
+                <ArrowRight className="size-4 shrink-0 text-volt-300" />
+              </Link>
+            ) : (
+              <Link
+                href="/account/verification"
+                className="flex items-center gap-3 rounded-card border border-gold-500/30 bg-gold-500/10 p-4 transition-colors hover:border-gold-500/50"
+              >
+                <BadgeCheck className="size-5 shrink-0 text-gold-300" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-sm font-bold text-gold-200">
+                    Verify your professional identity
+                  </span>
+                  <span className="block text-xs text-gold-200/70">
+                    Get your verified badge and unlock {roleName} features. Takes a couple of minutes.
+                  </span>
                 </span>
-              </span>
-              <ArrowRight className="size-4 shrink-0 text-gold-300" />
-            </Link>
+                <ArrowRight className="size-4 shrink-0 text-gold-300" />
+              </Link>
+            )}
           </div>
         )}
         <div className="container-cr grid gap-6 py-10 lg:grid-cols-[1fr_1.4fr]">

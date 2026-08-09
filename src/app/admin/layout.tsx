@@ -8,6 +8,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireAdminPage();
 
   const nav = [
+    // Overview first — it is the page that answers "is anything waiting for
+    // me", and until it existed /admin itself was a 404.
+    { href: "/admin", label: "Overview" },
     { href: "/admin/events", label: "Events" },
     // Reports lead the community half of the nav: it is the only queue here
     // where the backlog is other members waiting on a decision.
@@ -23,7 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-full bg-ink-950">
       <header className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/95 backdrop-blur">
         <div className="flex items-center gap-4 px-4 py-2">
-          <Link href="/admin/events" className="font-display text-sm font-black uppercase tracking-[0.16em] text-chalk">
+          <Link href="/admin" className="font-display text-sm font-black uppercase tracking-[0.16em] text-chalk">
             Operations
           </Link>
           <nav className="flex items-center gap-1">

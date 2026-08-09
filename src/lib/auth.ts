@@ -47,6 +47,8 @@ export interface SessionUser {
   registryRole: string;
   role: string;
   reputation: number;
+  /** When staff confirmed this person's professional identity, or null. */
+  professionalVerifiedAt: Date | null;
 }
 
 // ── Password hashing ──────────────────────────────────────────────────────
@@ -109,6 +111,15 @@ export const clearedCookieOptions = { ...cookieOptions, maxAge: 0 };
 const SAFE_SELECT = {
   id: true, name: true, email: true, username: true, image: true, bannerUrl: true,
   registryRole: true, role: true, reputation: true,
+  // The verified badge's source of truth. Safe to carry: it is already public
+  // on the user's own profile, it is one more column on a row this query is
+  // reading anyway, and it costs no token change — the session is resolved from
+  // the database on every request, not decoded from the cookie.
+  //
+  // Without it the account page could not tell "not verified yet" from
+  // "verified last month", so it told everyone with a professional role to go
+  // and verify, including the people who already had.
+  professionalVerifiedAt: true,
 } as const;
 
 /**

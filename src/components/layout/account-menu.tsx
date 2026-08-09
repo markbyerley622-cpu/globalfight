@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Settings, Bookmark, TrendingUp, LogOut, CircleUserRound, Menu, Home, ShieldCheck, Megaphone } from "lucide-react";
+import { User, Settings, Bookmark, TrendingUp, LogOut, CircleUserRound, Menu, Home, ShieldCheck, Megaphone, BadgeCheck, BarChart3 } from "lucide-react";
 import { useAuth } from "@/lib/auth-client";
 import { isAdminRole } from "@/lib/admin/roles";
 import { cn } from "@/lib/utils";
@@ -92,10 +92,29 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
                     has verified them. */}
                 <Item href="/promoter" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Host events</Item>
                 <Item href="/account" icon={<Settings className="size-4" />} onClick={() => setOpen(false)}>Settings</Item>
+                {/* ── ADMIN ──
+                    Was two loose links sitting among the user's own items, and
+                    one of them was mislabelled: "Verification" pointed at
+                    /admin/claims, which is FIGHTER CLAIMS — a different queue
+                    from identity verification, with different documents and a
+                    different decision. Identity verification and the analytics
+                    console had no entry point at all, so the only way to reach
+                    either was to already know the URL.
+
+                    Now a titled section with the console's own front door at
+                    the top. Ordinary users never render this branch, and every
+                    destination re-checks server-side regardless: the admin
+                    layout calls requireAdminPage() for the whole tree. Hiding
+                    the links is discoverability, not access control. */}
                 {isAdmin && (
                   <>
-                    <Item href="/admin/claims" icon={<ShieldCheck className="size-4" />} onClick={() => setOpen(false)}>Verification</Item>
-                    <Item href="/admin/promoter-claims" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Promoter applications</Item>
+                    <div className="my-1 border-t border-ink-800" />
+                    <p className="px-3 pb-1 pt-1.5 font-display text-3xs font-bold uppercase tracking-[0.16em] text-fog">
+                      Admin
+                    </p>
+                    <Item href="/admin" icon={<ShieldCheck className="size-4" />} onClick={() => setOpen(false)}>Operations</Item>
+                    <Item href="/admin/identity-verification" icon={<BadgeCheck className="size-4" />} onClick={() => setOpen(false)}>Verification</Item>
+                    <Item href="/admin/analytics" icon={<BarChart3 className="size-4" />} onClick={() => setOpen(false)}>Analytics</Item>
                   </>
                 )}
                 <Action icon={<Menu className="size-4" />} onClick={() => { setOpen(false); onOpenNav(); }}>Browse menu</Action>

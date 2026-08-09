@@ -12,6 +12,14 @@ export interface AuthUser {
   registryRole: string;
   role: string;
   reputation: number;
+  /**
+   * When staff confirmed this person's professional identity, or null.
+   *
+   * A STRING here, not a Date: this crosses the wire as JSON, so whatever the
+   * server typed it as arrives parsed as an ISO string. Typing it as Date would
+   * compile and then hand every caller an object with no `getTime`.
+   */
+  professionalVerifiedAt: string | null;
 }
 
 interface AuthValue {

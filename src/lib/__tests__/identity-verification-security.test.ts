@@ -136,6 +136,66 @@ describe("admin surfaces refuse non-staff in the service layer, not the UI", () 
   });
 });
 
+// ── The console is reachable, and only by staff ────────────────────────────
+
+describe("the admin console can be found without knowing a URL", () => {
+  test("/admin is a real page, not a 404", () => {
+    // It was a 404. The tree had a layout and seven leaf pages and no index, so
+    // the console had no front door and no way to see that somebody was waiting
+    // on a decision without opening each queue and counting.
+    assert.ok(
+      body.has("app/admin/page.tsx"),
+      "src/app/admin/page.tsx is gone — /admin 404s and the console has no landing page again",
+    );
+  });
+
+  test("the overview links to both operator surfaces", () => {
+    const page = body.get("app/admin/page.tsx")!;
+    for (const href of ["/admin/identity-verification", "/admin/analytics"]) {
+      assert.ok(page.includes(href), `the admin overview no longer links to ${href}`);
+    }
+  });
+
+  test("every destination the admin nav offers exists", () => {
+    // A nav entry pointing at a route that was renamed is a 404 the operator
+    // finds by clicking it.
+    const layout = body.get("app/admin/layout.tsx")!;
+    const hrefs = [...layout.matchAll(/href:\s*["'](\/admin[^"']*)["']/g)].map((m) => m[1]);
+    assert.ok(hrefs.length >= 5, "the admin nav lost most of its entries");
+    for (const href of hrefs) {
+      const seg = href.replace(/^\/admin\/?/, "");
+      const file = seg ? `app/admin/${seg}/page.tsx` : "app/admin/page.tsx";
+      assert.ok(body.has(file), `the admin nav points at ${href}, but ${file} does not exist`);
+    }
+  });
+
+  test("the account menu's admin section is gated, and points at the right queues", () => {
+    const menu = body.get("components/layout/account-menu.tsx")!;
+    assert.ok(/isAdminRole\s*\(/.test(menu), "the account menu no longer uses the shared staff predicate");
+    assert.ok(/\{isAdmin\s*&&/.test(menu), "the admin section is no longer gated on isAdmin");
+
+    // The bug: "Verification" in this menu used to point at /admin/claims,
+    // which is FIGHTER CLAIMS — a different queue, different documents,
+    // different decision. Identity verification and analytics had no entry
+    // point at all, so the only way in was to already know the URL.
+    for (const href of ["/admin", "/admin/identity-verification", "/admin/analytics"]) {
+      assert.ok(menu.includes(`"${href}"`), `the account menu no longer offers ${href}`);
+    }
+  });
+
+  test("hiding the links is discoverability, never the access control", () => {
+    // The menu is a client component: its `isAdmin` is a rendering decision and
+    // an attacker simply types the URL. What actually refuses them is the
+    // layout, server-side, for the whole tree.
+    const layout = body.get("app/admin/layout.tsx")!;
+    assert.ok(
+      /requireAdminPage\s*\(/.test(layout),
+      "the admin layout stopped guarding — the account menu's isAdmin is now the only thing between " +
+        "a non-admin and the console, and it is client-side",
+    );
+  });
+});
+
 // ── 3 / 9 / 10 / 16 · document bytes and their keys never leak ─────────────
 
 describe("identity documents cannot be reached except through the audited reader", () => {
