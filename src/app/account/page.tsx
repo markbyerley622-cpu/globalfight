@@ -185,6 +185,44 @@ export default function AccountPage() {
             </button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
+            {/* ── Identity & verification — ALWAYS here ──
+                It used to exist only as a banner above, rendered solely when
+                `isProfessionalRole(registryRole)` was true. So an account whose
+                registry role is "fan" — which is the seed-admin default, and
+                the commonest choice by a distance — had no route to this
+                feature anywhere in the product except typing the URL. The
+                feature was not missing; it was unreachable, which from the
+                account page is the same thing.
+
+                Always rendering it, and letting the COPY carry the state, also
+                answers the fan case honestly: verification is for professional
+                roles, and this says so and points at the profile editor rather
+                than silently not existing. Selecting a role still grants
+                nothing — see lib/promoter/verification. */}
+            <Link
+              href={isProfessionalRole(user.registryRole) ? "/account/verification" : "/profile"}
+              className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40"
+            >
+              <BadgeCheck
+                className={`size-6 ${
+                  user.professionalVerifiedAt
+                    ? "text-volt-300"
+                    : isProfessionalRole(user.registryRole)
+                      ? "text-gold-300"
+                      : "text-blood-400"
+                }`}
+              />
+              <div>
+                <p className="font-display text-sm font-bold text-chalk">Identity &amp; verification</p>
+                <p className="text-sm text-mist">
+                  {user.professionalVerifiedAt
+                    ? `Verified ${roleName}. Your badge is live.`
+                    : isProfessionalRole(user.registryRole)
+                      ? `Upload ID to verify your ${roleName} identity and see your review status.`
+                      : "For professional roles. Set yours on your profile to apply."}
+                </p>
+              </div>
+            </Link>
             <Link href="/registry" className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40">
               <ShieldCheck className="size-6 text-blood-400" />
               <div><p className="font-display text-sm font-bold text-chalk">Claim your profile</p><p className="text-sm text-mist">Find your registry entry and claim it.</p></div>

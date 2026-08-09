@@ -3,13 +3,20 @@ import { ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { listVerifications, verificationStats, roleLabel } from "@/lib/identity-verification";
 import { REGISTRY_ROLE_DEFS } from "@/lib/roles";
+import { requireAdminPage } from "@/lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 
-// The admin layout already calls requireAdminPage(), which 404s for anyone who
-// isn't staff — so this page cannot render for a non-admin. It reads the queue
-// directly rather than through an API: there is no second consumer, and a
-// server component keeps the storage keys strictly server-side by construction.
+// This used to say the admin layout's requireAdminPage() meant the page "cannot
+// render for a non-admin". It can, and it did: a layout and its page render in
+// PARALLEL, so `notFound()` in the layout replaces the UI without cancelling the
+// queries here — the queue's counters, and every applicant's name, username and
+// email, were being serialised into the RSC payload for anonymous callers.
+// Verified against production before the fix.
+//
+// Hence the explicit guard in the body. It reads the queue directly rather than
+// through an API: there is no second consumer, and a server component keeps the
+// storage keys strictly server-side by construction.
 
 const STATUSES = ["PENDING", "APPROVED", "DECLINED", "RESUBMIT_REQUESTED"] as const;
 
@@ -33,6 +40,9 @@ export default async function IdentityVerificationQueue({
 }: {
   searchParams: Promise<{ status?: string; role?: string; q?: string }>;
 }) {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const sp = await searchParams;
   const status = STATUSES.includes(sp.status as never) ? sp.status : undefined;
   const role = sp.role || undefined;

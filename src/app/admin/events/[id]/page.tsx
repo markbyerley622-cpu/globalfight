@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { EventEditor, type EditableEvent } from "@/components/admin/event-editor";
 import { FightCardEditor, type EditableFight, type Segment } from "@/components/admin/fight-card-editor";
+import { requireAdminPage } from "@/lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
  * classes for that sport. An 18-bout card costs the same as a 1-bout card.
  */
 export default async function AdminEventPage({ params }: { params: Promise<{ id: string }> }) {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const { id } = await params;
   const e = await prisma.event.findUnique({
     where: { id },

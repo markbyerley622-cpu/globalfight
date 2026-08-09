@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { resolvePromotion } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
 import { NewEventButton } from "@/components/admin/new-event-button";
+import { requireAdminPage } from "@/lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 const PER_PAGE = 40;
@@ -11,6 +12,9 @@ const PER_PAGE = 40;
 export default async function AdminEventsPage({
   searchParams,
 }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const page = Math.max(0, Number(sp.page) - 1) || 0;

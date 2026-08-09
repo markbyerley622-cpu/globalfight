@@ -16,7 +16,7 @@ _None._ No private-model read/write was found without an ownership filter.
 
 | Location | Function | Model | Query | Why |
 |---|---|---|---|---|
-| `src/app/admin/identity-verification/[id]/page.tsx:30` | v | IdentityVerification (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/app/admin/identity-verification/[id]/page.tsx:34` | v | IdentityVerification (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/app/api/admin/gym-claims/[id]/evidence/route.ts:38` | claim | GymClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/admin/gym-claims/[id]/route.ts:31` | claim | GymClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/app/api/admin/gym-claims/[id]/route.ts:40` | POST | GymClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |

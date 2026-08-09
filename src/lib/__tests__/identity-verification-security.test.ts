@@ -186,12 +186,46 @@ describe("the admin console can be found without knowing a URL", () => {
   test("hiding the links is discoverability, never the access control", () => {
     // The menu is a client component: its `isAdmin` is a rendering decision and
     // an attacker simply types the URL. What actually refuses them is the
-    // layout, server-side, for the whole tree.
+    // server-side guard — see the page-level test below, which is the one that
+    // matters. This only asserts the layout has not silently lost its check.
     const layout = body.get("app/admin/layout.tsx")!;
     assert.ok(
       /requireAdminPage\s*\(/.test(layout),
-      "the admin layout stopped guarding — the account menu's isAdmin is now the only thing between " +
-        "a non-admin and the console, and it is client-side",
+      "the admin layout stopped guarding",
+    );
+  });
+
+  test("EVERY server admin page guards itself — the layout is not enough", () => {
+    // ── The bug, verified against production ────────────────────────────────
+    // An earlier version of this suite asserted only that the LAYOUT guards,
+    // on the assumption that it covered the tree. It does not, and the proof
+    // was a plain anonymous request:
+    //
+    //     $ curl https://…/admin
+    //     200, and the flight payload contained \"children\":\"7\"
+    //     immediately before \"Registered accounts\"
+    //
+    // A layout and its page render in PARALLEL. `notFound()` in the layout
+    // swaps the UI for the 404 boundary; it does not cancel the sibling page,
+    // which has already run its queries and streamed the results. So the layout
+    // is a UI guard and never was a data guard, and seven server pages under
+    // /admin — including the identity queue, with applicant names and emails —
+    // were serialising query results to anonymous callers.
+    //
+    // A CLIENT page ("use client") is exempt: it ships markup and fetches from
+    // /api/admin/*, which guards per route and is covered by the API test above.
+    const offenders: string[] = [];
+    for (const [path, src] of body) {
+      if (!path.startsWith("app/admin/") || !path.endsWith("page.tsx")) continue;
+      const isClient = /^\s*["']use client["']/.test(src);
+      if (isClient) continue;
+      if (!/await\s+requireAdminPage\s*\(\s*\)/.test(src)) offenders.push(path);
+    }
+    assert.deepEqual(
+      offenders, [],
+      "these server admin pages run queries with no guard of their own. The layout does NOT stop " +
+        "them — it renders in parallel. Add `await requireAdminPage()` as the first statement:\n  " +
+        offenders.join("\n  "),
     );
   });
 });

@@ -1,6 +1,7 @@
 import { listPendingPromoterClaims } from "@/lib/promoter/claims";
 import { publicDisplayName } from "@/lib/display-name";
 import { PromoterClaimReview, type ClaimRow } from "@/components/admin/promoter-claim-review";
+import { requireAdminPage } from "@/lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ export const dynamic = "force-dynamic";
  * decides who sees /admin/*.
  */
 export default async function AdminPromoterClaimsPage() {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const claims = await listPendingPromoterClaims();
 
   // Read once per request. This is an async SERVER component — it renders once

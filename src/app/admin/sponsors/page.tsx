@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ExternalLink, LinkIcon, Clock } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { isAdminRole } from "@/lib/admin/guard";
+import { isAdminRole, requireAdminPage } from "@/lib/admin/guard";
 import { SPONSORS, isLive, sponsorHref, daysUntilExpiry } from "@/lib/sponsors";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,9 @@ const EXPIRY_WARNING_DAYS = 45;
  * That is what this is. Editing is a pull request.
  */
 export default async function AdminSponsorsPage() {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const user = await getCurrentUser().catch(() => null);
   if (!user || !isAdminRole(user.role)) notFound();
 

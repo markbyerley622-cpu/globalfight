@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShieldCheck, Users, Megaphone, Dumbbell, Flag, BarChart3, CalendarDays } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { verificationStats } from "@/lib/identity-verification";
+import { requireAdminPage } from "@/lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +21,22 @@ export const dynamic = "force-dynamic";
 //  derived engagement figure — those live on /admin/analytics, which is built on
 //  lib/metrics. This page answers one question: what is waiting.
 //
-//  No guard of its own: src/app/admin/layout.tsx calls requireAdminPage() for
-//  the whole tree, which 404s for anyone who is not staff. A second check here
-//  would be a second copy of the rule (see lib/admin/roles).
+//  ── It guards ITSELF, and that is not belt-and-braces ─────────────────────
+//  This originally said the layout's requireAdminPage() covered the whole tree,
+//  so a check here would be redundant. That was WRONG, and it was verified
+//  wrong against production: `curl https://…/admin` with no cookie returned 200
+//  with `"children":"7"` next to "Registered accounts" in the flight payload.
+//
+//  A layout and its page render in PARALLEL in the App Router. `notFound()`
+//  thrown in the layout swaps the UI for the 404 boundary — it does not cancel
+//  the sibling page, which has already run its queries and serialised the
+//  results into the RSC stream. The layout guard is a UI guard. It was never a
+//  data guard, and every server page under /admin was leaking its query results
+//  to anonymous callers because of that distinction.
+//
+//  So the guard goes next to the data, in every page that reads any. Same rule,
+//  one definition (lib/admin/roles) — this is not a second copy of the rule,
+//  it is the one rule applied where it actually stops a query.
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -45,6 +59,9 @@ async function openQueues() {
 }
 
 export default async function AdminOverview() {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const [stats, queues, users, upcomingEvents] = await Promise.all([
     verificationStats(),
     openQueues(),

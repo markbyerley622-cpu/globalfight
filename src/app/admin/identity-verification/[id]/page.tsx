@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { roleLabel } from "@/lib/identity-verification";
 import { ReviewForm } from "./review-form";
+import { requireAdminPage } from "@/lib/admin/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ const byKind = (a: { kind: string }, b: { kind: string }) =>
   KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind);
 
 export default async function VerificationDetail({ params }: { params: Promise<{ id: string }> }) {
+  // Guarded HERE, not only by the layout — see the note in lib/admin/guard.
+  await requireAdminPage();
+
   const { id } = await params;
 
   // Storage keys are selected but NEVER rendered — the documents are reachable
