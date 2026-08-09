@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Activity, Users, Target, Repeat, Bell, Heart, Eye, Layers, TrendingUp } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdminPage } from "@/lib/admin/guard";
 import { getLaunchMetrics, type LaunchMetrics } from "@/lib/metrics";
 
 export const metadata: Metadata = { title: "Launch metrics", robots: { index: false } };
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
-
 export default async function AdminAnalyticsPage() {
-  const user = await getCurrentUser();
-  if (!user || !isAdmin(user.role)) notFound(); // don't reveal the route exists
+  // Was a hand-rolled `role === "ADMIN" || role === "MODERATOR"` local to this
+  // file. It agreed with the real rule, which is exactly what makes a second
+  // copy dangerous: it agrees until the day the rule changes in one place. The
+  // guard module exists because there were once six of these, and CLAUDE.md
+  // names it the ONE definition. `requireAdminPage` also 404s rather than 403s,
+  // which is the behaviour the rest of the admin tree already has.
+  await requireAdminPage();
 
   const m = await getLaunchMetrics();
 

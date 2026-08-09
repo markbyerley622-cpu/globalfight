@@ -24,6 +24,7 @@ import { getCurrentUser, type SessionUser } from "@/lib/auth";
 import { hit, clientIp, POLICY } from "@/lib/rate-limit";
 import { flags } from "@/lib/feature-flags";
 import { prisma } from "@/lib/db";
+import { isAdminRole } from "@/lib/admin/roles";
 
 /** Uniform, information-free rejection. Same shape for every failure mode. */
 export function deny(status: number, message: string): NextResponse {
@@ -50,7 +51,10 @@ export interface GuardOptions {
 /** Per-user daily cap on AI processing calls. Bounds spend even for a real user. */
 export const DAILY_QUOTA = Number(process.env.VOICEBUILD_DAILY_QUOTA ?? "20");
 
-const isAdmin = (role: string) => role === "ADMIN" || role === "MODERATOR";
+// Imported, not spelled out. This is a real authorization decision — it gates
+// the provider-status endpoint — and a private copy of the staff rule is one
+// that stops agreeing with lib/admin/roles the day the rule changes.
+const isAdmin = isAdminRole;
 
 /**
  * Gate a voicebuild request.

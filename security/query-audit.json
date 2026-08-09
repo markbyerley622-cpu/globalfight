@@ -16265,7 +16265,7 @@
     },
     {
       "file": "src/lib/voicebuild/guard.server.ts",
-      "line": 106,
+      "line": 110,
       "fn": "used",
       "model": "AuditLog",
       "method": "count",
@@ -16278,7 +16278,7 @@
     },
     {
       "file": "src/lib/voicebuild/guard.server.ts",
-      "line": 128,
+      "line": 132,
       "fn": "recordVoicebuildUse",
       "model": "AuditLog",
       "method": "create",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { User, Settings, Bookmark, TrendingUp, LogOut, CircleUserRound, Menu, Home, ShieldCheck, Megaphone } from "lucide-react";
 import { useAuth } from "@/lib/auth-client";
+import { isAdminRole } from "@/lib/admin/roles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,7 +38,12 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
   }, [open]);
 
   const initial = user ? (user.name ?? user.username ?? "?").slice(0, 1).toUpperCase() : null;
-  const isAdmin = user?.role === "ADMIN" || user?.role === "MODERATOR";
+  // Whether to OFFER the admin link, not whether it may be used — every admin
+  // page and route re-checks server-side. Still the shared predicate: a copy
+  // that drifts would hide the link from real staff, which reads as the admin
+  // area being broken. lib/admin/roles imports nothing, so it is safe here in a
+  // client component.
+  const isAdmin = user ? isAdminRole(user.role) : false;
 
   return (
     <div ref={ref} className="relative">

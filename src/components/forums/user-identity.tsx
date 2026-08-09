@@ -6,6 +6,7 @@ import { RoleBadge, AdminBadge } from "@/components/role-badge";
 import { PresenceDot } from "@/components/presence/presence-dot";
 import type { PresenceDto } from "@/lib/presence/policy";
 import { SPORT_LABEL } from "@/lib/sports";
+import { isAdminRole } from "@/lib/admin/roles";
 import { cn } from "@/lib/utils";
 
 // Deterministic identity colour from a name (matches the fighter-avatar feel).
@@ -98,7 +99,10 @@ export function AuthorIdentity({
   showOffline?: boolean;
 }) {
   const sportLabel = role === "fighter" && sport ? SPORT_LABEL[sport] ?? sport : undefined;
-  const isStaff = appRole === "ADMIN" || appRole === "MODERATOR";
+  // Purely which badge to draw. Shared predicate anyway — if the staff rule ever
+  // changes, a private copy here would keep labelling the wrong people staff in
+  // every forum thread, which is a trust signal being printed from a stale rule.
+  const isStaff = appRole ? isAdminRole(appRole) : false;
   // When we know the author's handle, the avatar + name link to their public
   // profile — so respect (rep, streak, accuracy) is one tap away from any post.
   const inner = (
