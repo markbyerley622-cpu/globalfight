@@ -62,10 +62,24 @@ function policy(nonce: string): string {
     "media-src 'self' https://*.r2.dev blob:",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
-    // Restored now that the policy is enforced. Browsers IGNORE this directive
-    // in a Report-Only policy and log a console error for it on every page
-    // load, which is why it was commented out before.
-    "upgrade-insecure-requests",
+    // ── `upgrade-insecure-requests` is DELIBERATELY ABSENT ──────────────────
+    // It was here briefly, restored on the reasoning that browsers ignore it in
+    // a Report-Only policy so an enforced policy should carry it. That was
+    // wrong, and the original next.config comment had already said why: HSTS
+    // (max-age 2y, includeSubDomains, preload) already forces HTTPS for this
+    // whole domain, so on production the directive buys nothing.
+    //
+    // What it DOES do is break every non-HTTPS environment — local dev and the
+    // E2E server. Reproduced in Chromium against a production build served on
+    // http://127.0.0.1: `/fighters` fetched fine while `/` and
+    // `/predictions/<slug>` failed with net::ERR_SSL_PROTOCOL_ERROR. The
+    // difference is that those two are REDIRECTS: 127.0.0.1 is a trustworthy
+    // origin so the initial request is exempt, but the Location header is an
+    // absolute `http://…` URL and the upgrade applies to that. Next's client
+    // router logged "Failed to fetch RSC payload … TypeError: Failed to fetch"
+    // and fell back to full navigation, which is what turned the E2E suite red.
+    //
+    // Do not re-add it without HSTS being removed first.
   ].join("; ");
 }
 

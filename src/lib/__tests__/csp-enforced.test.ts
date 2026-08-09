@@ -112,12 +112,32 @@ describe("the hard directives are all present", () => {
     "form-action 'self'",
     "connect-src 'self'",
     "manifest-src 'self'",
-    "upgrade-insecure-requests",
   ]) {
     test(`"${directive}" survives`, () => {
       assert.ok(mw.includes(directive), `the policy lost: ${directive}`);
     });
   }
+
+  test("`upgrade-insecure-requests` stays OUT of the policy", () => {
+    // Not an omission. HSTS (preload, includeSubDomains) already forces HTTPS
+    // for the whole domain, so the directive buys nothing on production — and
+    // it breaks every non-HTTPS environment. Reproduced in Chromium against a
+    // production build on http://127.0.0.1: `/fighters` fetched fine while `/`
+    // and `/predictions/<slug>` failed with net::ERR_SSL_PROTOCOL_ERROR,
+    // because those are REDIRECTS and the absolute `http://` Location header
+    // gets upgraded even though 127.0.0.1 is itself an exempt trustworthy
+    // origin. That is what turned the E2E suite red.
+    //
+    // Asserted on the POLICY function specifically, so the explanation above
+    // (which contains the phrase) does not satisfy the test.
+    const policy = mw.slice(mw.indexOf("function policy"), mw.indexOf("export function middleware"));
+    const directives = policy.match(/"[a-z-]+ [^"]*"|"[a-z-]+"/g) ?? [];
+    assert.ok(
+      !directives.some((d) => d.includes("upgrade-insecure-requests")),
+      "upgrade-insecure-requests is back in the policy. It breaks redirects on any HTTP " +
+        "deployment (local dev, E2E) and adds nothing over HSTS. Remove HSTS first if you want it.",
+    );
+  });
 
   test("the middleware still runs on HTML routes", () => {
     // A matcher that stops matching is a CSP that silently stops shipping —
