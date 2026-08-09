@@ -108,7 +108,7 @@ jobs:
           npm run test:integration
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/gf_test
-          AUTH_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
+          AUTH_SECRET: "7b3e91d6a52c08f4ae17c3b95d2f8016c4a7e3d91b6f52807ac4e1f39d8b62a5"
 
       # The query-ownership auditor. CLAUDE.md requires this to stay at 0 HIGH,
       # and it was the one documented gate that CI did not actually enforce —
@@ -122,8 +122,16 @@ jobs:
           # Dummy values so the build's module graph resolves. No real database
           # is contacted: pages are force-dynamic and their request-time reads
           # fall back via the live() cold-start wrapper during static generation.
+          #
+          # AUTH_SECRET here and above was sixty-four ZEROES, and lib/auth-secret
+          # refuses any value with fewer than 8 distinct characters — a real rail
+          # against someone pasting a placeholder into production. So page-data
+          # collection threw AuthSecretError on the first admin route it touched
+          # and the build failed. A dummy still has to satisfy the app's own
+          # startup guard; this one is high-entropy, and it is a throwaway CI
+          # literal, not a secret (the E2E step below already has one in-repo).
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-          AUTH_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
+          AUTH_SECRET: "7b3e91d6a52c08f4ae17c3b95d2f8016c4a7e3d91b6f52807ac4e1f39d8b62a5"
           NEXT_PUBLIC_SITE_URL: https://ci.invalid
 
       # ── BROWSER SUITE ──────────────────────────────────────────────────────
