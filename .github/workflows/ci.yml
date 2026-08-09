@@ -23,7 +23,17 @@ jobs:
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
-          POSTGRES_DB: gftest
+          # `gf_test`, not `gftest`. resetDb (test/integration/helpers) refuses to
+          # TRUNCATE any database whose name does not match /(^|_)test$/ — a
+          # deliberate rail, because the cost of that check being wrong is the
+          # whole dataset, and an ambient DATABASE_URL can override an env file.
+          # `gftest` does not match, so every integration test aborted in its
+          # before-hook with "NOTHING WAS DELETED".
+          #
+          # The service has been misnamed since it was added and nobody could
+          # know: `Test` fails first (see node-version above), so the integration
+          # step had never once executed.
+          POSTGRES_DB: gf_test
         ports:
           - 5432:5432
         options: >-
@@ -81,7 +91,7 @@ jobs:
           npx prisma migrate deploy
           npm run test:integration
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/gftest
+          DATABASE_URL: postgresql://test:test@localhost:5432/gf_test
           AUTH_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
 
       # The query-ownership auditor. CLAUDE.md requires this to stay at 0 HIGH,
@@ -126,7 +136,7 @@ jobs:
           done
           echo "server did not become healthy in 90s"; exit 1
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/gftest
+          DATABASE_URL: postgresql://test:test@localhost:5432/gf_test
           AUTH_SECRET: ${{ secrets.CI_AUTH_SECRET || '3f7a1c9e2b5d8046af13e7c95d2b8016f4a7c3e91d6b52807ac4f1e39d8b62c5' }}
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
           EVIDENCE_R2_ENDPOINT: https://example.invalid
@@ -139,7 +149,7 @@ jobs:
       - name: Seed the E2E world
         run: npm run seed:e2e
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/gftest
+          DATABASE_URL: postgresql://test:test@localhost:5432/gf_test
 
       - name: Accessibility (axe, WCAG 2.1 A/AA)
         run: npx playwright test test/e2e/06-accessibility.spec.ts --project=chromium
