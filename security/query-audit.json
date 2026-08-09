@@ -1627,10 +1627,10 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 206,
-      "fn": "reviewVerification",
+      "line": 220,
+      "fn": "claimed",
       "model": "IdentityVerification",
-      "method": "update",
+      "method": "updateMany",
       "klass": "USER_OWNED",
       "kind": "write",
       "ownership": "unscoped",
@@ -1640,7 +1640,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 308,
+      "line": 329,
       "fn": "listVerifications",
       "model": "IdentityVerification",
       "method": "findMany",
@@ -1653,7 +1653,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 334,
+      "line": 355,
       "fn": "verificationStats",
       "model": "IdentityVerification",
       "method": "findMany",
@@ -3681,7 +3681,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 216,
+      "line": 233,
       "fn": "reviewVerification",
       "model": "User",
       "method": "update",
@@ -3694,7 +3694,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 384,
+      "line": 405,
       "fn": "cleanupExpiredIdentityDocuments",
       "model": "IdentityDocument",
       "method": "update",
@@ -3707,7 +3707,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 391,
+      "line": 412,
       "fn": "cleanupExpiredIdentityDocuments",
       "model": "IdentityDocument",
       "method": "update",
@@ -11715,7 +11715,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 219,
+      "line": 236,
       "fn": "reviewVerification",
       "model": "AuditLog",
       "method": "create",
@@ -11728,7 +11728,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 253,
+      "line": 274,
       "fn": "myVerifications",
       "model": "IdentityVerification",
       "method": "findMany",
@@ -11741,7 +11741,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 267,
+      "line": 288,
       "fn": "user",
       "model": "User",
       "method": "findUnique",
@@ -11754,7 +11754,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 276,
+      "line": 297,
       "fn": "open",
       "model": "IdentityVerification",
       "method": "findFirst",
@@ -11767,7 +11767,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 320,
+      "line": 341,
       "fn": "listVerifications",
       "model": "IdentityVerification",
       "method": "count",
@@ -11780,7 +11780,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 331,
+      "line": 352,
       "fn": "verificationStats",
       "model": "IdentityVerification",
       "method": "count",
@@ -11793,7 +11793,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 332,
+      "line": 353,
       "fn": "verificationStats",
       "model": "IdentityVerification",
       "method": "count",
@@ -11806,7 +11806,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 333,
+      "line": 354,
       "fn": "verificationStats",
       "model": "IdentityVerification",
       "method": "count",
@@ -11819,7 +11819,7 @@
     },
     {
       "file": "src/lib/identity-verification.ts",
-      "line": 365,
+      "line": 386,
       "fn": "due",
       "model": "IdentityDocument",
       "method": "findMany",

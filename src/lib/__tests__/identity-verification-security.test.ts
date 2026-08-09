@@ -316,6 +316,51 @@ describe("verification status cannot be set by the applicant", () => {
   });
 });
 
+// ── The decision is claimed atomically, and nothing sensitive is cacheable ──
+
+describe("two reviewers cannot both decide the same request", () => {
+  test("the status transition is a conditional updateMany, not check-then-update", () => {
+    // ── The race ────────────────────────────────────────────────────────────
+    // `isOpen()` above the transaction is a READ. Two reviewers with the same
+    // queue open is the ordinary case — the route's own error copy says
+    // "someone got there first" — so both could pass that read and both write:
+    // two audit rows for one decision, last-write-wins on status, and an
+    // APPROVE landing after a DECLINE still leaves professionalVerifiedAt set.
+    // A rejected applicant would wear a verified badge.
+    //
+    // CLAUDE.md rule 4 requires an updateMany guard for exactly this shape.
+    const svc = body.get("lib/identity-verification.ts")!;
+    const fn = svc.slice(svc.indexOf("export async function reviewVerification"));
+    const tx = fn.slice(0, fn.indexOf("\n}"));
+
+    assert.ok(
+      /identityVerification\.updateMany\(\s*\{\s*where:\s*\{[^}]*status:\s*["']PENDING["']/.test(tx),
+      "reviewVerification no longer claims the row with a status-guarded updateMany — " +
+        "two concurrent reviewers can both write a decision",
+    );
+    assert.ok(
+      /count\s*===\s*0/.test(tx),
+      "the claim result is not checked; losing the race must abort, not fall through",
+    );
+    assert.ok(
+      !/identityVerification\.update\(\s*\{\s*where:\s*\{\s*id:/.test(tx),
+      "an unconditional .update() is back in the review path — it cannot lose a race and so it always wins one",
+    );
+  });
+});
+
+describe("verification responses are never cacheable", () => {
+  test("the user's own history is private and no-store", () => {
+    // Verified missing against production: the endpoint returned a per-user
+    // identity record with NO cache-control at all. force-dynamic stops NEXT
+    // caching it and says nothing to a CDN, a corporate proxy or the browser's
+    // disk cache.
+    const route = body.get("app/api/verification/identity/route.ts")!;
+    assert.ok(/no-store/.test(route), "the verification history lost its no-store");
+    assert.ok(/private/.test(route), "the verification history lost `private` — a shared cache may hold it");
+  });
+});
+
 // ── 14 / 15 · identity is not ownership ────────────────────────────────────
 
 describe("verifying a person does not grant them an organisation", () => {

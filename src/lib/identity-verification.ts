@@ -202,35 +202,56 @@ export async function reviewVerification(
     decision === "APPROVE" ? "APPROVED" : decision === "DECLINE" ? "DECLINED" : "RESUBMIT_REQUESTED";
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
-    await tx.identityVerification.update({
-      where: { id: verificationId },
-      data: {
-        status, reviewedAt: now, reviewerId,
-        declineReason: decision === "APPROVE" ? null : reason,
-        reviewNote: opts.note?.trim() || null,
-      },
-    });
-
-    if (decision === "APPROVE") {
-      await tx.user.update({ where: { id: row.userId }, data: { professionalVerifiedAt: now } });
-    }
-
-    await tx.auditLog.create({
-      data: {
-        actorId: reviewerId,
-        action: `identity.${decision.toLowerCase()}`,
-        entity: "IdentityVerification",
-        entityId: verificationId,
-        // Previous AND new status, so the history reads as a chain rather than
-        // a list of end states.
-        meta: {
-          previousStatus: row.status, newStatus: status, role: row.role, attempt: row.attempt,
-          subjectId: row.userId, reason: reason || null, ip: opts.ip ?? null,
+  // ── The decision must be CLAIMED, not just written ────────────────────────
+  // The `isOpen` check above is a read, and two reviewers with the same queue
+  // open is the ordinary case here, not an exotic race — the route's own error
+  // copy says "someone got there first". Check-then-update let both pass the
+  // read and both write: two audit rows for one decision, last-write-wins on the
+  // status, and — worst — an APPROVE landing after a DECLINE still leaves
+  // `professionalVerifiedAt` set, so a rejected applicant ends up wearing a
+  // verified badge.
+  //
+  // `updateMany` with the status in its WHERE is the same guard CLAUDE.md rule 4
+  // requires everywhere else: the database decides who won, atomically, and the
+  // loser's transaction is rolled back whole by the throw below.
+  const NOT_OPEN = Symbol("not-open");
+  try {
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.identityVerification.updateMany({
+        where: { id: verificationId, status: "PENDING" },
+        data: {
+          status, reviewedAt: now, reviewerId,
+          declineReason: decision === "APPROVE" ? null : reason,
+          reviewNote: opts.note?.trim() || null,
         },
-      },
+      });
+      // Zero rows means another reviewer claimed it between the read and here.
+      // Throwing rolls back the audit row and the user update with it.
+      if (claimed.count === 0) throw NOT_OPEN;
+
+      if (decision === "APPROVE") {
+        await tx.user.update({ where: { id: row.userId }, data: { professionalVerifiedAt: now } });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorId: reviewerId,
+          action: `identity.${decision.toLowerCase()}`,
+          entity: "IdentityVerification",
+          entityId: verificationId,
+          // Previous AND new status, so the history reads as a chain rather than
+          // a list of end states.
+          meta: {
+            previousStatus: row.status, newStatus: status, role: row.role, attempt: row.attempt,
+            subjectId: row.userId, reason: reason || null, ip: opts.ip ?? null,
+          },
+        },
+      });
     });
-  });
+  } catch (err) {
+    if (err === NOT_OPEN) return { ok: false, reason: "NOT_OPEN" };
+    throw err;
+  }
 
   const message: Record<VerificationStatus, { title: string; body: string }> = {
     APPROVED: { title: "You're verified", body: `Your ${roleLabel(row.role)} identity has been confirmed. Your verified badge is live.` },

@@ -12,13 +12,32 @@ export const dynamic = "force-dynamic";
 
 const KINDS: DocumentKind[] = ["FRONT", "BACK", "SUPPORTING"];
 
-/** The signed-in user's own verification history. Never includes storage keys. */
+/**
+ * The signed-in user's own verification history. Never includes storage keys.
+ *
+ * Explicitly `private, no-store`. The response is per-user and describes an
+ * identity check — who submitted, when, what a reviewer said — and it carried NO
+ * cache-control header at all, verified against production. `dynamic =
+ * "force-dynamic"` stops NEXT caching it; it says nothing to a CDN, a corporate
+ * proxy or the browser's own disk cache, any of which could then hand one
+ * person's verification state to the next request on a shared connection.
+ * Stating it is one header; assuming it is a shared-cache bug.
+ */
+const PRIVATE_NO_STORE = {
+  "cache-control": "private, no-store, max-age=0, must-revalidate",
+} as const;
+
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401, headers: PRIVATE_NO_STORE });
+  }
 
   const [history, eligibility] = await Promise.all([myVerifications(user.id), canSubmit(user.id)]);
-  return NextResponse.json({ history, canSubmit: eligibility.allowed, reason: eligibility.reason ?? null });
+  return NextResponse.json(
+    { history, canSubmit: eligibility.allowed, reason: eligibility.reason ?? null },
+    { headers: PRIVATE_NO_STORE },
+  );
 }
 
 /**
