@@ -76,11 +76,17 @@ export const PROVIDERS: ProviderSpec[] = [
     tier: "OFFICIAL",
     licensed: true,
     authoritativeFor: ["events", "bouts", "results", "champions"],
-    // Measured, not assumed: `npm run audit:quality` reports 518 ONE events with
-    // 108 carrying no bouts at all — the single largest coverage gap in the
-    // database. The syndication feed gives metadata; the Live Results pages give
-    // the card, the finishes, the rounds and the times.
-    note: "Biggest measured gap. Metadata feed ≠ results; Live Results pages carry the card.",
+    // What remains TRUE here is the shape of the source, not a backlog size:
+    // the syndication feed gives metadata, and the Live Results pages give the
+    // card, the finishes, the rounds and the times.
+    //
+    // The old note called this "the single largest coverage gap in the database"
+    // on the strength of "518 events, 108 with no bouts". Production measurement
+    // on 2026-08-09 read 509 events with 490 carded and 5,502 bouts; the gap is
+    // closed. Two different stale counts (108 here, 251 elsewhere) had already
+    // drifted apart, which is the argument against writing counts into copy at
+    // all — `npm run audit:quality` measures this on demand.
+    note: "Metadata feed ≠ results; the Live Results pages carry the card.",
   },
   { id: "bkfc", label: "Bare Knuckle FC", tier: "OFFICIAL", licensed: true, authoritativeFor: ["events", "bouts", "results", "champions"] },
   { id: "glory", label: "GLORY Kickboxing", tier: "OFFICIAL", licensed: true, authoritativeFor: ["events", "bouts", "results", "champions"] },

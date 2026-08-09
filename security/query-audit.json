@@ -4396,7 +4396,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 330,
+      "line": 340,
       "fn": "recordProvenance",
       "model": "FightImport",
       "method": "upsert",
@@ -4409,7 +4409,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 353,
+      "line": 363,
       "fn": "queueUnmatched",
       "model": "ImportConflict",
       "method": "upsert",
@@ -4422,7 +4422,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 510,
+      "line": 520,
       "fn": "crawlOneArchive",
       "model": "ProviderCheckpoint",
       "method": "upsert",
@@ -5826,7 +5826,7 @@
     },
     {
       "file": "src/app/fights/[slug]/page.tsx",
-      "line": 33,
+      "line": 34,
       "fn": "loadFight",
       "model": "Fight",
       "method": "findFirst",
@@ -6424,7 +6424,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 245,
+      "line": 251,
       "fn": "rows",
       "model": "ScrapeJob",
       "method": "findMany",
@@ -6437,7 +6437,7 @@
     },
     {
       "file": "src/lib/admin/cron-health.ts",
-      "line": 303,
+      "line": 309,
       "fn": "grouped",
       "model": "ScrapeJob",
       "method": "groupBy",
@@ -6710,7 +6710,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 187,
+      "line": 189,
       "fn": "auditDataQuality",
       "model": "Event",
       "method": "groupBy",
@@ -6723,7 +6723,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 270,
+      "line": 272,
       "fn": "auditPipelineHealth",
       "model": "Ranking",
       "method": "count",
@@ -6736,7 +6736,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 273,
+      "line": 275,
       "fn": "auditPipelineHealth",
       "model": "TitleReign",
       "method": "findFirst",
@@ -6749,7 +6749,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 276,
+      "line": 278,
       "fn": "auditPipelineHealth",
       "model": "FighterIdentityCandidate",
       "method": "count",
@@ -6762,7 +6762,7 @@
     },
     {
       "file": "src/lib/admin/data-quality.ts",
-      "line": 277,
+      "line": 279,
       "fn": "auditPipelineHealth",
       "model": "ProviderCheckpoint",
       "method": "findMany",
@@ -15654,7 +15654,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 149,
+      "line": 159,
       "fn": "candidates",
       "model": "Event",
       "method": "findMany",
@@ -15667,7 +15667,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 162,
+      "line": 172,
       "fn": "event",
       "model": "Event",
       "method": "findUnique",
@@ -15680,7 +15680,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 209,
+      "line": 219,
       "fn": "already",
       "model": "Fight",
       "method": "findFirst",
@@ -15693,7 +15693,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 239,
+      "line": 249,
       "fn": "fight",
       "model": "Fight",
       "method": "create",
@@ -15706,7 +15706,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 322,
+      "line": 332,
       "fn": "freeFightSlug",
       "model": "Fight",
       "method": "findUnique",
@@ -15719,7 +15719,7 @@
     },
     {
       "file": "src/lib/scraper/one/ingest.ts",
-      "line": 496,
+      "line": 506,
       "fn": "checkpoint",
       "model": "ProviderCheckpoint",
       "method": "findUnique",

@@ -33,14 +33,45 @@ test("cancellation wins over every other explanation", () => {
   );
 });
 
-test("provider provenance with no bouts is OUR failure, not the promotion's", () => {
-  // A source handed us this event. If the card did not come with it, that is a
-  // mapping failure on our side, and the copy must not say "not announced yet".
-  const state = classifyCard({ ...base, hasProviderProvenance: true });
+test("provider provenance on an IMMINENT event with no bouts is OUR failure", () => {
+  // A source handed us this event, the event is upon us, and there is still no
+  // card: that is a mapping failure on our side and the copy must not say
+  // "not announced yet".
+  const state = classifyCard({
+    ...base,
+    date: new Date("2026-08-01T12:00:00Z"), // today
+    hasProviderProvenance: true,
+  });
   assert.equal(state, "EXTRACTION_FAILED");
   const copy = cardStateCopy(state);
   assert.equal(copy.ourFault, true);
   assert.doesNotMatch(copy.title, /announced/i, "must not blame the promotion");
+});
+
+test("provenance on a FUTURE event does NOT make an unannounced card our fault", () => {
+  // THIS TEST PREVIOUSLY ASSERTED THE OPPOSITE, and production proved it wrong.
+  //
+  // Discovering an event early — which the ONE announcement cron does by design —
+  // gives it provenance while the promotion has still announced nothing. On
+  // 2026-08-09 every upcoming ONE Friday Fights therefore read "We couldn't load
+  // this card — we're on it", with onefc.com showing 0 bouts for all of them.
+  // Importing an event page is not a claim that a card exists.
+  const state = classifyCard({ ...base, hasProviderProvenance: true }); // 19 days away
+  assert.equal(state, "CARD_NOT_RELEASED");
+  const copy = cardStateCopy(state);
+  assert.equal(copy.ourFault, false, "the promotion simply has not announced it");
+  assert.match(copy.title, /announced/i);
+});
+
+test("the announcement window is not a cliff — provenance stays innocent far out", () => {
+  for (const days of [3, 19, 60, 240]) {
+    const state = classifyCard({
+      ...base,
+      hasProviderProvenance: true,
+      date: new Date(+base.now + days * 86_400_000),
+    });
+    assert.equal(state, "CARD_NOT_RELEASED", `${days} days away`);
+  }
 });
 
 test("an uncovered promotion says so rather than implying the card is late", () => {

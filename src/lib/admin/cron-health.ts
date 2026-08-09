@@ -151,7 +151,13 @@ export const EXPECTED_JOBS: ExpectedJob[] = [
     label: "ONE Championship events",
     targets: ["one:sync"],
     everyMinutes: 5040,
-    matters: "ONE cards stop arriving — already the largest coverage gap in the database.",
+    // Says what STOPS, not how big the backlog is. This read "already the
+    // largest coverage gap in the database", which production measurement on
+    // 2026-08-09 disproved: 490 of 509 ONE events already carried bouts, and the
+    // 19 that did not were unannounced future cards and duplicate legacy rows,
+    // not missing ingestion. A ranking baked into copy cannot be re-measured and
+    // goes stale silently — the numbers belong in `audit:quality`, which counts.
+    matters: "ONE cards and their results stop arriving.",
   },
   {
     route: "refresh-bkfc",

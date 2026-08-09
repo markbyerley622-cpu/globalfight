@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCrowdForFight, getMyPick } from "@/lib/picks";
 import { resolvePromotion } from "@/lib/promotions";
 import { formatDate } from "@/lib/utils";
+import { displayRounds } from "@/lib/fight-rounds";
 import { BoutPick } from "@/components/predictions/bout-pick";
 import { picksLocked, pickStatus, STATUS_PRESENTATION } from "@/lib/intelligence/pick-status";
 import { FightRoom } from "@/components/fight/fight-room";
@@ -35,11 +36,17 @@ function loadFight(slug: string) {
     select: {
       id: true, slug: true, date: true, result: true, method: true, roundEnded: true, timeEnded: true,
       scheduledRounds: true, titleFight: true, mainEvent: true, coMain: true, winnerId: true, redId: true, blueId: true,
+      // The bout's own ruleset decides whether scheduledRounds is a fact or the
+      // boxing default (lib/fight-rounds). Without it this page printed
+      // "12 rounds" on every MMA and Muay Thai bout.
+      ruleset: true,
       cancelled: true, // needed to derive the pick's terminal state (pick-status.ts)
       weightClass: { select: { name: true } },
       red: { select: { slug: true, name: true, nickname: true, countryCode: true, nationality: true, wins: true, losses: true, draws: true, koWins: true, koLosses: true, heightCm: true, reachCm: true, stance: true, gym: true, birthDate: true, imageUrl: true, thumbUrl: true, sport: true } },
       blue: { select: { slug: true, name: true, nickname: true, countryCode: true, nationality: true, wins: true, losses: true, draws: true, koWins: true, koLosses: true, heightCm: true, reachCm: true, stance: true, gym: true, birthDate: true, imageUrl: true, thumbUrl: true, sport: true } },
-      event: { select: { slug: true, name: true, date: true, venue: true, city: true, country: true, promotion: true } },
+      // `sport` is the fallback discipline for a bout whose own ruleset is
+      // UNKNOWN — see lib/fight-rounds::effectiveDiscipline.
+      event: { select: { slug: true, name: true, date: true, venue: true, city: true, country: true, promotion: true, sport: true } },
     },
   });
 }
@@ -73,6 +80,9 @@ export default async function FightPage({ params }: { params: Promise<{ slug: st
   const market = marketProbability(odds);
   const accent = resolvePromotion(fight.event?.promotion ?? undefined).brand;
   const scheduled = fight.result === "SCHEDULED";
+  // Null when the stored distance is only `scheduledRounds`' boxing default on a
+  // bout that is not boxing — omitted rather than guessed. See lib/fight-rounds.
+  const rounds = displayRounds(fight.scheduledRounds, fight.ruleset, fight.event?.sport);
   // Winner corner, robust to winnerId being stored as a Fighter id OR slug —
   // the same rule the resolution engine applies.
   const won: "red" | "blue" | null =
@@ -109,7 +119,7 @@ export default async function FightPage({ params }: { params: Promise<{ slug: st
             </span>
           )}
           {fight.weightClass && <span>{fight.weightClass.name}</span>}
-          <span className="tabular-nums">{fight.scheduledRounds} rounds</span>
+          {rounds !== null && <span className="tabular-nums">{rounds} rounds</span>}
           {fight.titleFight && <span className="rounded bg-gold-500/15 px-1.5 py-0.5 font-bold uppercase tracking-wide text-gold-300">Title</span>}
           {fight.mainEvent && <span className="rounded bg-blood-500/15 px-1.5 py-0.5 font-bold uppercase tracking-wide text-blood-300">Main event</span>}
         </div>

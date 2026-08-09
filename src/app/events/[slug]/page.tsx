@@ -297,6 +297,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 estimatedAt={boutTimes.get(headline.id)?.toISOString() ?? null}
                 estimated={segmentsDerived}
                 progress={boutProgress(headline, headline.id === liveBoutId)}
+                sport={event.sport}
               />
             }
             pick={
@@ -389,6 +390,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                         estimatedAt={boutTimes.get(f.id)?.toISOString() ?? null}
                         estimated={segmentsDerived}
                         progress={boutProgress(f, f.id === liveBoutId)}
+                        sport={event.sport}
                       />
                     }
                     pick={

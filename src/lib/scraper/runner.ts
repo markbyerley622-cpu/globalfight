@@ -562,7 +562,11 @@ export async function refreshDetailed(kind: RefreshKind, opts: RefreshOpts = {})
       // pages do not: ONE's CMS carries no matchup blocks before ~2017, and the
       // editorial articles cover some of that era. It is no longer the only path
       // — syncONE above now reads the card straight off the event page, which is
-      // where the bulk of the measured 251-empty-event gap actually closes.
+      // where the bulk of the historical empty-event gap actually closed. That
+      // gap is now closed: production on 2026-08-09 held 490 of 509 ONE events
+      // carded, and this archive walk added nothing (delta 0). Keep this path —
+      // it still reaches the pre-2017 era the event pages do not — but do not
+      // plan work off a backlog that no longer exists.
       //
       // This walks the editorial results archive, which IS server-rendered, and
       // it RESUMES: the last index page reached is stored on the provider

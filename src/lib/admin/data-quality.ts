@@ -181,9 +181,11 @@ export async function auditDataQuality(now = new Date()): Promise<DataQualityRep
       where: { date: { gte: now }, fights: { none: {} } },
       _count: { _all: true },
     }),
-    // The denominator for the bout gap. Judging "251 of 509" against ALL events
-    // understates a promotion whose back catalogue is broken and overstates one
-    // that has merely announced a lot of future cards.
+    // The denominator for the bout gap: PAST events only. Judging a cardless
+    // count against ALL events understates a promotion whose back catalogue is
+    // broken and overstates one that has merely announced a lot of future cards
+    // — ONE's 2026-08-09 measurement was 19 cardless events of which 9 were
+    // simply unannounced, which is the difference this denominator exists for.
     prisma.event.groupBy({ by: ["promotion"], where: { date: { lt: now } }, _count: { _all: true } }),
   ]);
 

@@ -8,11 +8,16 @@ import type { Element } from "domhandler";
 //  __fixtures__/fight-night-45.html, from
 //  onefc.com/news/one-fight-night-45-lessei-vs-rabah-results-…
 //
-//  ── Why this connector matters most ──────────────────────────────────────
-//  audit:quality measured 251 ONE events with NO BOUTS AT ALL — the single
-//  largest coverage gap in the database, several times any other promotion's.
+//  ── What this connector is for ───────────────────────────────────────────
 //  These editorial "results and highlights" articles are server-rendered and
-//  carry the whole card.
+//  carry the whole card, including the pre-2017 era the event pages do not.
+//
+//  This header used to open "Why this connector matters most", on a measurement
+//  of 251 ONE events with no bouts at all. That backlog is GONE: production on
+//  2026-08-09 held 490 of 509 ONE events carded with 5,502 bouts, and a full
+//  archive sweep changed nothing. The connector is now maintenance for a narrow
+//  historical window, not the answer to a coverage crisis — size any future work
+//  on it from `npm run audit:quality`, not from this comment.
 //
 //  ── CORRECTION: this is the SECOND path, not the only one ────────────────
 //  This header used to claim "ONE renders results client-side on its event

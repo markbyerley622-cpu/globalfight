@@ -13,10 +13,20 @@ import { matchArticleToEvent, type EventCandidate } from "./match";
 // ════════════════════════════════════════════════════════════════════════════
 //  ONE ingestion — discovery, matching, and the write.
 //
-//  Target, measured: 251 ONE events with NO BOUTS AT ALL (npm run audit:quality).
-//  ONE renders results client-side on its event pages, which is why the existing
-//  pipeline could never read them. The editorial results articles are
-//  server-rendered and carry the whole card — see ./results.
+//  The editorial results articles are server-rendered and carry the whole card
+//  — see ./results.
+//
+//  TWO stale claims lived here and both are corrected rather than trimmed,
+//  because each sent work in a wrong direction:
+//
+//    "Target, measured: 251 ONE events with NO BOUTS AT ALL" — production on
+//    2026-08-09 measured 490 of 509 ONE events carded, 5,502 bouts, and a full
+//    archive sweep produced a delta of zero. The target no longer exists.
+//
+//    "ONE renders results client-side on its event pages, which is why the
+//    existing pipeline could never read them" — never true, and ./results.ts
+//    already says so at length: onefc.com server-renders the full card into
+//    `div.event-matchup`, which ../extract/matchups reads directly.
 //
 //  ── What this reuses, rather than rebuilding ─────────────────────────────
 //    parseOneResults        the parser, built against a captured page

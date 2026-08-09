@@ -1,5 +1,7 @@
+import { Fragment } from "react";
 import { PlayCircle, Crown, Ban } from "lucide-react";
 import { FighterLink } from "@/components/fighter-link";
+import { displayRounds } from "@/lib/fight-rounds";
 import type { BoutProgress } from "@/lib/card-segments";
 import { LocalTime } from "@/components/event/event-schedule";
 import type { Fight } from "@/lib/types";
@@ -36,10 +38,17 @@ export async function FightRow({
   estimatedAt,
   estimated,
   progress = "upcoming",
+  sport,
 }: {
   fight: Fight;
   index: number;
   market?: MarketProb | null;
+  /**
+   * The CARD's sport, used only to establish a discipline when the bout itself
+   * carries no ruleset (Fight.ruleset defaults to UNKNOWN). Right for a
+   * single-ruleset promotion; the bout's own ruleset always wins over it.
+   */
+  sport?: string | null;
   /** ISO estimated walkout time, or null when there's nothing to anchor it to. */
   estimatedAt?: string | null;
   /** True when the walkout time was derived rather than supplied. */
@@ -58,6 +67,27 @@ export async function FightRow({
   // dictionary key it is looked up by (lib/i18n-dict keys on English), so there
   // is no second place a surface could disagree about the wording.
   const t = await getServerT();
+
+  // The scheduled distance is shown only where it is credible for the bout's
+  // discipline. `Fight.scheduledRounds` is `Int @default(12)` — a BOXING
+  // championship distance — so an MMA or Muay Thai bout whose source never
+  // stated a distance was printing "· 12 rds" as though it were a fact.
+  // lib/fight-rounds owns that decision; the fight page asks it the same way.
+  const rounds = displayRounds(fight.scheduledRounds, fight.ruleset, sport);
+
+  // Built as a list so the "·" separators can sit BETWEEN whatever is actually
+  // present, rather than being hard-coded around a value that may be absent.
+  const meta = [
+    // Estimated walkout — the single most-asked question about a card.
+    !done && !cancelled && estimatedAt ? (
+      <span className="inline-flex items-center gap-1">
+        {estimated && <span className="text-[9px] uppercase tracking-wide">est.</span>}
+        <LocalTime iso={estimatedAt} className="font-semibold tabular-nums text-mist" />
+      </span>
+    ) : null,
+    fight.weightClass ? <span className="truncate">{fight.weightClass}</span> : null,
+    rounds !== null ? <span className="tabular-nums">{rounds} rds</span> : null,
+  ].filter(Boolean);
 
   return (
     <div
@@ -90,20 +120,17 @@ export async function FightRow({
               </span>
             )}
           </div>
+          {/* Walkout · division · distance — separators BETWEEN present parts.
+              The distance can now legitimately be absent (see `rounds` above),
+              and the old fixed "·" would have rendered a dangling dot after the
+              division on every non-boxing bout. */}
           <div className="flex shrink-0 items-center gap-2 text-fog">
-            {/* Estimated walkout — the single most-asked question about a card. */}
-            {!done && !cancelled && estimatedAt && (
-              <>
-                <span className="inline-flex items-center gap-1">
-                  {estimated && <span className="text-[9px] uppercase tracking-wide">est.</span>}
-                  <LocalTime iso={estimatedAt} className="font-semibold tabular-nums text-mist" />
-                </span>
-                <span aria-hidden>·</span>
-              </>
-            )}
-            {fight.weightClass && <span className="truncate">{fight.weightClass}</span>}
-            <span aria-hidden>·</span>
-            <span className="tabular-nums">{fight.scheduledRounds} rds</span>
+            {meta.map((part, i) => (
+              <Fragment key={i}>
+                {i > 0 && <span aria-hidden>·</span>}
+                {part}
+              </Fragment>
+            ))}
           </div>
         </div>
 

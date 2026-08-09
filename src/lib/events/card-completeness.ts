@@ -45,19 +45,23 @@ export interface CardContext {
    */
   covered: boolean;
   /**
-   * Did an importer already write bouts for this event and then lose them, or import
-   * the event itself from a source that should have carried a card?
+   * Does this event carry importer provenance (a FightImport or an ExternalId)?
    *
-   * True when the event has provenance (a FightImport or an ExternalId) but no bouts:
-   * that combination means a provider DID hand us this event and the card did not
-   * survive, which is our bug and not the promotion's silence.
+   * Read ONLY once an event is imminent or past — see classifyCard. On a future
+   * event this says a provider knew about the CARD'S EXISTENCE, which is not the
+   * same claim as the card having been announced, and treating it as one made us
+   * apologise for every unannounced show we had discovered early.
    */
   hasProviderProvenance: boolean;
   now?: Date;
 }
 
-/** Cards are typically announced well ahead; this far out, silence is normal. */
-const ANNOUNCE_WINDOW_DAYS = 45;
+/**
+ * Inside this many days, a card that is still empty is late rather than unannounced.
+ *
+ * Outside it, nothing has gone wrong yet and no explanation may blame anyone.
+ */
+const IMMINENT_DAYS = 2;
 
 export function classifyCard(ctx: CardContext): CardState {
   if (ctx.boutCount > 0) return "COMPLETE";
@@ -66,23 +70,38 @@ export function classifyCard(ctx: CardContext): CardState {
   // will, and telling someone we are "still importing" would be a lie.
   if (ctx.status === "CANCELLED") return "CANCELLED";
 
-  // A provider handed us the event but no bouts. That is OUR failure, and saying
-  // "not announced yet" would blame the promotion for our mapping.
-  if (ctx.hasProviderProvenance) return "EXTRACTION_FAILED";
-
-  if (!ctx.covered) return "PROVIDER_MISSING";
-
-  // Covered, no provenance, and the event has started or is imminent — the importer
-  // should have had it by now.
   const now = ctx.now ?? new Date();
   const daysAway = (+ctx.date - +now) / 86_400_000;
-  if (daysAway <= 2) return "INGESTION_PENDING";
 
-  // Covered and still comfortably ahead: the promotion has simply not published the
-  // matchups. This is the common, innocent case.
-  if (daysAway <= ANNOUNCE_WINDOW_DAYS) return "CARD_NOT_RELEASED";
+  // ── Still comfortably ahead: nobody has failed yet ────────────────────────
+  // Provenance deliberately does NOT decide this case, and used to.
+  //
+  // The old rule read "we have provenance, therefore a provider handed us this
+  // event and the card did not survive, therefore it is OUR bug" — and returned
+  // EXTRACTION_FAILED before looking at the date at all. That inference does not
+  // hold for an event that has not happened yet: importing an event PAGE says
+  // nothing about whether the promotion has announced any matchups for it.
+  //
+  // It became the dominant case rather than an edge one. The ONE announcement
+  // job exists specifically to import cards the moment they appear on the
+  // schedule, which is routinely weeks before the first bout is booked, so every
+  // freshly-discovered event acquired provenance while legitimately empty.
+  // Production on 2026-08-09 showed all five upcoming ONE Friday Fights telling
+  // readers "We couldn't load this card — we're on it", when onefc.com had
+  // published no matchups for any of them (verified at source, 0 bouts each).
+  // We were apologising for a promotion's silence and pointing the operator at a
+  // parser bug that did not exist.
+  if (daysAway > IMMINENT_DAYS) {
+    if (!ctx.covered) return "PROVIDER_MISSING";
+    return "CARD_NOT_RELEASED";
+  }
 
-  return "CARD_NOT_RELEASED";
+  // ── Imminent or already past: a card SHOULD exist by now ──────────────────
+  // Only here does provenance mean what it used to claim: a source gave us this
+  // event, the event is upon us, and there is still no card — that is ours.
+  if (ctx.hasProviderProvenance) return "EXTRACTION_FAILED";
+  if (!ctx.covered) return "PROVIDER_MISSING";
+  return "INGESTION_PENDING";
 }
 
 export interface CardStateCopy {
