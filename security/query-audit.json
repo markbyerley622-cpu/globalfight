@@ -2953,7 +2953,7 @@
     },
     {
       "file": "src/lib/auth.ts",
-      "line": 169,
+      "line": 199,
       "fn": "user",
       "model": "User",
       "method": "update",
@@ -7880,7 +7880,7 @@
     },
     {
       "file": "src/lib/auth.ts",
-      "line": 140,
+      "line": 151,
       "fn": "user",
       "model": "User",
       "method": "findUnique",

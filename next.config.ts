@@ -34,47 +34,29 @@ const nextConfig: NextConfig = {
       { source: "/predictions/:slug((?!mine$)[^/]+)", destination: "/fights/:slug", permanent: true },
     ];
   },
-  // Global security headers. The hard ones (frame/nosniff/referrer/HSTS) are
-  // enforced immediately — they are safe and non-breaking. CSP ships as
-  // Report-Only FIRST: a strict enforced CSP on Next needs per-request nonces
-  // (a middleware change) and can white-screen the app, so we observe violation
-  // reports against this policy before flipping it to enforced. See HARDENING.md.
+  // Global security headers.
+  //
+  // The CSP is NOT here any more. It needs a per-request nonce to be enforced
+  // without 'unsafe-inline', and a static header cannot carry one — it lives in
+  // src/middleware.ts, which is also the only place that can hand the same
+  // nonce to Next so the framework stamps its own script tags with it.
+  //
+  // These five stay static because they are constant, and because they must
+  // apply to responses the middleware matcher deliberately skips (hashed
+  // assets, API routes) as well as to HTML.
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-      // Next injects inline hydration/runtime; 'unsafe-inline' stays until a
-      // nonce middleware lands (tracked for Wave 1). Report-Only, so no risk yet.
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      // flagcdn.com serves the country flag SVGs (src/components/flag.tsx renders
-      // them via next/image `unoptimized`, i.e. a direct browser request). Without
-      // this entry every flag would be blocked once the CSP is enforced.
-      "img-src 'self' data: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.public.blob.vercel-storage.com https://*.basemaps.cartocdn.com https://flagcdn.com",
-      "font-src 'self' data:",
-      "connect-src 'self'",
-      "media-src 'self' https://*.r2.dev blob:",
-      "worker-src 'self' blob:",
-      "manifest-src 'self'",
-      // NOTE: `upgrade-insecure-requests` is intentionally omitted here. Browsers
-      // ignore it in a Report-Only policy and log a console error every page load;
-      // HSTS (below) already forces HTTPS for the whole domain. Restore this
-      // directive when the CSP is flipped from Report-Only to enforced (nonce work).
-    ].join("; ");
-
     return [
       {
         source: "/:path*",
         headers: [
+          // Redundant with the CSP's `frame-ancestors 'none'` on HTML routes,
+          // and kept for the assets middleware does not run on, plus browsers
+          // that never implemented frame-ancestors.
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), browsing-topics=()" },
-          { key: "Content-Security-Policy-Report-Only", value: csp },
         ],
       },
     ];

@@ -82,15 +82,23 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
                 <Item href="/profile" icon={<CircleUserRound className="size-4" />} onClick={() => setOpen(false)}>Profile</Item>
                 <Item href="/predictions/mine" icon={<TrendingUp className="size-4" />} onClick={() => setOpen(false)}>My Predictions</Item>
                 <Item href="/library" icon={<Bookmark className="size-4" />} onClick={() => setOpen(false)}>Saved</Item>
-                {/* Hosting lives in the account menu for EVERY signed-in user,
-                    not only those who picked "promoter" at signup.
-                    `registryRole` is a self-declared label with no privilege
-                    (CLAUDE.md), so using it to decide who can even SEE this
-                    would hide the front door from every promoter who picked
-                    "fan" — while granting nothing to anyone who picked
-                    promoter, since /promoter shows the claim step until a human
-                    has verified them. */}
-                <Item href="/promoter" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Host events</Item>
+                {/* ── Host events: promoters only ──
+                    This used to render for every signed-in account, on the
+                    reasoning that `registryRole` must not gate it — which is
+                    correct, and is why the condition below is NOT registryRole.
+                    `isPromoter` is derived from real rows: owning a promotion,
+                    or having applied for one. A fan who has never applied has
+                    no use for a hosting dashboard in their account menu.
+
+                    Hiding it grants nothing and withholds nothing: /promoter
+                    resolves the true state through lib/promoter/verification
+                    and refuses on the capability table regardless of how the
+                    reader got there. The way IN for a new promoter is the
+                    "Claim your profile" card on /account, which every account
+                    sees. */}
+                {user.isPromoter && (
+                  <Item href="/promoter" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Host events</Item>
+                )}
                 <Item href="/account" icon={<Settings className="size-4" />} onClick={() => setOpen(false)}>Settings</Item>
                 {/* ── ADMIN ──
                     Was two loose links sitting among the user's own items, and

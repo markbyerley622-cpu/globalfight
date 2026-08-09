@@ -49,6 +49,17 @@ export interface SessionUser {
   reputation: number;
   /** When staff confirmed this person's professional identity, or null. */
   professionalVerifiedAt: Date | null;
+  /**
+   * Owns a promotion, or has applied to. NOT an authorization signal.
+   *
+   * It decides whether the account menu OFFERS "Host events" — nothing more.
+   * Every hosting surface still resolves the real state through
+   * lib/promoter/verification and refuses on the capability table, so this
+   * being wrong hides a link, it never grants one. Deliberately not derived
+   * from `registryRole`, which is a self-declared label with no evidence
+   * behind it (CLAUDE.md).
+   */
+  isPromoter: boolean;
 }
 
 // ── Password hashing ──────────────────────────────────────────────────────
@@ -139,14 +150,33 @@ const loadSession = cache(async (): Promise<SessionUser | null> => {
 
   const user = await prisma.user.findUnique({
     where: { id: claims.userId },
-    select: { ...SAFE_SELECT, tokenVersion: true },
+    select: {
+      ...SAFE_SELECT,
+      tokenVersion: true,
+      // ── Is this account a promoter in any sense? ───────────────────────────
+      // Folded into the SESSION query rather than added as a second round-trip:
+      // this is read on every page render to decide whether the account menu
+      // offers "Host events", and `loadSession` is already cache()'d per
+      // request, so it costs two indexed lookups on a query that was happening
+      // anyway.
+      //
+      // `take: 1` because the only question is existence. Owning an org OR
+      // holding a claim of any status both count — an applicant whose claim is
+      // still pending must keep the door they came through, or the flow looks
+      // like it silently failed.
+      promoterOrgsOwned: { select: { id: true }, take: 1 },
+      promoterClaims: { select: { id: true }, take: 1 },
+    },
   });
   if (!user) return null;
   if (user.tokenVersion !== claims.tokenVersion) return null; // revoked
 
-  const { tokenVersion: _epoch, ...safe } = user;
+  const { tokenVersion: _epoch, promoterOrgsOwned, promoterClaims, ...safe } = user;
   void _epoch;
-  return safe as SessionUser;
+  return {
+    ...safe,
+    isPromoter: promoterOrgsOwned.length > 0 || promoterClaims.length > 0,
+  } as SessionUser;
 });
 
 export async function getCurrentUser(): Promise<SessionUser | null> {

@@ -20,6 +20,9 @@ export interface AuthUser {
    * compile and then hand every caller an object with no `getTime`.
    */
   professionalVerifiedAt: string | null;
+  /** Owns a promotion or has applied to. Decides whether the menu OFFERS
+   *  "Host events" — never whether anything is permitted. See SessionUser. */
+  isPromoter: boolean;
 }
 
 interface AuthValue {
