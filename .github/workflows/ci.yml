@@ -87,8 +87,24 @@ jobs:
         run: npm test
 
       - name: Integration tests
+        # `db push`, not `migrate deploy` — because that is how the schema
+        # reaches PRODUCTION. CLAUDE.md is explicit: this repo keeps no migration
+        # history and the Render build runs `prisma db push`. `prisma/migrations`
+        # holds exactly one `0_init` snapshot, which nothing has updated since,
+        # so `migrate deploy` built the test database from a schema frozen at
+        # that commit. The first test to touch a column added later died with
+        #     The column `dayStreak` does not exist in the current database
+        # and it would have kept drifting further from schema.prisma with every
+        # model change.
+        #
+        # Pushing the schema means the integration database is BY CONSTRUCTION
+        # the schema the app is compiled against, and it exercises the same
+        # mechanism the deploy uses. `--accept-data-loss` is safe and necessary
+        # here for the same reason it is in render.yaml: Prisma treats adding a
+        # unique constraint as possible data loss and refuses without it. The
+        # database is created empty seconds earlier by the service container.
         run: |
-          npx prisma migrate deploy
+          npx prisma db push --skip-generate --accept-data-loss
           npm run test:integration
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/gf_test
