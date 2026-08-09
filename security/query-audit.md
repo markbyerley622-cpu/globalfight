@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1222 across 972 files
-- **By class:** 847 public · 271 user-owned · 104 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 103 medium · 🟡 207 low · ⚪ 912 info
+- **Queries analysed:** 1243 across 984 files
+- **By class:** 849 public · 290 user-owned · 104 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 112 medium · 🟡 207 low · ⚪ 924 info
 
 ## 🔴 High risk
 
@@ -59,6 +59,15 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/evidence/scan.ts:77` | scanEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/evidence/scan.ts:89` | scanEvidence | FighterClaim (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/feed/notify.ts:56` | followers | FavoritePromotion (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:114` | listFeedback | FeedbackItem (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:150` | row | FeedbackItem (USER_OWNED) | findFirst · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:228` | similarFeedback | FeedbackItem (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:252` | item | FeedbackItem (USER_OWNED) | findFirst · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:296` | row | FeedbackItem (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:305` | setStatus | FeedbackItem (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:343` | row | FeedbackItem (USER_OWNED) | findUnique · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:347` | setHidden | FeedbackItem (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/feedback/index.ts:373` | listForStaff | FeedbackItem (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/fighters/profile.ts:179` | c | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/fighters/profile.ts:204` | existing | FighterClaim (SHARED) | findUnique · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
 | `src/lib/fighters/profile.ts:211` | claim | FighterClaim (SHARED) | upsert · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
@@ -208,6 +217,8 @@ _None._ No private-model read/write was found without an ownership filter.
 | FavoriteEvent | USER_OWNED | curated |
 | FavoriteFighter | USER_OWNED | curated |
 | FavoritePromotion | USER_OWNED | curated |
+| FeedbackItem | USER_OWNED | auto (heuristic) |
+| FeedbackVote | USER_OWNED | auto (heuristic) |
 | FightPick | USER_OWNED | curated |
 | Follow | USER_OWNED | auto (heuristic) |
 | ForumBookmark | USER_OWNED | curated |

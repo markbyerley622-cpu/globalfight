@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Mail, Lock, User, Heart, Bookmark, Bell, ShieldCheck, Check, Loader2, AlertCircle, LogOut,
-  BadgeCheck, ArrowRight,
+  BadgeCheck, ArrowRight, MessageSquarePlus,
 } from "lucide-react";
 import { isProfessionalRole } from "@/lib/identity-verification-shared";
 import { PageHero } from "@/components/page-hero";
@@ -234,6 +234,17 @@ export default function AccountPage() {
             <Link href="/forums" className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40">
               <Bookmark className="size-6 text-blood-400" />
               <div><p className="font-display text-sm font-bold text-chalk">Join the forums</p><p className="text-sm text-mist">Post, reply and build reputation.</p></div>
+            </Link>
+            {/* The feedback board's front door for members. Deliberately HERE
+                rather than as a button on every public profile: it is an
+                account action, not a piece of someone's identity, and a profile
+                is somebody's record — not a suggestion box. */}
+            <Link href="/feedback" className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40">
+              <MessageSquarePlus className="size-6 text-blood-400" />
+              <div>
+                <p className="font-display text-sm font-bold text-chalk">Feedback</p>
+                <p className="text-sm text-mist">Suggest ideas, report problems and vote on what gets built.</p>
+              </div>
             </Link>
             <Link href="/events" className="card-surface flex flex-col justify-between gap-3 p-5 transition-colors hover:border-blood-500/40">
               <Bell className="size-6 text-blood-400" />

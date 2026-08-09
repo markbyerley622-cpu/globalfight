@@ -144,7 +144,15 @@ render; `userA … WHERE userId='userB'` returns **0**.
   `ForumThread`, `ForumPost`, `GymReview`, `GymReviewVote`, `Gym`, `Article`,
   `CommunityVote`, `Battle`, `Rivalry`,
   `GymPost`, `GymPostMedia`, `GymPostComment`, `GymPostReaction`,
-  `GymPostCommentReaction`.
+  `GymPostCommentReaction`,
+  `FeedbackItem`, `FeedbackVote`.
+  `FeedbackItem` carries a **staff-only column** (`adminNote`) on an otherwise
+  world-readable row, so its protection is the explicit `PUBLIC_SELECT`
+  projection in `lib/feedback` rather than the row filter — an eventual RLS
+  policy for it is row-level and would not help. `hiddenAt` is a moderation
+  soft-delete and every public read filters on it. `FeedbackVote` is
+  owner-written but publicly COUNTED, so it is Group B rather than Group A: the
+  tally is public, the identity of who voted is never returned by any endpoint.
   ⚠️ `GymPost` is the first Group B table with **per-row** visibility: a
   `MEMBERS` or `PRIVATE` post is not world-readable. The app-layer control still
   holds in the usual way — every read goes through `getFeed`/`getPost`, which

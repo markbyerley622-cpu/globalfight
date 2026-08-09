@@ -1694,6 +1694,9 @@ model User {
   promoterClaims    PromoterClaim[]
   gymReviews        GymReview[]          @relation("GymReviewAuthor")
   gymReviewVotes    GymReviewVote[]
+  feedbackAuthored  FeedbackItem[]       @relation("FeedbackAuthored")
+  feedbackResolved  FeedbackItem[]       @relation("FeedbackResolved")
+  feedbackVotes     FeedbackVote[]
   checkIns          CheckIn[]
   following         UserFollow[]         @relation("Follower")
   followers         UserFollow[]         @relation("Following")
@@ -2589,6 +2592,12 @@ enum NotificationType {
   GYM_POST_REACTION // someone reacted to your gym post or comment
   GYM_POST_SHARE // someone shared your gym post
   DIRECT_MESSAGE // someone sent you a private message
+  /// Staff moved a feedback item you filed (planned / in progress / shipped).
+  ///
+  /// A distinct type rather than SYSTEM so it can be muted as its own thing —
+  /// and so it can never be confused with the upvote notification this feature
+  /// deliberately does NOT send. One per status change; none per vote.
+  FEEDBACK_STATUS
   SYSTEM
 }
 
@@ -3718,4 +3727,78 @@ model ResultCandidate {
 
   /// The operator queue reads by status, newest first.
   @@index([status, updatedAt])
+}
+
+// ─── Public feedback board ──────────────────────────────────────────────────
+
+/// A product idea, request or bug report, submitted by a member and voted on
+/// publicly.
+///
+/// PUBLIC BY CONSTRUCTION. This is a board, not a support ticket queue: the
+/// value is that people see each other's ideas and can say "that one, please".
+/// The only per-row visibility is `hiddenAt`, which is a moderation action.
+///
+/// ── Why the author never controls `status` ────────────────────────────────
+/// "Planned" and "In progress" are promises the product is making, not claims
+/// the author gets to publish about their own request. Only staff transition
+/// it, and the service refuses any other caller — see lib/feedback.
+model FeedbackItem {
+  id String @id @default(cuid())
+
+  /// Nullable so a deleted account does not take the board's history with it —
+  /// the item survives as an unattributed idea that other people already voted
+  /// for. Matches how the rest of the product treats authored public content.
+  authorId String?
+  author   User?   @relation("FeedbackAuthored", fields: [authorId], references: [id], onDelete: SetNull)
+
+  title String
+  body  String @db.Text
+
+  /// IDEA | FEATURE | IMPROVEMENT | BUG
+  category String
+  /// OPEN | PLANNED | IN_PROGRESS | COMPLETED | DECLINED
+  status   String @default("OPEN")
+
+  /// Shown ON the board beside the status — "shipped in the 2.1 map release".
+  publicNote String? @db.Text
+  /// STAFF ONLY. Never selected by any public query; the service's public
+  /// projections list their columns explicitly so this cannot leak by default.
+  adminNote  String? @db.Text
+
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?     @relation("FeedbackResolved", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  /// Moderation removal. A soft delete, so the audit trail and the votes cast
+  /// on it survive the decision — a hard delete would erase the evidence for
+  /// why it was removed.
+  hiddenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  votes FeedbackVote[]
+
+  @@index([status, createdAt])
+  @@index([category, createdAt])
+  @@index([authorId, createdAt])
+  @@index([hiddenAt])
+}
+
+/// One member, one vote, per item.
+///
+/// The composite primary key IS the constraint — the same shape GymReviewVote
+/// uses. A duplicate vote is a database error rather than something the
+/// application has to remember to check, which is what makes the concurrent
+/// case safe: two simultaneous requests cannot both insert.
+model FeedbackVote {
+  feedbackId String
+  feedback   FeedbackItem @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+
+  @@id([feedbackId, userId])
+  @@index([feedbackId])
+  @@index([userId])
 }

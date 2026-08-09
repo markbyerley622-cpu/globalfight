@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck, Users, Megaphone, Dumbbell, Flag, BarChart3, CalendarDays } from "lucide-react";
+import { ShieldCheck, Users, Megaphone, Dumbbell, Flag, BarChart3, CalendarDays, MessageSquarePlus } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { verificationStats } from "@/lib/identity-verification";
 import { requireAdminPage } from "@/lib/admin/guard";
@@ -49,13 +49,17 @@ export const dynamic = "force-dynamic";
  * guessing wrong here shows a zero and a zero reads as "nothing to do".
  */
 async function openQueues() {
-  const [fighterClaims, gymClaims, promoterClaims, reports] = await Promise.all([
+  const [fighterClaims, gymClaims, promoterClaims, reports, feedback] = await Promise.all([
     prisma.fighterClaim.count({ where: { status: "PENDING" } }),
     prisma.gymClaim.count({ where: { status: "pending" } }),
     prisma.promoterClaim.count({ where: { status: "pending" } }),
     prisma.forumReport.count({ where: { status: "OPEN" } }),
+    // Not a decision queue like the others — nobody is blocked waiting on it —
+    // but it IS the pile of things members have asked for, and an operator
+    // wants that count in the same glance.
+    prisma.feedbackItem.count({ where: { status: "OPEN", hiddenAt: null } }),
   ]);
-  return { fighterClaims, gymClaims, promoterClaims, reports };
+  return { fighterClaims, gymClaims, promoterClaims, reports, feedback };
 }
 
 export default async function AdminOverview() {
@@ -69,6 +73,10 @@ export default async function AdminOverview() {
     prisma.event.count({ where: { date: { gte: new Date() } } }),
   ]);
 
+  // Feedback is deliberately EXCLUDED from this total: an open idea is not
+  // somebody blocked waiting on a decision, and folding it in would make the
+  // headline number permanently non-zero, which is how a headline number stops
+  // being read.
   const waiting =
     stats.pending + queues.fighterClaims + queues.gymClaims + queues.promoterClaims + queues.reports;
 
@@ -117,11 +125,12 @@ export default async function AdminOverview() {
         </span>
       </Link>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <QueueTile href="/admin/claims" icon={Users} label="Fighter claims" value={queues.fighterClaims} />
         <QueueTile href="/admin/gym-claims" icon={Dumbbell} label="Gym claims" value={queues.gymClaims} />
         <QueueTile href="/admin/promoter-claims" icon={Megaphone} label="Promoter applications" value={queues.promoterClaims} />
         <QueueTile href="/admin/reports" icon={Flag} label="Open reports" value={queues.reports} />
+        <QueueTile href="/admin/feedback?status=OPEN" icon={MessageSquarePlus} label="Open feedback" value={queues.feedback} />
       </div>
 
       <h2 className="mb-2 font-display text-2xs font-bold uppercase tracking-[0.16em] text-fog">The product</h2>

@@ -53,6 +53,13 @@ export const CATEGORY_OF: Record<string, NotifCategory> = {
   // reason GYM_REVIEW above has one: a user who mutes replies has not said
   // anything about whether they want to hear from their friends.
   DIRECT_MESSAGE: "messages",
+  // Mapped EXPLICITLY rather than left to the "social" default, which is the
+  // bug the GYM_REVIEW comment above documents: an unmapped type still gets a
+  // category, just not a chosen one, so the push and the in-app row can end up
+  // behind different switches. "social" is the right home — it is a reply to
+  // something you posted — and a sixth category would mean a migration and a
+  // new toggle for one notification that fires at most a handful of times.
+  FEEDBACK_STATUS: "social",
   SYSTEM: "social",
 };
 
