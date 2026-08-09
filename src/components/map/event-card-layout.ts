@@ -74,6 +74,20 @@ export interface EventCardLayout {
    * something that only just fits.
    */
   heroLogoSize: "sm" | "md" | "lg";
+  /**
+   * Which top corner of the hero the SPORT badge takes.
+   *
+   * ── Why this is a variant decision and not a constant ─────────────────────
+   * The badge wants the corner opposite the state badges — it is the fastest
+   * thing to scan a card by, and putting it beside them makes it one more chip
+   * in a cluster. But the two variants that render inside FloatingPreview share
+   * that corner with the shell's CLOSE button, which is drawn over the card and
+   * therefore always wins. The badge was not "too big" on the phone; it was
+   * underneath the X, so the sport was simply unreadable.
+   *
+   * The sheet has no close button over it, so it keeps the opposite corner.
+   */
+  sportBadge: "left" | "right";
 }
 
 const LAYOUTS: Record<EventCardVariant, EventCardLayout> = {
@@ -88,6 +102,9 @@ const LAYOUTS: Record<EventCardVariant, EventCardLayout> = {
     titleSize: "text-base",
     imageSizes: "(max-width: 1024px) 100vw, 420px",
     heroLogoSize: "lg",
+    // No close button is drawn over the sheet card, so the opposite corner is
+    // genuinely free here.
+    sportBadge: "right",
   },
   floating: {
     heroAspect: "aspect-[16/9]",
@@ -100,6 +117,8 @@ const LAYOUTS: Record<EventCardVariant, EventCardLayout> = {
     titleSize: "text-sm",
     imageSizes: "360px",
     heroLogoSize: "lg",
+    // Shares its top-right with FloatingPreview's close button.
+    sportBadge: "left",
   },
   compact: {
     // A BANNER, not a poster.
@@ -131,6 +150,8 @@ const LAYOUTS: Record<EventCardVariant, EventCardLayout> = {
     // The card is the viewport minus gutters, capped by FloatingPreview.
     imageSizes: "100vw",
     heroLogoSize: "md",
+    // The corner that was hiding the sport on every phone. See `sportBadge`.
+    sportBadge: "left",
   },
 };
 
@@ -176,6 +197,66 @@ export const CARD_NARROW = CARD_W + CARD_GAP + CARD_EDGE * 2;
  * has to fit inside it with an edge margin and still be wide enough for a
  * three-cell countdown and a two-name main-event row.
  */
+/**
+ * The smallest a card is ever squeezed to.
+ *
+ * Below this it stops being a card and becomes a sliver with a scrollbar, so a
+ * container too short to hold one is better off with the card overhanging than
+ * with a 40px stub.
+ */
+export const CARD_MIN_H = 140;
+
+/**
+ * How tall the anchored card may be.
+ *
+ * `bottomInset` is the strip at the foot of the container that something ELSE
+ * is drawing over — on phones, the bottom sheet, which is opaque and painted
+ * above the card. Height budgeted from the container alone is the bug: it lets
+ * a card be "inside the container" and behind the sheet at the same time.
+ */
+export function previewHeightBudget(containerH: number, bottomInset = 0): number {
+  return Math.max(CARD_MIN_H, containerH - bottomInset - CARD_EDGE * 2);
+}
+
+/**
+ * Where the top of the anchored card goes, in container pixels.
+ *
+ * Pure so the cases that only happen on a real phone — a pin near the top of a
+ * short map with a half-open sheet under it — can be asserted without a DOM.
+ * `cardH` must already be capped to `previewHeightBudget`.
+ */
+export function previewCardTop({
+  containerH, bottomInset = 0, anchorY, cardH, narrow,
+}: {
+  containerH: number;
+  bottomInset?: number;
+  anchorY: number;
+  cardH: number;
+  narrow: boolean;
+}): number {
+  const min = CARD_EDGE;
+  // The floor is the top of whatever owns the bottom of the container, not the
+  // bottom of the container.
+  const max = Math.max(min, containerH - bottomInset - cardH - CARD_EDGE);
+
+  if (!narrow) {
+    // Beside the pin: vertically centred on it, then clamped.
+    return Math.min(Math.max(anchorY - cardH / 2, min), max);
+  }
+
+  // Phone: ABOVE the pin, so the card never covers the thing it describes.
+  //
+  // Still clamped to `max`, because the PIN can be under the sheet too — a
+  // marker low on the map puts "just above the pin" squarely inside the strip
+  // the sheet owns, and the card would disappear behind it while being, on
+  // paper, correctly placed above its marker.
+  const above = anchorY - CARD_GAP - cardH;
+  if (above >= min) return Math.min(above, max);
+  // No room above — sit below and clamp, which is the only case where the card
+  // and its pin can end up on the same part of the screen.
+  return Math.min(Math.max(anchorY + CARD_GAP, min), max);
+}
+
 export function previewCardWidth(containerWidth: number): { width: number; narrow: boolean } {
   const narrow = containerWidth < CARD_NARROW;
   // The floor stops the card collapsing to nothing in a container that is

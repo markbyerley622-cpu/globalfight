@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   eventCardLayout, scrimIsJustified, EVENT_CARD_VARIANTS,
   previewCardWidth, CARD_W, CARD_EDGE, CARD_NARROW,
+  previewCardTop, previewHeightBudget, CARD_MIN_H, CARD_GAP,
 } from "../event-card-layout";
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -196,6 +197,102 @@ describe("the card fits real devices, including the smallest", () => {
   test("a zero-width container does not collapse the card to nothing", () => {
     // Containers measure zero for a frame during mount.
     assert.ok(previewCardWidth(0).width >= 200);
+  });
+});
+
+describe("the card is not placed underneath the bottom sheet", () => {
+  // ── What went wrong ──────────────────────────────────────────────────────
+  // On a phone the sheet and the card are siblings in the same positioned map
+  // box, and the sheet paints above the card (z-450 against z-440). Height and
+  // position were both computed from the container's FULL height, so a card
+  // that was correctly "inside the container" could be — and routinely was —
+  // inside the half of it the sheet covers. The bottom of the card, "View
+  // event" included, sat behind an opaque panel, and scrolling the card's own
+  // body could not reach a button that something else was drawn over.
+  //
+  // These are the numbers of a real phone: a 667px viewport gives a 72dvh map
+  // of ~480px, and the sheet's half detent takes 50% of it.
+  const H = 480;
+  const HALF = 0.5 * H;
+  const COLLAPSED = 0.2 * H;
+
+  test("the height budget excludes the strip the sheet owns", () => {
+    assert.ok(
+      previewHeightBudget(H, HALF) < previewHeightBudget(H, 0),
+      "the sheet's height is not being taken out of the card's budget",
+    );
+    assert.equal(previewHeightBudget(H, HALF), H - HALF - CARD_EDGE * 2);
+  });
+
+  test("a container shorter than the sheet still yields a usable card", () => {
+    // Landscape, or a sheet dragged to its expanded detent. Better an
+    // overhanging card than a 20px sliver with a scrollbar.
+    assert.equal(previewHeightBudget(H, 0.92 * H), CARD_MIN_H);
+    assert.equal(previewHeightBudget(0, 0), CARD_MIN_H);
+  });
+
+  for (const [name, inset] of [["collapsed", COLLAPSED], ["half", HALF]] as const) {
+    test(`${name} sheet — the whole card clears it`, () => {
+      const cardH = Math.min(300, previewHeightBudget(H, inset));
+      // A pin low on the map: the case that used to push the card down into
+      // the sheet rather than up above it.
+      const top = previewCardTop({ containerH: H, bottomInset: inset, anchorY: H - 60, cardH, narrow: true });
+      assert.ok(top >= CARD_EDGE, `the card starts above the map (${top}px)`);
+      assert.ok(
+        top + cardH <= H - inset,
+        `the card ends at ${top + cardH}px, inside the ${inset}px the sheet covers`,
+      );
+    });
+  }
+
+  test("the phone card still prefers to sit ABOVE its pin", () => {
+    // The card must not cover the marker it describes whenever there is room.
+    const cardH = 240;
+    const anchorY = 400;
+    const top = previewCardTop({ containerH: 900, bottomInset: 0, anchorY, cardH, narrow: true });
+    assert.equal(top, anchorY - CARD_GAP - cardH);
+    assert.ok(top + cardH < anchorY, "the card overlaps its own pin");
+  });
+
+  test("with no room above, it flips below rather than off the top", () => {
+    const top = previewCardTop({ containerH: 480, bottomInset: 0, anchorY: 40, cardH: 240, narrow: true });
+    assert.ok(top >= CARD_EDGE);
+    assert.ok(top > 40, "the card did not flip below a pin at the top of the map");
+  });
+
+  test("desktop is unchanged: centred on the pin, no inset", () => {
+    const cardH = 400;
+    const top = previewCardTop({ containerH: 900, bottomInset: 0, anchorY: 450, cardH, narrow: false });
+    assert.equal(top, 450 - cardH / 2);
+  });
+});
+
+describe("the sport badge does not hide under the close button", () => {
+  // ── What went wrong ──────────────────────────────────────────────────────
+  // The sport chip took the hero's top-RIGHT corner — deliberately, as the
+  // fastest thing to scan a card by. But FloatingPreview draws its close button
+  // over that same corner, at a higher z-index, so on every anchored card the
+  // sport was simply invisible. It was never a sizing problem.
+  test("both variants inside FloatingPreview give up the right corner", () => {
+    for (const variant of ["floating", "compact"] as const) {
+      assert.equal(
+        eventCardLayout(variant).sportBadge, "left",
+        `"${variant}" renders inside FloatingPreview, whose close button owns the top-right`,
+      );
+    }
+  });
+
+  test("the sheet card, which has no close button over it, keeps it", () => {
+    assert.equal(eventCardLayout("sheet").sportBadge, "right");
+  });
+
+  test("every variant declares a side", () => {
+    for (const variant of EVENT_CARD_VARIANTS) {
+      assert.ok(
+        ["left", "right"].includes(eventCardLayout(variant).sportBadge),
+        `${variant} has no sportBadge side`,
+      );
+    }
   });
 });
 

@@ -14,7 +14,7 @@ import { groupPins, byRelevance, describeGroup } from "./group-pins";
 import { PinDetail, PinRow } from "./pin-card";
 import { EventMapPreview } from "./event-map-preview";
 import { FloatingPreview, type Anchor, type PreviewHandle } from "./floating-preview";
-import { BottomSheet, type Detent } from "./bottom-sheet";
+import { BottomSheet, SHEET_HEIGHT, type Detent } from "./bottom-sheet";
 import { LAYER_COLOR, type MapApi, type MapFocus } from "./map-canvas";
 import { Chip, ChipRow } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -142,6 +142,8 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
   const [focus, setFocus] = useState<MapFocus | null>(null);
   const apiRef = useRef<MapApi | null>(null);
   const nonce = useRef(0);
+  /** The positioned map box — the coordinate space the card and sheet share. */
+  const mapBoxRef = useRef<HTMLDivElement>(null);
 
   // ── Which preview surface is in play ──
   // Desktop gets a card anchored to the pin; phones get the bottom sheet. This
@@ -240,10 +242,36 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
     return { x: p.x, y: p.y - 22 };
   }, [group]);
 
+  /**
+   * How much of the map box the bottom sheet is sitting on.
+   *
+   * The sheet is a sibling of the anchored card inside the same positioned box
+   * and paints above it (z-450 vs z-440), so "inside the container" was not the
+   * same thing as "visible" — with the sheet at half, the bottom of every card,
+   * "View event" included, was behind an opaque panel. Read through a getter
+   * for the same reason as `getAnchor`: it is consulted during the card's
+   * layout, and holding it in state would re-render this component to move one
+   * card. Desktop has the panel in a column beside the map, so nothing is
+   * covered and the inset is zero.
+   */
+  const detentRef = useRef(detent);
+  // Written in an effect, not during render: a ref is not rendering state, and
+  // assigning one in the body is a render side effect.
+  useEffect(() => { detentRef.current = detent; }, [detent]);
+  const getBottomInset = useCallback(
+    () => (isDesktop ? 0 : SHEET_HEIGHT[detentRef.current] * (mapBoxRef.current?.clientHeight ?? 0)),
+    [isDesktop],
+  );
+
   /** One method call per animation frame, and no React render. */
   const onViewportChange = useCallback(() => {
     previewRef.current?.reposition();
   }, []);
+
+  // The sheet's height changes with the detent, and the card's budget depends
+  // on it — a card placed against the old inset would be the wrong height for
+  // one paint, which reads as a jump.
+  useEffect(() => { previewRef.current?.reposition(); }, [detent]);
 
   /** The sheet's list for the active section. */
   const listed = useMemo(() => {
@@ -299,16 +327,45 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
    * tapping "12 people · 3 gyms" would show one gym — the opposite of what the
    * badge promised.
    */
+  /**
+   * Raise the sheet to `half` — but ONLY when the sheet is the thing that is
+   * going to answer the tap.
+   *
+   * ── The bug this closes ───────────────────────────────────────────────────
+   * Both selection paths promoted the sheet unconditionally. That was right
+   * while every selection opened IN the sheet. It stopped being right when
+   * events moved to a card anchored over the map: tapping an event pin popped
+   * the card and, in the same commit, slid an opaque panel up over the bottom
+   * half of the map — on top of the card the tap had just asked for. Half the
+   * card, "View event" included, was behind the very list the reader had
+   * finished using. It looked like the card was too tall for the screen; it was
+   * the correct height for a container that something else had taken half of.
+   *
+   * An event pin now leaves the sheet exactly where the reader parked it, and
+   * FloatingPreview budgets the card against whatever that is (getBottomInset).
+   * Gyms, people and multi-pin clusters still open in the sheet, so those still
+   * raise it.
+   */
+  const raiseSheetFor = useCallback(
+    (opensFloatingCard: boolean) => {
+      if (isDesktop || opensFloatingCard) return;
+      setDetent((d) => (d === "collapsed" ? "half" : d));
+    },
+    [isDesktop],
+  );
+
   const selectGroup = useCallback(
     (pinId: string | null) => {
       setAnchorPin(pinId);
       setDetailPin(null);
       if (!pinId) return;
-      setDetent((d) => (d === "collapsed" ? "half" : d));
       const g = groups.find((x) => x.pins.some((p) => p.id === pinId));
+      // A group of one opens straight to its detail (see the `pin` memo), so a
+      // lone event pin is exactly the case that gets the anchored card.
+      raiseSheetFor(g?.pins.length === 1 && !!g.pins[0].event);
       if (g) flyTo(g.lat, g.lon, g.pins.length > 1 ? zoom : Math.max(zoom, 8));
     },
-    [groups, flyTo, zoom],
+    [groups, flyTo, zoom, raiseSheetFor],
   );
 
   /** List tap — the lists show pins, so they open straight to the detail. */
@@ -316,10 +373,14 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
     (p: MapPin) => {
       setAnchorPin(p.id);
       setDetailPin(p.id);
-      setDetent((d) => (d === "expanded" ? "half" : d === "collapsed" ? "half" : d));
+      // Tapping a LIST row means the sheet is already open and being read, so
+      // an event drops it back to `collapsed` rather than leaving it half over
+      // the card — the row has done its job.
+      if (!isDesktop && p.event) setDetent("collapsed");
+      else raiseSheetFor(false);
       flyTo(p.lat, p.lon, Math.max(zoom, 8));
     },
-    [flyTo, zoom],
+    [flyTo, zoom, isDesktop, raiseSheetFor],
   );
 
   const clearSelection = useCallback(() => {
@@ -486,7 +547,7 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
             while phones (which use the explicit 72dvh) looked right. The
             viewport-relative floor makes the desktop map independent of that
             chain; flex-1 still lets it grow when a parent does provide height. */}
-        <div data-hscroll className="relative mx-4 mb-4 h-[72dvh] min-h-[26rem] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)] lg:h-auto lg:min-h-[calc(100dvh-13rem)] lg:flex-1">
+        <div ref={mapBoxRef} data-hscroll className="relative mx-4 mb-4 h-[72dvh] min-h-[26rem] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.95)] lg:h-auto lg:min-h-[calc(100dvh-13rem)] lg:flex-1">
           <MapCanvas
             className="cr-map absolute inset-0"
             groups={groups}
@@ -511,6 +572,7 @@ export function MapExplorer({ data: initialData }: { data: MapData }) {
           {floatingPin && (
             <FloatingPreview
               getAnchor={getAnchor}
+              getBottomInset={getBottomInset}
               handleRef={previewRef}
               contentKey={floatingPin.id}
               onClose={clearSelection}

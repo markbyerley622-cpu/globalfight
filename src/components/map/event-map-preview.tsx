@@ -248,6 +248,21 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
     </div>
   );
 
+  /**
+   * The sport chip.
+   *
+   * Built once and placed in EITHER top corner — same markup both ways, so the
+   * two placements cannot drift into two different chips. Which corner is a
+   * layout decision, because on the variants that render inside FloatingPreview
+   * the right-hand corner is occupied by the shell's close button, drawn over
+   * the card. The badge was not too big on the phone; it was underneath the X.
+   */
+  const sportBadge = (
+    <span className="inline-flex items-center rounded-md bg-ink-950/85 px-1.5 py-0.5 font-display text-3xs font-bold uppercase tracking-wider text-mist backdrop-blur-sm">
+      {ev.sport}
+    </span>
+  );
+
   return (
     <article
       className={cn(
@@ -305,8 +320,10 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
           />
         )}
 
-        {/* State + verification badges */}
+        {/* State + verification badges — and the sport, on the variants whose
+            top-right corner belongs to FloatingPreview's close button. */}
         <div className="absolute left-2.5 top-2.5 flex flex-wrap items-center gap-1.5">
+          {L.sportBadge === "left" && sportBadge}
           {style.badge && (
             <span
               className={cn(
@@ -329,10 +346,11 @@ export function EventMapPreview({ pin, distanceKm, variant = "sheet" }: EventMap
           )}
         </div>
 
-        {/* Sport, opposite corner — the fastest thing to scan a card by. */}
-        <span className="absolute right-2.5 top-2.5 rounded-md bg-ink-950/85 px-1.5 py-0.5 font-display text-3xs font-bold uppercase tracking-wider text-mist backdrop-blur-sm">
-          {ev.sport}
-        </span>
+        {/* Sport, opposite corner — the fastest thing to scan a card by, but
+            only where that corner is actually free. See `sportBadge`. */}
+        {L.sportBadge === "right" && (
+          <span className="absolute right-2.5 top-2.5">{sportBadge}</span>
+        )}
 
         {/* Name + promotion, sitting on the scrim — only where the hero is
             tall enough to carry them. Otherwise this same block renders as the

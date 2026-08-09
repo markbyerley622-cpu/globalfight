@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CARD_GAP, CARD_EDGE, previewCardWidth } from "./event-card-layout";
+import {
+  CARD_GAP, CARD_EDGE, previewCardWidth, previewCardTop, previewHeightBudget,
+} from "./event-card-layout";
 
 // ════════════════════════════════════════════════════════════════════════════
 //  The desktop floating preview — the SHELL, not the content.
@@ -48,6 +50,7 @@ export interface PreviewHandle {
 
 export function FloatingPreview({
   getAnchor,
+  getBottomInset,
   handleRef,
   /**
    * Identity of what is being shown. A CHANGE swaps the content with a
@@ -70,6 +73,22 @@ export function FloatingPreview({
    * know this value: it is written straight to `transform` below.
    */
   getAnchor: () => Anchor | null;
+  /**
+   * Pixels at the FOOT of the container that something else already owns.
+   *
+   * ── The bug this closes ───────────────────────────────────────────────────
+   * On a phone the bottom sheet is a sibling of this card inside the same map
+   * box, and it is drawn on top (z-450 against z-440). The height budget below
+   * was computed from the container's FULL height, so a card placed "inside the
+   * container" was routinely placed inside the part of it the sheet covers —
+   * and the sheet is opaque. With the sheet at its half detent the bottom of
+   * every card, "View event" included, was simply behind it, and no amount of
+   * scrolling the card's own body could reach a button the sheet was over.
+   *
+   * A getter rather than a number for the same reason as `getAnchor`: it is
+   * read during layout and must never be a stale prop.
+   */
+  getBottomInset?: () => number;
   /** Filled with a handle the parent calls on map movement. */
   handleRef?: React.RefObject<PreviewHandle | null>;
   contentKey: string;
@@ -87,6 +106,8 @@ export function FloatingPreview({
   // dependency that re-runs effects.
   const getAnchorRef = useRef(getAnchor);
   useEffect(() => { getAnchorRef.current = getAnchor; });
+  const getBottomInsetRef = useRef(getBottomInset);
+  useEffect(() => { getBottomInsetRef.current = getBottomInset; });
 
   /**
    * Place the card next to its pin, flipping to whichever side has room.
@@ -120,7 +141,11 @@ export function FloatingPreview({
     // Capping here and letting the body scroll makes the card fit BY
     // CONSTRUCTION at any viewport, including landscape phones where the map
     // is only a couple of hundred pixels tall.
-    const budget = Math.max(140, H - EDGE * 2);
+    //
+    // `inset` is the second half of that: the container is not all free space
+    // on a phone — the bottom sheet is drawn OVER its foot. See getBottomInset.
+    const inset = Math.max(0, Math.min(getBottomInsetRef.current?.() ?? 0, H));
+    const budget = previewHeightBudget(H, inset);
     const scroller = scrollRef.current;
     if (scroller) scroller.style.maxHeight = `${budget}px`;
 
@@ -128,29 +153,16 @@ export function FloatingPreview({
     // against the height the card will actually have.
     const h = Math.min(el.offsetHeight || 340, budget);
 
-    let x: number;
-    let y: number;
+    // Prefer the right of the pin; flip left when the card would overhang.
+    // Phones have no room to either side, so the card is centred over the pin.
+    const right = anchor.x + GAP;
+    const left = anchor.x - GAP - w;
+    const x = narrow
+      ? Math.min(Math.max(anchor.x - w / 2, EDGE), Math.max(EDGE, W - w - EDGE))
+      : right + w + EDGE <= W ? right : left >= EDGE ? left : Math.max(EDGE, W - w - EDGE);
 
-    if (narrow) {
-      // ── Phone: ABOVE the pin, centred ────────────────────────────────────
-      // There is no room to either side, and the alternative — a bottom sheet
-      // the reader has to drag open — buries the card they just asked for
-      // behind a gesture. Popping it over the map is the same interaction the
-      // desktop gets, which is the point.
-      x = Math.min(Math.max(anchor.x - w / 2, EDGE), Math.max(EDGE, W - w - EDGE));
-      const above = anchor.y - GAP - h;
-      // Flip BELOW only when there is genuinely no room above — a card over the
-      // pin would hide the thing it describes.
-      y = above >= EDGE ? above : Math.min(anchor.y + GAP, Math.max(EDGE, H - h - EDGE));
-    } else {
-      // Prefer the right of the pin; flip left when the card would overhang.
-      const right = anchor.x + GAP;
-      const left = anchor.x - GAP - w;
-      x = right + w + EDGE <= W ? right : left >= EDGE ? left : Math.max(EDGE, W - w - EDGE);
-      // Vertically centred on the pin, then clamped inside the container so a
-      // card never hangs off the top or bottom.
-      y = Math.min(Math.max(anchor.y - h / 2, EDGE), Math.max(EDGE, H - h - EDGE));
-    }
+    // Vertical placement is pure and tested — see previewCardTop.
+    const y = previewCardTop({ containerH: H, bottomInset: inset, anchorY: anchor.y, cardH: h, narrow });
 
     // The tail points at the pin only when the card is BESIDE it. Above/below,
     // a side-notch would point at nothing.
@@ -231,14 +243,22 @@ export function FloatingPreview({
       </div>
 
       {/* Outside the scroller on purpose — see scrollRef. Absolute against the
-          shell, so it stays put however far the body is scrolled. */}
+          shell, so it stays put however far the body is scrolled.
+
+          ── Why it is red and 36px ──
+          It was a 28px box holding a 14px glyph in `text-mist`, sitting on top
+          of a poster. On a phone that is both under the 44px touch minimum and
+          low-contrast against whatever art happens to be behind it — the one
+          control that has to work on every card was the hardest one on the card
+          to see or hit. Blood-red is the app's only "this dismisses something"
+          colour, and it reads against any poster. */}
       <button
         type="button"
         onClick={onClose}
         aria-label="Close preview"
-        className="tap absolute right-1.5 top-1.5 z-10 grid size-7 place-items-center rounded-lg bg-ink-950/80 text-mist backdrop-blur-sm transition-colors hover:text-chalk"
+        className="tap absolute right-1.5 top-1.5 z-10 grid size-9 place-items-center rounded-lg bg-blood-500/90 text-white shadow-[0_2px_10px_rgba(5,7,10,0.6)] backdrop-blur-sm transition-colors hover:bg-blood-400"
       >
-        <X className="size-3.5" />
+        <X className="size-5" strokeWidth={2.5} />
       </button>
 
       {/* The tail: a small notch pointing back at the pin, so the card reads as

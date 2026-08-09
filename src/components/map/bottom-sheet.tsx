@@ -36,8 +36,13 @@ function ResizeButton({
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       onPointerDown={(e) => e.stopPropagation()}
       className={cn(
-        "tap grid size-7 place-items-center rounded-md transition-colors",
-        disabled ? "cursor-default text-ink-600" : "text-mist hover:bg-ink-800 hover:text-chalk",
+        // 40px, not 28px. These are the only non-gesture way to move the sheet
+        // and they sat below every touch-target guideline going, on the surface
+        // where a thumb is the only pointer there is.
+        "tap grid size-10 place-items-center rounded-lg transition-colors",
+        disabled
+          ? "cursor-default text-ink-700"
+          : "border border-ink-700 bg-ink-900/80 text-chalk hover:border-ink-600 hover:bg-ink-800",
       )}
     >
       {children}
@@ -45,8 +50,21 @@ function ResizeButton({
   );
 }
 
-/** Sheet height as a fraction of the container, per detent. */
-const HEIGHT: Record<Detent, number> = { collapsed: 0.16, half: 0.5, expanded: 0.92 };
+/**
+ * Sheet height as a fraction of the container, per detent.
+ *
+ * Exported because the anchored event card has to place itself ABOVE the sheet
+ * — it is a sibling in the same box and the sheet paints over it. See
+ * FloatingPreview's `getBottomInset`.
+ *
+ * `collapsed` is 0.2, not the 0.16 it was: the grabber and the resize buttons
+ * both grew to real touch targets, and 0.16 of a 480px map is 77px, which is
+ * less than the 44px handle row plus the filter chips beneath it. The collapsed
+ * bar has to show everything in it or it is not a peek, it is a clip.
+ */
+export const SHEET_HEIGHT: Record<Detent, number> = { collapsed: 0.2, half: 0.5, expanded: 0.92 };
+
+const HEIGHT = SHEET_HEIGHT;
 
 const ORDER: Detent[] = ["collapsed", "half", "expanded"];
 
@@ -219,7 +237,10 @@ export function BottomSheet({
           buttons say it outright, work with a mouse, work with a keyboard, and
           leave the drag gesture exactly as it was for anyone who does reach for
           it. */}
-      <div className="relative shrink-0">
+      {/* min-h-11: the resize buttons are absolutely positioned, so they add
+          nothing to this row's height — at 40px they would have hung down into
+          the header and sat on top of the filter chips. */}
+      <div className="relative min-h-11 shrink-0">
         <div
           role="button"
           tabIndex={0}
@@ -241,25 +262,36 @@ export function BottomSheet({
             if (e.key === "ArrowDown" && i > 0) { e.preventDefault(); onDetentChange(ORDER[i - 1]); }
             if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); }
           }}
-          className="cursor-grab touch-none select-none px-4 pb-1 pt-2 active:cursor-grabbing"
+          // ── Why the hit area is 44px tall and the bar is 6px ──
+          // The grab zone was `pb-1 pt-2` around a 4px bar — about 15px of
+          // target for the primary gesture of the whole surface. A thumb is
+          // roughly 45px wide and does not aim; the sheet read as something
+          // that resisted being dragged, which is exactly what a target that
+          // small does. The visible bar grew with it, because a handle you can
+          // hit but cannot see is only half the fix.
+          //
+          // `pr-28` keeps the zone clear of the two resize buttons on the right:
+          // it spans the full width otherwise, and a press meant for "expand"
+          // that landed a pixel outside the button would start a drag instead.
+          className="cursor-grab touch-none select-none px-4 pb-2.5 pr-28 pt-3.5 active:cursor-grabbing"
         >
-          <div className="mx-auto h-1 w-10 rounded-full bg-ink-600" />
+          <div className="mx-auto h-1.5 w-12 rounded-full bg-ink-500" />
         </div>
 
-        <div className="absolute right-2 top-1 flex items-center gap-0.5">
+        <div className="absolute right-2 top-1 flex items-center gap-1">
           <ResizeButton
             label="Minimise list"
             disabled={detent === "collapsed"}
             onClick={() => onDetentChange(ORDER[Math.max(0, ORDER.indexOf(detent) - 1)])}
           >
-            <ChevronDown className="size-4" />
+            <ChevronDown className="size-5" strokeWidth={2.5} />
           </ResizeButton>
           <ResizeButton
             label="Expand list"
             disabled={detent === "expanded"}
             onClick={() => onDetentChange(ORDER[Math.min(ORDER.length - 1, ORDER.indexOf(detent) + 1)])}
           >
-            <ChevronUp className="size-4" />
+            <ChevronUp className="size-5" strokeWidth={2.5} />
           </ResizeButton>
         </div>
       </div>
