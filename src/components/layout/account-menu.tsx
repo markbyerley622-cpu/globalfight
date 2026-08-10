@@ -100,7 +100,16 @@ export function AccountMenu({ onOpenNav }: { onOpenNav: () => void }) {
                   <Item href="/promoter" icon={<Megaphone className="size-4" />} onClick={() => setOpen(false)}>Host events</Item>
                 )}
                 <Item href="/feedback" icon={<MessageSquarePlus className="size-4" />} onClick={() => setOpen(false)}>Feedback</Item>
-                <Item href="/account" icon={<Settings className="size-4" />} onClick={() => setOpen(false)}>Settings</Item>
+                {/* ── /settings, NOT /account ──────────────────────────────
+                    This pointed at /account, which is the SIGN-UP page: signed
+                    out it is the join form, signed in it is a "Members"
+                    dashboard whose main content is the fighter-profile
+                    publishing form. So "Settings" opened a screen with no
+                    display name, email or password field on it, and the real
+                    settings screen — then at /profile/settings — was reachable
+                    only from a row inside /profile. Two account surfaces, and
+                    the menu pointed at the wrong one. */}
+                <Item href="/settings" icon={<Settings className="size-4" />} onClick={() => setOpen(false)}>Settings</Item>
                 {/* ── ADMIN ──
                     Was two loose links sitting among the user's own items, and
                     one of them was mislabelled: "Verification" pointed at

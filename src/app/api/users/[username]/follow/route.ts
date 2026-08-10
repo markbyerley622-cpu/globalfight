@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { setFollow, getFollowCounts } from "@/lib/geo/people";
+import { blockExistsBetween } from "@/lib/blocks/repo";
 import { enforceLimit } from "@/lib/rate-limit/guard";
 import { POLICY } from "@/lib/rate-limit";
 
@@ -27,6 +28,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ usernam
   if (!target) return NextResponse.json({ error: "No such user." }, { status: 404 });
   if (target.id === me.id) {
     return NextResponse.json({ error: "You can't follow yourself." }, { status: 400 });
+  }
+
+  // A follow puts the target's activity in your feed and fires a notification
+  // into theirs, so it is exactly the channel a block exists to close. Symmetric
+  // (lib/blocks/repo): neither party can follow the other, whoever pressed
+  // block. Worded identically in both directions so this is not a probe for
+  // whether someone blocked you.
+  if (await blockExistsBetween(me.id, target.id)) {
+    return NextResponse.json({ error: "You can't follow this person." }, { status: 403 });
   }
 
   const body = (await req.json().catch(() => ({}))) as { follow?: boolean };

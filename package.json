@@ -84,7 +84,12 @@
     "audit:rankings": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/ranking-audit.mts",
     "audit:champions": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/champion-audit.mts",
     "backfill:one": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/one-backfill.mts",
-    "backfill:bkfc": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/bkfc-backfill.mts"
+    "backfill:bkfc": "node --conditions=react-server --env-file-if-exists=.env --import tsx scripts/bkfc-backfill.mts",
+    "android:manifest": "node --env-file-if-exists=.env --import tsx scripts/twa-manifest.mts",
+    "android:bump": "node --import tsx scripts/android-bump.mts",
+    "android:verify": "node --env-file-if-exists=.env --import tsx scripts/android-verify.mts",
+    "android:doctor": "node --import tsx scripts/android-doctor.mts",
+    "release:doctor": "node --env-file-if-exists=.env --import tsx scripts/release-doctor.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

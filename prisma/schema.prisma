@@ -1700,6 +1700,8 @@ model User {
   checkIns          CheckIn[]
   following         UserFollow[]         @relation("Follower")
   followers         UserFollow[]         @relation("Following")
+  blocksMade        UserBlock[]          @relation("BlocksMade")
+  blocksReceived    UserBlock[]          @relation("BlocksReceived")
   pushSubscriptions PushSubscription[]
   conversations     ConversationMember[]
   sentMessages      DirectMessage[]      @relation("MessageSender")
@@ -3172,6 +3174,37 @@ model UserFollow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+/// One person blocking another.
+///
+/// Google Play's User Generated Content policy requires an in-app system for
+/// reporting AND BLOCKING both content and users in any app where users
+/// interact with each other. Direct messages ship, so this is not optional.
+///
+/// DIRECTIONAL ROW, SYMMETRIC EFFECT. Only the blocker's intent is recorded —
+/// `blockedId` never learns they were blocked, which is why there is no
+/// notification and no counter anywhere. But every ENFORCEMENT reads the pair
+/// in BOTH directions (see lib/blocks/repo `blockExistsBetween`): once A blocks
+/// B, neither can message or follow the other. A one-directional gate would let
+/// the blocked party keep opening the thread and keep writing into it, which is
+/// the exact behaviour the block exists to stop.
+///
+/// Cascade on both sides: a deleted account's blocks are meaningless, and a
+/// stranded row would name a user id that no longer resolves.
+model UserBlock {
+  id        String @id @default(cuid())
+  blockerId String
+  blocker   User   @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User   @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  /// The hot read is "is either of this pair blocking the other", which probes
+  /// blockedId as well as blockerId. Without this the reverse leg scans.
+  @@index([blockedId])
 }
 
 // ─── Media assets ───────────────────────────────────────────────────────────

@@ -25,6 +25,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Legal surfaces — these SHOULD be indexable.
     "/privacy", "/terms", "/cookies", "/community-guidelines", "/copyright",
     "/data-sources", "/responsible-gambling",
+    // Indexable deliberately: Play's Data Safety form takes this URL, and a
+    // reviewer (or a locked-out user) has to be able to find it without the app.
+    "/delete-account",
     ...(f.rankingsEnabled ? ["/rankings", "/p4p", "/champions"] : []),
     ...(f.marketPricesEnabled ? ["/predictions"] : []),
   ].map((p) => ({

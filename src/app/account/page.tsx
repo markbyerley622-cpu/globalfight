@@ -105,6 +105,13 @@ export default function AccountPage() {
           eyebrow="Members"
           title={`Welcome${user.name ? `, ${user.name.split(" ")[0]}` : ""}`}
           description="Your Combat Reviews account. Manage your profile, follows and registry claims."
+          // Back rendered but did nothing on desktop. PageHero only calls
+          // router.back() when useCanGoBack() is true, and this page is a
+          // common COLD entry — a bookmark, a new tab, or the post-sign-in
+          // landing, where there is no in-app history to go back to. Without a
+          // fallback the button was either absent or a dead end. /profile is
+          // the surface this page belongs under, so it is where Back goes.
+          backFallback="/profile"
         />
         {/* The nudge, not a gate. Signup already finished — this is the first
             place a professional role is asked to prove who they are, and it is

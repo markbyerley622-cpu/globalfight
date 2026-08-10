@@ -86,6 +86,27 @@ ALTER TABLE "UserFollow"        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "UserFollow"        FORCE  ROW LEVEL SECURITY;
 CREATE POLICY follow_owner      ON "UserFollow"        USING ("followerId" = current_setting('app.user_id', true));
 
+-- UserBlock: the BLOCKER owns the row — it records their decision, and the
+-- blocked party is never told it exists.
+--
+-- ⚠ THE ONE TABLE IN GROUP A WHOSE POLICY IS NOT A PLAIN OWNER MATCH. Blocking
+-- is stored one-directionally and ENFORCED symmetrically, so the hot predicate
+-- (`blockExistsBetween`) has to see rows where the viewer is the blockedId —
+-- rows they do not own. A `USING ("blockerId" = …)` policy alone would make
+-- every reverse-leg check return false under RLS, which fails OPEN: the blocked
+-- person could message and follow again and nothing would error. Both legs are
+-- therefore visible, which is safe because the row carries no content — only
+-- two ids the viewer is already one half of.
+ALTER TABLE "UserBlock"         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "UserBlock"         FORCE  ROW LEVEL SECURITY;
+CREATE POLICY block_party       ON "UserBlock"
+  USING ("blockerId" = current_setting('app.user_id', true)
+      OR "blockedId" = current_setting('app.user_id', true));
+-- WRITES are blocker-only: being blocked must not let you delete the block.
+CREATE POLICY block_write       ON "UserBlock" FOR ALL
+  USING ("blockerId" = current_setting('app.user_id', true))
+  WITH CHECK ("blockerId" = current_setting('app.user_id', true));
+
 ALTER TABLE "AnalyticsEvent"    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AnalyticsEvent"    FORCE  ROW LEVEL SECURITY;
 CREATE POLICY analytics_owner   ON "AnalyticsEvent"    USING ("userId" = current_setting('app.user_id', true));

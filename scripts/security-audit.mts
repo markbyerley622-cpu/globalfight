@@ -62,6 +62,11 @@ const CURATED: Record<string, Klass> = {
   FavoriteEvent: "USER_OWNED", FavoriteFighter: "USER_OWNED", FavoritePromotion: "USER_OWNED",
   AnalyticsEvent: "USER_OWNED", Activity: "USER_OWNED", ReputationEvent: "USER_OWNED",
   CardAward: "USER_OWNED", UserFollow: "USER_OWNED", GymReviewVote: "USER_OWNED",
+  // UserBlock is owned by the BLOCKER. The enforcement predicate deliberately
+  // reads the reverse leg too (lib/blocks/repo `blockExistsBetween`), which is a
+  // read of a row the viewer does not own — that is the one intended exception
+  // and it returns a boolean, never the row.
+  UserBlock: "USER_OWNED",
   // Shared — relationship must be validated.
   Battle: "SHARED", Rivalry: "SHARED", GymMember: "SHARED", GymClaim: "SHARED",
   FighterClaim: "SHARED", CopyrightReport: "SHARED", Prediction: "SHARED",
@@ -99,7 +104,13 @@ const AGGREGATE = new Set(["count", "aggregate", "groupBy"]); // row totals, not
 // user-facing reads and must not read as leaks.
 const AUTH_INTERNAL = new Set(["PasswordResetToken", "Session", "Account", "PushSubscription", "EmailVerificationToken"]);
 const PRISMA_BASES = new Set(["prisma", "tx", "db", "client"]);
-const OWNER_KEY_RE = /(^|_)(user|author|owner|member|participant|follower|following|challenger|opponent|sender|recipient|created|uploaded)/i;
+// `block` covers UserBlock's blockerId/blockedId — the only two columns in the
+// schema with that prefix, so this recognises a scoped read on that table
+// without loosening the rule for any other. Both legs count: a UserBlock row
+// names two people and the viewer is always one of them, so filtering on either
+// id IS the ownership filter. (`blockExistsBetween` still reports as unscoped
+// and should: its `where` is a bare OR, which no static reader can attribute.)
+const OWNER_KEY_RE = /(^|_)(user|author|owner|member|participant|follower|following|challenger|opponent|sender|recipient|created|uploaded|block)/i;
 const AUTH_MARKERS = ["getCurrentUser", "getSessionUserId", "requireUser", "requireStaff", "requireAdmin", "isAdmin", "assertAdmin"];
 
 type Sev = "HIGH" | "MEDIUM" | "LOW" | "INFO";

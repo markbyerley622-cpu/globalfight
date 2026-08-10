@@ -5,8 +5,12 @@ auth). This file is the durable contract for how the app is built and secured.
 Keep it current when the security model changes.
 
 - Build/verify: `npm run typecheck` · `npm run lint` · `npm run build` ·
-  `npm test` (172 unit) · `npm run security:audit` (query-ownership auditor,
+  `npm test` (1768 unit) · `npm run security:audit` (query-ownership auditor,
   must stay **0 HIGH**).
+- Android/Play packaging: `npm run android:bump` → `npm run android:manifest`
+  → `cd android && bubblewrap build`. The app ships as a **Trusted Web
+  Activity** — the PWA is the product, the AAB is packaging. See
+  `docs/GOOGLE_PLAY_RELEASE.md`. Never commit a keystore.
 - E2E: `npm run build` then `next start`, point `BASE_URL` at it, `npx playwright
   test`. **Never sign off UI from `npm run dev`** — HMR emits phantom
   `Invalid or unexpected token` / soft-500s that do not occur in a production
@@ -55,6 +59,7 @@ Verified empirically against a production build (red-team pass, 2026-07-26).
 | `ForumPost` edit/delete | ✗ (401) | ✗ (**403**) | own only | **any** | any |
 | Profile (`PATCH /api/profile`) | ✗ (401) | ✗ | own; **cannot** set `role`/`reputation`/pick stats | own | own |
 | Follows / favourites / bookmarks | ✗ (401) | ✗ | CRUD own | own | own |
+| `UserBlock` | ✗ (401) | ✗ (never told they are blocked) | create/delete own; list own | — | — |
 | `Notification` | ✗ (401) | ✗ own-scoped | read/mark own | own | own |
 | `CheckIn` (location) | ✗ (401) | ✗ | CRUD own | own | own |
 | `Conversation` / `DirectMessage` (DMs) | ✗ (401) | ✗ (**404**, no existence oracle) | read/send as a member | — | — |
@@ -140,6 +145,14 @@ render; `userA … WHERE userId='userB'` returns **0**.
   `FavoriteFighter/Promotion/Event`, `UserFollow` (by `followerId`),
   `AnalyticsEvent`. `PasswordResetToken`: RLS on, **no** policy (server-only, by
   hash).
+  ⚠ `UserBlock` is the one Group A table whose policy is **not** a plain owner
+  match. A block is stored one-directionally (`blockerId`) but **enforced
+  symmetrically**, so the hot predicate reads the reverse leg — rows where the
+  viewer is the `blockedId`. A blocker-only `USING` would make every reverse
+  check return false under RLS and **fail open** (the blocked party could
+  message and follow again, silently). The policy therefore exposes both legs
+  for SELECT and restricts writes to the blocker. Safe because the row holds no
+  content, only two ids the viewer is already one half of.
 - **Group B — public read, owner-only write (app-layer + rate limit):**
   `ForumThread`, `ForumPost`, `GymReview`, `GymReviewVote`, `Gym`, `Article`,
   `CommunityVote`, `Battle`, `Rivalry`,

@@ -25,6 +25,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { isFollowing } from "@/lib/follow-targets";
 import { FollowButton } from "@/components/follow-button";
 import { MessageButton } from "@/components/messages/message-button";
+import { BlockButton } from "@/components/block-button";
+import { hasBlocked } from "@/lib/blocks/repo";
 
 const ROLE_LABEL: Record<string, string> = {
   fighter: "Fighter", coach: "Coach", gym: "Gym", promoter: "Promoter",
@@ -87,7 +89,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   const viewer = await getCurrentUser();
   const isSelf = viewer?.id === u.id;
 
-  const [stats, overview, activity, rankedTotal, trainingNow, followCounts, viewerFollows, mutuals] = await Promise.all([
+  const [stats, overview, activity, rankedTotal, trainingNow, followCounts, viewerFollows, mutuals, viewerBlocks] = await Promise.all([
     getProfileStats(u.id),
     // Current picks + recent results, from the one profile service. Joined to
     // the EXISTING parallel wave rather than fetched after it, so the two new
@@ -103,6 +105,11 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
     getFollowCounts(u.id),
     viewer && !isSelf ? isFollowing(viewer.id, { type: "person", id: u.id }) : Promise.resolve(false),
     getMutualFollowers(viewer?.id, u.id),
+    // Only the viewer's OWN block is read. Whether the other person blocked the
+    // viewer is deliberately not surfaced anywhere: the button would then say
+    // something different to a blocked visitor, which is how a block announces
+    // itself to the one person it must not.
+    viewer && !isSelf ? hasBlocked(viewer.id, u.id) : Promise.resolve(false),
   ]);
 
   const displayName = publicDisplayName(u);
@@ -227,6 +234,16 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
                   "compose" screen with a recipient picker, because that is the
                   shape that makes unsolicited messaging easy. */}
               <MessageButton username={u.username} name={displayName} />
+              {/* The escape hatch that has to sit next to the two buttons that
+                  open a channel, not buried in settings. Play's UGC policy
+                  requires blocking to be reachable in-app; a person deciding
+                  they want nothing more to do with someone is on that person's
+                  profile, which is here. */}
+              <BlockButton
+                username={u.username}
+                name={displayName}
+                initialBlocked={viewerBlocks}
+              />
             </>
           )}
         </div>

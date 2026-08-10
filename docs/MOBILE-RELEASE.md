@@ -1,5 +1,11 @@
 # Shipping Combat Reviews to Google Play and the App Store
 
+> **This page is the ARGUMENT** — why a TWA, why not Apple yet, what the
+> blockers are and why. The **procedure** (build commands, versioning, the
+> Play Console checklist, the Data Safety draft, the policy audit) lives in
+> [`GOOGLE_PLAY_RELEASE.md`](./GOOGLE_PLAY_RELEASE.md). Follow that one when
+> you are actually shipping; read this one to understand it.
+
 Run `npm run doctor:production` in the Render Shell first. Every item below that
 can be checked automatically is checked there, under the **Mobile** group.
 
@@ -22,22 +28,59 @@ general — see the last section.
 A TWA is your site rendered by the user's Chrome, in a shell with no browser UI.
 It is a real Play listing. It updates when you deploy, not when Google approves.
 
-### 1. A custom domain — do this first
+### 1. A custom domain — NOT a prerequisite. Corrected 2026-08-10.
 
-Everything else depends on it, so it is not a step you can defer.
+**This section previously said a custom domain had to come first and that
+`globalfight-p69k.onrender.com` "will not do". That was asserted, never tested,
+and it is wrong.** It was the single biggest thing standing between this project
+and an installable build, so the correction matters more than the claim did.
 
-`onrender.com` is a shared domain. If Play ever needs a domain-ownership check,
-or you want the URL bar hidden on a host you control, `globalfight-p69k.onrender.com`
-will not do. It also changes if you rebuild the service.
+Tested against **Google's own Digital Asset Links verifier** — the service
+Android actually consults:
 
-1. Point your domain at Render (Settings → Custom Domain).
-2. Set `NEXT_PUBLIC_SITE_URL=https://yourdomain.com` — **full origin, scheme included**.
-3. Set `APP_HOST=yourdomain.com` — **host only, no scheme**. This is what the
-   cron jobs curl. Change it here and nowhere else.
+```
+GET https://digitalassetlinks.googleapis.com/v1/statements:list
+      ?source.web.site=https://globalfight-p69k.onrender.com
+      &relation=delegate_permission/common.handle_all_urls
+```
 
-Until `NEXT_PUBLIC_SITE_URL` is set the site serves `robots.txt: Disallow: /` and
-`noindex` on every page. That is deliberate, and it means **you are currently
-unindexed**.
+The only error returned was `ERROR_CODE_FETCH_ERROR — 404 Not Found` for the
+missing `assetlinks.json`. **No objection to the host.** Google resolved it,
+fetched it, and would have accepted a statement had one been there.
+
+This holds despite `onrender.com` being on the
+[Public Suffix List](https://publicsuffix.org/list/) (verified: line 15392,
+submitted by Render). That listing works *in your favour* — it makes
+`globalfight-p69k.onrender.com` a registrable domain in its own right, a real
+site boundary for cookies, and a valid Digital Asset Links origin. Digital Asset
+Links is scoped per-origin, not per-registrable-domain.
+
+`npm run android:verify` now runs that same API call on every check, so this is
+re-tested rather than re-assumed.
+
+**So: you can ship to Play Internal Testing on the Render hostname today.**
+
+The custom domain is still worth doing, for reasons that are real but are not
+blockers:
+
+- The Render hostname changes if the service is ever recreated — and the host is
+  baked into the published Android app, so a change means a new AAB release.
+- `globalfight-p69k.onrender.com` in a store listing reads like a staging URL.
+- It is your address, not Render's.
+
+When you do move, change **both** and nothing else:
+
+1. Point the domain at Render (Settings → Custom Domain).
+2. `NEXT_PUBLIC_SITE_URL=https://yourdomain.com` — **full origin, scheme included**.
+3. `APP_HOST=yourdomain.com` — **host only, no scheme**. What the cron jobs curl.
+
+Then re-run `npm run android:manifest` and ship a new `versionCode`: the old app
+points at the old host.
+
+> Also corrected: this document claimed the site was unindexed because
+> `NEXT_PUBLIC_SITE_URL` was unset. It **is** set in production —
+> `robots.txt` serves `Allow: /` with `Host: https://globalfight-p69k.onrender.com`
+> and pages carry `robots: index, follow`.
 
 ### 2. Digital Asset Links — the step that silently ruins TWAs
 

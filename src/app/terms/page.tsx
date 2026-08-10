@@ -16,7 +16,7 @@ export default function TermsPage() {
         <li>You must be at least 16 to hold an account.</li>
         <li>Keep your password to yourself. You are responsible for what happens under your account.</li>
         <li>Give us accurate information, particularly when claiming a fighter profile.</li>
-        <li>You can delete your account at any time from <a href="/profile/settings" className="text-blood-400 hover:text-blood-300">Settings</a>.</li>
+        <li>You can delete your account at any time from <a href="/settings" className="text-blood-400 hover:text-blood-300">Settings</a>.</li>
       </ul>
 
       <H2>Claiming a fighter profile</H2>
@@ -80,7 +80,7 @@ export default function TermsPage() {
       <p>
         We may hide content, or close an account, that breaks these terms or the community
         guidelines. You may close yours at any time from{" "}
-        <a href="/profile/settings" className="text-blood-400 hover:text-blood-300">Settings</a>;
+        <a href="/settings" className="text-blood-400 hover:text-blood-300">Settings</a>;
         deletion is immediate and, apart from the anonymised discussion described above, permanent.
       </p>
 

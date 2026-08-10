@@ -6,6 +6,7 @@ import { PRESENCE_SELECT, PRESENCE_MUTUAL_SELECT } from "@/lib/presence/select";
 import { presenceDtoFor, typingAllowed, readReceiptsAllowed } from "@/lib/presence/policy";
 import { resolveDraftEntities, hydrateEntities } from "@/lib/rich-text/resolve";
 import type { Prisma } from "@prisma/client";
+import { blockExistsBetween, blockedIdsFor } from "@/lib/blocks/repo";
 import {
   MAX_MESSAGE_LENGTH,
   TYPING_TTL_MS,
@@ -97,6 +98,19 @@ export async function openConversation(viewerId: string, otherUserId: string): P
 
   const other = await prisma.user.findUnique({ where: { id: otherUserId }, select: { id: true } });
   if (!other) throw new Error("That person no longer exists.");
+
+  // ── Blocks are checked BEFORE the row is created ────────────────────────
+  // Symmetric on purpose (lib/blocks/repo): whichever of the two pressed the
+  // button, neither can open a thread with the other. Checking it at send-time
+  // only would still let a blocked person mint the conversation, which is
+  // enough to put a name back in someone's inbox.
+  //
+  // ONE MESSAGE FOR BOTH DIRECTIONS. "You have blocked them" and "they have
+  // blocked you" must not be distinguishable, or the endpoint becomes a probe
+  // for whether a specific person blocked you.
+  if (await blockExistsBetween(viewerId, otherUserId)) {
+    throw new Error("You can't start a conversation with this person.");
+  }
 
   const pairKey = pairKeyFor(viewerId, otherUserId);
 
@@ -211,8 +225,25 @@ const isTyping = (at: Date | null): boolean =>
 
 /** The viewer's inbox, newest activity first. Owner-scoped by construction. */
 export async function listConversations(viewerId: string, limit = 50): Promise<ConversationSummary[]> {
+  // Threads with a blocked party drop out of the inbox entirely — in BOTH
+  // directions, so blocking someone also removes you from their list. Filtered
+  // in SQL rather than after the fact so a blocked thread cannot occupy one of
+  // the `limit` slots and silently shorten someone's inbox.
+  //
+  // The rows are NOT deleted: unblocking restores the history intact, which is
+  // the behaviour someone who blocked in anger and reconsidered expects, and it
+  // keeps the evidence for a report that may already have been filed.
+  const blocked = await blockedIdsFor(viewerId);
   const rows = await prisma.conversation.findMany({
-    where: { members: { some: { userId: viewerId, archivedAt: null } } },
+    where: {
+      members: {
+        some: { userId: viewerId, archivedAt: null },
+        // `some` and `none` on the SAME relation filter are ANDed by Prisma.
+        // Spreading a second `members` key instead would REPLACE the ownership
+        // filter above and list every conversation in the database.
+        ...(blocked.length ? { none: { userId: { in: blocked } } } : {}),
+      },
+    },
     orderBy: { lastMessageAt: "desc" },
     take: limit,
     select: {
@@ -339,6 +370,12 @@ export async function getConversation(
   const member = await requireMember(conversationId, viewerId);
   if (!member) return null;
 
+  // A blocked pair's thread reads as MISSING, not as forbidden — the same null
+  // the non-member path returns, so the id is not an oracle either way. Without
+  // this, a blocked party who kept the URL could still reopen the conversation
+  // and read it; only sending would have been stopped.
+  if (member.otherId && (await blockExistsBetween(viewerId, member.otherId))) return null;
+
   const rows = await prisma.directMessage.findMany({
     where: { conversationId },
     orderBy: { createdAt: "desc" },
@@ -432,6 +469,15 @@ export async function sendMessage(
 
   const member = await requireMember(conversationId, senderId);
   if (!member) throw new Error("This conversation is not available.");
+
+  // A block can land AFTER the thread exists — which is the ordinary case, since
+  // the reason to block someone is usually something they already sent. So the
+  // gate is re-applied at every send, not only when the conversation is opened.
+  // Same wording as the membership failure above, so a blocked sender cannot
+  // tell "blocked" from "gone".
+  if (member.otherId && (await blockExistsBetween(senderId, member.otherId))) {
+    throw new Error("This conversation is not available.");
+  }
 
   // ── Mentions in a DM are RENDERING ONLY ─────────────────────────────────
   // They are stored and they link, but they NEVER notify. A conversation is

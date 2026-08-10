@@ -32,6 +32,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/predictions/:slug((?!mine$)[^/]+)", destination: "/fights/:slug", permanent: true },
+      // Settings moved to the top level. It is account administration, not a
+      // subsection of a public profile, and nesting it under /profile is part of
+      // how it stayed invisible: nothing in the top-level navigation pointed at
+      // it, and the account menu's "Settings" item pointed at /account — the
+      // SIGN-UP page — instead.
+      //
+      // A real 308 here rather than a redirect() inside the page, for the reason
+      // the rule above documents: a dynamic page has already begun streaming by
+      // the time it redirects, so Next falls back to a 200 + meta refresh. This
+      // path is linked from /terms and /community-guidelines and is in people's
+      // bookmarks, so it has to be a redirect a crawler and a browser both honour.
+      { source: "/profile/settings", destination: "/settings", permanent: true },
     ];
   },
   // Global security headers.

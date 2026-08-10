@@ -18,7 +18,7 @@ const initials = (u: { name: string | null; username: string | null }) =>
  *
  * Account administration (display name, username, email, password, sign out,
  * notification preferences, invites, gyms, profile editing) lives at
- * /profile/settings. See the note above the Settings row for why the two were
+ * /settings. See the note above the Settings row for why the two were
  * separated.
  */
 export function ProfileView({
@@ -236,7 +236,7 @@ export function ProfileView({
       {/* ── WHAT REMAINS HERE IS IDENTITY ────────────────────────────────────
           Everything that administers the ACCOUNT — display name, username,
           email, password, sign out, notification preferences, invites, gyms,
-          profile editing — moved to /profile/settings.
+          profile editing — moved to /settings.
 
           This page was two products stacked on one screen: a public combat
           identity on top, and a settings form underneath. Those are opposite
@@ -253,7 +253,7 @@ export function ProfileView({
       {/* ONE way into account management, at the bottom, where a thing you need
           occasionally belongs — not interleaved with the thing you came for. */}
       <Link
-        href="/profile/settings"
+        href="/settings"
         className="mt-4 flex items-center gap-3 rounded-card border border-ink-800 bg-ink-900/60 px-4 py-3.5 transition-colors hover:border-ink-700 hover:bg-ink-800"
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-ink-700 bg-ink-800 text-mist">

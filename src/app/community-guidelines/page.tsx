@@ -74,6 +74,24 @@ export default function GuidelinesPage() {
         it is a legal process and needs different information.
       </p>
 
+      <H2>Blocking</H2>
+      <p>
+        Reporting asks us to act. Blocking does not wait for us: it is yours, it takes effect
+        immediately, and you do not have to justify it to anyone. Every profile has a block action.
+      </p>
+      <p>
+        Blocking someone stops either of you messaging or following the other, removes any
+        conversation between you from both inboxes, and hides their posts from you. It is not
+        announced — the person you block is not told, and it appears in no public count. You can undo
+        it in <a href="/settings" className="text-blood-400 hover:text-blood-300">Settings</a>,
+        which is the only place a block can be reversed once their profile has left your feeds.
+        Unblocking does not restore a follow that existed before.
+      </p>
+      <p>
+        Blocking is not a substitute for reporting. If someone broke these rules, report them too —
+        a block protects you, a report protects everyone else.
+      </p>
+
       <H2>What we do about it</H2>
       <ul className="list-disc space-y-1 pl-5">
         <li>Content that breaks these rules is hidden from the community.</li>

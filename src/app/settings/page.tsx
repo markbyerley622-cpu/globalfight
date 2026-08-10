@@ -3,36 +3,46 @@ import Link from "next/link";
 import { ArrowLeft, Bell, Dumbbell, Pencil, Settings as SettingsIcon, UserPlus, ChevronRight } from "lucide-react";
 import { ProfileSettings } from "@/components/profile/profile-settings";
 import { DeleteAccount } from "@/components/account/delete-account";
+import { BlockedList } from "@/components/account/blocked-list";
 
 export const metadata: Metadata = {
   title: "Settings",
   description: "Manage your Combat Reviews account — display name, username, email, password and notifications.",
-  alternates: { canonical: "/profile/settings" },
+  alternates: { canonical: "/settings" },
   // Nobody should reach an account-management screen from a search result.
   robots: { index: false, follow: false },
 };
 
 /**
- * ACCOUNT MANAGEMENT, on its own screen.
+ * ════════════════════════════════════════════════════════════════════════════
+ *  SETTINGS — one address, and it is this one.
  *
- * ── Why this route exists ──────────────────────────────────────────────────
- * /profile was two products stacked on one page. The top half is a public
- * identity — avatar, handle, reputation, accuracy, streak, followers — and the
- * bottom half was a settings form: display name, username, email address,
- * current password, new password, sign out.
+ *  ── The bug this route fixes ────────────────────────────────────────────
+ *  The account menu's "Settings" item pointed at `/account`. That is the
+ *  SIGN-UP page: signed out it is the join form, and signed in it is a
+ *  "Members" dashboard carrying the fighter-profile publishing form. Pressing
+ *  Settings therefore landed on a page offering to publish a fighter profile,
+ *  with no display name, email or password field anywhere on it.
  *
- * Those are opposite mental models. A visitor is there to look at a person; the
- * owner is occasionally there to administer an account. Interleaving them meant
- * the most-visited profile in the app opened on password fields, and made the
- * whole surface read as a settings screen that happened to show a reputation
- * number — which is precisely the complaint.
+ *  The real settings screen existed the whole time at /profile/settings, and
+ *  nothing in the top-level navigation pointed at it — it was reachable only
+ *  from a row inside /profile. So the app had two account surfaces, the wrong
+ *  one was in the menu, and the right one was two clicks deep.
  *
- * So the split is by INTENT, not by component: everything that changes who you
- * ARE stays on /profile, and everything that changes how the ACCOUNT is
- * administered lives here. ProfileSettings itself is unchanged and unmoved —
- * this page just gives it somewhere to be that is not in front of the identity.
+ *  ── Why /settings and not /profile/settings ─────────────────────────────
+ *  Settings is not a subsection of a profile. A profile is a public identity
+ *  (/u/<handle> is the shareable one); settings is private account
+ *  administration, and nesting it under /profile implied a relationship the
+ *  product does not have — which is part of how it ended up hidden. A
+ *  top-level noun is also what a person types and what a menu item should
+ *  point at.
+ *
+ *  /profile/settings still resolves: it is a permanent redirect here
+ *  (next.config.ts), so bookmarks, the Terms page and the Community Guidelines
+ *  links all keep working.
+ * ════════════════════════════════════════════════════════════════════════════
  */
-export default function ProfileSettingsPage() {
+export default function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 lg:max-w-3xl">
       <Link
@@ -64,6 +74,10 @@ export default function ProfileSettingsPage() {
       <div className="mt-6">
         <ProfileSettings />
       </div>
+
+      {/* The only place a block can be undone — see the component. Renders
+          nothing at all when nobody is blocked. */}
+      <BlockedList />
 
       {/* Erasure lives at the bottom of the only screen that administers the
           account, behind its own disclosure. The API has existed for a while;

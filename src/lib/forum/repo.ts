@@ -14,6 +14,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { PRESENCE_SELECT, type PresenceRow } from "@/lib/presence/select";
 import { presenceDtoFor } from "@/lib/presence/policy";
+import { blockedIdsFor } from "@/lib/blocks/repo";
 import {
   FORUM_CATEGORY_SEED, REACTION_TYPES,
   type ForumCategoryDTO, type ForumThreadDTO, type ForumPostDTO, type Paginated,
@@ -345,8 +346,21 @@ export async function getPosts(threadSlug: string, opts: {
   });
   if (!thread || !canAccessThread(thread, opts.viewerId)) return { items: [], nextCursor: null };
   const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
+  // ── A block is a PERSONAL filter, applied per viewer at the read ─────────
+  // Posts by (and to) someone in a block relationship with the viewer are
+  // filtered out of THIS viewer's page only. Nothing is deleted and no other
+  // reader's thread changes — removing content for everybody is a moderation
+  // action, and moderation is lib/moderation/reports.ts, reached by REPORTING.
+  //
+  // Skipped entirely when the set is empty, which is the overwhelmingly common
+  // case: `notIn: []` is a clause Postgres still has to consider on every
+  // thread read in the app.
+  const blocked = await blockedIdsFor(opts.viewerId);
   const rows = await prisma.forumPost.findMany({
-    where: { threadId: thread.id },
+    where: {
+      threadId: thread.id,
+      ...(blocked.length ? { authorId: { notIn: blocked } } : {}),
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),

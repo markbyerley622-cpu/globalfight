@@ -4,9 +4,9 @@
 
 ## Executive summary
 
-- **Queries analysed:** 1243 across 984 files
-- **By class:** 849 public · 290 user-owned · 104 shared · 0 admin
-- **Risk:** 🔴 0 high · 🟠 112 medium · 🟡 207 low · ⚪ 924 info
+- **Queries analysed:** 1252 across 989 files
+- **By class:** 851 public · 297 user-owned · 104 shared · 0 admin
+- **Risk:** 🔴 0 high · 🟠 112 medium · 🟡 207 low · ⚪ 933 info
 
 ## 🔴 High risk
 
@@ -87,9 +87,9 @@ _None._ No private-model read/write was found without an ownership filter.
 | `src/lib/follows.ts:29` | existing | FavoriteFighter (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:68` | existing | FavoritePromotion (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
 | `src/lib/follows.ts:104` | existing | FavoriteEvent (USER_OWNED) | findUnique · unknown | Private model; `where` is dynamic — ownership can't be proven statically. Confirm the variable is user-scoped. |
-| `src/lib/forum/repo.ts:639` | onBattleRoomMessage | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
-| `src/lib/forum/repo.ts:758` | toggleBookmark | ForumBookmark (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
-| `src/lib/forum/repo.ts:766` | toggleSubscription | ForumSubscription (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/forum/repo.ts:653` | onBattleRoomMessage | Battle (SHARED) | update · unscoped | Shared model with no relationship filter — confirm both parties' access is validated. |
+| `src/lib/forum/repo.ts:772` | toggleBookmark | ForumBookmark (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
+| `src/lib/forum/repo.ts:780` | toggleSubscription | ForumSubscription (USER_OWNED) | delete · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/people.ts:281` | getMutualFollowers | UserFollow (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:62` | checkIn | CheckIn (USER_OWNED) | update · unscoped | Private model write with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
 | `src/lib/geo/presence.ts:102` | getPresence | CheckIn (USER_OWNED) | findMany · unscoped | Private model read with no ownership filter in a library/job. Not a leak by itself — verify every caller scopes by user (bulk fan-out/aggregate jobs are expected here). |
@@ -233,6 +233,7 @@ _None._ No private-model read/write was found without an ownership filter.
 | PushSubscription | USER_OWNED | curated |
 | ReputationEvent | USER_OWNED | curated |
 | Session | USER_OWNED | curated |
+| UserBlock | USER_OWNED | curated |
 | UserFollow | USER_OWNED | curated |
 
 ## Recommendations

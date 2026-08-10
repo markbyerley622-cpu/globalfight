@@ -35,6 +35,26 @@ wikicard-cleanup-backup-*.json
 /public/fighters/
 /public/headshots/
 
+# ── Android / Trusted Web Activity build output ─────────────────────────────
+# The KEYSTORE is the app's identity. Play will not let you re-key a published
+# listing, so a leaked or lost one is unrecoverable in opposite directions:
+# leaked means anyone can sign as you, lost means you can never ship an update.
+# It belongs in a password manager and a backup, never in git.
+*.keystore
+*.jks
+android/android.keystore
+# Bubblewrap writes its own credentials + the generated Gradle project here.
+android/*.keystore
+android/twa-manifest.json
+android/app/
+android/gradle*
+android/build*
+android/.gradle/
+android/*.apk
+android/*.aab
+android/store_icon.png
+android/*.iml
+
 # Private evidence / identity documents stored on local disk in dev.
 # NEVER tracked: in local development this directory holds real uploads.
 .private/

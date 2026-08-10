@@ -102,6 +102,16 @@ export const DATA_CATEGORIES: DataCategory[] = [
     source: "prisma/schema.prisma — UserFollow, FavoriteFighter, FavoritePromotion, FavoriteEvent",
   },
   {
+    category: "Blocks",
+    data: "The people you have blocked, and when.",
+    purpose:
+      "To stop someone contacting you, following you, or appearing in what you read. Required of any app with user-to-user contact.",
+    lawfulBasis: "Legitimate interests — your safety on the platform.",
+    retention:
+      "Until you unblock them or either account is deleted. THE PERSON YOU BLOCK IS NEVER TOLD: no notification is sent, nothing appears on their profile, and no public count includes it. Only you can see your own list, and only you can undo it.",
+    source: "prisma/schema.prisma — UserBlock; src/lib/blocks/repo.ts",
+  },
+  {
     category: "Notifications",
     data:
       "Notifications generated for you, and — only if you turn on push — the subscription your BROWSER issues: an endpoint URL at your browser vendor plus two encryption keys.",

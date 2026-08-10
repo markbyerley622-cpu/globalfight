@@ -143,8 +143,17 @@ jobs:
       #
       # `--project=chromium` on PRs keeps the gate fast; the cross-browser
       # projects are tagged @xbrowser and run on main.
+      # Chromium always. Firefox + WebKit only on main, where the extra ~3
+      # minutes of install is worth it — the cross-browser projects are grepped
+      # to the @xbrowser subset so they are a compatibility signal, not a
+      # tripled suite.
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            npx playwright install --with-deps chromium firefox webkit
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Start production server
         run: |
@@ -182,6 +191,28 @@ jobs:
 
       - name: End-to-end
         run: npx playwright test --project=chromium
+        env:
+          BASE_URL: http://127.0.0.1:3000
+
+      # ── The projects that existed and never ran ────────────────────────────
+      # playwright.config.ts has declared firefox, webkit and a Pixel 7 mobile
+      # project since RC-1, each grepped to a tag (@xbrowser / @mobile), and the
+      # workflow's own comment claimed they "run on main". No step ever invoked
+      # them, so three declared browsers and the only mobile viewport in the repo
+      # were dead configuration — and mobile is the primary form factor for an
+      # app about to ship to Google Play.
+      #
+      # `--project` is repeated rather than combined into one run so a WebKit-only
+      # failure is legible in the job log without opening the HTML report.
+      #
+      # ⚠ THIS STEP HAS NEVER EXECUTED. The first main run after it lands may
+      # surface genuine Firefox/WebKit/mobile failures that have been latent for
+      # the whole life of the suite. That is the step working, not the step being
+      # broken — fix the product or the test, and do not delete the step to get a
+      # green tick back. Currently 10 tests carry @xbrowser and 2 carry @mobile.
+      - name: Cross-browser + mobile (main only)
+        if: github.ref == 'refs/heads/main'
+        run: npx playwright test --project=firefox --project=webkit --project=mobile
         env:
           BASE_URL: http://127.0.0.1:3000
 

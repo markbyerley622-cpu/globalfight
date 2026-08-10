@@ -186,6 +186,11 @@ export const FOOTER_NAV: { title: string; items: NavItem[] }[] = [
       { label: "Terms", href: "/terms" },
       { label: "Cookies", href: "/cookies" },
       { label: "Community Guidelines", href: "/community-guidelines" },
+      // Public on purpose, and linked from the footer on purpose: Google Play's
+      // User Data policy requires an account-deletion route reachable WITHOUT
+      // the app and without a working session. A page nothing links to is not
+      // reachable.
+      { label: "Delete your account", href: "/delete-account" },
       { label: "Copyright / Takedown", href: "/copyright" },
       { label: "Data Sources", href: "/data-sources" },
     ],
